@@ -1,0 +1,15 @@
+import Link from "next/link";
+import { Calendar, CalendarDays, List, MapPin, MoreHorizontal, Plus, Users } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusPill } from "@/components/ui/status-pill";
+import { ropings } from "@/data/demo";
+
+export default function RopingsPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Ropings" description="Schedule events, open entries, prepare draws, and manage results from one place." actions={<button className="flex h-10 items-center gap-2 rounded-md bg-[#17251f] px-4 text-sm font-semibold text-white"><Plus size={17} /> Create roping</button>} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="inline-flex w-fit rounded-md border border-[#d7ddda] bg-white p-1"><button className="flex h-8 items-center gap-2 rounded bg-[#eef1ef] px-3 text-xs font-semibold"><List size={15} /> List</button><button className="flex h-8 items-center gap-2 px-3 text-xs font-semibold text-[#66716b]"><Calendar size={15} /> Calendar</button></div><select className="h-10 rounded-md border border-[#d7ddda] bg-white px-3 text-sm outline-none"><option>All statuses</option><option>Upcoming</option><option>Completed</option></select></div>
+      <section className="space-y-3">{ropings.map((roping) => <article key={roping.id} className="rounded-md border border-[#dfe4e1] bg-white p-5"><div className="flex flex-col gap-5 lg:flex-row lg:items-center"><div className="grid h-16 w-16 shrink-0 place-items-center rounded-md bg-[#f0f2f1] text-center"><span className="text-[10px] font-bold uppercase text-[#7b857f]">{roping.date.split(" ")[0]}</span><span className="-mt-3 text-2xl font-bold">{roping.date.split(" ")[1].replace(",", "")}</span></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-bold">{roping.title}</h2><StatusPill status={roping.status} />{roping.resultStatus ? <span className="text-xs font-semibold text-[#758078]">Results: {roping.resultStatus}</span> : null}</div><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]"><span className="flex items-center gap-1.5"><CalendarDays size={15} />{roping.date}</span><span className="flex items-center gap-1.5"><MapPin size={15} />{roping.location}</span><span className="flex items-center gap-1.5"><Users size={15} />{roping.entries} entries · {roping.divisions} divisions</span></div></div><div className="flex shrink-0 gap-2"><Link href={roping.status === "in_progress" ? "/ropings/current" : "/settings/divisions"} className="flex h-10 items-center rounded-md border border-[#d7ddda] px-4 text-sm font-semibold hover:bg-[#f7f8f7]">{roping.status === "in_progress" ? "Manage live" : roping.status === "completed" ? "View results" : "Manage event"}</Link><button aria-label={`More options for ${roping.title}`} className="grid h-10 w-10 place-items-center rounded-md border border-[#d7ddda]"><MoreHorizontal size={18} /></button></div></div></article>)}</section>
+    </div>
+  );
+}
