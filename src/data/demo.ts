@@ -1,4 +1,4 @@
-import type { MemberSummary, RopingSummary } from "@/types/domain";
+import type { DivisionTemplateSummary, MemberSummary, RopingSummary } from "@/types/domain";
 
 export const members: MemberSummary[] = [
   { id: "1", memberNumber: "RR-1042", name: "Jace Holloway", email: "jace@example.com", phone: "(940) 555-0182", classification: "Open", status: "active", joinedAt: "Jan 12, 2024" },
@@ -22,4 +22,10 @@ export const liveRuns = [
   { draw: 20, name: "Mason Cole", entry: 1, time: "", penalty: "", total: "", status: "current" },
   { draw: 21, name: "Wyatt James", entry: 1, time: "", penalty: "", total: "", status: "waiting" },
   { draw: 22, name: "Jace Holloway", entry: 2, time: "", penalty: "", total: "", status: "waiting" },
+];
+
+export const divisionTemplates: DivisionTemplateSummary[] = [
+  { id: "open", name: "Open", description: "Open to all active members and approved guests", numberOfRuns: 1, maximumEntriesPerPerson: null, allowGuests: true, isActive: true, fees: [{ id: "open-entry", title: "Entry fee", amountCents: 5000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }, { id: "open-stock", title: "Stock fee", amountCents: 1000, scope: "entry", includedInEntryPrice: true, contributesToPayout: false }, { id: "open-office", title: "Office fee", amountCents: 500, scope: "contestant_event", includedInEntryPrice: false, contributesToPayout: false }] },
+  { id: "number-two", name: "#2 Division", description: "For contestants classified #2 or below", numberOfRuns: 1, maximumEntriesPerPerson: 3, allowGuests: true, isActive: true, fees: [{ id: "two-entry", title: "Entry fee", amountCents: 4000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }, { id: "two-office", title: "Office fee", amountCents: 500, scope: "contestant_event", includedInEntryPrice: false, contributesToPayout: false }] },
+  { id: "novice", name: "Novice", description: "Organization-approved novice contestants", numberOfRuns: 2, maximumEntriesPerPerson: 1, allowGuests: false, isActive: true, fees: [{ id: "novice-entry", title: "Entry fee", amountCents: 3000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }] },
 ];

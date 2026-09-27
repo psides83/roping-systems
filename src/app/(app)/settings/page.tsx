@@ -1,8 +1,37 @@
-import { Building2, ChevronRight, LockKeyhole, UserCog } from "lucide-react";
+import { Building2, Clock3, ShieldCheck, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { OrganizationSettingsForm } from "@/components/settings/organization-settings-form";
+import { OrganizationLogoForm } from "@/components/settings/organization-logo-form";
+import { OrganizationBrandingForm } from "@/components/settings/organization-branding-form";
+import { getActiveOrganization } from "@/lib/organizations";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient } from "@/lib/supabase/server";
 
-const settings = [{ title: "Organization profile", description: "Name, public URL, contact details, and branding", icon: Building2 }, { title: "Team & permissions", description: "Owners, administrators, operators, and viewers", icon: UserCog }, { title: "Security", description: "Authentication and account access policies", icon: LockKeyhole }];
+interface SettingsData {
+  organization: { name: string; publicName: string; email: string; phone: string; timezone: string; allowGuestEntries: boolean; logoUrl: string | null; brandPrimary: string; brandAccent: string };
+  role: string;
+  team: Array<{ id: string; email: string; role: string; joinedAt: string }>;
+  audit: Array<{ id: string; entity: string; action: string; createdAt: string }>;
+}
 
-export default function SettingsPage() {
-  return <div className="space-y-6"><PageHeader title="Settings" description="Manage organization details, team access, and account preferences." /><section className="divide-y divide-[#e7ebe8] overflow-hidden rounded-md border border-[#dfe4e1] bg-white">{settings.map(({ title, description, icon: Icon }) => <button key={title} className="flex w-full items-center gap-4 p-5 text-left hover:bg-[#fafbfa]"><span className="grid h-10 w-10 place-items-center rounded-md bg-[#eef1ef] text-[#435149]"><Icon size={19} /></span><span className="flex-1"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-xs text-[#758078]">{description}</span></span><ChevronRight size={18} className="text-[#98a09b]" /></button>)}</section></div>;
+async function getSettingsData(): Promise<SettingsData> {
+  if (!isSupabaseConfigured()) return { organization: { name: "Red River Calf Ropers", publicName: "", email: "office@example.com", phone: "(940) 555-0100", timezone: "America/Chicago", allowGuestEntries: true, logoUrl: null, brandPrimary: "#17251F", brandAccent: "#BB3E24" }, role: "owner", team: [{ id: "preview-owner", email: "payton@example.com", role: "owner", joinedAt: "Preview" }, { id: "preview-operator", email: "secretary@example.com", role: "operator", joinedAt: "Preview" }], audit: [] };
+  const active = await getActiveOrganization();
+  if (!active) throw new Error("No active organization was found.");
+  const supabase = await createClient();
+  const [{ data: organization, error }, { data: team }, { data: audit }] = await Promise.all([
+    supabase.from("organizations").select("name, public_name, email, phone, timezone, allow_guest_entries, logo_path, brand_primary, brand_accent").eq("id", active.id).single(),
+    supabase.from("organization_team_directory").select("user_id, email, role, created_at").eq("organization_id", active.id).order("created_at"),
+    supabase.from("audit_log").select("id, entity_type, action, created_at").eq("organization_id", active.id).order("created_at", { ascending: false }).limit(8),
+  ]);
+  if (error || !organization) throw new Error(`Unable to load settings: ${error?.message ?? "Not found"}`);
+  const logoUrl = organization.logo_path ? supabase.storage.from("organization-logos").getPublicUrl(organization.logo_path).data.publicUrl : null;
+  return { organization: { name: organization.name, publicName: organization.public_name ?? "", email: organization.email ?? "", phone: organization.phone ?? "", timezone: organization.timezone, allowGuestEntries: organization.allow_guest_entries, logoUrl, brandPrimary: organization.brand_primary, brandAccent: organization.brand_accent }, role: active.role, team: (team ?? []).map((member) => ({ id: member.user_id, email: member.email ?? "No email", role: member.role, joinedAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(member.created_at)) })), audit: (audit ?? []).map((item) => ({ id: String(item.id), entity: item.entity_type, action: item.action, createdAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at)) })) };
+}
+
+export default async function SettingsPage() {
+  const data = await getSettingsData();
+  const configured = isSupabaseConfigured();
+  const canEdit = configured && ["owner", "admin"].includes(data.role);
+  return <div className="space-y-6"><PageHeader title="Settings" description="Manage organization details, team access, and operating preferences." /><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"><section className="rounded-md border border-[#dfe4e1] bg-white"><div className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4"><span className="grid h-9 w-9 place-items-center rounded-md bg-[#eef1ef]"><Building2 size={18} /></span><div><h2 className="font-bold">Organization profile</h2><p className="mt-1 text-xs text-[#758078]">Public identity and event defaults</p></div></div><div className="p-5"><OrganizationLogoForm key={data.organization.logoUrl ?? "no-logo"} organizationName={data.organization.publicName || data.organization.name} logoUrl={data.organization.logoUrl} canEdit={canEdit} readOnlyMessage={configured ? "Only owners and administrators can change the logo." : "Connect Supabase to upload an organization logo."} /><OrganizationBrandingForm primary={data.organization.brandPrimary} accent={data.organization.brandAccent} canEdit={canEdit} readOnlyMessage={configured ? "Only owners and administrators can change brand colors." : "Connect Supabase to save organization colors."} /><OrganizationSettingsForm organization={data.organization} canEdit={canEdit} /></div></section><div className="space-y-5"><section className="rounded-md border border-[#dfe4e1] bg-white"><div className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4"><UserCog size={18} className="text-[var(--brand-accent-strong)]" /><div><h2 className="font-bold">Team access</h2><p className="mt-1 text-xs text-[#758078]">People who can operate this organization</p></div></div><div className="divide-y divide-[#e7ebe8]">{data.team.map((member) => <div key={member.id} className="flex items-center gap-3 px-5 py-4"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#eef1ef] text-xs font-bold">{member.email.slice(0, 2).toUpperCase()}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{member.email}</p><p className="mt-1 text-xs capitalize text-[#758078]">{member.role} · {member.joinedAt}</p></div><ShieldCheck size={16} className="text-emerald-600" /></div>)}</div><div className="border-t border-[#e7ebe8] p-4"><button disabled className="h-9 w-full rounded-md border border-[#d7ddda] text-xs font-semibold text-[#758078]">Invitations available after email setup</button></div></section><section className="rounded-md border border-[#dfe4e1] bg-white"><div className="flex items-center gap-2 border-b border-[#e7ebe8] px-5 py-4"><Clock3 size={17} className="text-[var(--brand-accent-strong)]" /><h2 className="font-bold">Recent activity</h2></div><div className="divide-y divide-[#e7ebe8]">{data.audit.map((item) => <div key={item.id} className="px-5 py-3"><p className="text-sm font-semibold capitalize">{item.action} {item.entity.replaceAll("_", " ")}</p><p className="mt-1 text-xs text-[#758078]">{item.createdAt}</p></div>)}{!data.audit.length ? <p className="px-5 py-6 text-sm text-[#758078]">Activity will appear after Supabase is connected.</p> : null}</div></section></div></div></div>;
 }

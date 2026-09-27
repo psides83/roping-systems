@@ -6,9 +6,13 @@
   --panel: #ffffff;
   --border: #dfe4e1;
   --muted: #66716b;
-  --brand: #bb3e24;
-  --brand-dark: #91301c;
-  --sidebar: #17251f;
+  --brand-primary: #17251f;
+  --brand-primary-foreground: #ffffff;
+  --brand-primary-soft: color-mix(in srgb, var(--brand-primary) 88%, white);
+  --brand-accent: #bb3e24;
+  --brand-accent-foreground: #ffffff;
+  --brand-accent-strong: color-mix(in srgb, var(--brand-accent) 82%, black);
+  --brand-accent-tint: color-mix(in srgb, var(--brand-accent) 10%, white);
 }
 
 @theme inline {
@@ -25,3 +29,7 @@ button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 ::selection { background: #f1c1b3; color: #43160d; }
 .scrollbar-subtle { scrollbar-color: #c5ccc8 transparent; scrollbar-width: thin; }
+.brand-primary-fill { background-color: var(--brand-primary); color: var(--brand-primary-foreground); }
+.brand-accent-fill { background-color: var(--brand-accent); color: var(--brand-accent-foreground); }
+.brand-muted { color: color-mix(in srgb, var(--brand-primary-foreground) 62%, transparent); }
+.brand-hover:hover { color: var(--brand-primary-foreground); }

@@ -25,3 +25,23 @@ export interface RopingSummary {
   status: RopingStatus;
   resultStatus?: ResultStatus;
 }
+
+export interface FeeTemplateSummary {
+  id: string;
+  title: string;
+  amountCents: number;
+  scope: FeeScope;
+  includedInEntryPrice: boolean;
+  contributesToPayout: boolean;
+}
+
+export interface DivisionTemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  numberOfRuns: number;
+  maximumEntriesPerPerson: number | null;
+  allowGuests: boolean;
+  isActive: boolean;
+  fees: FeeTemplateSummary[];
+}
