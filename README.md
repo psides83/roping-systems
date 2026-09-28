@@ -16,6 +16,7 @@ Organization-based membership and event operations for calf roping producers. Th
 - Database-backed member and organization management
 - Transactional roping creation from reusable division and fee templates
 - In-person member and guest entry workflows with repeat-entry rules
+- Public online entry requests with membership checks, repeat-entry quantities, and staff approval
 - Draw generation, run timing, penalties, and result finalization
 - Live public schedules and unofficial/official results
 - Organization logo uploads for branded public schedules and results

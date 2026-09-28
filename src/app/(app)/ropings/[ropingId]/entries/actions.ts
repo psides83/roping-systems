@@ -26,6 +26,12 @@ const guestEntrySchema = z.object({
   paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
 });
 
+const reviewRequestSchema = z.object({
+  requestId: z.uuid(),
+  decision: z.enum(["accepted", "declined"]),
+  reviewNote: z.string().trim().max(500, "Keep the note under 500 characters."),
+});
+
 async function requireManager() {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return null;
@@ -54,4 +60,25 @@ export async function addGuestEntry(ropingId: string, _state: EntryFormState, fo
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/live`);
   return { success: true, message: "Guest entry added and fees calculated." };
+}
+
+export async function reviewOnlineEntryRequest(ropingId: string, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
+  const parsed = reviewRequestSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const { data, error } = await context.supabase.rpc("review_online_entry_request", {
+    target_request_id: parsed.data.requestId,
+    review_decision: parsed.data.decision,
+    entered_review_note: parsed.data.reviewNote,
+  });
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return {
+    success: true,
+    message: parsed.data.decision === "accepted" ? `${data} ${data === 1 ? "entry was" : "entries were"} added.` : "Request declined.",
+  };
 }
