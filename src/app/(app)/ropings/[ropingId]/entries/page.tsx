@@ -15,11 +15,11 @@ export default async function EventEntriesPage({ params }: PageProps<"/ropings/[
   if (!organization) notFound();
   const supabase = await createClient();
   const [{ data: roping }, { data: membershipData }, { data: entryData, error: entryError }, { data: chargeData }, { data: requestData, error: requestError }] = await Promise.all([
-    supabase.from("ropings").select("id, title, status, roping_divisions(id, name, allow_guests, sort_order, roping_fees(id, title, amount_cents, kind, scope, is_required))").eq("id", ropingId).eq("organization_id", organization.id).single(),
+    supabase.from("ropings").select("id, title, status, roping_divisions!roping_divisions_roping_id_fkey(id, name, allow_guests, sort_order, roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, kind, scope, is_required))").eq("id", ropingId).eq("organization_id", organization.id).single(),
     supabase.from("organization_memberships").select("member_number, people!inner(id, first_name, last_name)").eq("organization_id", organization.id).eq("status", "active").order("member_number"),
-    supabase.from("entries").select("id, entry_number, source, payment_status, person_id, roping_divisions!inner(name), people!inner(first_name, last_name)").eq("roping_id", ropingId).order("entered_at", { ascending: false }),
+    supabase.from("entries").select("id, entry_number, source, payment_status, person_id, roping_divisions!entries_roping_division_id_fkey!inner(name), people!inner(first_name, last_name)").eq("roping_id", ropingId).order("entered_at", { ascending: false }),
     supabase.from("entry_charges").select("person_id, amount_cents, waived_at").eq("roping_id", ropingId),
-    supabase.from("online_entry_requests").select("id, first_name, last_name, email, phone, member_number, membership_id, contestant_note, created_at, online_entry_request_items(quantity, roping_divisions!inner(name))").eq("roping_id", ropingId).eq("status", "pending").order("created_at"),
+    supabase.from("online_entry_requests").select("id, first_name, last_name, email, phone, member_number, membership_id, contestant_note, created_at, online_entry_request_items!online_entry_request_items_request_id_fkey(quantity, roping_divisions!online_entry_request_items_roping_division_id_fkey!inner(name))").eq("roping_id", ropingId).eq("status", "pending").order("created_at"),
   ]);
   if (!roping) notFound();
   if (entryError) throw new Error(`Unable to load event entries: ${entryError.message}`);

@@ -15,8 +15,8 @@ async function getRopingData() {
   if (!organization) return { ropings: [], divisions: [] };
   const supabase = await createClient();
   const [{ data: eventData, error: eventError }, { data: divisionData, error: divisionError }] = await Promise.all([
-    supabase.from("ropings").select("id, title, starts_at, venue_name, address, status, result_status, roping_divisions(id), entries(id)").eq("organization_id", organization.id).order("starts_at", { ascending: false }),
-    supabase.from("division_templates").select("id, name, fee_templates(id)").eq("organization_id", organization.id).eq("is_active", true).order("sort_order"),
+    supabase.from("ropings").select("id, title, starts_at, venue_name, address, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id), entries!entries_roping_id_fkey(id)").eq("organization_id", organization.id).order("starts_at", { ascending: false }),
+    supabase.from("division_templates").select("id, name, fee_templates!fee_templates_division_template_id_fkey(id)").eq("organization_id", organization.id).eq("is_active", true).order("sort_order"),
   ]);
   if (eventError) throw new Error(`Unable to load ropings: ${eventError.message}`);
   if (divisionError) throw new Error(`Unable to load divisions: ${divisionError.message}`);

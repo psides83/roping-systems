@@ -21,7 +21,7 @@ async function getDivisionData(): Promise<{ divisions: DivisionTemplateSummary[]
   if (!organization) return { divisions: [], payoutSchedules: [] };
   const supabase = await createClient();
   const [{ data, error }, { data: schedules, error: scheduleError }] = await Promise.all([
-    supabase.from("division_templates").select("id, name, description, number_of_runs, maximum_entries_per_person, allow_guests, is_active, fee_templates(id, title, amount_cents, scope, kind, is_required, included_in_entry_price, contributes_to_payout, sort_order)").eq("organization_id", organization.id).order("sort_order").order("created_at"),
+    supabase.from("division_templates").select("id, name, description, number_of_runs, maximum_entries_per_person, allow_guests, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, is_required, included_in_entry_price, contributes_to_payout, sort_order)").eq("organization_id", organization.id).order("sort_order").order("created_at"),
     supabase.from("payout_schedules").select("id, name").eq("organization_id", organization.id).eq("is_active", true).order("name"),
   ]);
   if (error) throw new Error(`Unable to load division settings: ${error.message}`);

@@ -12,14 +12,14 @@ export default async function LiveRopingPage({ params, searchParams }: PageProps
   const organization = await getActiveOrganization();
   if (!organization) notFound();
   const supabase = await createClient();
-  const { data: roping } = await supabase.from("ropings").select("id, title, status, result_status, roping_divisions(id, name, sort_order, timer_count, timer_resolution)").eq("id", ropingId).eq("organization_id", organization.id).single();
+  const { data: roping } = await supabase.from("ropings").select("id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, sort_order, timer_count, timer_resolution)").eq("id", ropingId).eq("organization_id", organization.id).single();
   if (!roping) notFound();
   const divisions = (roping.roping_divisions as unknown as Array<{ id: string; name: string; sort_order: number; timer_count: number; timer_resolution: "average" | "best" | "longest" }>).sort((a, b) => a.sort_order - b.sort_order);
   const requestedDivision = typeof query.division === "string" ? query.division : undefined;
   const selectedDivisionId = divisions.some((division) => division.id === requestedDivision) ? requestedDivision! : divisions[0]?.id;
   let runs: LiveRunRow[] = [];
   if (selectedDivisionId) {
-    const { data: runData, error } = await supabase.from("runs").select("id, draw_position, raw_time_seconds, penalty_seconds, status, entries!inner(entry_number, people!inner(first_name, last_name))").eq("roping_division_id", selectedDivisionId).eq("run_number", 1).order("draw_position", { ascending: true, nullsFirst: false });
+    const { data: runData, error } = await supabase.from("runs").select("id, draw_position, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(entry_number, people!inner(first_name, last_name))").eq("roping_division_id", selectedDivisionId).eq("run_number", 1).order("draw_position", { ascending: true, nullsFirst: false });
     if (error) throw new Error(`Unable to load the event desk: ${error.message}`);
     runs = runData.map((run) => { const entry = run.entries as unknown as { entry_number: number; people: { first_name: string; last_name: string } }; return { id: run.id, drawPosition: run.draw_position, name: `${entry.people.first_name} ${entry.people.last_name}`, entryNumber: entry.entry_number, rawTime: run.raw_time_seconds === null ? null : Number(run.raw_time_seconds), penalty: Number(run.penalty_seconds), status: run.status }; });
   }
