@@ -17,6 +17,7 @@ interface EntryDivision {
   maximumEntries: number | null;
   allowGuests: boolean;
   estimatedFirstEntryCents: number;
+  options: Array<{ id: string; title: string; amountCents: number; kind: string; scope: string }>;
 }
 
 export function OnlineEntryForm({
@@ -76,6 +77,7 @@ export function OnlineEntryForm({
                 <span className="font-bold">{division.name}</span>
                 {division.description ? <span className="mt-1 block text-sm leading-5 text-[#66716b]">{division.description}</span> : null}
                 <span className="mt-2 block text-xs font-semibold text-[#758078]">Required fees from {formatCurrency(division.estimatedFirstEntryCents)}{division.allowGuests ? " · Guest entries allowed" : " · Active members only"}</span>
+                {division.options.length ? <span className="mt-3 block space-y-2">{division.options.map((option) => <label key={option.id} className="flex items-center gap-3 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-3"><input name={`option-${division.id}`} value={option.id} type="checkbox" disabled={!isSelected} className="h-4 w-4 accent-[var(--brand-accent)]" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#17201c]">{option.title}</span><span className="block text-xs capitalize text-[#758078]">{option.kind.replace("_", " ")} · {option.scope.replaceAll("_", " ")}</span></span><span className="text-sm font-bold text-[#17201c]">{formatCurrency(option.amountCents)}</span></label>)}</span> : null}
               </label>
               <div className="flex h-9 shrink-0 items-center rounded-md border border-[#ccd4d0] bg-white">
                 <button type="button" aria-label={`Remove one ${division.name} entry`} disabled={!isSelected || quantity <= 1} onClick={() => setQuantities((current) => ({ ...current, [division.id]: Math.max(1, quantity - 1) }))} className="grid h-9 w-9 place-items-center disabled:opacity-30"><Minus size={15} /></button>

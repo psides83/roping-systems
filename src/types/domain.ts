@@ -2,6 +2,7 @@ export type OrganizationRole = "owner" | "admin" | "operator" | "viewer";
 export type MembershipStatus = "active" | "pending" | "expired" | "inactive";
 export type RopingStatus = "draft" | "scheduled" | "entries_open" | "entries_closed" | "in_progress" | "completed" | "cancelled";
 export type FeeScope = "entry" | "contestant_division" | "contestant_event";
+export type FeeKind = "standard" | "insurance" | "side_pot" | "other";
 export type ResultStatus = "unofficial" | "official";
 
 export interface MemberSummary {
@@ -34,6 +35,8 @@ export interface FeeTemplateSummary {
   scope: FeeScope;
   includedInEntryPrice: boolean;
   contributesToPayout: boolean;
+  kind?: FeeKind;
+  isRequired?: boolean;
 }
 
 export interface DivisionTemplateSummary {

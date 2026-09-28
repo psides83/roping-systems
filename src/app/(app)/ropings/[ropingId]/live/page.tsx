@@ -12,9 +12,9 @@ export default async function LiveRopingPage({ params, searchParams }: PageProps
   const organization = await getActiveOrganization();
   if (!organization) notFound();
   const supabase = await createClient();
-  const { data: roping } = await supabase.from("ropings").select("id, title, status, result_status, roping_divisions(id, name, sort_order)").eq("id", ropingId).eq("organization_id", organization.id).single();
+  const { data: roping } = await supabase.from("ropings").select("id, title, status, result_status, roping_divisions(id, name, sort_order, timer_count, timer_resolution)").eq("id", ropingId).eq("organization_id", organization.id).single();
   if (!roping) notFound();
-  const divisions = (roping.roping_divisions as unknown as Array<{ id: string; name: string; sort_order: number }>).sort((a, b) => a.sort_order - b.sort_order);
+  const divisions = (roping.roping_divisions as unknown as Array<{ id: string; name: string; sort_order: number; timer_count: number; timer_resolution: "average" | "best" | "longest" }>).sort((a, b) => a.sort_order - b.sort_order);
   const requestedDivision = typeof query.division === "string" ? query.division : undefined;
   const selectedDivisionId = divisions.some((division) => division.id === requestedDivision) ? requestedDivision! : divisions[0]?.id;
   let runs: LiveRunRow[] = [];
@@ -25,6 +25,7 @@ export default async function LiveRopingPage({ params, searchParams }: PageProps
   }
   const startAction = startRoping.bind(null, ropingId);
   const finalizeAction = finalizeRoping.bind(null, ropingId);
+  const selectedDivision = divisions.find((division) => division.id === selectedDivisionId);
 
-  return <div className="space-y-6"><PageHeader eyebrow={`Event desk · ${roping.status.replaceAll("_", " ")}`} title={roping.title} description="Manage draws and record results. Saved runs are published to the live results page when this event is public." actions={<div className="flex gap-2">{roping.status !== "in_progress" && roping.status !== "completed" ? <form action={startAction}><button className="h-10 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">Start event</button></form> : null}{roping.status === "in_progress" ? <form action={finalizeAction}><button className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"><LockKeyhole size={16} /> Finalize</button></form> : null}</div>} />{selectedDivisionId ? <DatabaseLiveDesk ropingId={ropingId} divisions={divisions} selectedDivisionId={selectedDivisionId} runs={runs} /> : <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center"><p className="font-semibold">This event has no divisions.</p></div>}</div>;
+  return <div className="space-y-6"><PageHeader eyebrow={`Event desk · ${roping.status.replaceAll("_", " ")}`} title={roping.title} description="Manage draws and record results. Saved runs are published to the live results page when this event is public." actions={<div className="flex gap-2">{roping.status !== "in_progress" && roping.status !== "completed" ? <form action={startAction}><button className="h-10 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">Start event</button></form> : null}{roping.status === "in_progress" ? <form action={finalizeAction}><button className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"><LockKeyhole size={16} /> Finalize</button></form> : null}</div>} />{selectedDivisionId && selectedDivision ? <DatabaseLiveDesk ropingId={ropingId} divisions={divisions} selectedDivisionId={selectedDivisionId} runs={runs} timerCount={selectedDivision.timer_count} timerResolution={selectedDivision.timer_resolution} /> : <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center"><p className="font-semibold">This event has no divisions.</p></div>}</div>;
 }

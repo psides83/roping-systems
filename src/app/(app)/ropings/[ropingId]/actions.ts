@@ -35,7 +35,6 @@ export async function generateDraw(ropingId: string, formData: FormData) {
 
 const runSchema = z.object({
   runId: z.uuid(),
-  rawTime: z.union([z.literal(""), z.string().regex(/^\d+(?:\.\d{1,3})?$/)]),
   penalty: z.coerce.number().min(0).max(999),
   status: z.enum(["complete", "no_time", "scratch", "rerun"]),
 });
@@ -43,10 +42,12 @@ const runSchema = z.object({
 export async function recordRun(ropingId: string, _state: LiveRunState, formData: FormData): Promise<LiveRunState> {
   const parsed = runSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { message: "Enter a valid time before saving this run." };
-  if (parsed.data.status === "complete" && !parsed.data.rawTime) return { message: "A completed run requires a time." };
+  const timerValues = formData.getAll("timerReading").map(String);
+  const timerReadings = timerValues.map(Number);
+  if (parsed.data.status === "complete" && (!timerValues.length || timerValues.some((value) => !/^\d+(?:\.\d{1,3})?$/.test(value)) || timerReadings.some((value) => value < 0))) return { message: "Enter a valid reading from every timer." };
 
   const supabase = await requireManager();
-  const { error } = await supabase.rpc("record_run_result", { target_run_id: parsed.data.runId, entered_raw_time: parsed.data.rawTime ? Number(parsed.data.rawTime) : null, entered_penalty: parsed.data.penalty, entered_status: parsed.data.status });
+  const { error } = await supabase.rpc("record_run_result_multi", { target_run_id: parsed.data.runId, entered_timer_readings: parsed.data.status === "complete" ? timerReadings : [], entered_penalty: parsed.data.penalty, entered_status: parsed.data.status });
   if (error) return { message: error.message };
   revalidatePath(`/ropings/${ropingId}/live`);
   revalidatePath(`/public`);

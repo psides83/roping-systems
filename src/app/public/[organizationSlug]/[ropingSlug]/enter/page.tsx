@@ -12,14 +12,13 @@ export default async function PublicOnlineEntryPage({ params }: PageProps<"/publ
   if (!isSupabaseConfigured()) notFound();
 
   const supabase = await createClient();
-  const { data: rows, error } = await supabase
-    .from("public_event_entry_options")
-    .select("organization_name, logo_path, brand_primary, brand_accent, allow_guest_entries, roping_id, title, venue_name, address, starts_at, entries_close_at, entries_are_open, division_id, division_name, division_description, maximum_entries_per_person, allow_guests, estimated_first_entry_cents, sort_order")
-    .eq("organization_slug", organizationSlug)
-    .eq("roping_slug", ropingSlug)
-    .order("sort_order");
+  const [{ data: rows, error }, { data: optionalFees, error: feeError }] = await Promise.all([
+    supabase.from("public_event_entry_options").select("organization_name, logo_path, brand_primary, brand_accent, allow_guest_entries, roping_id, title, venue_name, address, starts_at, entries_close_at, entries_are_open, division_id, division_name, division_description, maximum_entries_per_person, allow_guests, estimated_first_entry_cents, sort_order").eq("organization_slug", organizationSlug).eq("roping_slug", ropingSlug).order("sort_order"),
+    supabase.from("public_event_optional_fees").select("division_id, fee_id, title, amount_cents, kind, scope").eq("organization_slug", organizationSlug).eq("roping_slug", ropingSlug),
+  ]);
 
   if (error) throw new Error(`Unable to load online entries: ${error.message}`);
+  if (feeError) throw new Error(`Unable to load entry options: ${feeError.message}`);
   if (!rows?.length) notFound();
 
   const event = rows[0];
@@ -33,6 +32,7 @@ export default async function PublicOnlineEntryPage({ params }: PageProps<"/publ
     maximumEntries: row.maximum_entries_per_person,
     allowGuests: row.allow_guests && row.allow_guest_entries,
     estimatedFirstEntryCents: row.estimated_first_entry_cents,
+    options: (optionalFees ?? []).filter((fee) => fee.division_id === row.division_id).map((fee) => ({ id: fee.fee_id, title: fee.title, amountCents: fee.amount_cents, kind: fee.kind, scope: fee.scope })),
   }));
 
   return <main style={getBrandStyle(event.brand_primary, event.brand_accent)} className="min-h-screen bg-[#f5f6f7]">

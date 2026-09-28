@@ -15,7 +15,7 @@ export default async function EventEntriesPage({ params }: PageProps<"/ropings/[
   if (!organization) notFound();
   const supabase = await createClient();
   const [{ data: roping }, { data: membershipData }, { data: entryData, error: entryError }, { data: chargeData }, { data: requestData, error: requestError }] = await Promise.all([
-    supabase.from("ropings").select("id, title, status, roping_divisions(id, name, allow_guests, sort_order)").eq("id", ropingId).eq("organization_id", organization.id).single(),
+    supabase.from("ropings").select("id, title, status, roping_divisions(id, name, allow_guests, sort_order, roping_fees(id, title, amount_cents, kind, scope, is_required))").eq("id", ropingId).eq("organization_id", organization.id).single(),
     supabase.from("organization_memberships").select("member_number, people!inner(id, first_name, last_name)").eq("organization_id", organization.id).eq("status", "active").order("member_number"),
     supabase.from("entries").select("id, entry_number, source, payment_status, person_id, roping_divisions!inner(name), people!inner(first_name, last_name)").eq("roping_id", ropingId).order("entered_at", { ascending: false }),
     supabase.from("entry_charges").select("person_id, amount_cents, waived_at").eq("roping_id", ropingId),
@@ -24,7 +24,7 @@ export default async function EventEntriesPage({ params }: PageProps<"/ropings/[
   if (!roping) notFound();
   if (entryError) throw new Error(`Unable to load event entries: ${entryError.message}`);
   if (requestError) throw new Error(`Unable to load online entry requests: ${requestError.message}`);
-  const divisions = (roping.roping_divisions as unknown as Array<{ id: string; name: string; allow_guests: boolean; sort_order: number }>).sort((a, b) => a.sort_order - b.sort_order).map((division) => ({ id: division.id, name: division.name, allowGuests: division.allow_guests }));
+  const divisions = (roping.roping_divisions as unknown as Array<{ id: string; name: string; allow_guests: boolean; sort_order: number; roping_fees: Array<{ id: string; title: string; amount_cents: number; kind: string; scope: string; is_required: boolean }> }>).sort((a, b) => a.sort_order - b.sort_order).map((division) => ({ id: division.id, name: division.name, allowGuests: division.allow_guests, options: division.roping_fees.filter((fee) => !fee.is_required).map((fee) => ({ id: fee.id, title: fee.title, amountCents: fee.amount_cents, kind: fee.kind, scope: fee.scope })) }));
   const people = (membershipData ?? []).map((membership) => { const person = membership.people as unknown as { id: string; first_name: string; last_name: string }; return { id: person.id, name: `${person.first_name} ${person.last_name}`, memberNumber: membership.member_number }; });
   const chargesByPerson = new Map<string, number>();
   (chargeData ?? []).forEach((charge) => chargesByPerson.set(charge.person_id, (chargesByPerson.get(charge.person_id) ?? 0) + (charge.waived_at ? 0 : charge.amount_cents)));

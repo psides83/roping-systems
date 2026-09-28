@@ -25,8 +25,11 @@ const feeSchema = z.object({
   title: z.string().trim().min(1, "Fee title is required."),
   amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
   scope: z.enum(["entry", "contestant_division", "contestant_event"]),
+  kind: z.enum(["standard", "insurance", "side_pot", "other"]),
+  payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   includedInEntryPrice: z.string().optional(),
   contributesToPayout: z.string().optional(),
+  isRequired: z.string().optional(),
 });
 
 async function getManagerContext() {
@@ -56,7 +59,12 @@ export async function createFee(_state: SettingsFormState, formData: FormData): 
 
   const { data: division } = await context.supabase.from("division_templates").select("id").eq("id", parsed.data.divisionId).eq("organization_id", context.organization.id).single();
   if (!division) return { message: "That division is not available in this organization." };
-  const { error } = await context.supabase.from("fee_templates").insert({ organization_id: context.organization.id, division_template_id: division.id, title: parsed.data.title, amount_cents: Math.round(Number(parsed.data.amount) * 100), scope: parsed.data.scope, included_in_entry_price: parsed.data.includedInEntryPrice === "on", contributes_to_payout: parsed.data.contributesToPayout === "on" });
+  if (parsed.data.payoutScheduleId) {
+    const { data: schedule } = await context.supabase.from("payout_schedules").select("id").eq("id", parsed.data.payoutScheduleId).eq("organization_id", context.organization.id).single();
+    if (!schedule) return { message: "That payout schedule is not available in this organization." };
+  }
+  if (parsed.data.kind === "side_pot" && !parsed.data.payoutScheduleId) return { message: "Choose a payout schedule for the side pot." };
+  const { error } = await context.supabase.from("fee_templates").insert({ organization_id: context.organization.id, division_template_id: division.id, title: parsed.data.title, amount_cents: Math.round(Number(parsed.data.amount) * 100), scope: parsed.data.scope, kind: parsed.data.kind, payout_schedule_id: parsed.data.payoutScheduleId || null, included_in_entry_price: parsed.data.includedInEntryPrice === "on", contributes_to_payout: parsed.data.kind === "side_pot" || parsed.data.contributesToPayout === "on", is_required: parsed.data.isRequired === "on" });
   if (error) return { message: error.message };
   revalidatePath("/settings/divisions");
   return { success: true, message: "Fee added." };

@@ -38,13 +38,27 @@ async function requireManager() {
   return { organization, supabase: await createClient() };
 }
 
+function getOptionIds(formData: FormData) {
+  return formData.getAll("optionIds").map(String).filter((value) => z.uuid().safeParse(value).success);
+}
+
+async function addSelectedOptions(supabase: Awaited<ReturnType<typeof createClient>>, entryId: string, optionIds: string[]) {
+  for (const optionId of optionIds) {
+    const { error } = await supabase.rpc("add_entry_option", { target_entry_id: entryId, target_roping_fee_id: optionId });
+    if (error) return error;
+  }
+  return null;
+}
+
 export async function addExistingEntry(ropingId: string, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
   const parsed = existingEntrySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
-  const { error } = await context.supabase.rpc("create_event_entry", { target_roping_division_id: parsed.data.divisionId, target_person_id: parsed.data.personId, entry_origin: "office", initial_payment_status: parsed.data.paymentStatus });
+  const { data: entryId, error } = await context.supabase.rpc("create_event_entry", { target_roping_division_id: parsed.data.divisionId, target_person_id: parsed.data.personId, entry_origin: "office", initial_payment_status: parsed.data.paymentStatus });
   if (error) return { message: error.message };
+  const optionError = await addSelectedOptions(context.supabase, entryId, getOptionIds(formData));
+  if (optionError) return { message: `Entry added, but an option could not be applied: ${optionError.message}` };
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/live`);
   return { success: true, message: "Entry added and fees calculated." };
@@ -55,8 +69,10 @@ export async function addGuestEntry(ropingId: string, _state: EntryFormState, fo
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
-  const { error } = await context.supabase.rpc("create_guest_event_entry", { target_roping_division_id: parsed.data.divisionId, guest_first_name: parsed.data.firstName, guest_last_name: parsed.data.lastName, guest_email: parsed.data.email, guest_phone: parsed.data.phone, initial_payment_status: parsed.data.paymentStatus });
+  const { data: entryId, error } = await context.supabase.rpc("create_guest_event_entry", { target_roping_division_id: parsed.data.divisionId, guest_first_name: parsed.data.firstName, guest_last_name: parsed.data.lastName, guest_email: parsed.data.email, guest_phone: parsed.data.phone, initial_payment_status: parsed.data.paymentStatus });
   if (error) return { message: error.message };
+  const optionError = await addSelectedOptions(context.supabase, entryId, getOptionIds(formData));
+  if (optionError) return { message: `Entry added, but an option could not be applied: ${optionError.message}` };
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/live`);
   return { success: true, message: "Guest entry added and fees calculated." };

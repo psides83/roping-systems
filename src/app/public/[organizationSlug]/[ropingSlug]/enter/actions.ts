@@ -32,7 +32,7 @@ export async function submitOnlineEntry(
   const requestedDivisions = divisionIds.flatMap((divisionId) => {
     const quantity = Number(formData.get(`quantity-${divisionId}`));
     return z.uuid().safeParse(divisionId).success && Number.isInteger(quantity) && quantity > 0
-      ? [{ divisionId, quantity }]
+      ? [{ divisionId, quantity, optionIds: formData.getAll(`option-${divisionId}`).map(String).filter((value) => z.uuid().safeParse(value).success) }]
       : [];
   });
 
