@@ -2,10 +2,10 @@ import type { DivisionTemplateSummary, MemberSummary, RopingSummary } from "@/ty
 
 export const members: MemberSummary[] = [
   { id: "1", memberNumber: "RR-1042", name: "Jace Holloway", email: "jace@example.com", phone: "(940) 555-0182", classification: "Open", status: "active", joinedAt: "Jan 12, 2024" },
-  { id: "2", memberNumber: "RR-1168", name: "Mason Cole", email: "mason@example.com", phone: "(817) 555-0131", classification: "#2", status: "active", joinedAt: "Feb 3, 2025" },
-  { id: "3", memberNumber: "RR-1204", name: "Landon Reeves", email: "landon@example.com", phone: "(806) 555-0114", classification: "#1", status: "pending", joinedAt: "Sep 22, 2026" },
+  { id: "2", memberNumber: "RR-1168", name: "Mason Cole", email: "mason@example.com", phone: "(817) 555-0131", classification: "11.5", status: "active", joinedAt: "Feb 3, 2025" },
+  { id: "3", memberNumber: "RR-1204", name: "Landon Reeves", email: "landon@example.com", phone: "(806) 555-0114", classification: "11", status: "pending", joinedAt: "Sep 22, 2026" },
   { id: "4", memberNumber: "RR-0987", name: "Cody Bennett", email: "cody@example.com", phone: "(254) 555-0169", classification: "Open", status: "expired", joinedAt: "Mar 18, 2023" },
-  { id: "5", memberNumber: "RR-1181", name: "Wyatt James", email: "wyatt@example.com", phone: "(325) 555-0122", classification: "#2", status: "active", joinedAt: "Nov 9, 2025" },
+  { id: "5", memberNumber: "RR-1181", name: "Wyatt James", email: "wyatt@example.com", phone: "(325) 555-0122", classification: "10", status: "active", joinedAt: "Nov 9, 2025" },
 ];
 
 export const ropings: RopingSummary[] = [
@@ -25,7 +25,7 @@ export const liveRuns = [
 ];
 
 export const divisionTemplates: DivisionTemplateSummary[] = [
-  { id: "open", name: "Open", description: "Open to all active members and approved guests", numberOfRuns: 1, maximumEntriesPerPerson: null, allowGuests: true, isActive: true, fees: [{ id: "open-entry", title: "Entry fee", amountCents: 5000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }, { id: "open-stock", title: "Stock fee", amountCents: 1000, scope: "entry", includedInEntryPrice: true, contributesToPayout: false }, { id: "open-office", title: "Office fee", amountCents: 500, scope: "contestant_event", includedInEntryPrice: false, contributesToPayout: false }] },
-  { id: "number-two", name: "#2 Division", description: "For contestants classified #2 or below", numberOfRuns: 1, maximumEntriesPerPerson: 3, allowGuests: true, isActive: true, fees: [{ id: "two-entry", title: "Entry fee", amountCents: 4000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }, { id: "two-office", title: "Office fee", amountCents: 500, scope: "contestant_event", includedInEntryPrice: false, contributesToPayout: false }] },
-  { id: "novice", name: "Novice", description: "Organization-approved novice contestants", numberOfRuns: 2, maximumEntriesPerPerson: 1, allowGuests: false, isActive: true, fees: [{ id: "novice-entry", title: "Entry fee", amountCents: 3000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }] },
+  { id: "calf-open", name: "Calf roping · Open", description: "Open calf roping for active members and approved guests", numberOfRuns: 1, maximumEntriesPerPerson: null, allowGuests: true, isActive: true, fees: [{ id: "open-entry", title: "Entry fee", amountCents: 5000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }, { id: "open-stock", title: "Stock fee", amountCents: 1000, scope: "entry", includedInEntryPrice: true, contributesToPayout: false }, { id: "open-office", title: "Office fee", amountCents: 500, scope: "contestant_event", includedInEntryPrice: false, contributesToPayout: false }] },
+  { id: "calf-115", name: "Calf roping · 11.5", description: "Calf roping for contestants classified 11.5 or below", numberOfRuns: 1, maximumEntriesPerPerson: 3, allowGuests: true, isActive: true, fees: [{ id: "two-entry", title: "Entry fee", amountCents: 4000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }, { id: "two-office", title: "Office fee", amountCents: 500, scope: "contestant_event", includedInEntryPrice: false, contributesToPayout: false }] },
+  { id: "breakaway-open", name: "Breakaway · Open", description: "Open breakaway roping", numberOfRuns: 2, maximumEntriesPerPerson: 1, allowGuests: false, isActive: true, fees: [{ id: "novice-entry", title: "Entry fee", amountCents: 3000, scope: "entry", includedInEntryPrice: true, contributesToPayout: true }] },
 ];

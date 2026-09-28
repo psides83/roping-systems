@@ -13,7 +13,7 @@ export interface ClassificationFormState {
 }
 
 const disciplineSchema = z.object({
-  name: z.string().trim().min(1, "Discipline name is required."),
+  name: z.string().trim().min(1, "Division name is required."),
   description: z.string().trim(),
   watchThreshold: z.union([z.literal(""), z.coerce.number().int().min(1).max(20)]),
 });
@@ -36,7 +36,7 @@ export async function createDiscipline(_state: ClassificationFormState, formData
   const parsed = disciplineSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
-  if (!context) return { message: "Sign in with manager access to create disciplines." };
+  if (!context) return { message: "Sign in with manager access to create divisions." };
 
   const { error } = await context.supabase.from("disciplines").insert({
     organization_id: context.organization.id,
@@ -44,10 +44,10 @@ export async function createDiscipline(_state: ClassificationFormState, formData
     description: parsed.data.description || null,
     watch_threshold: parsed.data.watchThreshold === "" ? null : parsed.data.watchThreshold,
   });
-  if (error) return { message: error.code === "23505" ? "A discipline with that name already exists." : error.message };
+  if (error) return { message: error.code === "23505" ? "A division with that name already exists." : error.message };
 
   revalidatePath("/settings/classifications");
-  return { success: true, message: "Discipline created." };
+  return { success: true, message: "Division created." };
 }
 
 export async function createClassification(_state: ClassificationFormState, formData: FormData): Promise<ClassificationFormState> {
@@ -62,7 +62,7 @@ export async function createClassification(_state: ClassificationFormState, form
     .eq("id", parsed.data.disciplineId)
     .eq("organization_id", context.organization.id)
     .single();
-  if (!discipline) return { message: "That discipline is not available in this organization." };
+  if (!discipline) return { message: "That division is not available in this organization." };
 
   const { error } = await context.supabase.from("classifications").insert({
     organization_id: context.organization.id,
@@ -71,7 +71,7 @@ export async function createClassification(_state: ClassificationFormState, form
     description: parsed.data.description || null,
     rank: parsed.data.rank,
   });
-  if (error) return { message: error.code === "23505" ? "That classification already exists in this discipline." : error.message };
+  if (error) return { message: error.code === "23505" ? "That classification already exists in this division." : error.message };
 
   revalidatePath("/settings/classifications");
   return { success: true, message: "Classification created." };

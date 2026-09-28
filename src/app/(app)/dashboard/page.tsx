@@ -20,7 +20,7 @@ interface DashboardData {
 }
 
 async function getDashboardData(): Promise<DashboardData> {
-  if (!isSupabaseConfigured()) return { firstName: "Payton", activeMembers: 248, pendingMembers: 7, upcomingRopings: 3, totalEntries: 86, unpaidEntries: 12, schedule: demoRopings.slice(0, 3), liveEvent: { id: "fall-classic", title: "Fall Classic", divisionName: "Open Division", completeRuns: 19, totalRuns: 34 } };
+  if (!isSupabaseConfigured()) return { firstName: "Payton", activeMembers: 248, pendingMembers: 7, upcomingRopings: 3, totalEntries: 86, unpaidEntries: 12, schedule: demoRopings.slice(0, 3), liveEvent: { id: "fall-classic", title: "Fall Classic", divisionName: "Calf roping · Open", completeRuns: 19, totalRuns: 34 } };
   const organization = await getActiveOrganization();
   if (!organization) throw new Error("No active organization was found.");
   const supabase = await createClient();

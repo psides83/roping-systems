@@ -29,7 +29,7 @@ export async function createRoping(_state: RopingFormState, formData: FormData):
   const parsed = ropingSchema.safeParse(Object.fromEntries(formData));
   const divisionIds = formData.getAll("divisionIds").map(String);
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
-  if (!divisionIds.length) return { errors: { divisionIds: ["Select at least one division."] } };
+  if (!divisionIds.length) return { errors: { divisionIds: ["Select at least one entry class."] } };
 
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return { message: "You do not have permission to create events." };
@@ -49,5 +49,5 @@ export async function createRoping(_state: RopingFormState, formData: FormData):
 
   if (error) return { message: error.code === "23505" ? "An event already uses that public URL." : error.message };
   revalidatePath("/ropings");
-  return { success: true, message: "Roping created with its divisions and fees." };
+  return { success: true, message: "Roping created with its entry classes and fees." };
 }

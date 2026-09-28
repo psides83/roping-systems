@@ -13,7 +13,7 @@ export interface SettingsFormState {
 }
 
 const divisionSchema = z.object({
-  name: z.string().trim().min(1, "Division name is required."),
+  name: z.string().trim().min(1, "Entry class name is required."),
   description: z.string().trim(),
   numberOfRuns: z.coerce.number().int().min(1).max(20),
   maximumEntries: z.union([z.literal(""), z.coerce.number().int().min(1).max(100)]),
@@ -43,12 +43,12 @@ export async function createDivision(_state: SettingsFormState, formData: FormDa
   const parsed = divisionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
-  if (!context) return { message: "Connect Supabase and sign in with manager access to create divisions." };
+  if (!context) return { message: "Connect Supabase and sign in with manager access to create entry classes." };
 
   const { error } = await context.supabase.from("division_templates").insert({ organization_id: context.organization.id, name: parsed.data.name, description: parsed.data.description || null, number_of_runs: parsed.data.numberOfRuns, maximum_entries_per_person: parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries, allow_guests: parsed.data.allowGuests === "on" });
-  if (error) return { message: error.code === "23505" ? "A division with that name already exists." : error.message };
+  if (error) return { message: error.code === "23505" ? "An entry class with that name already exists." : error.message };
   revalidatePath("/settings/divisions");
-  return { success: true, message: "Division created." };
+  return { success: true, message: "Entry class created." };
 }
 
 export async function createFee(_state: SettingsFormState, formData: FormData): Promise<SettingsFormState> {
@@ -58,7 +58,7 @@ export async function createFee(_state: SettingsFormState, formData: FormData): 
   if (!context) return { message: "Connect Supabase and sign in with manager access to create fees." };
 
   const { data: division } = await context.supabase.from("division_templates").select("id").eq("id", parsed.data.divisionId).eq("organization_id", context.organization.id).single();
-  if (!division) return { message: "That division is not available in this organization." };
+  if (!division) return { message: "That entry class is not available in this organization." };
   if (parsed.data.payoutScheduleId) {
     const { data: schedule } = await context.supabase.from("payout_schedules").select("id").eq("id", parsed.data.payoutScheduleId).eq("organization_id", context.organization.id).single();
     if (!schedule) return { message: "That payout schedule is not available in this organization." };

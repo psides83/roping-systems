@@ -37,7 +37,7 @@ export async function submitOnlineEntry(
   });
 
   if (!requestedDivisions.length) {
-    return { errors: { divisionIds: ["Select at least one division."] } };
+    return { errors: { divisionIds: ["Select at least one entry class."] } };
   }
 
   const supabase = await createClient();

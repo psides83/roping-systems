@@ -72,7 +72,7 @@ export async function recordWatchEvent(_state: MemberClassificationFormState, fo
     context.supabase.from("organization_memberships").select("id").eq("id", parsed.data.membershipId).eq("organization_id", context.organization.id).single(),
     context.supabase.from("disciplines").select("id, watch_threshold").eq("id", parsed.data.disciplineId).eq("organization_id", context.organization.id).single(),
   ]);
-  if (!membership || !discipline) return { message: "The member or discipline is not available in this organization." };
+  if (!membership || !discipline) return { message: "The member or division is not available in this organization." };
 
   const { error } = await context.supabase.from("classification_watch_events").insert({
     organization_id: context.organization.id,

@@ -55,8 +55,8 @@ export function OnlineEntryForm({
     </section>
 
     <fieldset>
-      <legend className="text-lg font-bold">Divisions and entries</legend>
-      <p className="mt-1 text-sm text-[#66716b]">Select each division you want to enter and choose the number of entries.</p>
+      <legend className="text-lg font-bold">Entry classes</legend>
+      <p className="mt-1 text-sm text-[#66716b]">Select each division and classification you want to enter, then choose the number of entries.</p>
       <div className="mt-4 divide-y divide-[#e7ebe8] overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
         {divisions.map((division) => {
           const isSelected = selected[division.id] ?? false;
