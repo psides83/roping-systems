@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarDays, ChevronDown, CircleDollarSign, Gauge, Menu, Settings, SlidersHorizontal, Users, X } from "lucide-react";
+import { Bell, CalendarDays, ChevronDown, CircleDollarSign, Gauge, Menu, Settings, SlidersHorizontal, Tags, Users, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/auth/actions";
@@ -15,6 +15,7 @@ const navigation = [
   { name: "Ropings", href: "/ropings", icon: CalendarDays },
   { name: "Live event", href: "/ropings/current", icon: CircleDollarSign },
   { name: "Divisions & fees", href: "/settings/divisions", icon: SlidersHorizontal },
+  { name: "Classifications", href: "/settings/classifications", icon: Tags },
 ];
 
 export function AppShell({ children, organizationName = "Red River Calf Ropers", organizations = [], activeOrganizationId, userLabel = "Payton B.", brandPrimary, brandAccent, demo = false }: { children: React.ReactNode; organizationName?: string; organizations?: Array<{ id: string; name: string }>; activeOrganizationId?: string; userLabel?: string; brandPrimary?: string; brandAccent?: string; demo?: boolean }) {

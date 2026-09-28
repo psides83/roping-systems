@@ -11,6 +11,7 @@ export interface MemberSummary {
   email: string;
   phone: string;
   classification: string;
+  classifications?: Array<{ discipline: string; name: string }>;
   status: MembershipStatus;
   joinedAt: string;
 }
