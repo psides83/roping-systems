@@ -15,7 +15,6 @@ export interface ClassificationFormState {
 const disciplineSchema = z.object({
   name: z.string().trim().min(1, "Division name is required."),
   description: z.string().trim(),
-  watchThreshold: z.union([z.literal(""), z.coerce.number().int().min(1).max(20)]),
 });
 
 const classificationSchema = z.object({
@@ -42,7 +41,7 @@ export async function createDiscipline(_state: ClassificationFormState, formData
     organization_id: context.organization.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
-    watch_threshold: parsed.data.watchThreshold === "" ? null : parsed.data.watchThreshold,
+    watch_threshold: null,
   });
   if (error) return { message: error.code === "23505" ? "A division with that name already exists." : error.message };
 

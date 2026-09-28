@@ -15,7 +15,6 @@ export interface SettingsFormState {
 const divisionSchema = z.object({
   name: z.string().trim().min(1, "Entry class name is required."),
   description: z.string().trim(),
-  numberOfRuns: z.coerce.number().int().min(1).max(20),
   maximumEntries: z.union([z.literal(""), z.coerce.number().int().min(1).max(100)]),
   allowGuests: z.string().optional(),
 });
@@ -45,7 +44,7 @@ export async function createDivision(_state: SettingsFormState, formData: FormDa
   const context = await getManagerContext();
   if (!context) return { message: "Connect Supabase and sign in with manager access to create entry classes." };
 
-  const { error } = await context.supabase.from("division_templates").insert({ organization_id: context.organization.id, name: parsed.data.name, description: parsed.data.description || null, number_of_runs: parsed.data.numberOfRuns, maximum_entries_per_person: parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries, allow_guests: parsed.data.allowGuests === "on" });
+  const { error } = await context.supabase.from("division_templates").insert({ organization_id: context.organization.id, name: parsed.data.name, description: parsed.data.description || null, maximum_entries_per_person: parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries, allow_guests: parsed.data.allowGuests === "on" });
   if (error) return { message: error.code === "23505" ? "An entry class with that name already exists." : error.message };
   revalidatePath("/settings/divisions");
   return { success: true, message: "Entry class created." };

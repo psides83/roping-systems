@@ -45,7 +45,7 @@ export function CreateDivisionDialog({ configured }: { configured: boolean }) {
         <Plus size={17} /> New entry class
       </button>
       {open ? (
-        <DialogFrame title="Create entry class" description="Create a reusable event configuration for a division and classification combination, including runs, entry limits, fees, timing, and payouts." close={() => setOpen(false)}>
+        <DialogFrame title="Create entry class" description="Create a reusable event configuration for a division and classification combination, including entry limits, fees, timing, and payouts. Round counts are set for each roping." close={() => setOpen(false)}>
           <form ref={formRef} action={action} className="space-y-4 p-5">
             <label className="block text-sm font-semibold">
               Entry class name
@@ -56,11 +56,7 @@ export function CreateDivisionDialog({ configured }: { configured: boolean }) {
               Description
               <textarea name="description" className="mt-2 min-h-20 w-full rounded-md border border-[#ccd4d0] p-3 outline-none focus:border-[var(--brand-accent)]" placeholder="Who may enter this class" />
             </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-semibold">
-                Number of runs
-                <input name="numberOfRuns" type="number" min="1" max="20" defaultValue="1" className={inputClass} required />
-              </label>
+            <div>
               <label className="block text-sm font-semibold">
                 Maximum entries per contestant
                 <input name="maximumEntries" type="number" min="1" max="100" className={inputClass} placeholder="No limit" />

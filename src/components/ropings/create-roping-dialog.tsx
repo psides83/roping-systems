@@ -1,22 +1,405 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CalendarPlus, LoaderCircle, Plus, X } from "lucide-react";
-import { createRoping, type RopingFormState } from "@/app/(app)/ropings/actions";
+import { CalendarPlus, Gauge, LoaderCircle, Plus, X } from "lucide-react";
+import {
+  createRoping,
+  type RopingFormState,
+} from "@/app/(app)/ropings/actions";
 
 const initialState: RopingFormState = {};
-const inputClass = "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
+const inputClass =
+  "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
 
 function toSlug(value: string) {
-  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
-export function CreateRopingDialog({ configured, divisions }: { configured: boolean; divisions: Array<{ id: string; name: string; feeCount: number }> }) {
+interface IncentiveClassification {
+  id: string;
+  divisionName: string;
+  name: string;
+}
+
+export function CreateRopingDialog({
+  configured,
+  divisions,
+  incentiveClassifications,
+}: {
+  configured: boolean;
+  divisions: Array<{ id: string; name: string; feeCount: number }>;
+  incentiveClassifications: IncentiveClassification[];
+}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
+  const [incentiveEnabled, setIncentiveEnabled] = useState(false);
+  const [selectedDivisionIds, setSelectedDivisionIds] = useState<string[]>([]);
+  const [roundCounts, setRoundCounts] = useState<Record<string, string>>({});
+  const [allRounds, setAllRounds] = useState("1");
   const [state, action, pending] = useActionState(createRoping, initialState);
 
-  return <><button onClick={() => setOpen(true)} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"><Plus size={17} /> Create roping</button>{open ? <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4"><button aria-label="Close dialog" className="absolute inset-0" onClick={() => setOpen(false)} /><section role="dialog" aria-modal="true" className="relative my-8 w-full max-w-2xl rounded-md bg-white shadow-2xl"><header className="flex items-start justify-between border-b border-[#e1e6e3] p-5"><div><h2 className="flex items-center gap-2 text-lg font-bold"><CalendarPlus size={19} className="text-[var(--brand-accent-strong)]" /> Create roping</h2><p className="mt-1 text-sm text-[#66716b]">Selected entry class rules and fees are copied into this event.</p></div><button onClick={() => setOpen(false)} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]"><X size={18} /></button></header><form action={action} className="space-y-5 p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold">Event title<input name="title" value={title} onChange={(event) => { setTitle(event.target.value); if (!slugEdited) setSlug(toSlug(event.target.value)); }} className={inputClass} placeholder="Fall Classic" required /></label><label className="block text-sm font-semibold">Public URL<input name="slug" value={slug} onChange={(event) => { setSlugEdited(true); setSlug(toSlug(event.target.value)); }} className={inputClass} placeholder="fall-classic" required /></label><label className="block text-sm font-semibold">Venue<input name="venueName" className={inputClass} placeholder="Red River Arena" /></label><label className="block text-sm font-semibold">Address<input name="address" className={inputClass} placeholder="Wichita Falls, TX" /></label><label className="block text-sm font-semibold">Event starts<input name="startsAt" type="datetime-local" className={inputClass} required /></label><span className="hidden sm:block" /><label className="block text-sm font-semibold">Entries open<input name="entriesOpenAt" type="datetime-local" className={inputClass} /></label><label className="block text-sm font-semibold">Entries close<input name="entriesCloseAt" type="datetime-local" className={inputClass} /></label></div><fieldset><legend className="text-sm font-bold">Entry classes</legend><p className="mt-1 text-xs text-[#758078]">Choose the division and classification combinations offered at this event. You can adjust their snapshots later.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{divisions.map((division) => <label key={division.id} className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold"><input name="divisionIds" value={division.id} type="checkbox" className="h-4 w-4 accent-[var(--brand-accent)]" /><span className="flex-1">{division.name}</span><span className="text-xs font-normal text-[#758078]">{division.feeCount} fee{division.feeCount === 1 ? "" : "s"}</span></label>)}</div>{state.errors?.divisionIds ? <p className="mt-2 text-xs text-rose-700">{state.errors.divisionIds[0]}</p> : null}{!divisions.length ? <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Create at least one entry class before scheduling a roping.</p> : null}</fieldset><label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold"><input name="isPublic" type="checkbox" defaultChecked className="h-4 w-4 accent-[var(--brand-accent)]" /> Publish this event on the organization schedule</label>{state.message ? <p className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>{state.message}</p> : null}{!configured ? <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">Connect Supabase to save events.</p> : null}<div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4"><button type="button" onClick={() => setOpen(false)} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button><button disabled={pending || !configured || !divisions.length} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}Create roping</button></div></form></section></div> : null}</>;
+  function toggleDivision(divisionId: string, checked: boolean) {
+    setSelectedDivisionIds((current) =>
+      checked
+        ? [...current, divisionId]
+        : current.filter((id) => id !== divisionId),
+    );
+    if (checked)
+      setRoundCounts((current) => ({
+        ...current,
+        [divisionId]: current[divisionId] ?? "1",
+      }));
+  }
+
+  function applyRoundsToSelected() {
+    setRoundCounts((current) => ({
+      ...current,
+      ...Object.fromEntries(selectedDivisionIds.map((id) => [id, allRounds])),
+    }));
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"
+      >
+        <Plus size={17} /> Create roping
+      </button>
+      {open ? (
+        <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
+          <button
+            aria-label="Close dialog"
+            className="absolute inset-0"
+            onClick={() => setOpen(false)}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            className="relative my-8 w-full max-w-2xl rounded-md bg-white shadow-2xl"
+          >
+            <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-bold">
+                  <CalendarPlus
+                    size={19}
+                    className="text-[var(--brand-accent-strong)]"
+                  />{" "}
+                  Create roping
+                </h2>
+                <p className="mt-1 text-sm text-[#66716b]">
+                  Selected entry class rules and fees are copied into this
+                  event.
+                </p>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <form action={action} className="space-y-5 p-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-semibold">
+                  Event title
+                  <input
+                    name="title"
+                    value={title}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      if (!slugEdited) setSlug(toSlug(event.target.value));
+                    }}
+                    className={inputClass}
+                    placeholder="Fall Classic"
+                    required
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Public URL
+                  <input
+                    name="slug"
+                    value={slug}
+                    onChange={(event) => {
+                      setSlugEdited(true);
+                      setSlug(toSlug(event.target.value));
+                    }}
+                    className={inputClass}
+                    placeholder="fall-classic"
+                    required
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Venue
+                  <input
+                    name="venueName"
+                    className={inputClass}
+                    placeholder="Red River Arena"
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Address
+                  <input
+                    name="address"
+                    className={inputClass}
+                    placeholder="Wichita Falls, TX"
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Event starts
+                  <input
+                    name="startsAt"
+                    type="datetime-local"
+                    className={inputClass}
+                    required
+                  />
+                </label>
+                <span className="hidden sm:block" />
+                <label className="block text-sm font-semibold">
+                  Entries open
+                  <input
+                    name="entriesOpenAt"
+                    type="datetime-local"
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Entries close
+                  <input
+                    name="entriesCloseAt"
+                    type="datetime-local"
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+              <fieldset>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <legend className="text-sm font-bold">Entry classes</legend>
+                    <p className="mt-1 text-xs text-[#758078]">
+                      Choose each division and classification, then set its
+                      rounds for this event.
+                    </p>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <label className="text-xs font-semibold text-[#66716b]">
+                      Rounds for selected
+                      <input
+                        value={allRounds}
+                        onChange={(event) => setAllRounds(event.target.value)}
+                        type="number"
+                        min="1"
+                        max="20"
+                        className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={applyRoundsToSelected}
+                      disabled={!selectedDivisionIds.length}
+                      className="h-9 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold disabled:opacity-50"
+                    >
+                      Apply to selected
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {divisions.map((division) => (
+                    <label
+                      key={division.id}
+                      className="grid grid-cols-[auto_minmax(0,1fr)_72px] items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold"
+                    >
+                      <input
+                        name="divisionIds"
+                        value={division.id}
+                        type="checkbox"
+                        checked={selectedDivisionIds.includes(division.id)}
+                        onChange={(event) =>
+                          toggleDivision(division.id, event.target.checked)
+                        }
+                        className="h-4 w-4 accent-[var(--brand-accent)]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate">{division.name}</span>
+                        <span className="block text-xs font-normal text-[#758078]">
+                          {division.feeCount} fee
+                          {division.feeCount === 1 ? "" : "s"}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold text-[#66716b]">
+                        Rounds
+                        <input
+                          name={`roundCount-${division.id}`}
+                          value={roundCounts[division.id] ?? "1"}
+                          onChange={(event) =>
+                            setRoundCounts((current) => ({
+                              ...current,
+                              [division.id]: event.target.value,
+                            }))
+                          }
+                          type="number"
+                          min="1"
+                          max="20"
+                          disabled={!selectedDivisionIds.includes(division.id)}
+                          className="mt-1 h-9 w-full rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {state.errors?.divisionIds ? (
+                  <p className="mt-2 text-xs text-rose-700">
+                    {state.errors.divisionIds[0]}
+                  </p>
+                ) : null}
+                {state.errors?.roundCounts ? (
+                  <p className="mt-2 text-xs text-rose-700">
+                    {state.errors.roundCounts[0]}
+                  </p>
+                ) : null}
+                {!divisions.length ? (
+                  <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    Create at least one entry class before scheduling a roping.
+                  </p>
+                ) : null}
+              </fieldset>
+              <section className="rounded-md border border-[#dfe4e1]">
+                <label className="flex cursor-pointer items-start gap-3 p-4">
+                  <input
+                    name="incentiveEnabled"
+                    type="checkbox"
+                    checked={incentiveEnabled}
+                    onChange={(event) =>
+                      setIncentiveEnabled(event.target.checked)
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
+                  />
+                  <Gauge
+                    size={18}
+                    className="mt-0.5 text-[var(--brand-accent-strong)]"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold">
+                      Incentive or handicap roping
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[#758078]">
+                      Deduct a configured amount from every run based on the
+                      contestant&apos;s classification.
+                    </span>
+                  </span>
+                </label>
+                {incentiveEnabled ? (
+                  <div className="border-t border-[#e7ebe8] p-4">
+                    <div className="mb-3">
+                      <p className="text-sm font-bold">
+                        Classification handicaps
+                      </p>
+                      <p className="mt-1 text-xs text-[#758078]">
+                        Enter the seconds deducted for each eligible
+                        classification. Leave all others blank.
+                      </p>
+                    </div>
+                    <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                      {incentiveClassifications.map((classification) => (
+                        <label
+                          key={classification.id}
+                          className="grid grid-cols-[1fr_120px] items-center gap-3 rounded-md bg-[#f7f8f7] px-3 py-2"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold">
+                              {classification.name}
+                            </span>
+                            <span className="block truncate text-xs text-[#758078]">
+                              {classification.divisionName}
+                            </span>
+                          </span>
+                          <span className="flex items-center rounded-md border border-[#ccd4d0] bg-white px-2">
+                            <input
+                              name={`incentiveAdjustment-${classification.id}`}
+                              type="number"
+                              min="0"
+                              max="60"
+                              step="0.001"
+                              inputMode="decimal"
+                              className="h-9 min-w-0 flex-1 bg-transparent text-right font-mono text-sm outline-none"
+                              placeholder="0.000"
+                            />
+                            <span className="ml-2 text-xs text-[#758078]">
+                              sec
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {state.errors?.incentiveRules ? (
+                      <p className="mt-2 text-xs text-rose-700">
+                        {state.errors.incentiveRules[0]}
+                      </p>
+                    ) : null}
+                    {!incentiveClassifications.length ? (
+                      <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+                        Create organization classifications before configuring
+                        incentive handicaps.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+                <input
+                  name="isPublic"
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Publish this event on the organization schedule
+              </label>
+              {state.message ? (
+                <p
+                  className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
+                >
+                  {state.message}
+                </p>
+              ) : null}
+              {!configured ? (
+                <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                  Connect Supabase to save events.
+                </p>
+              ) : null}
+              <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={
+                    pending ||
+                    !configured ||
+                    !divisions.length ||
+                    (incentiveEnabled && !incentiveClassifications.length)
+                  }
+                  className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {pending ? (
+                    <LoaderCircle size={16} className="animate-spin" />
+                  ) : null}
+                  Create roping
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+    </>
+  );
 }

@@ -19,9 +19,9 @@ export default async function LiveRopingPage({ params, searchParams }: PageProps
   const selectedDivisionId = divisions.some((division) => division.id === requestedDivision) ? requestedDivision! : divisions[0]?.id;
   let runs: LiveRunRow[] = [];
   if (selectedDivisionId) {
-    const { data: runData, error } = await supabase.from("runs").select("id, draw_position, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(entry_number, people!inner(first_name, last_name))").eq("roping_division_id", selectedDivisionId).eq("run_number", 1).order("draw_position", { ascending: true, nullsFirst: false });
+    const { data: runData, error } = await supabase.from("runs").select("id, draw_position, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))").eq("roping_division_id", selectedDivisionId).eq("run_number", 1).order("draw_position", { ascending: true, nullsFirst: false });
     if (error) throw new Error(`Unable to load the event desk: ${error.message}`);
-    runs = runData.map((run) => { const entry = run.entries as unknown as { entry_number: number; people: { first_name: string; last_name: string } }; return { id: run.id, drawPosition: run.draw_position, name: `${entry.people.first_name} ${entry.people.last_name}`, entryNumber: entry.entry_number, rawTime: run.raw_time_seconds === null ? null : Number(run.raw_time_seconds), penalty: Number(run.penalty_seconds), status: run.status }; });
+    runs = runData.map((run) => { const entry = run.entries as unknown as { entry_number: number; incentive_adjustment_seconds: number; people: { first_name: string; last_name: string } }; return { id: run.id, drawPosition: run.draw_position, name: `${entry.people.first_name} ${entry.people.last_name}`, entryNumber: entry.entry_number, rawTime: run.raw_time_seconds === null ? null : Number(run.raw_time_seconds), penalty: Number(run.penalty_seconds), incentiveAdjustment: Number(entry.incentive_adjustment_seconds), status: run.status }; });
   }
   const startAction = startRoping.bind(null, ropingId);
   const finalizeAction = finalizeRoping.bind(null, ropingId);

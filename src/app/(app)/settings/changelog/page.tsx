@@ -19,6 +19,7 @@ const entityLabels: Record<string, string> = {
   payout_schedule_places: "Payout place",
   ropings: "Roping",
   roping_divisions: "Event entry class",
+  roping_incentive_rules: "Incentive handicap rule",
   roping_fees: "Roping fee or option",
   entries: "Entry",
   entry_charges: "Entry charge",

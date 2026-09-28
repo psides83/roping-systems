@@ -43,7 +43,6 @@ export interface DivisionTemplateSummary {
   id: string;
   name: string;
   description: string;
-  numberOfRuns: number;
   maximumEntriesPerPerson: number | null;
   allowGuests: boolean;
   isActive: boolean;
