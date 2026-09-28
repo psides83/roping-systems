@@ -10,6 +10,8 @@ export interface LiveRunState {
   message?: string;
 }
 
+export type DrawOrderState = LiveRunState;
+
 async function requireManager() {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
@@ -47,15 +49,47 @@ export async function startRoping(ropingId: string) {
 }
 
 export async function generateDraw(ropingId: string, formData: FormData) {
-  const divisionId = String(formData.get("divisionId") ?? "");
-  const runNumber = Number(formData.get("runNumber") ?? 1);
+  const parsed = z
+    .object({ divisionId: z.uuid(), runNumber: z.coerce.number().int().min(1) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) throw new Error("Choose a valid entry class and round.");
   const supabase = await requireManager();
   const { error } = await supabase.rpc("generate_division_draw", {
-    target_roping_division_id: divisionId,
-    target_run_number: runNumber,
+    target_roping_division_id: parsed.data.divisionId,
+    target_run_number: parsed.data.runNumber,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/ropings/${ropingId}/live`);
+}
+
+export async function saveDrawOrder(
+  ropingId: string,
+  _state: DrawOrderState,
+  formData: FormData,
+): Promise<DrawOrderState> {
+  const parsed = z
+    .object({ divisionId: z.uuid(), runNumber: z.coerce.number().int().min(1) })
+    .safeParse(Object.fromEntries(formData));
+  const runIds = formData.getAll("runIds").map(String);
+  if (
+    !parsed.success ||
+    !runIds.length ||
+    runIds.some((runId) => !z.uuid().safeParse(runId).success)
+  )
+    return { message: "The draw order is incomplete or invalid." };
+
+  const supabase = await requireManager();
+  const { data, error } = await supabase.rpc("set_division_draw_order", {
+    target_roping_division_id: parsed.data.divisionId,
+    target_run_number: parsed.data.runNumber,
+    ordered_run_ids: runIds,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return {
+    success: true,
+    message: `${data} ${data === 1 ? "run" : "runs"} reordered.`,
+  };
 }
 
 const runSchema = z.object({

@@ -18,6 +18,7 @@ Organization-based membership and event operations for calf roping producers. Th
 - In-person member and guest entry workflows with repeat-entry rules
 - Public online entry requests with membership checks, repeat-entry quantities, and staff approval
 - Draw generation, run timing, penalties, and result finalization
+- Round-by-round draw generation with producer-controlled ordering
 - Live public schedules and unofficial/official results
 - Organization logo uploads for branded public schedules and results
 - Organization color palettes shared across the workspace and public pages
