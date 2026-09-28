@@ -11,6 +11,11 @@ export interface EntryFormState {
   errors?: Record<string, string[]>;
 }
 
+export interface PaymentFormState {
+  success?: boolean;
+  message?: string;
+}
+
 const existingEntrySchema = z.object({
   divisionId: z.uuid(),
   personId: z.uuid(),
@@ -32,6 +37,11 @@ const reviewRequestSchema = z.object({
   reviewNote: z.string().trim().max(500, "Keep the note under 500 characters."),
 });
 
+const paymentSchema = z.object({
+  personId: z.uuid(),
+  paymentStatus: z.enum(["unpaid", "paid_cash", "comped", "refunded"]),
+});
+
 async function requireManager() {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return null;
@@ -39,62 +49,149 @@ async function requireManager() {
 }
 
 function getOptionIds(formData: FormData) {
-  return formData.getAll("optionIds").map(String).filter((value) => z.uuid().safeParse(value).success);
+  return formData
+    .getAll("optionIds")
+    .map(String)
+    .filter((value) => z.uuid().safeParse(value).success);
 }
 
-async function addSelectedOptions(supabase: Awaited<ReturnType<typeof createClient>>, entryId: string, optionIds: string[]) {
+async function addSelectedOptions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  entryId: string,
+  optionIds: string[],
+) {
   for (const optionId of optionIds) {
-    const { error } = await supabase.rpc("add_entry_option", { target_entry_id: entryId, target_roping_fee_id: optionId });
+    const { error } = await supabase.rpc("add_entry_option", {
+      target_entry_id: entryId,
+      target_roping_fee_id: optionId,
+    });
     if (error) return error;
   }
   return null;
 }
 
-export async function addExistingEntry(ropingId: string, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
+export async function addExistingEntry(
+  ropingId: string,
+  _state: EntryFormState,
+  formData: FormData,
+): Promise<EntryFormState> {
   const parsed = existingEntrySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
-  const { data: entryId, error } = await context.supabase.rpc("create_event_entry", { target_roping_division_id: parsed.data.divisionId, target_person_id: parsed.data.personId, entry_origin: "office", initial_payment_status: parsed.data.paymentStatus });
+  const { data: entryId, error } = await context.supabase.rpc(
+    "create_event_entry",
+    {
+      target_roping_division_id: parsed.data.divisionId,
+      target_person_id: parsed.data.personId,
+      entry_origin: "office",
+      initial_payment_status: parsed.data.paymentStatus,
+    },
+  );
   if (error) return { message: error.message };
-  const optionError = await addSelectedOptions(context.supabase, entryId, getOptionIds(formData));
-  if (optionError) return { message: `Entry added, but an option could not be applied: ${optionError.message}` };
+  const optionError = await addSelectedOptions(
+    context.supabase,
+    entryId,
+    getOptionIds(formData),
+  );
+  if (optionError)
+    return {
+      message: `Entry added, but an option could not be applied: ${optionError.message}`,
+    };
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/live`);
   return { success: true, message: "Entry added and fees calculated." };
 }
 
-export async function addGuestEntry(ropingId: string, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
+export async function addGuestEntry(
+  ropingId: string,
+  _state: EntryFormState,
+  formData: FormData,
+): Promise<EntryFormState> {
   const parsed = guestEntrySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
-  const { data: entryId, error } = await context.supabase.rpc("create_guest_event_entry", { target_roping_division_id: parsed.data.divisionId, guest_first_name: parsed.data.firstName, guest_last_name: parsed.data.lastName, guest_email: parsed.data.email, guest_phone: parsed.data.phone, initial_payment_status: parsed.data.paymentStatus });
+  const { data: entryId, error } = await context.supabase.rpc(
+    "create_guest_event_entry",
+    {
+      target_roping_division_id: parsed.data.divisionId,
+      guest_first_name: parsed.data.firstName,
+      guest_last_name: parsed.data.lastName,
+      guest_email: parsed.data.email,
+      guest_phone: parsed.data.phone,
+      initial_payment_status: parsed.data.paymentStatus,
+    },
+  );
   if (error) return { message: error.message };
-  const optionError = await addSelectedOptions(context.supabase, entryId, getOptionIds(formData));
-  if (optionError) return { message: `Entry added, but an option could not be applied: ${optionError.message}` };
+  const optionError = await addSelectedOptions(
+    context.supabase,
+    entryId,
+    getOptionIds(formData),
+  );
+  if (optionError)
+    return {
+      message: `Entry added, but an option could not be applied: ${optionError.message}`,
+    };
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/live`);
   return { success: true, message: "Guest entry added and fees calculated." };
 }
 
-export async function reviewOnlineEntryRequest(ropingId: string, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
+export async function reviewOnlineEntryRequest(
+  ropingId: string,
+  _state: EntryFormState,
+  formData: FormData,
+): Promise<EntryFormState> {
   const parsed = reviewRequestSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
 
-  const { data, error } = await context.supabase.rpc("review_online_entry_request", {
-    target_request_id: parsed.data.requestId,
-    review_decision: parsed.data.decision,
-    entered_review_note: parsed.data.reviewNote,
-  });
+  const { data, error } = await context.supabase.rpc(
+    "review_online_entry_request",
+    {
+      target_request_id: parsed.data.requestId,
+      review_decision: parsed.data.decision,
+      entered_review_note: parsed.data.reviewNote,
+    },
+  );
   if (error) return { message: error.message };
 
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/live`);
   return {
     success: true,
-    message: parsed.data.decision === "accepted" ? `${data} ${data === 1 ? "entry was" : "entries were"} added.` : "Request declined.",
+    message:
+      parsed.data.decision === "accepted"
+        ? `${data} ${data === 1 ? "entry was" : "entries were"} added.`
+        : "Request declined.",
+  };
+}
+
+export async function updateContestantPayment(
+  ropingId: string,
+  _state: PaymentFormState,
+  formData: FormData,
+): Promise<PaymentFormState> {
+  const parsed = paymentSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { message: "Choose a valid payment status." };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const { data, error } = await context.supabase.rpc(
+    "set_contestant_event_payment_status",
+    {
+      target_roping_id: ropingId,
+      target_person_id: parsed.data.personId,
+      new_payment_status: parsed.data.paymentStatus,
+    },
+  );
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  return {
+    success: true,
+    message: `${data} ${data === 1 ? "entry" : "entries"} updated.`,
   };
 }

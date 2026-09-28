@@ -22,6 +22,9 @@ Organization-based membership and event operations for calf roping producers. Th
 - Organization logo uploads for branded public schedules and results
 - Organization color palettes shared across the workspace and public pages
 - Tenant integrity constraints, role permissions, and audit history
+- Classification-based incentive deductions applied automatically to live and public results
+- Event-specific round counts with individual and apply-to-all controls
+- Searchable contestant check-in ledger with fee breakdowns and cash payment status management
 
 When Supabase variables are absent, the interface runs in a clearly labeled preview mode with representative data. Adding valid project variables enables authentication and the complete database-backed workflows.
 
