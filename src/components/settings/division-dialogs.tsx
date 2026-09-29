@@ -114,8 +114,11 @@ function EventTemplateDialog({
   );
   const isEditing = Boolean(template);
   useEffect(() => {
-    if (state.success && !isEditing) formRef.current?.reset();
-  }, [isEditing, state.success]);
+    if (!state.success) return;
+    formRef.current?.reset();
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
 
   return (
     <>
@@ -381,6 +384,11 @@ function FeeDialog({
     initialState,
   );
   const isEditing = Boolean(fee);
+  useEffect(() => {
+    if (!state.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
   return (
     <>
       <button

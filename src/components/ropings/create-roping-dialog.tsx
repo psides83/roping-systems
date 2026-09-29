@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { CalendarPlus, Gauge, LoaderCircle, Plus, X } from "lucide-react";
 import {
   createRoping,
@@ -44,6 +44,11 @@ export function CreateRopingDialog({
   const [roundCounts, setRoundCounts] = useState<Record<string, string>>({});
   const [allRounds, setAllRounds] = useState("1");
   const [state, action, pending] = useActionState(createRoping, initialState);
+  useEffect(() => {
+    if (!state.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
 
   function toggleDivision(divisionId: string, checked: boolean) {
     setSelectedDivisionIds((current) =>

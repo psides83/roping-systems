@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import {
   deletePayoutSchedule,
@@ -57,6 +57,11 @@ export function PayoutScheduleDialog({
     savePayoutSchedule,
     initialState,
   );
+  useEffect(() => {
+    if (!state.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
   const bracketsJson = useMemo(
     () =>
       JSON.stringify(

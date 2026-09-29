@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle, Tags, X } from "lucide-react";
 import {
   assignMemberClassification,
@@ -98,6 +98,11 @@ export function AssignClassificationDialog({
     assignMemberClassification,
     initialState,
   );
+  useEffect(() => {
+    if (!state.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
   const selected = disciplines.find(
     (discipline) => discipline.id === disciplineId,
   );

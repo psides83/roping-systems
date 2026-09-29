@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle, Plus, UserPlus, X } from "lucide-react";
 import {
   addExistingEntry,
@@ -50,6 +50,11 @@ export function EntryFormDialog({
   >(guestAction, {});
   const state = mode === "member" ? existingState : guestState;
   const pending = mode === "member" ? existingPending : guestPending;
+  useEffect(() => {
+    if (!existingState.success && !guestState.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [existingState, guestState]);
 
   return (
     <>

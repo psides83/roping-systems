@@ -79,8 +79,11 @@ export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
   );
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state.success) formRef.current?.reset();
-  }, [state.success]);
+    if (!state.success) return;
+    formRef.current?.reset();
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
 
   return (
     <>
@@ -161,8 +164,11 @@ export function CreateClassificationDialog({
   );
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state.success) formRef.current?.reset();
-  }, [state.success]);
+    if (!state.success) return;
+    formRef.current?.reset();
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
 
   return (
     <>
@@ -257,6 +263,11 @@ export function EditDisciplineDialog({
     updateDiscipline,
     initialState,
   );
+  useEffect(() => {
+    if (!state.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
   return (
     <>
       <button
@@ -356,6 +367,11 @@ export function EditClassificationDialog({
     updateClassification,
     initialState,
   );
+  useEffect(() => {
+    if (!state.success) return;
+    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [state]);
   return (
     <>
       <button
