@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
+import { ShortRoundSettingsForm } from "@/components/ropings/short-round-settings";
 import {
   ropings as demoRopings,
   divisionTemplates as demoDivisions,
@@ -45,6 +46,12 @@ interface EventDetail {
     name: string;
     runs: number;
     entries: number;
+    shortRoundEnabled: boolean;
+    shortRoundBrackets: Array<{
+      minimumEntries: number;
+      maximumEntries: number | null;
+      comebackCount: number;
+    }>;
     fees: Array<{
       id: string;
       title: string;
@@ -99,6 +106,22 @@ async function getEvent(
             name: division.name,
             runs: index === 2 ? 2 : 1,
             entries: index === 0 ? roping.entries : 0,
+            shortRoundEnabled: index === 0,
+            shortRoundBrackets:
+              index === 0
+                ? [
+                    {
+                      minimumEntries: 1,
+                      maximumEntries: 50,
+                      comebackCount: 8,
+                    },
+                    {
+                      minimumEntries: 51,
+                      maximumEntries: null,
+                      comebackCount: 10,
+                    },
+                  ]
+                : [],
             fees: division.fees.map((fee) => ({
               id: fee.id,
               title: fee.title,
@@ -116,7 +139,7 @@ async function getEvent(
   const { data, error } = await supabase
     .from("ropings")
     .select(
-      "id, title, slug, starts_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, incentive_enabled, roping_incentive_rules(id, adjustment_seconds, classifications!inner(name, disciplines!inner(name))), roping_divisions!roping_divisions_roping_id_fkey(id, name, number_of_runs, entries!entries_roping_division_id_fkey(id), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+      "id, title, slug, starts_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, incentive_enabled, roping_incentive_rules(id, adjustment_seconds, classifications!inner(name, disciplines!inner(name))), roping_divisions!roping_divisions_roping_id_fkey(id, name, number_of_runs, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -128,7 +151,14 @@ async function getEvent(
       id: string;
       name: string;
       number_of_runs: number;
+      short_round_enabled: boolean;
       entries: unknown[];
+      roping_short_round_brackets: Array<{
+        minimum_entries: number;
+        maximum_entries: number | null;
+        comeback_count: number;
+        sort_order: number;
+      }>;
       roping_fees: Array<{
         id: string;
         title: string;
@@ -141,6 +171,14 @@ async function getEvent(
     name: division.name,
     runs: division.number_of_runs,
     entries: division.entries.length,
+    shortRoundEnabled: division.short_round_enabled,
+    shortRoundBrackets: division.roping_short_round_brackets
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((bracket) => ({
+        minimumEntries: bracket.minimum_entries,
+        maximumEntries: bracket.maximum_entries,
+        comebackCount: bracket.comeback_count,
+      })),
     fees: division.roping_fees.map((fee) => ({
       id: fee.id,
       title: fee.title,
@@ -324,13 +362,13 @@ export default async function RopingDetailPage({
           <div>
             <h2 className="font-bold">Entry class setup</h2>
             <p className="mt-1 text-xs text-[#758078]">
-              Round counts belong to this roping and can vary by entry class.
+              Main-round counts and short-round rules can vary by entry class.
             </p>
           </div>
           <form action={roundAction} className="flex items-end gap-2">
             <input type="hidden" name="divisionId" value="" />
             <label className="text-xs font-semibold text-[#66716b]">
-              Rounds for all
+              Main rounds for all
               <input
                 name="roundCount"
                 type="number"
@@ -356,18 +394,16 @@ export default async function RopingDetailPage({
                 <div>
                   <h3 className="font-bold">{division.name}</h3>
                   <p className="mt-1 text-sm text-[#66716b]">
-                    {division.runs} run{division.runs === 1 ? "" : "s"} ·{" "}
+                    {division.runs}{" "}
+                    {division.runs === 1 ? "main round" : "main rounds"}
+                    {division.shortRoundEnabled ? " + short round" : ""} ·{" "}
                     {division.entries} entries
                   </p>
                 </div>
                 <form action={roundAction} className="flex items-end gap-2">
-                  <input
-                    type="hidden"
-                    name="divisionId"
-                    value={division.id}
-                  />
+                  <input type="hidden" name="divisionId" value={division.id} />
                   <label className="text-xs font-semibold text-[#66716b]">
-                    Rounds
+                    Main rounds
                     <input
                       name="roundCount"
                       type="number"
@@ -397,6 +433,13 @@ export default async function RopingDetailPage({
                   </span>
                 ))}
               </div>
+              <ShortRoundSettingsForm
+                ropingId={event.id}
+                divisionId={division.id}
+                enabled={division.shortRoundEnabled}
+                brackets={division.shortRoundBrackets}
+                editable={roundsEditable && isSupabaseConfigured()}
+              />
             </div>
           ))}
         </div>

@@ -19,6 +19,8 @@ interface LiveDivision {
   id: string;
   name: string;
   numberOfRuns: number;
+  shortRoundEnabled: boolean;
+  shortRoundSeeded: boolean;
   timerCount: number;
   timerResolution: TimerResolution;
 }
@@ -48,9 +50,10 @@ export default async function LiveRopingPage({
         selectedDivisionId={selectedDivisionId}
         selectedRound={getSelectedRound(
           query.round,
-          selectedDivision?.numberOfRuns ?? 1,
+          getTotalRounds(selectedDivision),
         )}
         runs={previewRuns}
+        mainRoundsComplete
         canEdit={false}
       />
     );
@@ -62,7 +65,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, sort_order, number_of_runs, timer_count, timer_resolution)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -75,6 +78,8 @@ export default async function LiveRopingPage({
       name: string;
       sort_order: number;
       number_of_runs: number;
+      short_round_enabled: boolean;
+      short_round_seeded_at: string | null;
       timer_count: number;
       timer_resolution: TimerResolution;
     }>
@@ -84,6 +89,8 @@ export default async function LiveRopingPage({
       id: division.id,
       name: division.name,
       numberOfRuns: division.number_of_runs,
+      shortRoundEnabled: division.short_round_enabled,
+      shortRoundSeeded: Boolean(division.short_round_seeded_at),
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
     }));
@@ -93,15 +100,16 @@ export default async function LiveRopingPage({
   );
   const selectedRound = getSelectedRound(
     query.round,
-    selectedDivision?.numberOfRuns ?? 1,
+    getTotalRounds(selectedDivision),
   );
   let runs: LiveRunRow[] = [];
+  let mainRoundsComplete = false;
 
   if (selectedDivisionId) {
     const { data: runData, error } = await supabase
       .from("runs")
       .select(
-        "id, draw_position, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
+        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
       )
       .eq("roping_division_id", selectedDivisionId)
       .eq("run_number", selectedRound)
@@ -116,6 +124,7 @@ export default async function LiveRopingPage({
       };
       return {
         id: run.id,
+        entryId: run.entry_id,
         drawPosition: run.draw_position,
         name: `${entry.people.first_name} ${entry.people.last_name}`,
         entryNumber: entry.entry_number,
@@ -123,9 +132,62 @@ export default async function LiveRopingPage({
           run.raw_time_seconds === null ? null : Number(run.raw_time_seconds),
         penalty: Number(run.penalty_seconds),
         incentiveAdjustment: Number(entry.incentive_adjustment_seconds),
+        carryTime: null,
         status: run.status,
       };
     });
+    if (
+      selectedDivision &&
+      selectedRound > selectedDivision.numberOfRuns &&
+      runs.length
+    ) {
+      const { data: mainRunData, error: aggregateError } = await supabase
+        .from("runs")
+        .select(
+          "entry_id, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(incentive_adjustment_seconds)",
+        )
+        .eq("roping_division_id", selectedDivisionId)
+        .lte("run_number", selectedDivision.numberOfRuns)
+        .in(
+          "entry_id",
+          runs.map((run) => run.entryId),
+        );
+      if (aggregateError)
+        throw new Error(
+          `Unable to load carried aggregates: ${aggregateError.message}`,
+        );
+      const aggregates = new Map<string, number>();
+      for (const mainRun of mainRunData) {
+        if (mainRun.status !== "complete" || mainRun.raw_time_seconds === null)
+          continue;
+        const entry = mainRun.entries as unknown as {
+          incentive_adjustment_seconds: number;
+        };
+        const adjustedTime = Math.max(
+          Number(mainRun.raw_time_seconds) +
+            Number(mainRun.penalty_seconds) -
+            Number(entry.incentive_adjustment_seconds),
+          0,
+        );
+        aggregates.set(
+          mainRun.entry_id,
+          (aggregates.get(mainRun.entry_id) ?? 0) + adjustedTime,
+        );
+      }
+      runs = runs.map((run) => ({
+        ...run,
+        carryTime: aggregates.get(run.entryId) ?? null,
+      }));
+    }
+    const { count: pendingMainCount, error: pendingError } = await supabase
+      .from("runs")
+      .select("id", { count: "exact", head: true })
+      .eq("roping_division_id", selectedDivisionId)
+      .lte("run_number", selectedDivision?.numberOfRuns ?? 1)
+      .eq("status", "pending");
+    if (pendingError)
+      throw new Error(`Unable to check main rounds: ${pendingError.message}`);
+    mainRoundsComplete = pendingMainCount === 0;
   }
 
   return (
@@ -138,6 +200,7 @@ export default async function LiveRopingPage({
       selectedDivisionId={selectedDivisionId}
       selectedRound={selectedRound}
       runs={runs}
+      mainRoundsComplete={mainRoundsComplete}
       canEdit={organization.role !== "viewer"}
     />
   );
@@ -152,6 +215,7 @@ function LiveWorkspace({
   selectedDivisionId,
   selectedRound,
   runs,
+  mainRoundsComplete,
   canEdit,
 }: {
   ropingId: string;
@@ -162,6 +226,7 @@ function LiveWorkspace({
   selectedDivisionId?: string;
   selectedRound: number;
   runs: LiveRunRow[];
+  mainRoundsComplete: boolean;
   canEdit: boolean;
 }) {
   const selectedDivision = divisions.find(
@@ -210,6 +275,9 @@ function LiveWorkspace({
           timerCount={selectedDivision.timerCount}
           timerResolution={selectedDivision.timerResolution}
           eventStatus={status}
+          isShortRound={selectedRound > selectedDivision.numberOfRuns}
+          shortRoundSeeded={selectedDivision.shortRoundSeeded}
+          mainRoundsComplete={mainRoundsComplete}
           canEdit={canEdit}
         />
       ) : (
@@ -240,11 +308,18 @@ function getSelectedRound(
   return Math.min(Math.max(parsed, 1), Math.max(numberOfRuns, 1));
 }
 
+function getTotalRounds(division: LiveDivision | undefined) {
+  if (!division) return 1;
+  return division.numberOfRuns + (division.shortRoundEnabled ? 1 : 0);
+}
+
 const previewDivisions: LiveDivision[] = [
   {
     id: "calf-open",
     name: "Calf roping · Open",
     numberOfRuns: 2,
+    shortRoundEnabled: true,
+    shortRoundSeeded: true,
     timerCount: 2,
     timerResolution: "average",
   },
@@ -252,6 +327,8 @@ const previewDivisions: LiveDivision[] = [
     id: "breakaway-115",
     name: "Breakaway · 11.5",
     numberOfRuns: 1,
+    shortRoundEnabled: false,
+    shortRoundSeeded: false,
     timerCount: 2,
     timerResolution: "longest",
   },
@@ -260,42 +337,50 @@ const previewDivisions: LiveDivision[] = [
 const previewRuns: LiveRunRow[] = [
   {
     id: "5b3d53b5-4d0a-47e8-9191-2aa2ec193d85",
+    entryId: "031ba013-9455-49ad-b151-f9eae91a4b9a",
     drawPosition: 1,
     name: "Jace Holloway",
     entryNumber: 12,
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 0,
+    carryTime: 22.64,
     status: "pending",
   },
   {
     id: "c79af70b-496b-4331-9cdf-9102e0284aa4",
+    entryId: "1a04a55b-2d8c-469a-a814-b11df7ee35c8",
     drawPosition: 2,
     name: "Mara Bennett",
     entryNumber: 8,
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 1.5,
+    carryTime: 22.08,
     status: "pending",
   },
   {
     id: "68067ab7-d80f-4885-bca0-8721c50c6a12",
+    entryId: "3f499d8b-401d-4e30-ac4b-30637017fc86",
     drawPosition: 3,
     name: "Cole Rawlins",
     entryNumber: 21,
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 0,
+    carryTime: 21.15,
     status: "pending",
   },
   {
     id: "17bc849a-ff32-4c87-b42a-37fd7868a4f1",
+    entryId: "f058f435-844d-4b58-b571-dd11f8bb30e8",
     drawPosition: 4,
     name: "Lena Hart",
     entryNumber: 5,
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 0,
+    carryTime: 20.42,
     status: "pending",
   },
 ];

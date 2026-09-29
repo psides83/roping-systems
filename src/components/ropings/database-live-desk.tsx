@@ -11,11 +11,13 @@ import {
   Search,
   Shuffle,
   SkipForward,
+  Trophy,
 } from "lucide-react";
 import {
   generateDraw,
   recordRun,
   saveDrawOrder,
+  seedShortRound,
   type DrawOrderState,
   type LiveRunState,
 } from "@/app/(app)/ropings/[ropingId]/actions";
@@ -23,24 +25,35 @@ import { cn } from "@/lib/utils";
 
 export interface LiveRunRow {
   id: string;
+  entryId: string;
   drawPosition: number | null;
   name: string;
   entryNumber: number;
   rawTime: number | null;
   penalty: number;
   incentiveAdjustment: number;
+  carryTime: number | null;
   status: string;
 }
 
 interface LiveDeskProps {
   ropingId: string;
-  divisions: Array<{ id: string; name: string; numberOfRuns: number }>;
+  divisions: Array<{
+    id: string;
+    name: string;
+    numberOfRuns: number;
+    shortRoundEnabled: boolean;
+    shortRoundSeeded: boolean;
+  }>;
   selectedDivisionId: string;
   selectedRound: number;
   runs: LiveRunRow[];
   timerCount: number;
   timerResolution: "average" | "best" | "longest";
   eventStatus: string;
+  isShortRound: boolean;
+  shortRoundSeeded: boolean;
+  mainRoundsComplete: boolean;
   canEdit: boolean;
 }
 
@@ -53,6 +66,9 @@ export function DatabaseLiveDesk({
   timerCount,
   timerResolution,
   eventStatus,
+  isShortRound,
+  shortRoundSeeded,
+  mainRoundsComplete,
   canEdit,
 }: LiveDeskProps) {
   const [orderedRuns, setOrderedRuns] = useState(runs);
@@ -63,15 +79,22 @@ export function DatabaseLiveDesk({
     DrawOrderState,
     FormData
   >(orderAction, {});
+  const shortRoundAction = seedShortRound.bind(null, ropingId);
+  const [shortRoundState, shortRoundFormAction, shortRoundPending] =
+    useActionState<LiveRunState, FormData>(shortRoundAction, {});
 
   const selectedDivision = divisions.find(
     (division) => division.id === selectedDivisionId,
   );
+  const totalRounds =
+    (selectedDivision?.numberOfRuns ?? 0) +
+    (selectedDivision?.shortRoundEnabled ? 1 : 0);
   const drawReady =
     orderedRuns.length > 0 &&
     orderedRuns.every((run) => run.drawPosition !== null);
   const drawLocked = orderedRuns.some((run) => run.status !== "pending");
-  const canManageDraw = canEdit && !drawLocked && orderedRuns.length > 0;
+  const canManageDraw =
+    canEdit && !drawLocked && !isShortRound && orderedRuns.length > 0;
   const dirty = orderedRuns.some((run, index) => run.id !== runs[index]?.id);
   const currentRun =
     eventStatus === "in_progress" && drawReady && !dirty
@@ -107,7 +130,8 @@ export function DatabaseLiveDesk({
           <div>
             <h2 className="font-bold">{selectedDivision?.name}</h2>
             <p className="mt-1 text-xs text-[#758078]">
-              Round {selectedRound} · {orderedRuns.length} entries
+              {isShortRound ? "Short round" : `Round ${selectedRound}`} ·{" "}
+              {orderedRuns.length} entries
             </p>
           </div>
           <label className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
@@ -122,40 +146,68 @@ export function DatabaseLiveDesk({
           </label>
         </div>
 
-        {(selectedDivision?.numberOfRuns ?? 0) > 1 ? (
+        {totalRounds > 1 ? (
           <nav className="flex gap-1 overflow-x-auto border-b border-[#e7ebe8] px-4 pt-3">
-            {Array.from(
-              { length: selectedDivision?.numberOfRuns ?? 0 },
-              (_, index) => index + 1,
-            ).map((round) => (
-              <Link
-                key={round}
-                href={`/ropings/${ropingId}/live?division=${selectedDivisionId}&round=${round}`}
-                className={cn(
-                  "border-b-2 px-4 py-2 text-xs font-bold",
-                  round === selectedRound
-                    ? "border-[var(--brand-accent)] text-[#17201c]"
-                    : "border-transparent text-[#758078]",
-                )}
-              >
-                Round {round}
-              </Link>
-            ))}
+            {Array.from({ length: totalRounds }, (_, index) => index + 1).map(
+              (round) => (
+                <Link
+                  key={round}
+                  href={`/ropings/${ropingId}/live?division=${selectedDivisionId}&round=${round}`}
+                  className={cn(
+                    "border-b-2 px-4 py-2 text-xs font-bold",
+                    round === selectedRound
+                      ? "border-[var(--brand-accent)] text-[#17201c]"
+                      : "border-transparent text-[#758078]",
+                  )}
+                >
+                  {round > (selectedDivision?.numberOfRuns ?? 0)
+                    ? "Short round"
+                    : `Round ${round}`}
+                </Link>
+              ),
+            )}
           </nav>
         ) : null}
 
         <div className="border-b border-[#e7ebe8] bg-[#fafbfa] px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-[#758078]">
-              {drawLocked
-                ? "Draw locked after results were entered"
-                : drawReady
-                  ? dirty
-                    ? "Unsaved order changes"
-                    : "Draw order is set"
-                  : "Draw has not been generated"}
+              {isShortRound && drawReady
+                ? "Slowest aggregate runs first · leader runs last"
+                : drawLocked
+                  ? "Draw locked after results were entered"
+                  : drawReady
+                    ? dirty
+                      ? "Unsaved order changes"
+                      : "Draw order is set"
+                    : "Draw has not been generated"}
             </p>
             <div className="flex flex-wrap gap-2">
+              {isShortRound && !shortRoundSeeded ? (
+                <form action={shortRoundFormAction}>
+                  <input
+                    type="hidden"
+                    name="divisionId"
+                    value={selectedDivisionId}
+                  />
+                  <button
+                    disabled={
+                      !canEdit ||
+                      !mainRoundsComplete ||
+                      eventStatus !== "in_progress" ||
+                      shortRoundPending
+                    }
+                    className="flex h-8 items-center gap-2 rounded-md brand-primary-fill px-3 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {shortRoundPending ? (
+                      <LoaderCircle size={14} className="animate-spin" />
+                    ) : (
+                      <Trophy size={14} />
+                    )}
+                    Build short round
+                  </button>
+                </form>
+              ) : null}
               {dirty ? (
                 <form action={orderFormAction}>
                   <input
@@ -185,21 +237,23 @@ export function DatabaseLiveDesk({
                   </button>
                 </form>
               ) : null}
-              <form action={drawAction}>
-                <input
-                  type="hidden"
-                  name="divisionId"
-                  value={selectedDivisionId}
-                />
-                <input type="hidden" name="runNumber" value={selectedRound} />
-                <button
-                  disabled={!canManageDraw}
-                  className="flex h-8 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-xs font-semibold disabled:opacity-50"
-                >
-                  <Shuffle size={14} />
-                  {drawReady ? "Regenerate draw" : "Generate draw"}
-                </button>
-              </form>
+              {orderedRuns.length && !isShortRound ? (
+                <form action={drawAction}>
+                  <input
+                    type="hidden"
+                    name="divisionId"
+                    value={selectedDivisionId}
+                  />
+                  <input type="hidden" name="runNumber" value={selectedRound} />
+                  <button
+                    disabled={!canManageDraw}
+                    className="flex h-8 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-xs font-semibold disabled:opacity-50"
+                  >
+                    <Shuffle size={14} />
+                    {drawReady ? "Regenerate draw" : "Generate draw"}
+                  </button>
+                </form>
+              ) : null}
             </div>
           </div>
           {orderState.message ? (
@@ -208,6 +262,14 @@ export function DatabaseLiveDesk({
               aria-live="polite"
             >
               {orderState.message}
+            </p>
+          ) : null}
+          {shortRoundState.message ? (
+            <p
+              className={`mt-2 text-xs ${shortRoundState.success ? "text-emerald-700" : "text-rose-700"}`}
+              aria-live="polite"
+            >
+              {shortRoundState.message}
             </p>
           ) : null}
         </div>
@@ -219,10 +281,15 @@ export function DatabaseLiveDesk({
                 <th className="w-28 px-5 py-3">Draw</th>
                 <th className="px-5 py-3">Contestant</th>
                 <th className="px-5 py-3">Entry</th>
+                {isShortRound ? (
+                  <th className="px-5 py-3 text-right">Carry</th>
+                ) : null}
                 <th className="px-5 py-3 text-right">Time</th>
                 <th className="px-5 py-3 text-right">Penalty</th>
                 <th className="px-5 py-3 text-right">Incentive</th>
-                <th className="px-5 py-3 text-right">Total</th>
+                <th className="px-5 py-3 text-right">
+                  {isShortRound ? "Aggregate" : "Total"}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e7ebe8]">
@@ -278,6 +345,11 @@ export function DatabaseLiveDesk({
                       ) : null}
                     </td>
                     <td className="px-5 py-4 text-sm">#{run.entryNumber}</td>
+                    {isShortRound ? (
+                      <td className="px-5 py-4 text-right font-mono text-sm font-semibold">
+                        {run.carryTime?.toFixed(3) ?? "-"}
+                      </td>
+                    ) : null}
                     <td className="px-5 py-4 text-right font-mono text-sm font-semibold">
                       {run.status === "complete"
                         ? run.rawTime?.toFixed(3)
@@ -298,7 +370,10 @@ export function DatabaseLiveDesk({
                     <td className="px-5 py-4 text-right font-mono text-sm font-bold">
                       {run.status === "complete" && run.rawTime !== null
                         ? Math.max(
-                            run.rawTime + run.penalty - run.incentiveAdjustment,
+                            (run.carryTime ?? 0) +
+                              run.rawTime +
+                              run.penalty -
+                              run.incentiveAdjustment,
                             0,
                           ).toFixed(3)
                         : run.status === "no_time"
@@ -316,7 +391,11 @@ export function DatabaseLiveDesk({
             <div className="p-10 text-center text-sm text-[#758078]">
               {orderedRuns.length
                 ? "No contestants match this search."
-                : "No entries have been added to this entry class."}
+                : isShortRound
+                  ? shortRoundSeeded
+                    ? "No entries qualified for this short round."
+                    : "Build the short round after all main rounds are complete."
+                  : "No entries have been added to this entry class."}
             </div>
           ) : null}
         </div>
@@ -334,13 +413,18 @@ export function DatabaseLiveDesk({
             run={currentRun}
             timerCount={timerCount}
             timerResolution={timerResolution}
+            isShortRound={isShortRound}
             canEdit={canEdit}
           />
         ) : (
           <DeskMessage
             title={
               !orderedRuns.length
-                ? "Waiting for entries"
+                ? isShortRound
+                  ? shortRoundSeeded
+                    ? "No qualifiers"
+                    : "Short round not built"
+                  : "Waiting for entries"
                 : !drawReady
                   ? "Draw required"
                   : dirty
@@ -351,7 +435,13 @@ export function DatabaseLiveDesk({
             }
             message={
               !orderedRuns.length
-                ? "Add contestants before generating a draw."
+                ? isShortRound
+                  ? shortRoundSeeded
+                    ? "No entry completed every main round with a qualified time."
+                    : mainRoundsComplete
+                      ? "Build the field from the completed main-round aggregate."
+                      : "Complete every main-round run before building the finalist field."
+                  : "Add contestants before generating a draw."
                 : !drawReady
                   ? "Generate the draw and make any order adjustments before starting this round."
                   : dirty
@@ -381,6 +471,7 @@ export function DatabaseLiveDesk({
                 <span>{division.name}</span>
                 <span className="text-[10px] opacity-75">
                   {division.numberOfRuns}R
+                  {division.shortRoundEnabled ? " + Final" : ""}
                 </span>
               </Link>
             ))}
@@ -405,12 +496,14 @@ function RunEntryForm({
   run,
   timerCount,
   timerResolution,
+  isShortRound,
   canEdit,
 }: {
   ropingId: string;
   run: LiveRunRow;
   timerCount: number;
   timerResolution: "average" | "best" | "longest";
+  isShortRound: boolean;
   canEdit: boolean;
 }) {
   const action = recordRun.bind(null, ropingId);
@@ -429,12 +522,19 @@ function RunEntryForm({
     if (timerResolution === "longest") return Math.max(...values);
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }, [times, timerResolution]);
-  const total =
+  const adjustedRunTime =
     resolved === null
       ? "--.---"
       : Math.max(
           resolved + Number(penalty) - run.incentiveAdjustment,
           0,
+        ).toFixed(3);
+  const aggregateTotal =
+    resolved === null || run.carryTime === null
+      ? "--.---"
+      : (
+          run.carryTime +
+          Math.max(resolved + Number(penalty) - run.incentiveAdjustment, 0)
         ).toFixed(3);
   const methodLabel =
     timerResolution === "best"
@@ -523,15 +623,22 @@ function RunEntryForm({
       <div className="mt-5 flex items-center justify-between border-y border-[#e7ebe8] py-4">
         <span>
           <span className="block text-sm font-semibold text-[#66716b]">
-            Official time
+            {isShortRound ? "Projected aggregate" : "Official time"}
           </span>
+          {isShortRound && run.carryTime !== null ? (
+            <span className="mt-1 block text-[10px] font-semibold text-[#758078]">
+              {run.carryTime.toFixed(3)} carry + {adjustedRunTime} run
+            </span>
+          ) : null}
           {run.incentiveAdjustment ? (
             <span className="mt-1 block text-[10px] font-semibold text-emerald-700">
               Includes -{run.incentiveAdjustment.toFixed(3)} sec incentive
             </span>
           ) : null}
         </span>
-        <span className="font-mono text-2xl font-bold">{total}</span>
+        <span className="font-mono text-2xl font-bold">
+          {isShortRound ? aggregateTotal : adjustedRunTime}
+        </span>
       </div>
       {state.message ? (
         <p

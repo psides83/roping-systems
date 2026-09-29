@@ -6,6 +6,7 @@ import {
   createRoping,
   type RopingFormState,
 } from "@/app/(app)/ropings/actions";
+import { ShortRoundFields } from "@/components/ropings/short-round-settings";
 
 const initialState: RopingFormState = {};
 const inputClass =
@@ -190,7 +191,7 @@ export function CreateRopingDialog({
                   </div>
                   <div className="flex items-end gap-2">
                     <label className="text-xs font-semibold text-[#66716b]">
-                      Rounds for selected
+                      Main rounds for selected
                       <input
                         value={allRounds}
                         onChange={(event) => setAllRounds(event.target.value)}
@@ -234,7 +235,7 @@ export function CreateRopingDialog({
                         </span>
                       </span>
                       <span className="text-xs font-semibold text-[#66716b]">
-                        Rounds
+                        Main rounds
                         <input
                           name={`roundCount-${division.id}`}
                           value={roundCounts[division.id] ?? "1"}
@@ -270,6 +271,12 @@ export function CreateRopingDialog({
                   </p>
                 ) : null}
               </fieldset>
+              <ShortRoundFields />
+              {state.errors?.shortRoundBrackets ? (
+                <p className="text-xs text-rose-700">
+                  {state.errors.shortRoundBrackets[0]}
+                </p>
+              ) : null}
               <section className="rounded-md border border-[#dfe4e1]">
                 <label className="flex cursor-pointer items-start gap-3 p-4">
                   <input

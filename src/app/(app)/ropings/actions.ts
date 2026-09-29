@@ -43,6 +43,26 @@ const roundCountSchema = z.object({
   roundCount: z.number().int().min(1).max(20),
 });
 
+const shortRoundBracketSchema = z
+  .array(
+    z.object({
+      minimumEntries: z.number().int().min(1),
+      maximumEntries: z.number().int().min(1).nullable(),
+      comebackCount: z.number().int().min(1),
+    }),
+  )
+  .min(1);
+
+function getShortRoundBrackets(formData: FormData) {
+  try {
+    return shortRoundBracketSchema.safeParse(
+      JSON.parse(String(formData.get("shortRoundBrackets") ?? "[]")),
+    );
+  } catch {
+    return shortRoundBracketSchema.safeParse([]);
+  }
+}
+
 function getIncentiveRules(formData: FormData) {
   const rules: Array<z.infer<typeof incentiveRuleSchema>> = [];
   for (const [key, value] of formData.entries()) {
@@ -113,12 +133,22 @@ export async function createRoping(
         ],
       },
     };
+  const shortRoundEnabled = formData.get("shortRoundEnabled") === "on";
+  const shortRoundBrackets = getShortRoundBrackets(formData);
+  if (shortRoundEnabled && !shortRoundBrackets.success)
+    return {
+      errors: {
+        shortRoundBrackets: [
+          "Add at least one valid entry range and comeback count.",
+        ],
+      },
+    };
 
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
     return { message: "You do not have permission to create events." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_roping_with_incentives", {
+  const { error } = await supabase.rpc("create_roping_with_short_rounds", {
     target_organization_id: organization.id,
     event_title: parsed.data.title,
     event_slug: parsed.data.slug,
@@ -132,6 +162,10 @@ export async function createRoping(
     event_incentive_enabled: parsed.data.incentiveEnabled === "on",
     event_incentive_rules: incentiveRules,
     event_round_counts: roundCounts,
+    event_short_round_enabled: shortRoundEnabled,
+    event_short_round_brackets: shortRoundBrackets.success
+      ? shortRoundBrackets.data
+      : [],
   });
 
   if (error)

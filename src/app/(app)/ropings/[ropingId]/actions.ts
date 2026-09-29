@@ -12,6 +12,16 @@ export interface LiveRunState {
 
 export type DrawOrderState = LiveRunState;
 
+const shortRoundBracketSchema = z
+  .array(
+    z.object({
+      minimumEntries: z.number().int().min(1),
+      maximumEntries: z.number().int().min(1).nullable(),
+      comebackCount: z.number().int().min(1),
+    }),
+  )
+  .min(1);
+
 async function requireManager() {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
@@ -89,6 +99,59 @@ export async function saveDrawOrder(
   return {
     success: true,
     message: `${data} ${data === 1 ? "run" : "runs"} reordered.`,
+  };
+}
+
+export async function saveShortRoundSettings(
+  ropingId: string,
+  divisionId: string,
+  _state: LiveRunState,
+  formData: FormData,
+): Promise<LiveRunState> {
+  const enabled = formData.get("shortRoundEnabled") === "on";
+  let brackets: z.infer<typeof shortRoundBracketSchema> = [];
+  try {
+    const parsed = shortRoundBracketSchema.safeParse(
+      JSON.parse(String(formData.get("shortRoundBrackets") ?? "[]")),
+    );
+    if (enabled && !parsed.success)
+      return { message: "Add at least one valid comeback entry range." };
+    if (parsed.success) brackets = parsed.data;
+  } catch {
+    return { message: "The comeback schedule is invalid." };
+  }
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("save_short_round_settings", {
+    target_roping_division_id: divisionId,
+    short_round_is_enabled: enabled,
+    short_round_brackets: enabled ? brackets : [],
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return {
+    success: true,
+    message: enabled ? "Short round settings saved." : "Short round disabled.",
+  };
+}
+
+export async function seedShortRound(
+  ropingId: string,
+  _state: LiveRunState,
+  formData: FormData,
+): Promise<LiveRunState> {
+  const divisionId = z.uuid().safeParse(formData.get("divisionId"));
+  if (!divisionId.success) return { message: "Choose a valid entry class." };
+  const supabase = await requireManager();
+  const { data, error } = await supabase.rpc("seed_short_round", {
+    target_roping_division_id: divisionId.data,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return {
+    success: true,
+    message: `${data} ${data === 1 ? "entry" : "entries"} advanced to the short round.`,
   };
 }
 
