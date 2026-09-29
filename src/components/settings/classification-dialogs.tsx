@@ -5,10 +5,13 @@ import { LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import {
   createClassification,
   createDiscipline,
+  deleteClassification,
+  deleteDiscipline,
   updateClassification,
   updateDiscipline,
   type ClassificationFormState,
 } from "@/app/(app)/settings/classifications/actions";
+import { DeleteRecordButton } from "@/components/settings/delete-record-button";
 
 const initialState: ClassificationFormState = {};
 const inputClass =
@@ -117,7 +120,7 @@ export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
               />
             </label>
             <FormMessage state={state} />
-            <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -212,7 +215,7 @@ export function CreateClassificationDialog({
               />
             </label>
             <FormMessage state={state} />
-            <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -298,7 +301,17 @@ export function EditDisciplineDialog({
               Active for event templates and member classifications
             </label>
             <FormMessage state={state} />
-            <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+              <div className="mr-auto">
+                <DeleteRecordButton
+                  recordType="division"
+                  recordName={discipline.name}
+                  warning="The division can only be deleted after its classifications and any connected templates or history have been removed."
+                  disabled={!enabled}
+                  onDelete={() => deleteDiscipline(discipline.id)}
+                  onDeleted={() => setOpen(false)}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -404,7 +417,17 @@ export function EditClassificationDialog({
               Active for event templates and member classifications
             </label>
             <FormMessage state={state} />
-            <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+              <div className="mr-auto">
+                <DeleteRecordButton
+                  recordType="classification"
+                  recordName={classification.name}
+                  warning="This can only be deleted when no templates, member classifications, incentive rules, or event history still use it."
+                  disabled={!enabled}
+                  onDelete={() => deleteClassification(classification.id)}
+                  onDeleted={() => setOpen(false)}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}

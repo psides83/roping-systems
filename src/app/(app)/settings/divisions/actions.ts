@@ -43,6 +43,7 @@ const feeSchema = z.object({
 });
 
 const updateFeeSchema = feeSchema.extend({ feeId: z.uuid() });
+const idSchema = z.uuid();
 
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
@@ -71,22 +72,20 @@ export async function createDivision(
     parsed.data.payoutScheduleId,
   );
   if (relationshipError) return { message: relationshipError };
-  const { error } = await context.supabase
-    .from("division_templates")
-    .insert({
-      organization_id: context.organization.id,
-      name: parsed.data.name,
-      description: parsed.data.description || null,
-      discipline_id: parsed.data.disciplineId,
-      classification_id: parsed.data.classificationId,
-      maximum_entries_per_person:
-        parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
-      allow_guests: parsed.data.allowGuests === "on",
-      timer_count: parsed.data.timerCount,
-      timer_resolution: parsed.data.timerResolution,
-      payout_schedule_id: parsed.data.payoutScheduleId || null,
-      is_active: parsed.data.isActive === "on",
-    });
+  const { error } = await context.supabase.from("division_templates").insert({
+    organization_id: context.organization.id,
+    name: parsed.data.name,
+    description: parsed.data.description || null,
+    discipline_id: parsed.data.disciplineId,
+    classification_id: parsed.data.classificationId,
+    maximum_entries_per_person:
+      parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
+    allow_guests: parsed.data.allowGuests === "on",
+    timer_count: parsed.data.timerCount,
+    timer_resolution: parsed.data.timerResolution,
+    payout_schedule_id: parsed.data.payoutScheduleId || null,
+    is_active: parsed.data.isActive === "on",
+  });
   if (error)
     return {
       message:
@@ -210,22 +209,20 @@ export async function createFee(
   }
   if (parsed.data.kind === "side_pot" && !parsed.data.payoutScheduleId)
     return { message: "Choose a payout schedule for the side pot." };
-  const { error } = await context.supabase
-    .from("fee_templates")
-    .insert({
-      organization_id: context.organization.id,
-      division_template_id: division.id,
-      title: parsed.data.title,
-      amount_cents: Math.round(Number(parsed.data.amount) * 100),
-      scope: parsed.data.scope,
-      kind: parsed.data.kind,
-      payout_schedule_id: parsed.data.payoutScheduleId || null,
-      included_in_entry_price: parsed.data.includedInEntryPrice === "on",
-      contributes_to_payout:
-        parsed.data.kind === "side_pot" ||
-        parsed.data.contributesToPayout === "on",
-      is_required: parsed.data.isRequired === "on",
-    });
+  const { error } = await context.supabase.from("fee_templates").insert({
+    organization_id: context.organization.id,
+    division_template_id: division.id,
+    title: parsed.data.title,
+    amount_cents: Math.round(Number(parsed.data.amount) * 100),
+    scope: parsed.data.scope,
+    kind: parsed.data.kind,
+    payout_schedule_id: parsed.data.payoutScheduleId || null,
+    included_in_entry_price: parsed.data.includedInEntryPrice === "on",
+    contributes_to_payout:
+      parsed.data.kind === "side_pot" ||
+      parsed.data.contributesToPayout === "on",
+    is_required: parsed.data.isRequired === "on",
+  });
   if (error) return { message: error.message };
   revalidatePath("/settings/divisions");
   return { success: true, message: "Fee added." };
@@ -281,4 +278,49 @@ export async function updateFee(
   if (error) return { message: error.message };
   revalidatePath("/settings/divisions");
   return { success: true, message: "Fee updated." };
+}
+
+export async function deleteDivision(
+  divisionId: string,
+): Promise<SettingsFormState> {
+  const parsed = idSchema.safeParse(divisionId);
+  if (!parsed.success) return { message: "Choose a valid event template." };
+  const context = await getManagerContext();
+  if (!context)
+    return {
+      message: "Sign in with manager access to delete event templates.",
+    };
+  const { data, error } = await context.supabase
+    .from("division_templates")
+    .delete()
+    .eq("id", parsed.data)
+    .eq("organization_id", context.organization.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { message: error.message };
+  if (!data) return { message: "That event template is no longer available." };
+  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/payouts");
+  revalidatePath("/settings/timing");
+  revalidatePath("/ropings");
+  return { success: true, message: "Event template deleted." };
+}
+
+export async function deleteFee(feeId: string): Promise<SettingsFormState> {
+  const parsed = idSchema.safeParse(feeId);
+  if (!parsed.success) return { message: "Choose a valid fee or option." };
+  const context = await getManagerContext();
+  if (!context)
+    return { message: "Sign in with manager access to delete fees." };
+  const { data, error } = await context.supabase
+    .from("fee_templates")
+    .delete()
+    .eq("id", parsed.data)
+    .eq("organization_id", context.organization.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { message: error.message };
+  if (!data) return { message: "That fee or option is no longer available." };
+  revalidatePath("/settings/divisions");
+  return { success: true, message: "Fee or option deleted." };
 }

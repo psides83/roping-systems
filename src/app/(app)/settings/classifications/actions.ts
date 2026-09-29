@@ -33,6 +33,7 @@ const updateClassificationSchema = classificationSchema.extend({
   classificationId: z.uuid(),
   isActive: z.string().optional(),
 });
+const idSchema = z.uuid();
 
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
@@ -181,4 +182,60 @@ export async function updateClassification(
   revalidatePath("/settings/classifications");
   revalidatePath("/settings/divisions");
   return { success: true, message: "Classification updated." };
+}
+
+function deletionMessage(
+  error: { code?: string; message: string },
+  record: "division" | "classification",
+) {
+  if (error.code !== "23503") return error.message;
+  return record === "division"
+    ? "This division is still used by classifications, templates, members, or event history. Remove those connections before deleting it."
+    : "This classification is still used by a template, member, incentive rule, or event history. Remove those connections before deleting it.";
+}
+
+export async function deleteDiscipline(
+  disciplineId: string,
+): Promise<ClassificationFormState> {
+  const parsed = idSchema.safeParse(disciplineId);
+  if (!parsed.success) return { message: "Choose a valid division." };
+  const context = await getManagerContext();
+  if (!context)
+    return { message: "Sign in with manager access to delete divisions." };
+  const { data, error } = await context.supabase
+    .from("disciplines")
+    .delete()
+    .eq("id", parsed.data)
+    .eq("organization_id", context.organization.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { message: deletionMessage(error, "division") };
+  if (!data) return { message: "That division is no longer available." };
+  revalidatePath("/settings/classifications");
+  revalidatePath("/settings/divisions");
+  return { success: true, message: "Division deleted." };
+}
+
+export async function deleteClassification(
+  classificationId: string,
+): Promise<ClassificationFormState> {
+  const parsed = idSchema.safeParse(classificationId);
+  if (!parsed.success) return { message: "Choose a valid classification." };
+  const context = await getManagerContext();
+  if (!context)
+    return {
+      message: "Sign in with manager access to delete classifications.",
+    };
+  const { data, error } = await context.supabase
+    .from("classifications")
+    .delete()
+    .eq("id", parsed.data)
+    .eq("organization_id", context.organization.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { message: deletionMessage(error, "classification") };
+  if (!data) return { message: "That classification is no longer available." };
+  revalidatePath("/settings/classifications");
+  revalidatePath("/settings/divisions");
+  return { success: true, message: "Classification deleted." };
 }

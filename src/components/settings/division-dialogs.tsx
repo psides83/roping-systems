@@ -5,10 +5,13 @@ import { LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import {
   createDivision,
   createFee,
+  deleteDivision,
+  deleteFee,
   updateDivision,
   updateFee,
   type SettingsFormState,
 } from "@/app/(app)/settings/divisions/actions";
+import { DeleteRecordButton } from "@/components/settings/delete-record-button";
 import type {
   DivisionTemplateSummary,
   FeeTemplateSummary,
@@ -282,7 +285,19 @@ function EventTemplateDialog({
                 Connect Supabase to save organization settings.
               </p>
             ) : null}
-            <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+              {template ? (
+                <div className="mr-auto">
+                  <DeleteRecordButton
+                    recordType="template"
+                    recordName={template.name}
+                    warning="This removes the reusable template and its template fees. Ropings already created from it keep their copied settings and results."
+                    disabled={!configured}
+                    onDelete={() => deleteDivision(template.id)}
+                    onDeleted={() => setOpen(false)}
+                  />
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -522,7 +537,19 @@ function FeeDialog({
               )}
             </div>
             <FormMessage state={state} />
-            <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
+              {fee ? (
+                <div className="mr-auto">
+                  <DeleteRecordButton
+                    recordType="fee"
+                    recordName={fee.title}
+                    warning="This removes the fee or option from this template. Existing ropings keep the fee that was copied when they were created."
+                    disabled={!configured}
+                    onDelete={() => deleteFee(fee.id)}
+                    onDeleted={() => setOpen(false)}
+                  />
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
