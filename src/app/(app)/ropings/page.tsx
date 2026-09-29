@@ -26,21 +26,33 @@ async function getRopingData() {
       divisions: demoDivisions.map((division) => ({
         id: division.id,
         name: division.name,
-        feeCount: division.fees.length,
+        disciplineId: division.name.startsWith("Breakaway")
+          ? "preview-breakaway"
+          : "preview-calf-roping",
+        divisionName: division.name.split(" · ")[0],
+        fees: division.fees.map((fee) => ({
+          id: fee.id,
+          title: fee.title,
+          amountCents: fee.amountCents,
+          isRequired: fee.isRequired ?? true,
+        })),
       })),
       incentiveClassifications: [
         {
           id: "00000000-0000-4000-8000-000000000101",
+          disciplineId: "preview-breakaway",
           divisionName: "Breakaway",
           name: "Open",
         },
         {
           id: "00000000-0000-4000-8000-000000000102",
+          disciplineId: "preview-breakaway",
           divisionName: "Breakaway",
           name: "11.5",
         },
         {
           id: "00000000-0000-4000-8000-000000000103",
+          disciplineId: "preview-breakaway",
           divisionName: "Breakaway",
           name: "10",
         },
@@ -65,14 +77,16 @@ async function getRopingData() {
     supabase
       .from("division_templates")
       .select(
-        "id, name, fee_templates!fee_templates_division_template_id_fkey(id)",
+        "id, name, discipline_id, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
       )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("sort_order"),
     supabase
       .from("classifications")
-      .select("id, name, rank, disciplines!inner(name, sort_order)")
+      .select(
+        "id, name, rank, discipline_id, disciplines!inner(name, sort_order)",
+      )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
@@ -106,11 +120,28 @@ async function getRopingData() {
   const divisions = divisionData.map((division) => ({
     id: division.id,
     name: division.name,
-    feeCount: (division.fee_templates as unknown as unknown[]).length,
+    disciplineId: division.discipline_id,
+    divisionName:
+      (division.disciplines as unknown as { name: string } | null)?.name ??
+      "Unassigned division",
+    fees: (
+      division.fee_templates as unknown as Array<{
+        id: string;
+        title: string;
+        amount_cents: number;
+        is_required: boolean;
+      }>
+    ).map((fee) => ({
+      id: fee.id,
+      title: fee.title,
+      amountCents: fee.amount_cents,
+      isRequired: fee.is_required,
+    })),
   }));
   const incentiveClassifications = classificationData.map((classification) => ({
     id: classification.id,
     name: classification.name,
+    disciplineId: classification.discipline_id,
     divisionName: (classification.disciplines as unknown as { name: string })
       .name,
   }));

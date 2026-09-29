@@ -34,18 +34,23 @@ interface EventDetail {
   isPublic: boolean;
   entriesOpenAt: string | null;
   entriesCloseAt: string | null;
-  incentiveEnabled: boolean;
-  incentiveRules: Array<{
+  eventFees: Array<{
     id: string;
-    division: string;
-    classification: string;
-    adjustmentSeconds: number;
+    title: string;
+    amountCents: number;
   }>;
   divisions: Array<{
     id: string;
     name: string;
     runs: number;
     entries: number;
+    startsAt: string | null;
+    incentiveEnabled: boolean;
+    incentiveRules: Array<{
+      id: string;
+      classification: string;
+      adjustmentSeconds: number;
+    }>;
     shortRoundEnabled: boolean;
     shortRoundBrackets: Array<{
       minimumEntries: number;
@@ -81,24 +86,9 @@ async function getEvent(
         isPublic: true,
         entriesOpenAt: null,
         entriesCloseAt: null,
-        incentiveEnabled: roping.id === "fall-classic",
-        incentiveRules:
-          roping.id === "fall-classic"
-            ? [
-                {
-                  id: "preview-1",
-                  division: "Breakaway",
-                  classification: "11.5",
-                  adjustmentSeconds: 1.5,
-                },
-                {
-                  id: "preview-2",
-                  division: "Breakaway",
-                  classification: "10",
-                  adjustmentSeconds: 2,
-                },
-              ]
-            : [],
+        eventFees: [
+          { id: "preview-office", title: "Office charge", amountCents: 2000 },
+        ],
         divisions: demoDivisions
           .slice(0, roping.divisions)
           .map((division, index) => ({
@@ -106,6 +96,26 @@ async function getEvent(
             name: division.name,
             runs: index === 2 ? 2 : 1,
             entries: index === 0 ? roping.entries : 0,
+            startsAt: null,
+            incentiveEnabled:
+              roping.id === "fall-classic" &&
+              division.name.startsWith("Breakaway"),
+            incentiveRules:
+              roping.id === "fall-classic" &&
+              division.name.startsWith("Breakaway")
+                ? [
+                    {
+                      id: "preview-1",
+                      classification: "11.5",
+                      adjustmentSeconds: 1.5,
+                    },
+                    {
+                      id: "preview-2",
+                      classification: "10",
+                      adjustmentSeconds: 2,
+                    },
+                  ]
+                : [],
             shortRoundEnabled: index === 0,
             shortRoundBrackets:
               index === 0
@@ -136,23 +146,41 @@ async function getEvent(
   const organization = await getActiveOrganization();
   if (!organization) return { event: null, organizationSlug: "" };
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("ropings")
-    .select(
-      "id, title, slug, starts_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, incentive_enabled, roping_incentive_rules(id, adjustment_seconds, classifications!inner(name, disciplines!inner(name))), roping_divisions!roping_divisions_roping_id_fkey(id, name, number_of_runs, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
-    )
-    .eq("id", ropingId)
-    .eq("organization_id", organization.id)
-    .single();
+  const [{ data, error }, { data: eventFeeData, error: eventFeeError }] =
+    await Promise.all([
+      supabase
+        .from("ropings")
+        .select(
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, number_of_runs, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+        )
+        .eq("id", ropingId)
+        .eq("organization_id", organization.id)
+        .single(),
+      supabase
+        .from("roping_fees")
+        .select("id, title, amount_cents")
+        .eq("roping_id", ropingId)
+        .eq("organization_id", organization.id)
+        .is("roping_division_id", null),
+    ]);
   if (error || !data)
     return { event: null, organizationSlug: organization.slug };
+  if (eventFeeError)
+    throw new Error(`Unable to load event charges: ${eventFeeError.message}`);
   const divisions = (
     data.roping_divisions as unknown as Array<{
       id: string;
       name: string;
       number_of_runs: number;
       short_round_enabled: boolean;
+      starts_at: string | null;
+      incentive_enabled: boolean;
       entries: unknown[];
+      roping_incentive_rules: Array<{
+        id: string;
+        adjustment_seconds: number;
+        classifications: { name: string };
+      }>;
       roping_short_round_brackets: Array<{
         minimum_entries: number;
         maximum_entries: number | null;
@@ -171,6 +199,22 @@ async function getEvent(
     name: division.name,
     runs: division.number_of_runs,
     entries: division.entries.length,
+    startsAt: division.starts_at
+      ? new Intl.DateTimeFormat("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: organization.timezone,
+        }).format(new Date(division.starts_at))
+      : null,
+    incentiveEnabled: division.incentive_enabled,
+    incentiveRules: division.roping_incentive_rules.map((rule) => ({
+      id: rule.id,
+      classification: rule.classifications.name,
+      adjustmentSeconds: Number(rule.adjustment_seconds),
+    })),
     shortRoundEnabled: division.short_round_enabled,
     shortRoundBrackets: division.roping_short_round_brackets
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -185,18 +229,6 @@ async function getEvent(
       amountCents: fee.amount_cents,
       included: fee.included_in_entry_price,
     })),
-  }));
-  const incentiveRules = (
-    data.roping_incentive_rules as unknown as Array<{
-      id: string;
-      adjustment_seconds: number;
-      classifications: { name: string; disciplines: { name: string } };
-    }>
-  ).map((rule) => ({
-    id: rule.id,
-    division: rule.classifications.disciplines.name,
-    classification: rule.classifications.name,
-    adjustmentSeconds: Number(rule.adjustment_seconds),
   }));
   return {
     organizationSlug: organization.slug,
@@ -217,8 +249,11 @@ async function getEvent(
       isPublic: data.is_public,
       entriesOpenAt: data.entries_open_at,
       entriesCloseAt: data.entries_close_at,
-      incentiveEnabled: data.incentive_enabled,
-      incentiveRules,
+      eventFees: (eventFeeData ?? []).map((fee) => ({
+        id: fee.id,
+        title: fee.title,
+        amountCents: fee.amount_cents,
+      })),
       divisions,
     },
   };
@@ -234,9 +269,11 @@ export default async function RopingDetailPage({
     (sum, division) => sum + division.entries,
     0,
   );
-  const totalFees = event.divisions
-    .flatMap((division) => division.fees)
-    .reduce((sum, fee) => sum + fee.amountCents, 0);
+  const totalFees =
+    event.divisions
+      .flatMap((division) => division.fees)
+      .reduce((sum, fee) => sum + fee.amountCents, 0) +
+    event.eventFees.reduce((sum, fee) => sum + fee.amountCents, 0);
   const roundsEditable = !["in_progress", "completed", "cancelled"].includes(
     event.status,
   );
@@ -301,11 +338,6 @@ export default async function RopingDetailPage({
         >
           {event.isPublic ? "Published" : "Private"}
         </span>
-        {event.incentiveEnabled ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
-            <Gauge size={13} /> Incentive scoring
-          </span>
-        ) : null}
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
@@ -325,30 +357,20 @@ export default async function RopingDetailPage({
           value={formatCurrency(totalFees)}
         />
       </section>
-      {event.incentiveEnabled ? (
-        <section className="overflow-hidden rounded-md border border-emerald-200 bg-white">
-          <div className="flex items-center gap-3 border-b border-emerald-100 bg-emerald-50 px-5 py-4">
-            <Gauge size={18} className="text-emerald-700" />
-            <div>
-              <h2 className="font-bold text-emerald-950">
-                Incentive handicaps
-              </h2>
-              <p className="mt-1 text-xs text-emerald-800">
-                Applied automatically to every run when an entry matches the
-                classification
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 p-5">
-            {event.incentiveRules.map((rule) => (
+      {event.eventFees.length ? (
+        <section className="rounded-md border border-[#dfe4e1] bg-white p-5">
+          <h2 className="font-bold">Event-wide charges</h2>
+          <p className="mt-1 text-xs text-[#758078]">
+            Assessed once per contestant across every class and day in this
+            event.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {event.eventFees.map((fee) => (
               <span
-                key={rule.id}
+                key={fee.id}
                 className="rounded-md bg-[#f1f3f2] px-3 py-2 text-sm font-semibold"
               >
-                {rule.division} · {rule.classification}{" "}
-                <span className="ml-1 font-mono text-emerald-700">
-                  -{rule.adjustmentSeconds.toFixed(3)} sec
-                </span>
+                {fee.title}: {formatCurrency(fee.amountCents)} once
               </span>
             ))}
           </div>
@@ -399,6 +421,11 @@ export default async function RopingDetailPage({
                     {division.shortRoundEnabled ? " + short round" : ""} ·{" "}
                     {division.entries} entries
                   </p>
+                  {division.startsAt ? (
+                    <p className="mt-1 text-xs text-[#758078]">
+                      Scheduled {division.startsAt}
+                    </p>
+                  ) : null}
                 </div>
                 <form action={roundAction} className="flex items-end gap-2">
                   <input type="hidden" name="divisionId" value={division.id} />
@@ -433,6 +460,26 @@ export default async function RopingDetailPage({
                   </span>
                 ))}
               </div>
+              {division.incentiveEnabled ? (
+                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="flex items-center gap-2 text-sm font-bold text-emerald-950">
+                    <Gauge size={16} /> Incentive handicaps
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {division.incentiveRules.map((rule) => (
+                      <span
+                        key={rule.id}
+                        className="rounded-md bg-white px-2 py-1 text-xs font-semibold"
+                      >
+                        {rule.classification}:{" "}
+                        <span className="font-mono text-emerald-700">
+                          -{rule.adjustmentSeconds.toFixed(3)} sec
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <ShortRoundSettingsForm
                 ropingId={event.id}
                 divisionId={division.id}
