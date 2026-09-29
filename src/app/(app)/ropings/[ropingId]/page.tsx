@@ -13,6 +13,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ShortRoundSettingsForm } from "@/components/ropings/short-round-settings";
+import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
 import {
   ropings as demoRopings,
   divisionTemplates as demoDivisions,
@@ -45,6 +46,11 @@ interface EventDetail {
     runs: number;
     entries: number;
     startsAt: string | null;
+    scheduledDate: string;
+    scheduledDateValue: string;
+    startTime: string;
+    scheduleType: "fixed" | "tentative" | "follows_previous";
+    scheduleNote: string | null;
     incentiveEnabled: boolean;
     incentiveRules: Array<{
       id: string;
@@ -97,6 +103,11 @@ async function getEvent(
             runs: index === 2 ? 2 : 1,
             entries: index === 0 ? roping.entries : 0,
             startsAt: null,
+            scheduledDate: roping.date,
+            scheduledDateValue: "2026-09-27",
+            startTime: index === 0 ? "09:00" : "",
+            scheduleType: index === 2 ? "follows_previous" : "fixed",
+            scheduleNote: null,
             incentiveEnabled:
               roping.id === "fall-classic" &&
               division.name.startsWith("Breakaway"),
@@ -151,7 +162,7 @@ async function getEvent(
       supabase
         .from("ropings")
         .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, number_of_runs, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
         )
         .eq("id", ropingId)
         .eq("organization_id", organization.id)
@@ -174,6 +185,10 @@ async function getEvent(
       number_of_runs: number;
       short_round_enabled: boolean;
       starts_at: string | null;
+      scheduled_date: string;
+      schedule_type: "fixed" | "tentative" | "follows_previous";
+      schedule_note: string | null;
+      sort_order: number;
       incentive_enabled: boolean;
       entries: unknown[];
       roping_incentive_rules: Array<{
@@ -194,42 +209,65 @@ async function getEvent(
         included_in_entry_price: boolean;
       }>;
     }>
-  ).map((division) => ({
-    id: division.id,
-    name: division.name,
-    runs: division.number_of_runs,
-    entries: division.entries.length,
-    startsAt: division.starts_at
-      ? new Intl.DateTimeFormat("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          timeZone: organization.timezone,
-        }).format(new Date(division.starts_at))
-      : null,
-    incentiveEnabled: division.incentive_enabled,
-    incentiveRules: division.roping_incentive_rules.map((rule) => ({
-      id: rule.id,
-      classification: rule.classifications.name,
-      adjustmentSeconds: Number(rule.adjustment_seconds),
-    })),
-    shortRoundEnabled: division.short_round_enabled,
-    shortRoundBrackets: division.roping_short_round_brackets
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((bracket) => ({
-        minimumEntries: bracket.minimum_entries,
-        maximumEntries: bracket.maximum_entries,
-        comebackCount: bracket.comeback_count,
+  )
+    .sort((a, b) =>
+      a.scheduled_date === b.scheduled_date
+        ? a.sort_order - b.sort_order
+        : a.scheduled_date.localeCompare(b.scheduled_date),
+    )
+    .map((division) => ({
+      id: division.id,
+      name: division.name,
+      runs: division.number_of_runs,
+      entries: division.entries.length,
+      startsAt: division.starts_at
+        ? new Intl.DateTimeFormat("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: organization.timezone,
+          }).format(new Date(division.starts_at))
+        : null,
+      scheduledDate: new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(`${division.scheduled_date}T12:00:00Z`)),
+      scheduledDateValue: division.scheduled_date,
+      startTime: division.starts_at
+        ? new Intl.DateTimeFormat("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+            timeZone: organization.timezone,
+          }).format(new Date(division.starts_at))
+        : "",
+      scheduleType: division.schedule_type,
+      scheduleNote: division.schedule_note,
+      incentiveEnabled: division.incentive_enabled,
+      incentiveRules: division.roping_incentive_rules.map((rule) => ({
+        id: rule.id,
+        classification: rule.classifications.name,
+        adjustmentSeconds: Number(rule.adjustment_seconds),
       })),
-    fees: division.roping_fees.map((fee) => ({
-      id: fee.id,
-      title: fee.title,
-      amountCents: fee.amount_cents,
-      included: fee.included_in_entry_price,
-    })),
-  }));
+      shortRoundEnabled: division.short_round_enabled,
+      shortRoundBrackets: division.roping_short_round_brackets
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((bracket) => ({
+          minimumEntries: bracket.minimum_entries,
+          maximumEntries: bracket.maximum_entries,
+          comebackCount: bracket.comeback_count,
+        })),
+      fees: division.roping_fees.map((fee) => ({
+        id: fee.id,
+        title: fee.title,
+        amountCents: fee.amount_cents,
+        included: fee.included_in_entry_price,
+      })),
+    }));
   return {
     organizationSlug: organization.slug,
     event: {
@@ -421,33 +459,58 @@ export default async function RopingDetailPage({
                     {division.shortRoundEnabled ? " + short round" : ""} ·{" "}
                     {division.entries} entries
                   </p>
-                  {division.startsAt ? (
+                  <p className="mt-1 text-xs font-semibold text-[#758078]">
+                    {division.scheduleType === "follows_previous"
+                      ? `${division.scheduledDate} · Follows previous roping`
+                      : `${division.startsAt ?? division.scheduledDate}${
+                          division.scheduleType === "tentative"
+                            ? " · Tentative"
+                            : ""
+                        }`}
+                  </p>
+                  {division.scheduleNote ? (
                     <p className="mt-1 text-xs text-[#758078]">
-                      Scheduled {division.startsAt}
+                      {division.scheduleNote}
                     </p>
                   ) : null}
                 </div>
-                <form action={roundAction} className="flex items-end gap-2">
-                  <input type="hidden" name="divisionId" value={division.id} />
-                  <label className="text-xs font-semibold text-[#66716b]">
-                    Main rounds
+                <div className="flex flex-wrap items-end gap-2">
+                  <ClassScheduleDialog
+                    ropingId={event.id}
+                    divisionId={division.id}
+                    name={division.name}
+                    scheduledDate={division.scheduledDateValue}
+                    scheduleType={division.scheduleType}
+                    startTime={division.startTime}
+                    scheduleNote={division.scheduleNote}
+                    editable={roundsEditable && isSupabaseConfigured()}
+                  />
+                  <form action={roundAction} className="flex items-end gap-2">
                     <input
-                      name="roundCount"
-                      type="number"
-                      min="1"
-                      max="20"
-                      defaultValue={division.runs}
-                      disabled={!roundsEditable || !isSupabaseConfigured()}
-                      className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
+                      type="hidden"
+                      name="divisionId"
+                      value={division.id}
                     />
-                  </label>
-                  <button
-                    disabled={!roundsEditable || !isSupabaseConfigured()}
-                    className="h-9 rounded-md border border-[#d7ddda] px-3 text-xs font-semibold disabled:opacity-50"
-                  >
-                    Save
-                  </button>
-                </form>
+                    <label className="text-xs font-semibold text-[#66716b]">
+                      Main rounds
+                      <input
+                        name="roundCount"
+                        type="number"
+                        min="1"
+                        max="20"
+                        defaultValue={division.runs}
+                        disabled={!roundsEditable || !isSupabaseConfigured()}
+                        className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
+                      />
+                    </label>
+                    <button
+                      disabled={!roundsEditable || !isSupabaseConfigured()}
+                      className="h-9 rounded-md border border-[#d7ddda] px-3 text-xs font-semibold disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </form>
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {division.fees.map((fee) => (

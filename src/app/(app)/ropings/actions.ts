@@ -15,6 +15,7 @@ export interface RopingFormState {
 const localDateTime = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Choose a valid date and time.");
+
 const ropingSchema = z.object({
   title: z.string().trim().min(2, "Event title is required."),
   slug: z
@@ -43,9 +44,15 @@ const incentiveRuleSchema = z.object({
   adjustmentSeconds: z.number().positive().max(60),
 });
 
-const roundCountSchema = z.object({
-  divisionTemplateId: z.uuid(),
+const classOccurrenceSchema = z.object({
+  templateId: z.uuid(),
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
+  startsAt: z.union([z.literal(""), localDateTime]),
+  scheduleNote: z.string().trim().max(120),
   roundCount: z.number().int().min(1).max(20),
+  incentiveEnabled: z.boolean(),
+  incentiveRules: z.array(incentiveRuleSchema),
 });
 
 const shortRoundBracketSchema = z
@@ -68,57 +75,37 @@ function getShortRoundBrackets(formData: FormData) {
   }
 }
 
-function getClassSettings(formData: FormData, divisionIds: string[]) {
-  const settings: Array<{
-    divisionTemplateId: string;
-    startsAt: string;
-    incentiveEnabled: boolean;
-    incentiveRules: Array<z.infer<typeof incentiveRuleSchema>>;
-  }> = [];
-  for (const divisionTemplateId of divisionIds) {
-    const incentiveEnabled =
-      formData.get(`incentiveEnabled-${divisionTemplateId}`) === "on";
-    const incentiveRules: Array<z.infer<typeof incentiveRuleSchema>> = [];
-    for (const [key, value] of formData.entries()) {
-      const prefix = `incentiveAdjustment-${divisionTemplateId}-`;
-      if (
-        !key.startsWith(prefix) ||
-        typeof value !== "string" ||
-        !value.trim() ||
-        Number(value) === 0
-      )
-        continue;
-      const parsed = incentiveRuleSchema.safeParse({
-        classificationId: key.replace(prefix, ""),
-        adjustmentSeconds: Number(value),
-      });
-      if (!parsed.success) return null;
-      incentiveRules.push(parsed.data);
-    }
-    if (incentiveEnabled && !incentiveRules.length) return null;
-    settings.push({
-      divisionTemplateId,
-      startsAt: String(
-        formData.get(`classStartsAt-${divisionTemplateId}`) ?? "",
-      ),
-      incentiveEnabled,
-      incentiveRules,
-    });
-  }
-  return settings;
-}
-
-function getRoundCounts(formData: FormData, divisionIds: string[]) {
-  const settings: Array<z.infer<typeof roundCountSchema>> = [];
-  for (const divisionTemplateId of divisionIds) {
-    const parsed = roundCountSchema.safeParse({
-      divisionTemplateId,
-      roundCount: Number(formData.get(`roundCount-${divisionTemplateId}`)),
-    });
+function getClassOccurrences(formData: FormData) {
+  try {
+    const parsed = z
+      .array(classOccurrenceSchema)
+      .min(1)
+      .safeParse(JSON.parse(String(formData.get("classOccurrences") ?? "[]")));
     if (!parsed.success) return null;
-    settings.push(parsed.data);
+
+    for (const [index, occurrence] of parsed.data.entries()) {
+      if (
+        occurrence.scheduleType !== "follows_previous" &&
+        (!occurrence.startsAt ||
+          !occurrence.startsAt.startsWith(occurrence.scheduledDate))
+      )
+        return null;
+      if (
+        occurrence.scheduleType === "follows_previous" &&
+        !parsed.data
+          .slice(0, index)
+          .some(
+            (previous) => previous.scheduledDate === occurrence.scheduledDate,
+          )
+      )
+        return null;
+      if (occurrence.incentiveEnabled && !occurrence.incentiveRules.length)
+        return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
   }
-  return settings;
 }
 
 export async function createRoping(
@@ -127,8 +114,8 @@ export async function createRoping(
 ): Promise<RopingFormState> {
   if (!isSupabaseConfigured())
     return { message: "Connect Supabase before creating live events." };
+
   const parsed = ropingSchema.safeParse(Object.fromEntries(formData));
-  const divisionIds = formData.getAll("divisionIds").map(String);
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   if (parsed.data.endsAt && parsed.data.endsAt < parsed.data.startsAt)
     return { errors: { endsAt: ["The event end must be after its start."] } };
@@ -142,26 +129,37 @@ export async function createRoping(
         ],
       },
     };
-  if (!divisionIds.length)
-    return { errors: { divisionIds: ["Select at least one class."] } };
-  const roundCounts = getRoundCounts(formData, divisionIds);
-  if (!roundCounts)
+
+  const classOccurrences = getClassOccurrences(formData);
+  if (!classOccurrences)
     return {
       errors: {
-        roundCounts: [
-          "Set a round count between 1 and 20 for every selected class.",
+        classOccurrences: [
+          "Check each scheduled roping's date, time, rounds, order, and incentive settings.",
         ],
       },
     };
-  const classSettings = getClassSettings(formData, divisionIds);
-  if (!classSettings)
+
+  const eventStartDate = parsed.data.startsAt.slice(0, 10);
+  const eventEndDate = (parsed.data.endsAt || parsed.data.startsAt).slice(
+    0,
+    10,
+  );
+  if (
+    classOccurrences.some(
+      (occurrence) =>
+        occurrence.scheduledDate < eventStartDate ||
+        occurrence.scheduledDate > eventEndDate,
+    )
+  )
     return {
       errors: {
-        incentiveRules: [
-          "Each incentive class needs at least one valid adjustment between 0 and 60 seconds.",
+        classOccurrences: [
+          "Every scheduled roping must fall within the event's date range.",
         ],
       },
     };
+
   const shortRoundEnabled = formData.get("shortRoundEnabled") === "on";
   const shortRoundBrackets = getShortRoundBrackets(formData);
   if (shortRoundEnabled && !shortRoundBrackets.success)
@@ -176,8 +174,9 @@ export async function createRoping(
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
     return { message: "You do not have permission to create events." };
+
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_roping_with_class_settings", {
+  const { error } = await supabase.rpc("create_roping_with_schedule", {
     target_organization_id: organization.id,
     event_title: parsed.data.title,
     event_slug: parsed.data.slug,
@@ -188,13 +187,11 @@ export async function createRoping(
     event_entries_open_at_local: parsed.data.entriesOpenAt || null,
     event_entries_close_at_local: parsed.data.entriesCloseAt || null,
     event_is_public: parsed.data.isPublic === "on",
-    selected_division_template_ids: divisionIds,
-    event_round_counts: roundCounts,
+    event_class_occurrences: classOccurrences,
     event_short_round_enabled: shortRoundEnabled,
     event_short_round_brackets: shortRoundBrackets.success
       ? shortRoundBrackets.data
       : [],
-    event_class_settings: classSettings,
     event_fee_title: parsed.data.eventFeeTitle,
     event_fee_amount_cents: parsed.data.eventFeeAmount
       ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
@@ -208,9 +205,10 @@ export async function createRoping(
           ? "An event already uses that public URL."
           : error.message,
     };
+
   revalidatePath("/ropings");
   return {
     success: true,
-    message: "Event created with its class ropings, fees, and options.",
+    message: "Event created with its scheduled ropings, fees, and options.",
   };
 }

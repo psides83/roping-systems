@@ -33,7 +33,9 @@ export default async function EventPayoutsPage({
       .single(),
     supabase
       .from("roping_payout_plans")
-      .select("id, name, pool_type, roping_divisions!inner(name)")
+      .select(
+        "id, name, pool_type, roping_divisions!inner(name, scheduled_date)",
+      )
       .eq("roping_id", ropingId)
       .eq("organization_id", organization.id)
       .order("created_at"),
@@ -63,7 +65,18 @@ export default async function EventPayoutsPage({
         id: plan.id,
         name: plan.name,
         poolType: plan.pool_type,
-        division: (plan.roping_divisions as unknown as { name: string }).name,
+        division: (() => {
+          const division = plan.roping_divisions as unknown as {
+            name: string;
+            scheduled_date: string;
+          };
+          return `${division.name} · ${new Intl.DateTimeFormat("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+          }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`;
+        })(),
         entryCount: summary.entry_count,
         poolCents: Number(summary.pool_cents),
         places: rows

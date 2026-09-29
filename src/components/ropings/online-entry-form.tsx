@@ -19,6 +19,9 @@ interface EntryDivision {
   allowGuests: boolean;
   estimatedFirstEntryCents: number;
   startsAt: string | null;
+  scheduledDate: string;
+  scheduleType: "fixed" | "tentative" | "follows_previous";
+  scheduleNote: string | null;
   incentiveEnabled: boolean;
   options: Array<{
     id: string;
@@ -151,11 +154,18 @@ export function OnlineEntryForm({
                         ? " · Guest entries allowed"
                         : " · Active members only"}
                     </span>
-                    {division.startsAt ? (
-                      <span className="mt-1 block text-xs text-[#758078]">
-                        Starts {division.startsAt}
-                      </span>
-                    ) : null}
+                    <span className="mt-1 block text-xs text-[#758078]">
+                      {division.scheduleType === "follows_previous"
+                        ? `${division.scheduledDate} · Follows previous roping`
+                        : `${division.startsAt ?? division.scheduledDate}${
+                            division.scheduleType === "tentative"
+                              ? " · Tentative"
+                              : ""
+                          }`}
+                      {division.scheduleNote
+                        ? ` · ${division.scheduleNote}`
+                        : ""}
+                    </span>
                     {division.incentiveEnabled ? (
                       <span className="mt-2 inline-flex rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
                         Incentive handicaps applied automatically

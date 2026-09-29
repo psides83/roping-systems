@@ -65,7 +65,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -76,6 +76,7 @@ export default async function LiveRopingPage({
     roping.roping_divisions as unknown as Array<{
       id: string;
       name: string;
+      scheduled_date: string;
       sort_order: number;
       number_of_runs: number;
       short_round_enabled: boolean;
@@ -87,7 +88,12 @@ export default async function LiveRopingPage({
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((division) => ({
       id: division.id,
-      name: division.name,
+      name: `${division.name} · ${new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`,
       numberOfRuns: division.number_of_runs,
       shortRoundEnabled: division.short_round_enabled,
       shortRoundSeeded: Boolean(division.short_round_seeded_at),

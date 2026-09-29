@@ -154,7 +154,7 @@ export default async function EventEntriesPage({
     supabase
       .from("ropings")
       .select(
-        "id, title, status, roping_divisions!roping_divisions_roping_id_fkey(id, name, allow_guests, sort_order, roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, kind, scope, is_required))",
+        "id, title, status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, schedule_type, starts_at, allow_guests, sort_order, roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, kind, scope, is_required))",
       )
       .eq("id", ropingId)
       .eq("organization_id", organization.id)
@@ -168,7 +168,7 @@ export default async function EventEntriesPage({
     supabase
       .from("entries")
       .select(
-        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, roping_divisions!entries_roping_division_id_fkey!inner(name), people!inner(first_name, last_name)",
+        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, roping_divisions!entries_roping_division_id_fkey!inner(name, scheduled_date), people!inner(first_name, last_name)",
       )
       .eq("roping_id", ropingId)
       .order("entered_at", { ascending: false }),
@@ -182,7 +182,7 @@ export default async function EventEntriesPage({
     supabase
       .from("online_entry_requests")
       .select(
-        "id, first_name, last_name, email, phone, member_number, membership_id, contestant_note, created_at, online_entry_request_items!online_entry_request_items_request_id_fkey(quantity, roping_divisions!online_entry_request_items_roping_division_id_fkey!inner(name))",
+        "id, first_name, last_name, email, phone, member_number, membership_id, contestant_note, created_at, online_entry_request_items!online_entry_request_items_request_id_fkey(quantity, roping_divisions!online_entry_request_items_roping_division_id_fkey!inner(name, scheduled_date))",
       )
       .eq("roping_id", ropingId)
       .eq("status", "pending")
@@ -197,6 +197,9 @@ export default async function EventEntriesPage({
     roping.roping_divisions as unknown as Array<{
       id: string;
       name: string;
+      scheduled_date: string;
+      schedule_type: "fixed" | "tentative" | "follows_previous";
+      starts_at: string | null;
       allow_guests: boolean;
       sort_order: number;
       roping_fees: Array<{
@@ -212,7 +215,12 @@ export default async function EventEntriesPage({
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((division) => ({
       id: division.id,
-      name: division.name,
+      name: `${division.name} · ${new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`,
       allowGuests: division.allow_guests,
       options: division.roping_fees
         .filter((fee) => !fee.is_required)
@@ -258,7 +266,10 @@ export default async function EventEntriesPage({
       first_name: string;
       last_name: string;
     };
-    const division = entry.roping_divisions as unknown as { name: string };
+    const division = entry.roping_divisions as unknown as {
+      name: string;
+      scheduled_date: string;
+    };
     const contestant: LedgerContestant = contestantsByPerson.get(
       entry.person_id,
     ) ?? {
@@ -272,7 +283,12 @@ export default async function EventEntriesPage({
     };
     contestant.entries.push({
       id: entry.id,
-      division: division.name,
+      division: `${division.name} · ${new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`,
       entryNumber: entry.entry_number,
       source: entry.source,
       paymentStatus: entry.payment_status as PaymentStatus,
@@ -312,7 +328,18 @@ export default async function EventEntriesPage({
     }).format(new Date(request.created_at)),
     membershipVerified: Boolean(request.membership_id),
     items: request.online_entry_request_items.map((item) => ({
-      division: (item.roping_divisions as unknown as { name: string }).name,
+      division: (() => {
+        const division = item.roping_divisions as unknown as {
+          name: string;
+          scheduled_date: string;
+        };
+        return `${division.name} · ${new Intl.DateTimeFormat("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`;
+      })(),
       quantity: item.quantity,
     })),
   }));

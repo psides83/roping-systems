@@ -216,8 +216,8 @@ export default async function RopingsPage() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Users size={15} />
-                    {roping.entries} entries · {roping.divisions} event
-                    templates
+                    {roping.entries} entries · {roping.divisions} scheduled
+                    ropings
                   </span>
                 </div>
               </div>

@@ -19,7 +19,7 @@ export default async function PublicOnlineEntryPage({
       supabase
         .from("public_event_entry_options")
         .select(
-          "organization_name, logo_path, brand_primary, brand_accent, allow_guest_entries, roping_id, title, venue_name, address, starts_at, ends_at, entries_close_at, entries_are_open, incentive_enabled, division_id, division_name, division_description, division_starts_at, maximum_entries_per_person, allow_guests, estimated_first_entry_cents, sort_order",
+          "organization_name, logo_path, brand_primary, brand_accent, allow_guest_entries, roping_id, title, venue_name, address, starts_at, ends_at, entries_close_at, entries_are_open, incentive_enabled, division_id, division_name, division_description, division_starts_at, scheduled_date, schedule_type, schedule_note, maximum_entries_per_person, allow_guests, estimated_first_entry_cents, sort_order",
         )
         .eq("organization_slug", organizationSlug)
         .eq("roping_slug", ropingSlug)
@@ -67,6 +67,14 @@ export default async function PublicOnlineEntryPage({
           minute: "2-digit",
         }).format(new Date(row.division_starts_at))
       : null,
+    scheduledDate: new Intl.DateTimeFormat("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${row.scheduled_date}T12:00:00Z`)),
+    scheduleType: row.schedule_type,
+    scheduleNote: row.schedule_note,
     incentiveEnabled: row.incentive_enabled,
     options: (optionalFees ?? [])
       .filter((fee) => fee.division_id === row.division_id)

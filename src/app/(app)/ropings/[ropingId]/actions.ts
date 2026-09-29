@@ -11,6 +11,7 @@ export interface LiveRunState {
 }
 
 export type DrawOrderState = LiveRunState;
+export type ScheduleFormState = LiveRunState;
 
 const shortRoundBracketSchema = z
   .array(
@@ -46,6 +47,45 @@ export async function updateRopingRounds(ropingId: string, formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath(`/ropings/${ropingId}`);
   revalidatePath(`/ropings/${ropingId}/live`);
+}
+
+const scheduleSchema = z.object({
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
+  startTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .or(z.literal("")),
+  scheduleNote: z.string().trim().max(120),
+});
+
+export async function updateClassSchedule(
+  ropingId: string,
+  divisionId: string,
+  _state: ScheduleFormState,
+  formData: FormData,
+): Promise<ScheduleFormState> {
+  const parsed = scheduleSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return { message: "Choose a valid date and schedule listing." };
+  if (parsed.data.scheduleType !== "follows_previous" && !parsed.data.startTime)
+    return { message: "Set and tentative schedules require a time." };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("save_class_schedule", {
+    target_roping_division_id: divisionId,
+    target_scheduled_date: parsed.data.scheduledDate,
+    target_schedule_type: parsed.data.scheduleType,
+    target_starts_at_local:
+      parsed.data.scheduleType === "follows_previous"
+        ? null
+        : `${parsed.data.scheduledDate}T${parsed.data.startTime}:00`,
+    target_schedule_note: parsed.data.scheduleNote,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/public`);
+  return { success: true, message: "Schedule updated." };
 }
 
 export async function startRoping(ropingId: string) {

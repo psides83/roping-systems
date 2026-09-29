@@ -26,6 +26,14 @@ interface PublicEvent {
   resultStatus: string;
   entriesOpenAt: string | null;
   entriesCloseAt: string | null;
+  scheduledRopings: Array<{
+    id: string;
+    name: string;
+    scheduledDate: string;
+    startsAt: string | null;
+    scheduleType: "fixed" | "tentative" | "follows_previous";
+    scheduleNote: string | null;
+  }>;
 }
 
 interface PublicResult {
@@ -66,6 +74,24 @@ async function getPublicData(organizationSlug: string) {
       resultStatus: event.resultStatus ?? "unofficial",
       entriesOpenAt: null,
       entriesCloseAt: null,
+      scheduledRopings: [
+        {
+          id: `${event.id}-1`,
+          name: "Calf roping · Open",
+          scheduledDate: event.date,
+          startsAt: "9:00 AM",
+          scheduleType: "fixed",
+          scheduleNote: null,
+        },
+        {
+          id: `${event.id}-2`,
+          name: "Breakaway · Open",
+          scheduledDate: event.date,
+          startsAt: null,
+          scheduleType: "follows_previous",
+          scheduleNote: null,
+        },
+      ],
     }));
     return {
       organization: {
@@ -155,6 +181,18 @@ async function getPublicData(organizationSlug: string) {
     throw new Error(
       `Unable to load the public schedule: ${scheduleError.message}`,
     );
+  const { data: scheduleRows, error: classScheduleError } = await supabase
+    .from("public_event_entry_options")
+    .select(
+      "roping_id, division_id, division_name, division_starts_at, scheduled_date, schedule_type, schedule_note, sort_order",
+    )
+    .eq("organization_slug", organizationSlug)
+    .order("scheduled_date")
+    .order("sort_order");
+  if (classScheduleError)
+    throw new Error(
+      `Unable to load the class schedule: ${classScheduleError.message}`,
+    );
   const liveEvent =
     schedule.find((event) => event.status === "in_progress") ??
     schedule.find((event) => event.status === "completed");
@@ -200,6 +238,16 @@ async function getPublicData(organizationSlug: string) {
     resultStatus: event.result_status,
     entriesOpenAt: event.entries_open_at,
     entriesCloseAt: event.entries_close_at,
+    scheduledRopings: (scheduleRows ?? [])
+      .filter((row) => row.roping_id === event.id)
+      .map((row) => ({
+        id: row.division_id,
+        name: row.division_name,
+        scheduledDate: row.scheduled_date,
+        startsAt: row.division_starts_at,
+        scheduleType: row.schedule_type,
+        scheduleNote: row.schedule_note,
+      })),
   }));
   const logoUrl = organization.logo_path
     ? supabase.storage
@@ -451,6 +499,38 @@ export default async function OrganizationPublicPage({
                     <MapPin size={15} />{" "}
                     {[event.venue, event.address].filter(Boolean).join(", ")}
                   </p>
+                  {event.scheduledRopings.length ? (
+                    <ol className="mt-4 divide-y divide-[#e7ebe8] border-y border-[#e7ebe8]">
+                      {event.scheduledRopings.map((roping) => (
+                        <li
+                          key={roping.id}
+                          className="flex items-start justify-between gap-3 py-2.5 text-xs"
+                        >
+                          <span className="font-semibold">{roping.name}</span>
+                          <span className="shrink-0 text-right text-[#66716b]">
+                            {roping.scheduleType === "follows_previous"
+                              ? "Follows previous"
+                              : `${new Intl.DateTimeFormat("en-US", {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }).format(new Date(roping.startsAt!))}${
+                                  roping.scheduleType === "tentative"
+                                    ? " tentative"
+                                    : ""
+                                }`}
+                            {roping.scheduleNote ? (
+                              <span className="block text-[10px]">
+                                {roping.scheduleNote}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <p
                       className={`flex items-center gap-2 text-xs font-semibold ${open ? "text-emerald-700" : "text-[#66716b]"}`}
