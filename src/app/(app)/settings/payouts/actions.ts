@@ -16,6 +16,7 @@ const placeSchema = z.object({
   percentageBasisPoints: z.number().int().positive().max(10000),
 });
 const bracketSchema = z.object({
+  stageType: z.enum(["go_round", "aggregate", "short_round"]),
   minimumEntries: z.number().int().positive(),
   maximumEntries: z.number().int().positive().nullable(),
   places: z.array(placeSchema).min(1),
@@ -28,6 +29,7 @@ const formSchema = z.object({
   paybackPercent: z.coerce.number().positive().max(100),
   goRoundsPercent: z.coerce.number().min(0).max(100),
   aggregatePercent: z.coerce.number().min(0).max(100),
+  shortRoundPercent: z.coerce.number().min(0).max(100),
   bracketsJson: z.string(),
 });
 
@@ -63,9 +65,19 @@ export async function savePayoutSchedule(
           "Each bracket must distribute exactly 100% of its payout pool.",
       };
   }
-  if (parsed.data.goRoundsPercent + parsed.data.aggregatePercent !== 100)
+  for (const stageType of ["go_round", "aggregate", "short_round"] as const) {
+    if (!brackets.some((bracket) => bracket.stageType === stageType))
+      return { message: "Add at least one entry bracket for every stage." };
+  }
+  if (
+    parsed.data.goRoundsPercent +
+      parsed.data.aggregatePercent +
+      parsed.data.shortRoundPercent !==
+    100
+  )
     return {
-      message: "Go-round and aggregate allocations must total 100%.",
+      message:
+        "Go-round, aggregate, and short-round allocations must total 100%.",
     };
 
   const organization = await getActiveOrganization();
@@ -84,6 +96,9 @@ export async function savePayoutSchedule(
     ),
     schedule_aggregate_basis_points: Math.round(
       parsed.data.aggregatePercent * 100,
+    ),
+    schedule_short_round_basis_points: Math.round(
+      parsed.data.shortRoundPercent * 100,
     ),
     schedule_brackets: brackets,
   });

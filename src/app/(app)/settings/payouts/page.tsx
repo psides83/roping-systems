@@ -11,6 +11,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
+function demoBrackets(finalSplit: number[]) {
+  return [
+    { minimumEntries: 1, maximumEntries: 10, percentages: [100] },
+    { minimumEntries: 11, maximumEntries: 20, percentages: [60, 40] },
+    { minimumEntries: 21, maximumEntries: null, percentages: finalSplit },
+  ];
+}
+
 async function getPayoutData() {
   if (!isSupabaseConfigured())
     return {
@@ -24,15 +32,12 @@ async function getPayoutData() {
           paybackPercent: 65,
           goRoundsPercent: 50,
           aggregatePercent: 50,
-          brackets: [
-            { minimumEntries: 1, maximumEntries: 10, percentages: [100] },
-            { minimumEntries: 11, maximumEntries: 20, percentages: [60, 40] },
-            {
-              minimumEntries: 21,
-              maximumEntries: null,
-              percentages: [50, 30, 20],
-            },
-          ],
+          shortRoundPercent: 0,
+          bracketsByStage: {
+            go_round: demoBrackets([50, 30, 20]),
+            aggregate: demoBrackets([45, 30, 15, 10]),
+            short_round: demoBrackets([50, 30, 20]),
+          },
         },
       ] satisfies EditablePayoutSchedule[],
       divisions: [{ id: "open", name: "Open", payoutScheduleId: "standard" }],
@@ -50,7 +55,7 @@ async function getPayoutData() {
       supabase
         .from("payout_schedules")
         .select(
-          "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, payout_schedule_brackets(id, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
+          "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
         )
         .eq("organization_id", organization.id)
         .eq("is_active", true)
@@ -76,24 +81,32 @@ async function getPayoutData() {
       paybackPercent: schedule.payback_basis_points / 100,
       goRoundsPercent: schedule.go_rounds_basis_points / 100,
       aggregatePercent: schedule.aggregate_basis_points / 100,
-      brackets: (
-        schedule.payout_schedule_brackets as unknown as Array<{
-          minimum_entries: number;
-          maximum_entries: number | null;
-          payout_schedule_places: Array<{
-            place_number: number;
-            percentage_basis_points: number;
-          }>;
-        }>
-      )
-        .sort((a, b) => a.minimum_entries - b.minimum_entries)
-        .map((bracket) => ({
-          minimumEntries: bracket.minimum_entries,
-          maximumEntries: bracket.maximum_entries,
-          percentages: bracket.payout_schedule_places
-            .sort((a, b) => a.place_number - b.place_number)
-            .map((place) => place.percentage_basis_points / 100),
-        })),
+      shortRoundPercent: schedule.short_round_basis_points / 100,
+      bracketsByStage: Object.fromEntries(
+        (["go_round", "aggregate", "short_round"] as const).map((stage) => [
+          stage,
+          (
+            schedule.payout_schedule_brackets as unknown as Array<{
+              stage_type: string;
+              minimum_entries: number;
+              maximum_entries: number | null;
+              payout_schedule_places: Array<{
+                place_number: number;
+                percentage_basis_points: number;
+              }>;
+            }>
+          )
+            .filter((bracket) => bracket.stage_type === stage)
+            .sort((a, b) => a.minimum_entries - b.minimum_entries)
+            .map((bracket) => ({
+              minimumEntries: bracket.minimum_entries,
+              maximumEntries: bracket.maximum_entries,
+              percentages: bracket.payout_schedule_places
+                .sort((a, b) => a.place_number - b.place_number)
+                .map((place) => place.percentage_basis_points / 100),
+            })),
+        ]),
+      ) as EditablePayoutSchedule["bracketsByStage"],
     })),
     divisions: (divisions ?? []).map((division) => ({
       id: division.id,
@@ -209,6 +222,9 @@ export default async function PayoutSettingsPage() {
                   {schedule.paybackPercent}% payback ·{" "}
                   {schedule.goRoundsPercent}% across go-rounds ·{" "}
                   {schedule.aggregatePercent}% aggregate
+                  {schedule.shortRoundPercent
+                    ? ` · ${schedule.shortRoundPercent}% short round`
+                    : ""}
                 </p>
               </div>
               <PayoutScheduleDialog schedule={schedule} enabled={enabled} />
@@ -217,35 +233,46 @@ export default async function PayoutSettingsPage() {
               <table className="w-full min-w-[580px] text-left">
                 <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
                   <tr>
+                    <th className="px-5 py-3">Stage</th>
                     <th className="px-5 py-3">Entries</th>
                     <th className="px-5 py-3">Places paid</th>
                     <th className="px-5 py-3">Purse split</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edf0ee]">
-                  {schedule.brackets.map((bracket) => (
-                    <tr
-                      key={`${bracket.minimumEntries}-${bracket.maximumEntries}`}
-                    >
-                      <td className="px-5 py-3 text-sm font-semibold">
-                        {bracket.minimumEntries}
-                        {bracket.maximumEntries
-                          ? `–${bracket.maximumEntries}`
-                          : "+"}
-                      </td>
-                      <td className="px-5 py-3 text-sm">
-                        {bracket.percentages.length}
-                      </td>
-                      <td className="px-5 py-3 text-sm text-[#66716b]">
-                        {bracket.percentages
-                          .map(
-                            (percentage, index) =>
-                              `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} ${percentage}%`,
-                          )
-                          .join(" · ")}
-                      </td>
-                    </tr>
-                  ))}
+                  {(["go_round", "aggregate", "short_round"] as const).flatMap(
+                    (stage) =>
+                      schedule.bracketsByStage[stage].map((bracket) => (
+                        <tr
+                          key={`${stage}-${bracket.minimumEntries}-${bracket.maximumEntries}`}
+                        >
+                          <td className="px-5 py-3 text-xs font-bold uppercase text-[#66716b]">
+                            {stage === "go_round"
+                              ? "Go-round"
+                              : stage === "short_round"
+                                ? "Short round"
+                                : "Aggregate"}
+                          </td>
+                          <td className="px-5 py-3 text-sm font-semibold">
+                            {bracket.minimumEntries}
+                            {bracket.maximumEntries
+                              ? `–${bracket.maximumEntries}`
+                              : "+"}
+                          </td>
+                          <td className="px-5 py-3 text-sm">
+                            {bracket.percentages.length}
+                          </td>
+                          <td className="px-5 py-3 text-sm text-[#66716b]">
+                            {bracket.percentages
+                              .map(
+                                (percentage, index) =>
+                                  `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} ${percentage}%`,
+                              )
+                              .join(" · ")}
+                          </td>
+                        </tr>
+                      )),
+                  )}
                 </tbody>
               </table>
             </div>

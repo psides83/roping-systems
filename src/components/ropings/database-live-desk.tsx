@@ -6,10 +6,10 @@ import {
   AlertCircle,
   ArrowDown,
   ArrowUp,
+  ListOrdered,
   LoaderCircle,
   Save,
   Search,
-  Shuffle,
   SkipForward,
   Trophy,
 } from "lucide-react";
@@ -103,6 +103,12 @@ export function DatabaseLiveDesk({
   const completeCount = orderedRuns.filter(
     (run) => run.status !== "pending",
   ).length;
+  const orderMethod =
+    selectedRound === 1
+      ? "First entries rope last"
+      : selectedRound === 2
+        ? "Reverse of the first-round order"
+        : "Fewest qualified times first, then slowest aggregate to fastest";
   const normalizedSearch = search.trim().toLowerCase();
   const visibleRuns = normalizedSearch
     ? orderedRuns.filter(
@@ -179,8 +185,8 @@ export function DatabaseLiveDesk({
                   : drawReady
                     ? dirty
                       ? "Unsaved order changes"
-                      : "Draw order is set"
-                    : "Draw has not been generated"}
+                      : orderMethod
+                    : `Order not built · ${orderMethod}`}
             </p>
             <div className="flex flex-wrap gap-2">
               {isShortRound && !shortRoundSeeded ? (
@@ -249,8 +255,8 @@ export function DatabaseLiveDesk({
                     disabled={!canManageDraw}
                     className="flex h-8 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-xs font-semibold disabled:opacity-50"
                   >
-                    <Shuffle size={14} />
-                    {drawReady ? "Regenerate draw" : "Generate draw"}
+                    <ListOrdered size={14} />
+                    {drawReady ? "Rebuild order" : "Build order"}
                   </button>
                 </form>
               ) : null}

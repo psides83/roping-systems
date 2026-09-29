@@ -7,6 +7,9 @@ import { getActiveOrganization } from "@/lib/organizations";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
+type PayoutStage = "go_round" | "aggregate" | "short_round";
+type PayoutPlace = { place: number; percentage: number; amountCents: number };
+
 interface PayoutPlan {
   id: string;
   name: string;
@@ -14,13 +17,16 @@ interface PayoutPlan {
   feeKind: string | null;
   division: string;
   numberOfRuns: number;
+  shortRoundEnabled: boolean;
   paybackPercent: number;
   goRoundsPercent: number;
   aggregatePercent: number;
+  shortRoundPercent: number;
   entryCount: number;
   poolCents: number;
-  places: Array<{ place: number; percentage: number; amountCents: number }>;
+  placesByStage: Record<PayoutStage, PayoutPlace[]>;
   results: Array<{
+    entryId: string;
     sectionType: string;
     roundNumber: number | null;
     place: number;
@@ -34,6 +40,7 @@ interface PayoutResultRow {
   section_type: string;
   round_number: number | null;
   place_number: number;
+  entry_id: string;
   contestant_name: string;
   performance_seconds: number;
   payout_cents: number;
@@ -56,7 +63,7 @@ export default async function EventPayoutsPage({
     supabase
       .from("roping_payout_plans")
       .select(
-        "id, name, pool_type, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, roping_divisions!inner(name, scheduled_date, number_of_runs), roping_fees(kind)",
+        "id, name, pool_type, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, roping_divisions!inner(name, scheduled_date, number_of_runs, short_round_enabled), roping_fees(kind)",
       )
       .eq("roping_id", ropingId)
       .eq("organization_id", organization.id)
@@ -87,6 +94,7 @@ export default async function EventPayoutsPage({
       const rows = (data ?? []) as Array<{
         entry_count: number;
         pool_cents: number;
+        stage_type: PayoutStage | null;
         place_number: number | null;
         percentage_basis_points: number | null;
         payout_cents: number | null;
@@ -104,6 +112,7 @@ export default async function EventPayoutsPage({
             name: string;
             scheduled_date: string;
             number_of_runs: number;
+            short_round_enabled: boolean;
           };
           return `${division.name} · ${new Intl.DateTimeFormat("en-US", {
             weekday: "short",
@@ -115,20 +124,32 @@ export default async function EventPayoutsPage({
         numberOfRuns: (
           plan.roping_divisions as unknown as { number_of_runs: number }
         ).number_of_runs,
+        shortRoundEnabled: (
+          plan.roping_divisions as unknown as { short_round_enabled: boolean }
+        ).short_round_enabled,
         paybackPercent: plan.payback_basis_points / 100,
         goRoundsPercent: plan.go_rounds_basis_points / 100,
         aggregatePercent: plan.aggregate_basis_points / 100,
+        shortRoundPercent: plan.short_round_basis_points / 100,
         entryCount: summary.entry_count,
         poolCents: Number(summary.pool_cents),
-        places: rows
-          .filter((row) => row.place_number !== null)
-          .map((row) => ({
-            place: row.place_number as number,
-            percentage: Number(row.percentage_basis_points) / 100,
-            amountCents: Number(row.payout_cents),
-          })),
+        placesByStage: Object.fromEntries(
+          (["go_round", "aggregate", "short_round"] as const).map((stage) => [
+            stage,
+            rows
+              .filter(
+                (row) => row.stage_type === stage && row.place_number !== null,
+              )
+              .map((row) => ({
+                place: row.place_number as number,
+                percentage: Number(row.percentage_basis_points) / 100,
+                amountCents: Number(row.payout_cents),
+              })),
+          ]),
+        ) as Record<PayoutStage, PayoutPlace[]>,
         results: ((resultCalculation.data ?? []) as PayoutResultRow[]).map(
           (result) => ({
+            entryId: result.entry_id,
             sectionType: result.section_type,
             roundNumber: result.round_number,
             place: result.place_number,
@@ -197,9 +218,12 @@ export default async function EventPayoutsPage({
                   across {plan.numberOfRuns}{" "}
                   {plan.numberOfRuns === 1 ? "go" : "goes"} ·{" "}
                   {plan.aggregatePercent}% aggregate
+                  {plan.shortRoundEnabled && plan.shortRoundPercent
+                    ? ` · ${plan.shortRoundPercent}% short round`
+                    : ""}
                 </p>
               </header>
-              {plan.places.length ? (
+              {plan.placesByStage.go_round.length ? (
                 <>
                   <PayoutBreakdown plan={plan} />
                   {plan.results.length ? <PayoutResults plan={plan} /> : null}
@@ -239,7 +263,7 @@ export default async function EventPayoutsPage({
   );
 }
 
-function allocatePlaces(poolCents: number, places: PayoutPlan["places"]) {
+function allocatePlaces(poolCents: number, places: PayoutPlace[]) {
   const amounts = places.map((place) =>
     Math.floor((poolCents * place.percentage) / 100),
   );
@@ -253,7 +277,9 @@ function PayoutResults({ plan }: { plan: PayoutPlan }) {
   const sections = Map.groupBy(plan.results, (result) =>
     result.sectionType === "aggregate"
       ? "Aggregate"
-      : `Go ${result.roundNumber}`,
+      : result.sectionType === "short_round"
+        ? "Short round"
+        : `Go ${result.roundNumber}`,
   );
   return (
     <section className="border-t border-[#e7ebe8] p-5">
@@ -273,7 +299,7 @@ function PayoutResults({ plan }: { plan: PayoutPlan }) {
             <div className="divide-y divide-[#edf0ee]">
               {results.map((result) => (
                 <div
-                  key={`${section}-${result.place}`}
+                  key={`${section}-${result.entryId}`}
                   className="grid grid-cols-[28px_1fr_auto] items-center gap-2 px-3 py-2.5 text-sm"
                 >
                   <span className="font-bold">{result.place}</span>
@@ -302,51 +328,100 @@ function PayoutBreakdown({ plan }: { plan: PayoutPlan }) {
   const goRoundsTotal = Math.floor(
     (plan.poolCents * plan.goRoundsPercent) / 100,
   );
-  const aggregatePool = plan.poolCents - goRoundsTotal;
+  const shortRoundPool = Math.floor(
+    (plan.poolCents * plan.shortRoundPercent) / 100,
+  );
+  const aggregatePool = plan.poolCents - goRoundsTotal - shortRoundPool;
   const goPools = Array.from(
     { length: plan.numberOfRuns },
     (_, index) =>
       Math.floor(goRoundsTotal / plan.numberOfRuns) +
       (index < goRoundsTotal % plan.numberOfRuns ? 1 : 0),
   );
-  const goPayouts = goPools.map((pool) => allocatePlaces(pool, plan.places));
-  const aggregatePayouts = allocatePlaces(aggregatePool, plan.places);
+  const goPlaces = plan.placesByStage.go_round;
+  const goPayouts = goPools.map((pool) => allocatePlaces(pool, goPlaces));
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[520px] text-left text-sm">
-        <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
-          <tr>
-            <th className="px-5 py-3">Place</th>
-            <th className="px-3 py-3">Split</th>
-            {goPools.map((_, index) => (
-              <th key={index} className="px-3 py-3 text-right">
-                Go {index + 1}
-              </th>
-            ))}
-            <th className="px-5 py-3 text-right">Aggregate</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#edf0ee]">
-          {plan.places.map((place, placeIndex) => (
-            <tr key={place.place}>
-              <td className="px-5 py-4 font-bold">Place {place.place}</td>
-              <td className="px-3 py-4 text-[#66716b]">{place.percentage}%</td>
-              {goPayouts.map((payouts, goIndex) => (
-                <td
-                  key={goIndex}
-                  className="px-3 py-4 text-right font-semibold"
-                >
-                  {formatCurrency(payouts[placeIndex])}
-                </td>
+    <div className="divide-y divide-[#e7ebe8]">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] text-left text-sm">
+          <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
+            <tr>
+              <th className="px-5 py-3">Go-round place</th>
+              <th className="px-3 py-3">Split</th>
+              {goPools.map((_, index) => (
+                <th key={index} className="px-3 py-3 text-right">
+                  Go {index + 1}
+                </th>
               ))}
-              <td className="px-5 py-4 text-right font-bold">
-                {formatCurrency(aggregatePayouts[placeIndex])}
-              </td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-[#edf0ee]">
+            {goPlaces.map((place, placeIndex) => (
+              <tr key={place.place}>
+                <td className="px-5 py-3 font-bold">Place {place.place}</td>
+                <td className="px-3 py-3 text-[#66716b]">
+                  {place.percentage}%
+                </td>
+                {goPayouts.map((payouts, goIndex) => (
+                  <td
+                    key={goIndex}
+                    className="px-3 py-3 text-right font-semibold"
+                  >
+                    {formatCurrency(payouts[placeIndex])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <StagePayoutTable
+        title="Aggregate"
+        poolCents={aggregatePool}
+        places={plan.placesByStage.aggregate}
+      />
+      {plan.shortRoundEnabled && shortRoundPool > 0 ? (
+        <StagePayoutTable
+          title="Short round"
+          poolCents={shortRoundPool}
+          places={plan.placesByStage.short_round}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function StagePayoutTable({
+  title,
+  poolCents,
+  places,
+}: {
+  title: string;
+  poolCents: number;
+  places: PayoutPlace[];
+}) {
+  const payouts = allocatePlaces(poolCents, places);
+  return (
+    <section className="p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold">{title}</h3>
+        <span className="text-sm font-bold">{formatCurrency(poolCents)}</span>
+      </div>
+      <div className="divide-y divide-[#edf0ee] rounded-md border border-[#e3e7e5]">
+        {places.map((place, index) => (
+          <div
+            key={place.place}
+            className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2.5 text-sm"
+          >
+            <span className="font-semibold">Place {place.place}</span>
+            <span className="text-[#66716b]">{place.percentage}%</span>
+            <span className="min-w-20 text-right font-bold">
+              {formatCurrency(payouts[index])}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

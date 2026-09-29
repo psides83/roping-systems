@@ -16,6 +16,14 @@ interface EditableBracket {
   percentages: number[];
 }
 
+type PayoutStage = "go_round" | "aggregate" | "short_round";
+
+const payoutStages: Array<{ id: PayoutStage; label: string }> = [
+  { id: "go_round", label: "Go-rounds" },
+  { id: "aggregate", label: "Aggregate" },
+  { id: "short_round", label: "Short round" },
+];
+
 export interface EditablePayoutSchedule {
   id: string;
   name: string;
@@ -24,11 +32,15 @@ export interface EditablePayoutSchedule {
   paybackPercent: number;
   goRoundsPercent: number;
   aggregatePercent: number;
-  brackets: Array<{
-    minimumEntries: number;
-    maximumEntries: number | null;
-    percentages: number[];
-  }>;
+  shortRoundPercent: number;
+  bracketsByStage: Record<
+    PayoutStage,
+    Array<{
+      minimumEntries: number;
+      maximumEntries: number | null;
+      percentages: number[];
+    }>
+  >;
 }
 
 const inputClass =
@@ -49,13 +61,32 @@ export function PayoutScheduleDialog({
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [brackets, setBrackets] = useState<EditableBracket[]>(
+  const [selectedStage, setSelectedStage] = useState<PayoutStage>("go_round");
+  const [bracketsByStage, setBracketsByStage] = useState<
+    Record<PayoutStage, EditableBracket[]>
+  >(
     () =>
-      schedule?.brackets.map((bracket, index) => ({
-        ...bracket,
-        key: `${schedule.id}-${index}`,
-      })) ?? [newBracket(0)],
+      Object.fromEntries(
+        payoutStages.map(({ id }) => [
+          id,
+          schedule?.bracketsByStage[id].map((bracket, index) => ({
+            ...bracket,
+            key: `${schedule.id}-${id}-${index}`,
+          })) ?? [newBracket(0)],
+        ]),
+      ) as Record<PayoutStage, EditableBracket[]>,
   );
+  const brackets = bracketsByStage[selectedStage];
+  const setBrackets = (
+    update:
+      | EditableBracket[]
+      | ((current: EditableBracket[]) => EditableBracket[]),
+  ) =>
+    setBracketsByStage((current) => ({
+      ...current,
+      [selectedStage]:
+        typeof update === "function" ? update(current[selectedStage]) : update,
+    }));
   const [state, action, pending] = useActionState(
     savePayoutSchedule,
     initialState,
@@ -68,19 +99,22 @@ export function PayoutScheduleDialog({
   const bracketsJson = useMemo(
     () =>
       JSON.stringify(
-        brackets.map((bracket) => ({
-          minimumEntries: Number(bracket.minimumEntries),
-          maximumEntries:
-            bracket.maximumEntries === null
-              ? null
-              : Number(bracket.maximumEntries),
-          places: bracket.percentages.map((percentage, index) => ({
-            place: index + 1,
-            percentageBasisPoints: Math.round(Number(percentage) * 100),
+        payoutStages.flatMap(({ id }) =>
+          bracketsByStage[id].map((bracket) => ({
+            stageType: id,
+            minimumEntries: Number(bracket.minimumEntries),
+            maximumEntries:
+              bracket.maximumEntries === null
+                ? null
+                : Number(bracket.maximumEntries),
+            places: bracket.percentages.map((percentage, index) => ({
+              place: index + 1,
+              percentageBasisPoints: Math.round(Number(percentage) * 100),
+            })),
           })),
-        })),
+        ),
       ),
-    [brackets],
+    [bracketsByStage],
   );
 
   const updateBracket = (index: number, update: Partial<EditableBracket>) =>
@@ -208,7 +242,7 @@ export function PayoutScheduleDialog({
                   Payback is applied to collected payout fees. The go-round
                   share is divided evenly across the configured main rounds.
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <label className="text-xs font-bold">
                     Payback
                     <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
@@ -257,15 +291,50 @@ export function PayoutScheduleDialog({
                       <span>%</span>
                     </span>
                   </label>
+                  <label className="text-xs font-bold">
+                    Short round
+                    <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
+                      <input
+                        name="shortRoundPercent"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        defaultValue={schedule?.shortRoundPercent ?? 0}
+                        className="min-w-0 flex-1 bg-transparent outline-none"
+                        required
+                      />
+                      <span>%</span>
+                    </span>
+                  </label>
                 </div>
               </section>
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-sm font-bold">Entry brackets</h3>
+                  <h3 className="text-sm font-bold">Paid-place rules</h3>
                   <p className="mt-1 text-xs text-[#758078]">
-                    Percentages within every bracket must total 100%.
+                    Each stage can pay a different number of places.
                   </p>
                 </div>
+                <div className="grid grid-cols-3 rounded-md bg-[#eef1ef] p-1">
+                  {payoutStages.map((stage) => (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      onClick={() => setSelectedStage(stage.id)}
+                      className={`min-h-9 rounded px-2 text-xs font-bold ${
+                        selectedStage === stage.id
+                          ? "bg-white text-[#17201c] shadow-sm"
+                          : "text-[#66716b]"
+                      }`}
+                    >
+                      {stage.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-[#758078]">
+                  Percentages within each bracket in this stage must total 100%.
+                </p>
                 {brackets.map((bracket, bracketIndex) => {
                   const total = bracket.percentages.reduce(
                     (sum, value) => sum + Number(value || 0),
