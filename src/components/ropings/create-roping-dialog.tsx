@@ -95,7 +95,7 @@ export function CreateRopingDialog({
                   Create roping
                 </h2>
                 <p className="mt-1 text-sm text-[#66716b]">
-                  Selected entry class rules and fees are copied into this
+                  Selected event template rules and fees are copied into this
                   event.
                 </p>
               </div>
@@ -183,7 +183,9 @@ export function CreateRopingDialog({
               <fieldset>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <legend className="text-sm font-bold">Entry classes</legend>
+                    <legend className="text-sm font-bold">
+                      Event templates
+                    </legend>
                     <p className="mt-1 text-xs text-[#758078]">
                       Choose each division and classification, then set its
                       rounds for this event.
@@ -267,7 +269,8 @@ export function CreateRopingDialog({
                 ) : null}
                 {!divisions.length ? (
                   <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    Create at least one entry class before scheduling a roping.
+                    Create at least one event template before scheduling a
+                    roping.
                   </p>
                 ) : null}
               </fieldset>

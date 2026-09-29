@@ -31,13 +31,24 @@ export async function submitOnlineEntry(
   const divisionIds = formData.getAll("divisionIds").map(String);
   const requestedDivisions = divisionIds.flatMap((divisionId) => {
     const quantity = Number(formData.get(`quantity-${divisionId}`));
-    return z.uuid().safeParse(divisionId).success && Number.isInteger(quantity) && quantity > 0
-      ? [{ divisionId, quantity, optionIds: formData.getAll(`option-${divisionId}`).map(String).filter((value) => z.uuid().safeParse(value).success) }]
+    return z.uuid().safeParse(divisionId).success &&
+      Number.isInteger(quantity) &&
+      quantity > 0
+      ? [
+          {
+            divisionId,
+            quantity,
+            optionIds: formData
+              .getAll(`option-${divisionId}`)
+              .map(String)
+              .filter((value) => z.uuid().safeParse(value).success),
+          },
+        ]
       : [];
   });
 
   if (!requestedDivisions.length) {
-    return { errors: { divisionIds: ["Select at least one entry class."] } };
+    return { errors: { divisionIds: ["Select at least one class."] } };
   }
 
   const supabase = await createClient();
@@ -56,6 +67,7 @@ export async function submitOnlineEntry(
   if (error) return { message: error.message };
   return {
     success: true,
-    message: "Your entry request was received. The organization will review it before adding it to the draw.",
+    message:
+      "Your entry request was received. The organization will review it before adding it to the draw.",
   };
 }

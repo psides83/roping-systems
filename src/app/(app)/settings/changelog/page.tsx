@@ -7,7 +7,7 @@ const entityLabels: Record<string, string> = {
   organizations: "Organization settings",
   organization_users: "Team access",
   organization_memberships: "Membership",
-  division_templates: "Entry class template",
+  division_templates: "Event template",
   fee_templates: "Fee template",
   disciplines: "Division",
   classifications: "Classification",
@@ -18,7 +18,7 @@ const entityLabels: Record<string, string> = {
   payout_schedule_brackets: "Payout bracket",
   payout_schedule_places: "Payout place",
   ropings: "Roping",
-  roping_divisions: "Event entry class",
+  roping_divisions: "Event class",
   roping_incentive_rules: "Incentive handicap rule",
   roping_fees: "Roping fee or option",
   entries: "Entry",
@@ -37,26 +37,187 @@ function formatValue(value: unknown) {
   return String(value).replaceAll("_", " ");
 }
 
-function describeChanges(action: string, before: Record<string, unknown> | null, after: Record<string, unknown> | null) {
-  if (action === "insert") return [{ field: "Record", before: "", after: "Created" }];
-  if (action === "delete") return [{ field: "Record", before: "Active", after: "Deleted" }];
-  const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
-  return Array.from(keys).filter((key) => !ignoredFields.has(key) && JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key])).slice(0, 8).map((key) => ({ field: key.replaceAll("_", " "), before: formatValue(before?.[key]), after: formatValue(after?.[key]) }));
+function describeChanges(
+  action: string,
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+) {
+  if (action === "insert")
+    return [{ field: "Record", before: "", after: "Created" }];
+  if (action === "delete")
+    return [{ field: "Record", before: "Active", after: "Deleted" }];
+  const keys = new Set([
+    ...Object.keys(before ?? {}),
+    ...Object.keys(after ?? {}),
+  ]);
+  return Array.from(keys)
+    .filter(
+      (key) =>
+        !ignoredFields.has(key) &&
+        JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key]),
+    )
+    .slice(0, 8)
+    .map((key) => ({
+      field: key.replaceAll("_", " "),
+      before: formatValue(before?.[key]),
+      after: formatValue(after?.[key]),
+    }));
 }
 
-export default async function ChangelogPage({ searchParams }: PageProps<"/settings/changelog">) {
+export default async function ChangelogPage({
+  searchParams,
+}: PageProps<"/settings/changelog">) {
   const filters = await searchParams;
   const organization = await getActiveOrganization();
   if (!organization) return null;
   const entityFilter = typeof filters.entity === "string" ? filters.entity : "";
   const actionFilter = typeof filters.action === "string" ? filters.action : "";
   const supabase = await createClient();
-  let query = supabase.from("organization_audit_history").select("id, actor_label, entity_type, entity_id, action, before_data, after_data, created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(100);
+  let query = supabase
+    .from("organization_audit_history")
+    .select(
+      "id, actor_label, entity_type, entity_id, action, before_data, after_data, created_at",
+    )
+    .eq("organization_id", organization.id)
+    .order("created_at", { ascending: false })
+    .limit(100);
   if (entityFilter) query = query.eq("entity_type", entityFilter);
   if (actionFilter) query = query.eq("action", actionFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Unable to load the changelog: ${error.message}`);
 
   const entities = Object.keys(entityLabels);
-  return <div className="space-y-6"><PageHeader eyebrow="Accountability" title="Organization changelog" description="Review data entry and configuration changes, including who made each change and exactly what was modified." /><form className="flex flex-col gap-3 rounded-md border border-[#dfe4e1] bg-white p-4 sm:flex-row sm:items-end"><label className="block flex-1 text-xs font-bold uppercase text-[#66716b]">Record type<select name="entity" defaultValue={entityFilter} className="mt-2 h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal normal-case"><option value="">All record types</option>{entities.map((entity) => <option key={entity} value={entity}>{entityLabels[entity]}</option>)}</select></label><label className="block flex-1 text-xs font-bold uppercase text-[#66716b]">Action<select name="action" defaultValue={actionFilter} className="mt-2 h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal normal-case"><option value="">All actions</option><option value="insert">Created</option><option value="update">Updated</option><option value="delete">Deleted</option></select></label><button className="h-10 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">Apply filters</button></form><section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"><header className="flex items-center gap-2 border-b border-[#e7ebe8] px-5 py-4"><History size={18} className="text-[var(--brand-accent-strong)]" /><h2 className="font-bold">Recent activity</h2><span className="ml-auto text-xs text-[#758078]">Latest {data.length} changes</span></header><div className="divide-y divide-[#edf0ee]">{data.map((item) => { const changes = describeChanges(item.action, item.before_data as Record<string, unknown> | null, item.after_data as Record<string, unknown> | null); return <article key={item.id} className="p-5"><div className="flex flex-col gap-2 sm:flex-row sm:items-start"><span className={`mt-0.5 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${item.action === "delete" ? "bg-rose-50 text-rose-700" : item.action === "insert" ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}>{item.action === "insert" ? "Created" : item.action === "delete" ? "Deleted" : "Updated"}</span><div className="min-w-0 flex-1"><p className="text-sm font-bold">{entityLabels[item.entity_type] ?? item.entity_type.replaceAll("_", " ")}</p><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#758078]"><span className="flex items-center gap-1"><UserRound size={13} /> {item.actor_label}</span><time>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: organization.timezone }).format(new Date(item.created_at))}</time>{item.entity_id ? <span className="font-mono text-[10px]">{item.entity_id.slice(0, 8)}</span> : null}</div>{changes.length ? <div className="mt-3 space-y-1.5">{changes.map((change) => <div key={change.field} className="grid gap-1 rounded bg-[#f7f8f7] px-3 py-2 text-xs sm:grid-cols-[150px_1fr]"><span className="font-semibold capitalize text-[#58645d]">{change.field}</span><span className="min-w-0 break-words text-[#66716b]">{change.before ? <><span className="line-through opacity-70">{change.before}</span><span className="mx-2">→</span></> : null}<span className="font-medium text-[#17201c]">{change.after}</span></span></div>)}</div> : null}</div></div></article>; })}{!data.length ? <div className="p-12 text-center"><p className="font-semibold">No changes match these filters</p><p className="mt-2 text-sm text-[#758078]">New organization activity will appear here automatically.</p></div> : null}</div></section></div>;
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Accountability"
+        title="Organization changelog"
+        description="Review data entry and configuration changes, including who made each change and exactly what was modified."
+      />
+      <form className="flex flex-col gap-3 rounded-md border border-[#dfe4e1] bg-white p-4 sm:flex-row sm:items-end">
+        <label className="block flex-1 text-xs font-bold uppercase text-[#66716b]">
+          Record type
+          <select
+            name="entity"
+            defaultValue={entityFilter}
+            className="mt-2 h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal normal-case"
+          >
+            <option value="">All record types</option>
+            {entities.map((entity) => (
+              <option key={entity} value={entity}>
+                {entityLabels[entity]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block flex-1 text-xs font-bold uppercase text-[#66716b]">
+          Action
+          <select
+            name="action"
+            defaultValue={actionFilter}
+            className="mt-2 h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal normal-case"
+          >
+            <option value="">All actions</option>
+            <option value="insert">Created</option>
+            <option value="update">Updated</option>
+            <option value="delete">Deleted</option>
+          </select>
+        </label>
+        <button className="h-10 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">
+          Apply filters
+        </button>
+      </form>
+      <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+        <header className="flex items-center gap-2 border-b border-[#e7ebe8] px-5 py-4">
+          <History size={18} className="text-[var(--brand-accent-strong)]" />
+          <h2 className="font-bold">Recent activity</h2>
+          <span className="ml-auto text-xs text-[#758078]">
+            Latest {data.length} changes
+          </span>
+        </header>
+        <div className="divide-y divide-[#edf0ee]">
+          {data.map((item) => {
+            const changes = describeChanges(
+              item.action,
+              item.before_data as Record<string, unknown> | null,
+              item.after_data as Record<string, unknown> | null,
+            );
+            return (
+              <article key={item.id} className="p-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                  <span
+                    className={`mt-0.5 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${item.action === "delete" ? "bg-rose-50 text-rose-700" : item.action === "insert" ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}
+                  >
+                    {item.action === "insert"
+                      ? "Created"
+                      : item.action === "delete"
+                        ? "Deleted"
+                        : "Updated"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">
+                      {entityLabels[item.entity_type] ??
+                        item.entity_type.replaceAll("_", " ")}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#758078]">
+                      <span className="flex items-center gap-1">
+                        <UserRound size={13} /> {item.actor_label}
+                      </span>
+                      <time>
+                        {new Intl.DateTimeFormat("en-US", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                          timeZone: organization.timezone,
+                        }).format(new Date(item.created_at))}
+                      </time>
+                      {item.entity_id ? (
+                        <span className="font-mono text-[10px]">
+                          {item.entity_id.slice(0, 8)}
+                        </span>
+                      ) : null}
+                    </div>
+                    {changes.length ? (
+                      <div className="mt-3 space-y-1.5">
+                        {changes.map((change) => (
+                          <div
+                            key={change.field}
+                            className="grid gap-1 rounded bg-[#f7f8f7] px-3 py-2 text-xs sm:grid-cols-[150px_1fr]"
+                          >
+                            <span className="font-semibold capitalize text-[#58645d]">
+                              {change.field}
+                            </span>
+                            <span className="min-w-0 break-words text-[#66716b]">
+                              {change.before ? (
+                                <>
+                                  <span className="line-through opacity-70">
+                                    {change.before}
+                                  </span>
+                                  <span className="mx-2">→</span>
+                                </>
+                              ) : null}
+                              <span className="font-medium text-[#17201c]">
+                                {change.after}
+                              </span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+          {!data.length ? (
+            <div className="p-12 text-center">
+              <p className="font-semibold">No changes match these filters</p>
+              <p className="mt-2 text-sm text-[#758078]">
+                New organization activity will appear here automatically.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
 }

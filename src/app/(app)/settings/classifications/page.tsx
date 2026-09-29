@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import {
   CreateClassificationDialog,
   CreateDisciplineDialog,
+  EditClassificationDialog,
+  EditDisciplineDialog,
 } from "@/components/settings/classification-dialogs";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -27,9 +29,9 @@ async function getClassificationData() {
   if (!isSupabaseConfigured())
     return {
       role: "owner",
-    openReviews: 1,
-    reviews: [
-      {
+      openReviews: 1,
+      reviews: [
+        {
           id: "review-2",
           membershipId: "2",
           memberName: "Mason Cole",
@@ -167,16 +169,22 @@ export default async function ClassificationSettingsPage() {
       />
       <div className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]">
         <Link
-          href="/settings/divisions"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Entry classes & fees
-        </Link>
-        <Link
           href="/settings/classifications"
           className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
         >
           Divisions & classifications
+        </Link>
+        <Link
+          href="/settings/divisions"
+          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
+        >
+          Event templates
+        </Link>
+        <Link
+          href="/settings/payouts"
+          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
+        >
+          Payouts
         </Link>
       </div>
       <section className="grid gap-3 sm:grid-cols-2">
@@ -256,11 +264,17 @@ export default async function ClassificationSettingsPage() {
                   {discipline.description || "No description"}
                 </p>
               </div>
-              <CreateClassificationDialog
-                disciplineId={discipline.id}
-                disciplineName={discipline.name}
-                enabled={enabled}
-              />
+              <div className="flex items-center gap-2">
+                <CreateClassificationDialog
+                  disciplineId={discipline.id}
+                  disciplineName={discipline.name}
+                  enabled={enabled}
+                />
+                <EditDisciplineDialog
+                  discipline={discipline}
+                  enabled={enabled}
+                />
+              </div>
             </header>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-left">
@@ -270,6 +284,9 @@ export default async function ClassificationSettingsPage() {
                     <th className="px-5 py-3">Description</th>
                     <th className="px-5 py-3">Rank</th>
                     <th className="px-5 py-3">Status</th>
+                    <th className="w-12 px-5 py-3">
+                      <span className="sr-only">Edit</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edf0ee]">
@@ -287,12 +304,19 @@ export default async function ClassificationSettingsPage() {
                       <td className="px-5 py-3 text-xs font-semibold text-[#66716b]">
                         {classification.isActive ? "Active" : "Inactive"}
                       </td>
+                      <td className="px-5 py-3">
+                        <EditClassificationDialog
+                          disciplineId={discipline.id}
+                          classification={classification}
+                          enabled={enabled}
+                        />
+                      </td>
                     </tr>
                   ))}
                   {!discipline.classifications.length ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="px-5 py-7 text-center text-sm text-[#758078]"
                       >
                         Add this division&apos;s first classification.

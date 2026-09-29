@@ -1,15 +1,12 @@
 import Link from "next/link";
-import {
-  Check,
-  CircleDollarSign,
-  GripVertical,
-  MoreHorizontal,
-  Settings2,
-} from "lucide-react";
+import { Check, CircleDollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   AddFeeDialog,
   CreateDivisionDialog,
+  EditDivisionDialog,
+  EditFeeDialog,
+  type DivisionOption,
 } from "@/components/settings/division-dialogs";
 import { divisionTemplates as demoDivisions } from "@/data/demo";
 import { getActiveOrganization } from "@/lib/organizations";
@@ -24,48 +21,92 @@ import type {
 
 const scopeLabels: Record<FeeScope, string> = {
   entry: "Each entry",
-  contestant_division: "Once per entry class",
+  contestant_division: "Once per template",
   contestant_event: "Once per event",
 };
 
 async function getDivisionData(): Promise<{
   divisions: DivisionTemplateSummary[];
   payoutSchedules: Array<{ id: string; name: string }>;
+  divisionOptions: DivisionOption[];
+  canEdit: boolean;
 }> {
   if (!isSupabaseConfigured())
     return {
       divisions: demoDivisions,
       payoutSchedules: [{ id: "standard", name: "Standard 1 per 10" }],
+      divisionOptions: [
+        {
+          id: "calf-roping",
+          name: "Calf roping",
+          classifications: [
+            { id: "open", name: "Open" },
+            { id: "115", name: "11.5" },
+          ],
+        },
+      ],
+      canEdit: false,
     };
   const organization = await getActiveOrganization();
-  if (!organization) return { divisions: [], payoutSchedules: [] };
+  if (!organization)
+    return {
+      divisions: [],
+      payoutSchedules: [],
+      divisionOptions: [],
+      canEdit: false,
+    };
   const supabase = await createClient();
-  const [{ data, error }, { data: schedules, error: scheduleError }] =
-    await Promise.all([
-      supabase
-        .from("division_templates")
-        .select(
-          "id, name, description, maximum_entries_per_person, allow_guests, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
-        )
-        .eq("organization_id", organization.id)
-        .order("sort_order")
-        .order("created_at"),
-      supabase
-        .from("payout_schedules")
-        .select("id, name")
-        .eq("organization_id", organization.id)
-        .eq("is_active", true)
-        .order("name"),
-    ]);
+  const [
+    { data, error },
+    { data: schedules, error: scheduleError },
+    { data: disciplines, error: disciplineError },
+  ] = await Promise.all([
+    supabase
+      .from("division_templates")
+      .select(
+        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, allow_guests, timer_count, timer_resolution, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+      )
+      .eq("organization_id", organization.id)
+      .order("sort_order")
+      .order("created_at"),
+    supabase
+      .from("payout_schedules")
+      .select("id, name")
+      .eq("organization_id", organization.id)
+      .eq("is_active", true)
+      .order("name"),
+    supabase
+      .from("disciplines")
+      .select("id, name, classifications(id, name, is_active)")
+      .eq("organization_id", organization.id)
+      .eq("is_active", true)
+      .order("sort_order"),
+  ]);
   if (error)
     throw new Error(`Unable to load division settings: ${error.message}`);
   if (scheduleError)
     throw new Error(
       `Unable to load payout schedules: ${scheduleError.message}`,
     );
+  if (disciplineError)
+    throw new Error(
+      `Unable to load divisions and classifications: ${disciplineError.message}`,
+    );
 
   return {
+    canEdit: organization.role !== "viewer",
     payoutSchedules: schedules ?? [],
+    divisionOptions: (disciplines ?? []).map((discipline) => ({
+      id: discipline.id,
+      name: discipline.name,
+      classifications: (
+        discipline.classifications as unknown as Array<{
+          id: string;
+          name: string;
+          is_active: boolean;
+        }>
+      ).filter((classification) => classification.is_active),
+    })),
     divisions: data.map((division) => ({
       id: division.id,
       name: division.name,
@@ -73,6 +114,11 @@ async function getDivisionData(): Promise<{
       maximumEntriesPerPerson: division.maximum_entries_per_person,
       allowGuests: division.allow_guests,
       isActive: division.is_active,
+      disciplineId: division.discipline_id,
+      classificationId: division.classification_id,
+      timerCount: division.timer_count,
+      timerResolution: division.timer_resolution,
+      payoutScheduleId: division.payout_schedule_id,
       fees: (
         division.fee_templates as unknown as Array<{
           id: string;
@@ -80,6 +126,7 @@ async function getDivisionData(): Promise<{
           amount_cents: number;
           scope: FeeScope;
           kind: FeeKind;
+          payout_schedule_id: string | null;
           is_required: boolean;
           included_in_entry_price: boolean;
           contributes_to_payout: boolean;
@@ -93,6 +140,7 @@ async function getDivisionData(): Promise<{
           amountCents: fee.amount_cents,
           scope: fee.scope,
           kind: fee.kind,
+          payoutScheduleId: fee.payout_schedule_id,
           isRequired: fee.is_required,
           includedInEntryPrice: fee.included_in_entry_price,
           contributesToPayout: fee.contributes_to_payout,
@@ -103,28 +151,35 @@ async function getDivisionData(): Promise<{
 
 export default async function DivisionSettingsPage() {
   const configured = isSupabaseConfigured();
-  const { divisions, payoutSchedules } = await getDivisionData();
+  const { divisions, payoutSchedules, divisionOptions, canEdit } =
+    await getDivisionData();
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Organization setup"
-        title="Entry classes & fees"
-        description="Build reusable event configurations after defining the organization’s divisions and classifications. Each entry class carries its own limits, fees, timing, and payouts; rounds are set per roping."
-        actions={<CreateDivisionDialog configured={configured} />}
+        title="Event templates"
+        description="Build reusable roping setups from a division and classification. Template rules are copied into new events, where round counts and other event-specific details remain editable."
+        actions={
+          <CreateDivisionDialog
+            configured={configured && canEdit}
+            divisions={divisionOptions}
+            payoutSchedules={payoutSchedules}
+          />
+        }
       />
       <div className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]">
-        <Link
-          href="/settings/divisions"
-          className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
-        >
-          Entry classes & fees
-        </Link>
         <Link
           href="/settings/classifications"
           className="px-4 py-3 text-sm font-semibold text-[#66716b]"
         >
           Divisions & classifications
+        </Link>
+        <Link
+          href="/settings/divisions"
+          className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
+        >
+          Event templates
         </Link>
         <Link
           href="/settings/payouts"
@@ -140,16 +195,12 @@ export default async function DivisionSettingsPage() {
             className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
           >
             <div className="flex items-start gap-3 border-b border-[#e7ebe8] p-5">
-              <button
-                aria-label={`Reorder ${division.name}`}
-                className="mt-1 text-[#98a09b]"
-              >
-                <GripVertical size={18} />
-              </button>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-lg font-bold">{division.name}</h2>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${division.isActive ? "bg-emerald-50 text-emerald-700" : "bg-[#eef1ef] text-[#66716b]"}`}
+                  >
                     <Check size={12} />{" "}
                     {division.isActive ? "Active" : "Inactive"}
                   </span>
@@ -168,12 +219,12 @@ export default async function DivisionSettingsPage() {
                   </span>
                 </div>
               </div>
-              <button
-                aria-label={`Options for ${division.name}`}
-                className="grid h-9 w-9 place-items-center rounded-md border border-[#d7ddda]"
-              >
-                <MoreHorizontal size={18} />
-              </button>
+              <EditDivisionDialog
+                configured={configured && canEdit}
+                divisions={divisionOptions}
+                payoutSchedules={payoutSchedules}
+                template={division}
+              />
             </div>
             <div className="p-5">
               <div className="mb-3 flex items-center justify-between">
@@ -183,7 +234,7 @@ export default async function DivisionSettingsPage() {
                 <AddFeeDialog
                   divisionId={division.id}
                   divisionName={division.name}
-                  configured={configured}
+                  configured={configured && canEdit}
                   payoutSchedules={payoutSchedules}
                 />
               </div>
@@ -213,7 +264,7 @@ export default async function DivisionSettingsPage() {
                             {scopeLabels[fee.scope]}
                           </td>
                           <td className="py-3 text-sm capitalize text-[#66716b]">
-                            {fee.kind?.replace("_", " ")}
+                            {(fee.kind ?? "standard").replace("_", " ")}
                             {fee.isRequired ? " · Required" : " · Optional"}
                           </td>
                           <td className="py-3 text-sm text-[#66716b]">
@@ -222,9 +273,13 @@ export default async function DivisionSettingsPage() {
                               : "Listed separately"}
                           </td>
                           <td className="py-3">
-                            <button aria-label={`Edit ${fee.title}`}>
-                              <Settings2 size={15} className="text-[#758078]" />
-                            </button>
+                            <EditFeeDialog
+                              divisionId={division.id}
+                              divisionName={division.name}
+                              configured={configured && canEdit}
+                              payoutSchedules={payoutSchedules}
+                              fee={fee}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -241,9 +296,9 @@ export default async function DivisionSettingsPage() {
         ))}
         {!divisions.length ? (
           <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">
-            <p className="font-semibold">Create your first entry class</p>
+            <p className="font-semibold">Create your first event template</p>
             <p className="mt-2 text-sm text-[#758078]">
-              Entry classes hold the event settings for a division and
+              Event templates hold reusable settings for one division and
               classification combination.
             </p>
           </div>
@@ -251,7 +306,7 @@ export default async function DivisionSettingsPage() {
       </section>
       <div className="rounded-md border border-dashed border-[#cbd2ce] p-5 text-center">
         <p className="text-sm font-semibold">
-          Entry class templates are organization-specific
+          Event templates are organization-specific
         </p>
         <p className="mt-1 text-xs text-[#758078]">
           Changes here become defaults for new ropings and do not alter past

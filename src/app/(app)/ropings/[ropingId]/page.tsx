@@ -316,7 +316,7 @@ export default async function RopingDetailPage({
         <Metric icon={Users} label="Entries" value={String(totalEntries)} />
         <Metric
           icon={ClipboardList}
-          label="Entry classes"
+          label="Classes"
           value={String(event.divisions.length)}
         />
         <Metric
@@ -360,9 +360,9 @@ export default async function RopingDetailPage({
       >
         <div className="flex flex-col gap-4 border-b border-[#e7ebe8] px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-bold">Entry class setup</h2>
+            <h2 className="font-bold">Class setup</h2>
             <p className="mt-1 text-xs text-[#758078]">
-              Main-round counts and short-round rules can vary by entry class.
+              Main-round counts and short-round rules can vary by class.
             </p>
           </div>
           <form action={roundAction} className="flex items-end gap-2">

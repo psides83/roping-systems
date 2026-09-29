@@ -1,6 +1,13 @@
 export type OrganizationRole = "owner" | "admin" | "operator" | "viewer";
 export type MembershipStatus = "active" | "pending" | "expired" | "inactive";
-export type RopingStatus = "draft" | "scheduled" | "entries_open" | "entries_closed" | "in_progress" | "completed" | "cancelled";
+export type RopingStatus =
+  | "draft"
+  | "scheduled"
+  | "entries_open"
+  | "entries_closed"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 export type FeeScope = "entry" | "contestant_division" | "contestant_event";
 export type FeeKind = "standard" | "insurance" | "side_pot" | "other";
 export type ResultStatus = "unofficial" | "official";
@@ -37,6 +44,7 @@ export interface FeeTemplateSummary {
   contributesToPayout: boolean;
   kind?: FeeKind;
   isRequired?: boolean;
+  payoutScheduleId?: string | null;
 }
 
 export interface DivisionTemplateSummary {
@@ -46,5 +54,10 @@ export interface DivisionTemplateSummary {
   maximumEntriesPerPerson: number | null;
   allowGuests: boolean;
   isActive: boolean;
+  disciplineId?: string | null;
+  classificationId?: string | null;
+  timerCount?: number;
+  timerResolution?: "average" | "best" | "longest";
+  payoutScheduleId?: string | null;
   fees: FeeTemplateSummary[];
 }

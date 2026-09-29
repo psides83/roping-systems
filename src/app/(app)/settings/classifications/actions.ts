@@ -17,11 +17,21 @@ const disciplineSchema = z.object({
   description: z.string().trim(),
 });
 
+const updateDisciplineSchema = disciplineSchema.extend({
+  disciplineId: z.uuid(),
+  isActive: z.string().optional(),
+});
+
 const classificationSchema = z.object({
   disciplineId: z.uuid(),
   name: z.string().trim().min(1, "Classification name is required."),
   description: z.string().trim(),
   rank: z.coerce.number().int().min(-1000).max(1000),
+});
+
+const updateClassificationSchema = classificationSchema.extend({
+  classificationId: z.uuid(),
+  isActive: z.string().optional(),
 });
 
 async function getManagerContext() {
@@ -31,11 +41,15 @@ async function getManagerContext() {
   return { organization, supabase: await createClient() };
 }
 
-export async function createDiscipline(_state: ClassificationFormState, formData: FormData): Promise<ClassificationFormState> {
+export async function createDiscipline(
+  _state: ClassificationFormState,
+  formData: FormData,
+): Promise<ClassificationFormState> {
   const parsed = disciplineSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
-  if (!context) return { message: "Sign in with manager access to create divisions." };
+  if (!context)
+    return { message: "Sign in with manager access to create divisions." };
 
   const { error } = await context.supabase.from("disciplines").insert({
     organization_id: context.organization.id,
@@ -43,17 +57,29 @@ export async function createDiscipline(_state: ClassificationFormState, formData
     description: parsed.data.description || null,
     watch_threshold: null,
   });
-  if (error) return { message: error.code === "23505" ? "A division with that name already exists." : error.message };
+  if (error)
+    return {
+      message:
+        error.code === "23505"
+          ? "A division with that name already exists."
+          : error.message,
+    };
 
   revalidatePath("/settings/classifications");
   return { success: true, message: "Division created." };
 }
 
-export async function createClassification(_state: ClassificationFormState, formData: FormData): Promise<ClassificationFormState> {
+export async function createClassification(
+  _state: ClassificationFormState,
+  formData: FormData,
+): Promise<ClassificationFormState> {
   const parsed = classificationSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
-  if (!context) return { message: "Sign in with manager access to create classifications." };
+  if (!context)
+    return {
+      message: "Sign in with manager access to create classifications.",
+    };
 
   const { data: discipline } = await context.supabase
     .from("disciplines")
@@ -61,7 +87,8 @@ export async function createClassification(_state: ClassificationFormState, form
     .eq("id", parsed.data.disciplineId)
     .eq("organization_id", context.organization.id)
     .single();
-  if (!discipline) return { message: "That division is not available in this organization." };
+  if (!discipline)
+    return { message: "That division is not available in this organization." };
 
   const { error } = await context.supabase.from("classifications").insert({
     organization_id: context.organization.id,
@@ -70,8 +97,88 @@ export async function createClassification(_state: ClassificationFormState, form
     description: parsed.data.description || null,
     rank: parsed.data.rank,
   });
-  if (error) return { message: error.code === "23505" ? "That classification already exists in this division." : error.message };
+  if (error)
+    return {
+      message:
+        error.code === "23505"
+          ? "That classification already exists in this division."
+          : error.message,
+    };
 
   revalidatePath("/settings/classifications");
   return { success: true, message: "Classification created." };
+}
+
+export async function updateDiscipline(
+  _state: ClassificationFormState,
+  formData: FormData,
+): Promise<ClassificationFormState> {
+  const parsed = updateDisciplineSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  const context = await getManagerContext();
+  if (!context)
+    return { message: "Sign in with manager access to edit divisions." };
+
+  const { error } = await context.supabase
+    .from("disciplines")
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description || null,
+      is_active: parsed.data.isActive === "on",
+    })
+    .eq("id", parsed.data.disciplineId)
+    .eq("organization_id", context.organization.id);
+  if (error)
+    return {
+      message:
+        error.code === "23505"
+          ? "A division with that name already exists."
+          : error.message,
+    };
+  revalidatePath("/settings/classifications");
+  revalidatePath("/settings/divisions");
+  return { success: true, message: "Division updated." };
+}
+
+export async function updateClassification(
+  _state: ClassificationFormState,
+  formData: FormData,
+): Promise<ClassificationFormState> {
+  const parsed = updateClassificationSchema.safeParse(
+    Object.fromEntries(formData),
+  );
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  const context = await getManagerContext();
+  if (!context)
+    return { message: "Sign in with manager access to edit classifications." };
+
+  const { data: discipline } = await context.supabase
+    .from("disciplines")
+    .select("id")
+    .eq("id", parsed.data.disciplineId)
+    .eq("organization_id", context.organization.id)
+    .single();
+  if (!discipline)
+    return { message: "That division is not available in this organization." };
+  const { error } = await context.supabase
+    .from("classifications")
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description || null,
+      rank: parsed.data.rank,
+      is_active: parsed.data.isActive === "on",
+    })
+    .eq("id", parsed.data.classificationId)
+    .eq("discipline_id", discipline.id)
+    .eq("organization_id", context.organization.id);
+  if (error)
+    return {
+      message:
+        error.code === "23505"
+          ? "That classification already exists in this division."
+          : error.message,
+    };
+  revalidatePath("/settings/classifications");
+  revalidatePath("/settings/divisions");
+  return { success: true, message: "Classification updated." };
 }

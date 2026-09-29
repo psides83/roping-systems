@@ -115,7 +115,7 @@ export function EntryLedger({
             <tr>
               <th className="px-5 py-3">Contestant</th>
               <th className="px-5 py-3">Entries</th>
-              <th className="px-5 py-3">Entry classes</th>
+              <th className="px-5 py-3">Classes</th>
               <th className="px-5 py-3">Payment</th>
               <th className="px-5 py-3 text-right">Total</th>
               <th className="px-5 py-3 text-right">Update</th>

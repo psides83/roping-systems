@@ -106,13 +106,13 @@ export async function createRoping(
   const divisionIds = formData.getAll("divisionIds").map(String);
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   if (!divisionIds.length)
-    return { errors: { divisionIds: ["Select at least one entry class."] } };
+    return { errors: { divisionIds: ["Select at least one class."] } };
   const roundCounts = getRoundCounts(formData, divisionIds);
   if (!roundCounts)
     return {
       errors: {
         roundCounts: [
-          "Set a round count between 1 and 20 for every selected entry class.",
+          "Set a round count between 1 and 20 for every selected class.",
         ],
       },
     };
@@ -178,6 +178,6 @@ export async function createRoping(
   revalidatePath("/ropings");
   return {
     success: true,
-    message: "Roping created with its entry classes and fees.",
+    message: "Roping created with its event templates and fees.",
   };
 }

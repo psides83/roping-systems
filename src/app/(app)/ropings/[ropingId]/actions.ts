@@ -62,7 +62,7 @@ export async function generateDraw(ropingId: string, formData: FormData) {
   const parsed = z
     .object({ divisionId: z.uuid(), runNumber: z.coerce.number().int().min(1) })
     .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) throw new Error("Choose a valid entry class and round.");
+  if (!parsed.success) throw new Error("Choose a valid class and round.");
   const supabase = await requireManager();
   const { error } = await supabase.rpc("generate_division_draw", {
     target_roping_division_id: parsed.data.divisionId,
@@ -142,7 +142,7 @@ export async function seedShortRound(
   formData: FormData,
 ): Promise<LiveRunState> {
   const divisionId = z.uuid().safeParse(formData.get("divisionId"));
-  if (!divisionId.success) return { message: "Choose a valid entry class." };
+  if (!divisionId.success) return { message: "Choose a valid class." };
   const supabase = await requireManager();
   const { data, error } = await supabase.rpc("seed_short_round", {
     target_roping_division_id: divisionId.data,

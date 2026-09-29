@@ -282,7 +282,7 @@ function LiveWorkspace({
         />
       ) : (
         <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center">
-          <p className="font-semibold">This event has no entry classes.</p>
+          <p className="font-semibold">This event has no classes.</p>
         </div>
       )}
     </div>

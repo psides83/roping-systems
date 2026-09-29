@@ -395,7 +395,7 @@ export function DatabaseLiveDesk({
                   ? shortRoundSeeded
                     ? "No entries qualified for this short round."
                     : "Build the short round after all main rounds are complete."
-                  : "No entries have been added to this entry class."}
+                  : "No entries have been added to this class."}
             </div>
           ) : null}
         </div>
@@ -453,9 +453,7 @@ export function DatabaseLiveDesk({
           />
         )}
         <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-          <p className="text-xs font-bold uppercase text-[#758078]">
-            Entry classes
-          </p>
+          <p className="text-xs font-bold uppercase text-[#758078]">Classes</p>
           <div className="mt-3 space-y-1">
             {divisions.map((division) => (
               <Link

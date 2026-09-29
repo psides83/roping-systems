@@ -1,23 +1,69 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { LoaderCircle, Plus, X } from "lucide-react";
-import { createDivision, createFee, type SettingsFormState } from "@/app/(app)/settings/divisions/actions";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { LoaderCircle, Pencil, Plus, X } from "lucide-react";
+import {
+  createDivision,
+  createFee,
+  updateDivision,
+  updateFee,
+  type SettingsFormState,
+} from "@/app/(app)/settings/divisions/actions";
+import type {
+  DivisionTemplateSummary,
+  FeeTemplateSummary,
+} from "@/types/domain";
 
 const initialState: SettingsFormState = {};
-const inputClass = "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
+const inputClass =
+  "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
 
-function DialogFrame({ title, description, close, children }: { title: string; description: string; close: () => void; children: React.ReactNode }) {
+export interface DivisionOption {
+  id: string;
+  name: string;
+  classifications: Array<{ id: string; name: string }>;
+}
+
+interface PayoutOption {
+  id: string;
+  name: string;
+}
+
+function DialogFrame({
+  title,
+  description,
+  close,
+  children,
+}: {
+  title: string;
+  description: string;
+  close: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
-      <button aria-label="Close dialog" className="absolute inset-0" onClick={close} />
-      <section role="dialog" aria-modal="true" className="relative my-8 w-full max-w-xl rounded-md bg-white shadow-2xl">
+      <button
+        aria-label="Close dialog"
+        className="absolute inset-0"
+        onClick={close}
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        className="relative my-8 w-full max-w-2xl rounded-md bg-white shadow-2xl"
+      >
         <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
           <div>
             <h2 className="text-lg font-bold">{title}</h2>
-            <p className="mt-1 text-sm leading-5 text-[#66716b]">{description}</p>
+            <p className="mt-1 text-sm leading-5 text-[#66716b]">
+              {description}
+            </p>
           </div>
-          <button onClick={close} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]">
+          <button
+            onClick={close}
+            aria-label="Close"
+            className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]"
+          >
             <X size={18} />
           </button>
         </header>
@@ -28,52 +74,230 @@ function DialogFrame({ title, description, close, children }: { title: string; d
 }
 
 function FormMessage({ state }: { state: SettingsFormState }) {
-  return state.message ? <p className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>{state.message}</p> : null;
+  return state.message ? (
+    <p
+      className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
+    >
+      {state.message}
+    </p>
+  ) : null;
 }
 
-export function CreateDivisionDialog({ configured }: { configured: boolean }) {
+function EventTemplateDialog({
+  configured,
+  divisions,
+  payoutSchedules,
+  template,
+}: {
+  configured: boolean;
+  divisions: DivisionOption[];
+  payoutSchedules: PayoutOption[];
+  template?: DivisionTemplateSummary;
+}) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState(createDivision, initialState);
+  const [disciplineId, setDisciplineId] = useState(
+    template?.disciplineId ?? divisions[0]?.id ?? "",
+  );
+  const [state, action, pending] = useActionState(
+    template ? updateDivision : createDivision,
+    initialState,
+  );
   const formRef = useRef<HTMLFormElement>(null);
+  const classifications = useMemo(
+    () =>
+      divisions.find((division) => division.id === disciplineId)
+        ?.classifications ?? [],
+    [disciplineId, divisions],
+  );
+  const isEditing = Boolean(template);
   useEffect(() => {
-    if (state.success) formRef.current?.reset();
-  }, [state.success]);
+    if (state.success && !isEditing) formRef.current?.reset();
+  }, [isEditing, state.success]);
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">
-        <Plus size={17} /> New entry class
+      <button
+        onClick={() => setOpen(true)}
+        className={
+          isEditing
+            ? "grid h-9 w-9 place-items-center rounded-md border border-[#d7ddda] hover:bg-[#f7f8f7]"
+            : "flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"
+        }
+        aria-label={isEditing ? `Edit ${template?.name}` : undefined}
+      >
+        {isEditing ? (
+          <Pencil size={16} />
+        ) : (
+          <>
+            <Plus size={17} /> New event template
+          </>
+        )}
       </button>
       {open ? (
-        <DialogFrame title="Create entry class" description="Create a reusable event configuration for a division and classification combination, including entry limits, fees, timing, and payouts. Round counts are set for each roping." close={() => setOpen(false)}>
+        <DialogFrame
+          title={isEditing ? `Edit ${template?.name}` : "Create event template"}
+          description="Define the reusable division, classification, entry rules, timing, fees, and payout defaults copied into a new roping."
+          close={() => setOpen(false)}
+        >
           <form ref={formRef} action={action} className="space-y-4 p-5">
+            {template ? (
+              <input type="hidden" name="divisionId" value={template.id} />
+            ) : null}
             <label className="block text-sm font-semibold">
-              Entry class name
-              <input name="name" className={inputClass} placeholder="Calf roping · Open" required />
-              {state.errors?.name ? <span className="mt-1 block text-xs text-rose-700">{state.errors.name[0]}</span> : null}
+              Template name
+              <input
+                name="name"
+                defaultValue={template?.name}
+                className={inputClass}
+                placeholder="Breakaway · 11.5"
+                required
+              />
+              {state.errors?.name ? (
+                <span className="mt-1 block text-xs text-rose-700">
+                  {state.errors.name[0]}
+                </span>
+              ) : null}
             </label>
-            <label className="block text-sm font-semibold">
-              Description
-              <textarea name="description" className="mt-2 min-h-20 w-full rounded-md border border-[#ccd4d0] p-3 outline-none focus:border-[var(--brand-accent)]" placeholder="Who may enter this class" />
-            </label>
-            <div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
-                Maximum entries per contestant
-                <input name="maximumEntries" type="number" min="1" max="100" className={inputClass} placeholder="No limit" />
+                Division
+                <select
+                  name="disciplineId"
+                  value={disciplineId}
+                  onChange={(event) => setDisciplineId(event.target.value)}
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Choose a division</option>
+                  {divisions.map((division) => (
+                    <option key={division.id} value={division.id}>
+                      {division.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm font-semibold">
+                Classification
+                <select
+                  name="classificationId"
+                  defaultValue={template?.classificationId ?? ""}
+                  key={disciplineId}
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Choose a classification</option>
+                  {classifications.map((classification) => (
+                    <option key={classification.id} value={classification.id}>
+                      {classification.name}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
-            <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-              <input name="allowGuests" type="checkbox" className="h-4 w-4 accent-[var(--brand-accent)]" /> Allow non-members to enter
+            <label className="block text-sm font-semibold">
+              Description
+              <textarea
+                name="description"
+                defaultValue={template?.description}
+                className="mt-2 min-h-20 w-full rounded-md border border-[#ccd4d0] p-3 outline-none focus:border-[var(--brand-accent)]"
+                placeholder="Eligibility or event setup notes"
+              />
             </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">
+                Maximum entries per contestant
+                <input
+                  name="maximumEntries"
+                  defaultValue={template?.maximumEntriesPerPerson ?? ""}
+                  type="number"
+                  min="1"
+                  max="100"
+                  className={inputClass}
+                  placeholder="No limit"
+                />
+              </label>
+              <label className="block text-sm font-semibold">
+                Payout schedule
+                <select
+                  name="payoutScheduleId"
+                  defaultValue={template?.payoutScheduleId ?? ""}
+                  className={inputClass}
+                >
+                  <option value="">No default schedule</option>
+                  {payoutSchedules.map((schedule) => (
+                    <option key={schedule.id} value={schedule.id}>
+                      {schedule.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm font-semibold">
+                Number of timers
+                <input
+                  name="timerCount"
+                  defaultValue={template?.timerCount ?? 1}
+                  type="number"
+                  min="1"
+                  max="10"
+                  className={inputClass}
+                  required
+                />
+              </label>
+              <label className="block text-sm font-semibold">
+                Official time uses
+                <select
+                  name="timerResolution"
+                  defaultValue={template?.timerResolution ?? "average"}
+                  className={inputClass}
+                >
+                  <option value="average">Average of all timers</option>
+                  <option value="best">Best (fastest) timer</option>
+                  <option value="longest">Longest timer</option>
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+                <input
+                  name="allowGuests"
+                  type="checkbox"
+                  defaultChecked={template?.allowGuests}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Allow non-members to enter
+              </label>
+              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+                <input
+                  name="isActive"
+                  type="checkbox"
+                  defaultChecked={template?.isActive ?? true}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Active for new ropings
+              </label>
+            </div>
             <FormMessage state={state} />
-            {!configured ? <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">Connect Supabase to save organization settings.</p> : null}
+            {!configured ? (
+              <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                Connect Supabase to save organization settings.
+              </p>
+            ) : null}
             <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
-              <button type="button" onClick={() => setOpen(false)} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
+              >
                 Cancel
               </button>
-              <button disabled={pending || !configured} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50">
-                {pending ? <LoaderCircle size={16} className="animate-spin" /> : null}
-                Create entry class
+              <button
+                disabled={pending || !configured || !divisions.length}
+                className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {pending ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : null}
+                {isEditing ? "Save changes" : "Create template"}
               </button>
             </div>
           </form>
@@ -83,35 +307,122 @@ export function CreateDivisionDialog({ configured }: { configured: boolean }) {
   );
 }
 
-export function AddFeeDialog({ divisionId, divisionName, configured, payoutSchedules }: { divisionId: string; divisionName: string; configured: boolean; payoutSchedules: Array<{ id: string; name: string }> }) {
-  const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState("standard");
-  const [isRequired, setIsRequired] = useState(true);
-  const [state, action, pending] = useActionState(createFee, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
-  useEffect(() => {
-    if (state.success) formRef.current?.reset();
-  }, [state.success]);
+export function CreateDivisionDialog({
+  configured,
+  divisions,
+  payoutSchedules,
+}: {
+  configured: boolean;
+  divisions: DivisionOption[];
+  payoutSchedules: PayoutOption[];
+}) {
+  return (
+    <EventTemplateDialog
+      configured={configured}
+      divisions={divisions}
+      payoutSchedules={payoutSchedules}
+    />
+  );
+}
+export function EditDivisionDialog({
+  configured,
+  divisions,
+  payoutSchedules,
+  template,
+}: {
+  configured: boolean;
+  divisions: DivisionOption[];
+  payoutSchedules: PayoutOption[];
+  template: DivisionTemplateSummary;
+}) {
+  return (
+    <EventTemplateDialog
+      configured={configured}
+      divisions={divisions}
+      payoutSchedules={payoutSchedules}
+      template={template}
+    />
+  );
+}
 
+function FeeDialog({
+  divisionId,
+  divisionName,
+  configured,
+  payoutSchedules,
+  fee,
+}: {
+  divisionId: string;
+  divisionName: string;
+  configured: boolean;
+  payoutSchedules: PayoutOption[];
+  fee?: FeeTemplateSummary;
+}) {
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState(fee?.kind ?? "standard");
+  const [isRequired, setIsRequired] = useState(fee?.isRequired ?? true);
+  const [state, action, pending] = useActionState(
+    fee ? updateFee : createFee,
+    initialState,
+  );
+  const isEditing = Boolean(fee);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-accent-strong)]">
-        <Plus size={14} /> Add fee or option
+      <button
+        onClick={() => setOpen(true)}
+        className={
+          isEditing
+            ? "grid h-8 w-8 place-items-center rounded-md hover:bg-[#f1f3f2]"
+            : "flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-accent-strong)]"
+        }
+        aria-label={isEditing ? `Edit ${fee?.title}` : undefined}
+      >
+        {isEditing ? (
+          <Pencil size={15} />
+        ) : (
+          <>
+            <Plus size={14} /> Add fee or option
+          </>
+        )}
       </button>
       {open ? (
-        <DialogFrame title={`Add fee or option to ${divisionName}`} description="Add a required fee, optional insurance, side pot, or another event option." close={() => setOpen(false)}>
-          <form ref={formRef} action={action} className="space-y-4 p-5">
+        <DialogFrame
+          title={
+            isEditing
+              ? `Edit ${fee?.title}`
+              : `Add fee or option to ${divisionName}`
+          }
+          description="Configure a required fee, optional insurance, side pot, or another event option."
+          close={() => setOpen(false)}
+        >
+          <form action={action} className="space-y-4 p-5">
             <input type="hidden" name="divisionId" value={divisionId} />
+            {fee ? <input type="hidden" name="feeId" value={fee.id} /> : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
                 Title
-                <input name="title" className={inputClass} placeholder="Stock fee" required />
+                <input
+                  name="title"
+                  defaultValue={fee?.title}
+                  className={inputClass}
+                  placeholder="Stock fee"
+                  required
+                />
               </label>
               <label className="block text-sm font-semibold">
                 Amount
                 <div className="relative">
-                  <span className="absolute left-3 top-[21px] text-sm text-[#758078]">$</span>
-                  <input name="amount" inputMode="decimal" className={`${inputClass} pl-7`} placeholder="10.00" required />
+                  <span className="absolute left-3 top-[21px] text-sm text-[#758078]">
+                    $
+                  </span>
+                  <input
+                    name="amount"
+                    defaultValue={fee ? (fee.amountCents / 100).toFixed(2) : ""}
+                    inputMode="decimal"
+                    className={`${inputClass} pl-7`}
+                    placeholder="10.00"
+                    required
+                  />
                 </div>
               </label>
               <label className="block text-sm font-semibold">
@@ -120,9 +431,13 @@ export function AddFeeDialog({ divisionId, divisionName, configured, payoutSched
                   name="kind"
                   value={kind}
                   onChange={(event) => {
-                    const nextKind = event.target.value;
-                    setKind(nextKind);
-                    setIsRequired(nextKind === "standard");
+                    setKind(
+                      event.target.value as NonNullable<
+                        FeeTemplateSummary["kind"]
+                      >,
+                    );
+                    if (!isEditing)
+                      setIsRequired(event.target.value === "standard");
                   }}
                   className={inputClass}
                 >
@@ -134,17 +449,30 @@ export function AddFeeDialog({ divisionId, divisionName, configured, payoutSched
               </label>
               <label className="block text-sm font-semibold">
                 Applied
-                <select name="scope" className={inputClass}>
+                <select
+                  name="scope"
+                  defaultValue={fee?.scope ?? "entry"}
+                  className={inputClass}
+                >
                   <option value="entry">Each entry</option>
-                  <option value="contestant_division">Once per contestant in this entry class</option>
-                  <option value="contestant_event">Once per contestant at the event</option>
+                  <option value="contestant_division">
+                    Once per contestant in this template
+                  </option>
+                  <option value="contestant_event">
+                    Once per contestant at the event
+                  </option>
                 </select>
               </label>
             </div>
             {kind === "side_pot" ? (
               <label className="block text-sm font-semibold">
                 Side pot payout schedule
-                <select name="payoutScheduleId" className={inputClass} required>
+                <select
+                  name="payoutScheduleId"
+                  defaultValue={fee?.payoutScheduleId ?? ""}
+                  className={inputClass}
+                  required
+                >
                   <option value="">Choose a schedule</option>
                   {payoutSchedules.map((schedule) => (
                     <option key={schedule.id} value={schedule.id}>
@@ -152,35 +480,68 @@ export function AddFeeDialog({ divisionId, divisionName, configured, payoutSched
                     </option>
                   ))}
                 </select>
-                {!payoutSchedules.length ? <span className="mt-1.5 block text-xs font-normal text-amber-700">Create a payout schedule first.</span> : null}
               </label>
             ) : (
               <input type="hidden" name="payoutScheduleId" value="" />
             )}
             <div className="space-y-2">
               <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                <input name="isRequired" type="checkbox" checked={isRequired} onChange={(event) => setIsRequired(event.target.checked)} className="h-4 w-4 accent-[var(--brand-accent)]" /> Required with the entry
+                <input
+                  name="isRequired"
+                  type="checkbox"
+                  checked={isRequired}
+                  onChange={(event) => setIsRequired(event.target.checked)}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Required with the entry
               </label>
               <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                <input name="includedInEntryPrice" type="checkbox" className="h-4 w-4 accent-[var(--brand-accent)]" /> Include in displayed entry price
+                <input
+                  name="includedInEntryPrice"
+                  type="checkbox"
+                  defaultChecked={fee?.includedInEntryPrice}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Include in displayed entry price
               </label>
               {kind !== "side_pot" ? (
                 <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                  <input name="contributesToPayout" type="checkbox" className="h-4 w-4 accent-[var(--brand-accent)]" /> Include in the main payout pool
+                  <input
+                    name="contributesToPayout"
+                    type="checkbox"
+                    defaultChecked={fee?.contributesToPayout}
+                    className="h-4 w-4 accent-[var(--brand-accent)]"
+                  />{" "}
+                  Include in the main payout pool
                 </label>
               ) : (
-                <p className="rounded-md bg-[#f7f8f7] p-3 text-xs leading-5 text-[#66716b]">Side pot selections form a separate payout pool using the selected schedule.</p>
+                <p className="rounded-md bg-[#f7f8f7] p-3 text-xs leading-5 text-[#66716b]">
+                  Side pot selections form a separate payout pool using the
+                  selected schedule.
+                </p>
               )}
             </div>
             <FormMessage state={state} />
-            {!configured ? <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">Connect Supabase to save settings.</p> : null}
             <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
-              <button type="button" onClick={() => setOpen(false)} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
+              >
                 Cancel
               </button>
-              <button disabled={pending || !configured || (kind === "side_pot" && !payoutSchedules.length)} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50">
-                {pending ? <LoaderCircle size={16} className="animate-spin" /> : null}
-                Add
+              <button
+                disabled={
+                  pending ||
+                  !configured ||
+                  (kind === "side_pot" && !payoutSchedules.length)
+                }
+                className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {pending ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : null}
+                {isEditing ? "Save changes" : "Add"}
               </button>
             </div>
           </form>
@@ -188,4 +549,22 @@ export function AddFeeDialog({ divisionId, divisionName, configured, payoutSched
       ) : null}
     </>
   );
+}
+
+export function AddFeeDialog(props: {
+  divisionId: string;
+  divisionName: string;
+  configured: boolean;
+  payoutSchedules: PayoutOption[];
+}) {
+  return <FeeDialog {...props} />;
+}
+export function EditFeeDialog(props: {
+  divisionId: string;
+  divisionName: string;
+  configured: boolean;
+  payoutSchedules: PayoutOption[];
+  fee: FeeTemplateSummary;
+}) {
+  return <FeeDialog {...props} />;
 }

@@ -164,7 +164,7 @@ export function EntryFormDialog({
                 <FormMessage state={state} />
                 {!divisions.some((division) => division.allowGuests) ? (
                   <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    None of this event’s entry classes allow guest entries.
+                    None of this event’s classes allow guest entries.
                   </p>
                 ) : null}
                 <FormFooter
@@ -191,7 +191,7 @@ function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
     <>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-semibold">
-          Entry class
+          Class
           <select
             name="divisionId"
             value={divisionId}
@@ -199,7 +199,7 @@ function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
             className={inputClass}
             required
           >
-            <option value="">Choose an entry class</option>
+            <option value="">Choose an class</option>
             {divisions.map((division) => (
               <option key={division.id} value={division.id}>
                 {division.name}
