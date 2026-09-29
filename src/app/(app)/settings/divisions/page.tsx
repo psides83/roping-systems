@@ -265,7 +265,9 @@ export default async function DivisionSettingsPage() {
                           </td>
                           <td className="py-3 text-sm capitalize text-[#66716b]">
                             {(fee.kind ?? "standard").replace("_", " ")}
-                            {fee.isRequired ? " · Required" : " · Optional"}
+                            {fee.isRequired !== false
+                              ? " · Required"
+                              : " · Optional"}
                           </td>
                           <td className="py-3 text-sm text-[#66716b]">
                             {fee.includedInEntryPrice
