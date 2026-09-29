@@ -21,6 +21,9 @@ async function getPayoutData() {
           name: "Standard 1 per 10",
           description: "One paid place for each ten entries",
           addedMoneyCents: 0,
+          paybackPercent: 65,
+          goRoundsPercent: 50,
+          aggregatePercent: 50,
           brackets: [
             { minimumEntries: 1, maximumEntries: 10, percentages: [100] },
             { minimumEntries: 11, maximumEntries: 20, percentages: [60, 40] },
@@ -47,7 +50,7 @@ async function getPayoutData() {
       supabase
         .from("payout_schedules")
         .select(
-          "id, name, description, default_added_money_cents, payout_schedule_brackets(id, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
+          "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, payout_schedule_brackets(id, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
         )
         .eq("organization_id", organization.id)
         .eq("is_active", true)
@@ -70,6 +73,9 @@ async function getPayoutData() {
       name: schedule.name,
       description: schedule.description ?? "",
       addedMoneyCents: schedule.default_added_money_cents,
+      paybackPercent: schedule.payback_basis_points / 100,
+      goRoundsPercent: schedule.go_rounds_basis_points / 100,
+      aggregatePercent: schedule.aggregate_basis_points / 100,
       brackets: (
         schedule.payout_schedule_brackets as unknown as Array<{
           minimum_entries: number;
@@ -199,6 +205,11 @@ export default async function PayoutSettingsPage() {
                     added money
                   </p>
                 ) : null}
+                <p className="mt-2 text-xs font-semibold text-[#66716b]">
+                  {schedule.paybackPercent}% payback ·{" "}
+                  {schedule.goRoundsPercent}% across go-rounds ·{" "}
+                  {schedule.aggregatePercent}% aggregate
+                </p>
               </div>
               <PayoutScheduleDialog schedule={schedule} enabled={enabled} />
             </header>

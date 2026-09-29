@@ -21,6 +21,9 @@ export interface EditablePayoutSchedule {
   name: string;
   description: string;
   addedMoneyCents: number;
+  paybackPercent: number;
+  goRoundsPercent: number;
+  aggregatePercent: number;
   brackets: Array<{
     minimumEntries: number;
     maximumEntries: number | null;
@@ -199,6 +202,63 @@ export function PayoutScheduleDialog({
                   placeholder="Pays one place for every ten entries"
                 />
               </label>
+              <section className="rounded-md border border-[#dfe4e1] p-4">
+                <h3 className="text-sm font-bold">Purse allocation</h3>
+                <p className="mt-1 text-xs text-[#758078]">
+                  Payback is applied to collected payout fees. The go-round
+                  share is divided evenly across the configured main rounds.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <label className="text-xs font-bold">
+                    Payback
+                    <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
+                      <input
+                        name="paybackPercent"
+                        type="number"
+                        min="0.01"
+                        max="100"
+                        step="0.01"
+                        defaultValue={schedule?.paybackPercent ?? 100}
+                        className="min-w-0 flex-1 bg-transparent outline-none"
+                        required
+                      />
+                      <span>%</span>
+                    </span>
+                  </label>
+                  <label className="text-xs font-bold">
+                    All go-rounds
+                    <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
+                      <input
+                        name="goRoundsPercent"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        defaultValue={schedule?.goRoundsPercent ?? 50}
+                        className="min-w-0 flex-1 bg-transparent outline-none"
+                        required
+                      />
+                      <span>%</span>
+                    </span>
+                  </label>
+                  <label className="text-xs font-bold">
+                    Aggregate
+                    <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
+                      <input
+                        name="aggregatePercent"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        defaultValue={schedule?.aggregatePercent ?? 50}
+                        className="min-w-0 flex-1 bg-transparent outline-none"
+                        required
+                      />
+                      <span>%</span>
+                    </span>
+                  </label>
+                </div>
+              </section>
               <div className="space-y-3">
                 <div>
                   <h3 className="text-sm font-bold">Entry brackets</h3>

@@ -25,6 +25,9 @@ const formSchema = z.object({
   name: z.string().trim().min(1, "Schedule name is required."),
   description: z.string().trim(),
   addedMoney: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
+  paybackPercent: z.coerce.number().positive().max(100),
+  goRoundsPercent: z.coerce.number().min(0).max(100),
+  aggregatePercent: z.coerce.number().min(0).max(100),
   bracketsJson: z.string(),
 });
 
@@ -60,6 +63,10 @@ export async function savePayoutSchedule(
           "Each bracket must distribute exactly 100% of its payout pool.",
       };
   }
+  if (parsed.data.goRoundsPercent + parsed.data.aggregatePercent !== 100)
+    return {
+      message: "Go-round and aggregate allocations must total 100%.",
+    };
 
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
@@ -71,6 +78,13 @@ export async function savePayoutSchedule(
     schedule_name: parsed.data.name,
     schedule_description: parsed.data.description,
     added_money_cents: Math.round(Number(parsed.data.addedMoney) * 100),
+    schedule_payback_basis_points: Math.round(parsed.data.paybackPercent * 100),
+    schedule_go_rounds_basis_points: Math.round(
+      parsed.data.goRoundsPercent * 100,
+    ),
+    schedule_aggregate_basis_points: Math.round(
+      parsed.data.aggregatePercent * 100,
+    ),
     schedule_brackets: brackets,
   });
   if (error)

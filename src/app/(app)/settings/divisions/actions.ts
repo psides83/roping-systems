@@ -207,8 +207,11 @@ export async function createFee(
         message: "That payout schedule is not available in this organization.",
       };
   }
-  if (parsed.data.kind === "side_pot" && !parsed.data.payoutScheduleId)
-    return { message: "Choose a payout schedule for the side pot." };
+  if (
+    ["side_pot", "insurance"].includes(parsed.data.kind) &&
+    !parsed.data.payoutScheduleId
+  )
+    return { message: "Choose a payout schedule for this optional pool." };
   const { error } = await context.supabase.from("fee_templates").insert({
     organization_id: context.organization.id,
     division_template_id: division.id,
@@ -219,7 +222,7 @@ export async function createFee(
     payout_schedule_id: parsed.data.payoutScheduleId || null,
     included_in_entry_price: parsed.data.includedInEntryPrice === "on",
     contributes_to_payout:
-      parsed.data.kind === "side_pot" ||
+      ["side_pot", "insurance"].includes(parsed.data.kind) ||
       parsed.data.contributesToPayout === "on",
     is_required: parsed.data.isRequired === "on",
   });
@@ -257,8 +260,11 @@ export async function updateFee(
         message: "That payout schedule is not available in this organization.",
       };
   }
-  if (parsed.data.kind === "side_pot" && !parsed.data.payoutScheduleId)
-    return { message: "Choose a payout schedule for the side pot." };
+  if (
+    ["side_pot", "insurance"].includes(parsed.data.kind) &&
+    !parsed.data.payoutScheduleId
+  )
+    return { message: "Choose a payout schedule for this optional pool." };
   const { error } = await context.supabase
     .from("fee_templates")
     .update({
@@ -269,7 +275,7 @@ export async function updateFee(
       payout_schedule_id: parsed.data.payoutScheduleId || null,
       included_in_entry_price: parsed.data.includedInEntryPrice === "on",
       contributes_to_payout:
-        parsed.data.kind === "side_pot" ||
+        ["side_pot", "insurance"].includes(parsed.data.kind) ||
         parsed.data.contributesToPayout === "on",
       is_required: parsed.data.isRequired === "on",
     })

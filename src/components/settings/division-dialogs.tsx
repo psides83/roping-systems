@@ -487,9 +487,10 @@ function FeeDialog({
                 </select>
               </label>
             </div>
-            {kind === "side_pot" ? (
+            {kind === "side_pot" || kind === "insurance" ? (
               <label className="block text-sm font-semibold">
-                Side pot payout schedule
+                {kind === "insurance" ? "Insurance" : "Side pot"} payout
+                schedule
                 <select
                   name="payoutScheduleId"
                   defaultValue={fee?.payoutScheduleId ?? ""}
@@ -527,7 +528,7 @@ function FeeDialog({
                 />{" "}
                 Include in displayed entry price
               </label>
-              {kind !== "side_pot" ? (
+              {kind !== "side_pot" && kind !== "insurance" ? (
                 <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
                   <input
                     name="contributesToPayout"
@@ -539,8 +540,10 @@ function FeeDialog({
                 </label>
               ) : (
                 <p className="rounded-md bg-[#f7f8f7] p-3 text-xs leading-5 text-[#66716b]">
-                  Side pot selections form a separate payout pool using the
-                  selected schedule.
+                  Each selected{" "}
+                  {kind === "insurance" ? "insurance" : "side pot"}
+                  entry forms part of a separate payout pool using this
+                  schedule.
                 </p>
               )}
             </div>
@@ -569,7 +572,8 @@ function FeeDialog({
                 disabled={
                   pending ||
                   !configured ||
-                  (kind === "side_pot" && !payoutSchedules.length)
+                  ((kind === "side_pot" || kind === "insurance") &&
+                    !payoutSchedules.length)
                 }
                 className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
               >
