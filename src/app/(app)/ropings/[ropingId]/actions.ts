@@ -220,8 +220,30 @@ export async function seedShortRound(
 const runSchema = z.object({
   runId: z.uuid(),
   penalty: z.coerce.number().min(0).max(999),
-  status: z.enum(["complete", "no_time", "scratch", "rerun"]),
+  status: z.enum([
+    "complete",
+    "no_time",
+    "disqualified",
+    "scratch",
+    "turned_out",
+    "rerun",
+  ]),
 });
+
+const correctionSchema = runSchema.extend({
+  reason: z.string().trim().min(5).max(300),
+});
+
+function getTimerReadings(formData: FormData, status: string) {
+  const timerValues = formData.getAll("timerReading").map(String);
+  const timerReadings = timerValues.map(Number);
+  const valid =
+    status !== "complete" ||
+    (timerValues.length > 0 &&
+      timerValues.every((value) => /^\d+(?:\.\d{1,3})?$/.test(value)) &&
+      timerReadings.every((value) => value >= 0));
+  return { timerReadings, valid };
+}
 
 export async function recordRun(
   ropingId: string,
@@ -231,15 +253,11 @@ export async function recordRun(
   const parsed = runSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
     return { message: "Enter a valid time before saving this run." };
-  const timerValues = formData.getAll("timerReading").map(String);
-  const timerReadings = timerValues.map(Number);
-  if (
-    parsed.data.status === "complete" &&
-    (!timerValues.length ||
-      timerValues.some((value) => !/^\d+(?:\.\d{1,3})?$/.test(value)) ||
-      timerReadings.some((value) => value < 0))
-  )
-    return { message: "Enter a valid reading from every timer." };
+  const { timerReadings, valid } = getTimerReadings(
+    formData,
+    parsed.data.status,
+  );
+  if (!valid) return { message: "Enter a valid reading from every timer." };
 
   const supabase = await requireManager();
   const { error } = await supabase.rpc("record_run_result_multi", {
@@ -251,8 +269,64 @@ export async function recordRun(
   });
   if (error) return { message: error.message };
   revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
   revalidatePath(`/public`);
   return { success: true, message: "Run saved." };
+}
+
+export async function correctRun(
+  ropingId: string,
+  _state: LiveRunState,
+  formData: FormData,
+): Promise<LiveRunState> {
+  const parsed = correctionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return {
+      message: "Choose an outcome and enter a brief correction reason.",
+    };
+  const { timerReadings, valid } = getTimerReadings(
+    formData,
+    parsed.data.status,
+  );
+  if (!valid) return { message: "Enter a valid reading from every timer." };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("correct_run_result_multi", {
+    target_run_id: parsed.data.runId,
+    entered_timer_readings:
+      parsed.data.status === "complete" ? timerReadings : [],
+    entered_penalty: parsed.data.penalty,
+    entered_status: parsed.data.status,
+    entered_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  revalidatePath(`/public`);
+  return { success: true, message: "Correction saved and added to the log." };
+}
+
+export async function completeRound(
+  ropingId: string,
+  _state: LiveRunState,
+  formData: FormData,
+): Promise<LiveRunState> {
+  const parsed = z
+    .object({
+      divisionId: z.uuid(),
+      runNumber: z.coerce.number().int().min(1),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { message: "Choose a valid round." };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("complete_roping_round", {
+    target_roping_division_id: parsed.data.divisionId,
+    target_run_number: parsed.data.runNumber,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return { success: true, message: "Round completed and locked." };
 }
 
 export async function finalizeRoping(ropingId: string): Promise<void> {

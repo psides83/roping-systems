@@ -7,6 +7,7 @@ import {
   ArrowDown,
   ArrowUp,
   ListOrdered,
+  LockKeyhole,
   LoaderCircle,
   Save,
   Search,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   generateDraw,
+  completeRound,
   recordRun,
   saveDrawOrder,
   seedShortRound,
@@ -23,6 +25,13 @@ import {
 } from "@/app/(app)/ropings/[ropingId]/actions";
 import { cn } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
+import {
+  isResolvedRunStatus,
+  runStatusAbbreviations,
+  runStatusLabels,
+  type RunStatus,
+} from "@/lib/run-status";
+import { RunCorrectionDialog } from "@/components/ropings/run-correction-dialog";
 
 export interface LiveRunRow {
   id: string;
@@ -33,8 +42,9 @@ export interface LiveRunRow {
   rawTime: number | null;
   penalty: number;
   incentiveAdjustment: number;
+  timerReadings: number[];
   carryTime: number | null;
-  status: string;
+  status: RunStatus;
 }
 
 interface LiveDeskProps {
@@ -49,6 +59,7 @@ interface LiveDeskProps {
   selectedDivisionId: string;
   selectedRound: number;
   runs: LiveRunRow[];
+  roundLocked: boolean;
   timerCount: number;
   timerResolution: "average" | "best" | "longest";
   eventStatus: string;
@@ -64,6 +75,7 @@ export function DatabaseLiveDesk({
   selectedDivisionId,
   selectedRound,
   runs,
+  roundLocked,
   timerCount,
   timerResolution,
   eventStatus,
@@ -83,6 +95,11 @@ export function DatabaseLiveDesk({
   const shortRoundAction = seedShortRound.bind(null, ropingId);
   const [shortRoundState, shortRoundFormAction, shortRoundPending] =
     useActionState<LiveRunState, FormData>(shortRoundAction, {});
+  const completeRoundAction = completeRound.bind(null, ropingId);
+  const [roundState, roundFormAction, roundPending] = useActionState<
+    LiveRunState,
+    FormData
+  >(completeRoundAction, {});
 
   const selectedDivision = divisions.find(
     (division) => division.id === selectedDivisionId,
@@ -97,13 +114,19 @@ export function DatabaseLiveDesk({
   const canManageDraw =
     canEdit && !drawLocked && !isShortRound && orderedRuns.length > 0;
   const dirty = orderedRuns.some((run, index) => run.id !== runs[index]?.id);
+  const pendingRuns = orderedRuns.filter((run) => run.status === "pending");
   const currentRun =
     eventStatus === "in_progress" && drawReady && !dirty
-      ? (orderedRuns.find((run) => run.status === "pending") ?? null)
+      ? (pendingRuns[0] ?? null)
       : null;
-  const completeCount = orderedRuns.filter(
-    (run) => run.status !== "pending",
+  const upcomingRuns = currentRun ? pendingRuns.slice(1, 3) : [];
+  const completeCount = orderedRuns.filter((run) =>
+    isResolvedRunStatus(run.status),
   ).length;
+  const rerunCount = orderedRuns.filter((run) => run.status === "rerun").length;
+  const roundReadyToLock =
+    orderedRuns.length > 0 &&
+    orderedRuns.every((run) => isResolvedRunStatus(run.status));
   const orderMethod =
     selectedRound === 1
       ? "First entries rope last"
@@ -190,6 +213,33 @@ export function DatabaseLiveDesk({
                     : `Order not built · ${orderMethod}`}
             </p>
             <div className="flex flex-wrap gap-2">
+              {roundLocked ? (
+                <span className="flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-xs font-bold text-emerald-800">
+                  <LockKeyhole size={14} /> Round locked
+                </span>
+              ) : roundReadyToLock && drawReady ? (
+                <form action={roundFormAction}>
+                  <input
+                    type="hidden"
+                    name="divisionId"
+                    value={selectedDivisionId}
+                  />
+                  <input type="hidden" name="runNumber" value={selectedRound} />
+                  <button
+                    disabled={
+                      !canEdit || eventStatus !== "in_progress" || roundPending
+                    }
+                    className="flex h-8 items-center gap-2 rounded-md brand-primary-fill px-3 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {roundPending ? (
+                      <LoaderCircle size={14} className="animate-spin" />
+                    ) : (
+                      <LockKeyhole size={14} />
+                    )}
+                    Complete round
+                  </button>
+                </form>
+              ) : null}
               {isShortRound && !shortRoundSeeded ? (
                 <form action={shortRoundFormAction}>
                   <input
@@ -279,6 +329,14 @@ export function DatabaseLiveDesk({
               {shortRoundState.message}
             </p>
           ) : null}
+          {roundState.message ? (
+            <p
+              className={`mt-2 text-xs ${roundState.success ? "text-emerald-700" : "text-rose-700"}`}
+              aria-live="polite"
+            >
+              {roundState.message}
+            </p>
+          ) : null}
         </div>
 
         <div className="overflow-x-auto">
@@ -344,7 +402,33 @@ export function DatabaseLiveDesk({
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <p className="text-sm font-semibold">{run.name}</p>
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{run.name}</p>
+                          {run.status !== "pending" ? (
+                            <p
+                              className={cn(
+                                "mt-1 text-[10px] font-bold uppercase",
+                                run.status === "complete"
+                                  ? "text-emerald-700"
+                                  : run.status === "rerun"
+                                    ? "text-amber-700"
+                                    : "text-[#758078]",
+                              )}
+                            >
+                              {runStatusLabels[run.status]}
+                            </p>
+                          ) : null}
+                        </div>
+                        {run.status !== "pending" ? (
+                          <RunCorrectionDialog
+                            ropingId={ropingId}
+                            run={run}
+                            timerCount={timerCount}
+                            canEdit={canEdit && eventStatus === "in_progress"}
+                          />
+                        ) : null}
+                      </div>
                       {currentRun?.id === run.id ? (
                         <p className="mt-1 text-[10px] font-bold uppercase text-[var(--brand-accent-strong)]">
                           In the box
@@ -360,11 +444,7 @@ export function DatabaseLiveDesk({
                     <td className="px-5 py-4 text-right font-mono text-sm font-semibold">
                       {run.status === "complete"
                         ? run.rawTime?.toFixed(3)
-                        : run.status === "no_time"
-                          ? "NT"
-                          : run.status === "scratch"
-                            ? "SCR"
-                            : "-"}
+                        : runStatusAbbreviations[run.status]}
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-sm">
                       {run.penalty ? `+${run.penalty}` : "-"}
@@ -383,11 +463,7 @@ export function DatabaseLiveDesk({
                               run.incentiveAdjustment,
                             0,
                           ).toFixed(3)
-                        : run.status === "no_time"
-                          ? "NT"
-                          : run.status === "scratch"
-                            ? "SCR"
-                            : "-"}
+                        : runStatusAbbreviations[run.status]}
                     </td>
                   </tr>
                 );
@@ -407,12 +483,15 @@ export function DatabaseLiveDesk({
           ) : null}
         </div>
         <div className="border-t border-[#e7ebe8] bg-[#fafbfa] px-5 py-3 text-xs text-[#758078]">
-          {completeCount} completed · {orderedRuns.length - completeCount}{" "}
-          remaining
+          {completeCount} resolved · {pendingRuns.length} remaining
+          {rerunCount ? ` · ${rerunCount} rerun required` : ""}
         </div>
       </section>
 
       <aside className="order-1 space-y-4 xl:order-2">
+        {drawReady && !dirty ? (
+          <ArenaQueue current={currentRun} upcoming={upcomingRuns} />
+        ) : null}
         {currentRun ? (
           <RunEntryForm
             key={currentRun.id}
@@ -436,9 +515,13 @@ export function DatabaseLiveDesk({
                   ? "Draw required"
                   : dirty
                     ? "Save the draw"
-                    : eventStatus !== "in_progress"
-                      ? "Ready to start"
-                      : "Round complete"
+                    : roundLocked
+                      ? "Round locked"
+                      : rerunCount
+                        ? "Reruns required"
+                        : eventStatus !== "in_progress"
+                          ? "Ready to start"
+                          : "Round complete"
             }
             message={
               !orderedRuns.length
@@ -453,9 +536,13 @@ export function DatabaseLiveDesk({
                   ? "Generate the draw and make any order adjustments before starting this round."
                   : dirty
                     ? "Save order changes before recording another result."
-                    : eventStatus !== "in_progress"
-                      ? "The draw is ready. Start the event when the arena is ready."
-                      : "Every run in this round has a result."
+                    : roundLocked
+                      ? "This round is complete. Corrections require a reason and remain available in the changelog."
+                      : rerunCount
+                        ? `${rerunCount} ${rerunCount === 1 ? "run requires" : "runs require"} a rerun before this round can be completed.`
+                        : eventStatus !== "in_progress"
+                          ? "The draw is ready. Start the event when the arena is ready."
+                          : "Every run in this round has a result."
             }
           />
         )}
@@ -484,6 +571,49 @@ export function DatabaseLiveDesk({
         </div>
       </aside>
     </div>
+  );
+}
+
+function ArenaQueue({
+  current,
+  upcoming,
+}: {
+  current: LiveRunRow | null;
+  upcoming: LiveRunRow[];
+}) {
+  if (!current && !upcoming.length) return null;
+  return (
+    <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+      <div className="brand-primary-fill px-4 py-3 text-white">
+        <p className="text-[10px] font-bold uppercase opacity-75">In the box</p>
+        <p className="mt-1 truncate text-lg font-bold">
+          {current?.name ?? "Round complete"}
+        </p>
+        {current ? (
+          <p className="mt-1 text-xs opacity-80">
+            Draw {current.drawPosition} · Entry #{current.entryNumber}
+          </p>
+        ) : null}
+      </div>
+      {upcoming.length ? (
+        <div className="divide-y divide-[#e7ebe8]">
+          {upcoming.map((run, index) => (
+            <div
+              key={run.id}
+              className="grid grid-cols-[74px_1fr_auto] items-center gap-2 px-4 py-3 text-sm"
+            >
+              <span className="text-[10px] font-bold uppercase text-[#758078]">
+                {index === 0 ? "On deck" : "Next up"}
+              </span>
+              <span className="min-w-0 truncate font-semibold">{run.name}</span>
+              <span className="font-mono text-xs text-[#66716b]">
+                #{run.entryNumber}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -677,11 +807,35 @@ function RunEntryForm({
         </button>
         <button
           name="status"
+          value="disqualified"
+          disabled={!canEdit || pending}
+          className="flex h-10 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
+        >
+          Disqualified
+        </button>
+        <button
+          name="status"
           value="scratch"
           disabled={!canEdit || pending}
           className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
           <SkipForward size={15} /> Scratch
+        </button>
+        <button
+          name="status"
+          value="turned_out"
+          disabled={!canEdit || pending}
+          className="flex h-10 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
+        >
+          Turned out
+        </button>
+        <button
+          name="status"
+          value="rerun"
+          disabled={!canEdit || pending}
+          className="col-span-2 flex h-10 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
+        >
+          Rerun required
         </button>
       </div>
     </form>

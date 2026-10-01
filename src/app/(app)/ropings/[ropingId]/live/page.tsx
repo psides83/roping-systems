@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import type { RunStatus } from "@/lib/run-status";
 import {
   finalizeRoping,
   startRoping,
@@ -62,6 +63,7 @@ export default async function LiveRopingPage({
         )}
         runs={previewRuns}
         fourDResults={[]}
+        roundLocked={false}
         mainRoundsComplete
         canEdit={false}
       />
@@ -122,12 +124,13 @@ export default async function LiveRopingPage({
   let runs: LiveRunRow[] = [];
   let mainRoundsComplete = false;
   let fourDResults: FourDResultRow[] = [];
+  let roundLocked = false;
 
   if (selectedDivisionId) {
     const { data: runData, error } = await supabase
       .from("runs")
       .select(
-        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
+        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, run_timer_readings(timer_number, time_seconds), entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
       )
       .eq("roping_division_id", selectedDivisionId)
       .eq("run_number", selectedRound)
@@ -150,8 +153,16 @@ export default async function LiveRopingPage({
           run.raw_time_seconds === null ? null : Number(run.raw_time_seconds),
         penalty: Number(run.penalty_seconds),
         incentiveAdjustment: Number(entry.incentive_adjustment_seconds),
+        timerReadings: (
+          run.run_timer_readings as unknown as Array<{
+            timer_number: number;
+            time_seconds: number;
+          }>
+        )
+          .sort((a, b) => a.timer_number - b.timer_number)
+          .map((reading) => Number(reading.time_seconds)),
         carryTime: null,
-        status: run.status,
+        status: run.status as RunStatus,
       };
     });
     if (
@@ -202,10 +213,19 @@ export default async function LiveRopingPage({
       .select("id", { count: "exact", head: true })
       .eq("roping_division_id", selectedDivisionId)
       .lte("run_number", selectedDivision?.numberOfRuns ?? 1)
-      .eq("status", "pending");
+      .in("status", ["pending", "rerun"]);
     if (pendingError)
       throw new Error(`Unable to check main rounds: ${pendingError.message}`);
     mainRoundsComplete = pendingMainCount === 0;
+    const { data: roundControl, error: roundError } = await supabase
+      .from("roping_rounds")
+      .select("status")
+      .eq("roping_division_id", selectedDivisionId)
+      .eq("run_number", selectedRound)
+      .maybeSingle();
+    if (roundError)
+      throw new Error(`Unable to load the round status: ${roundError.message}`);
+    roundLocked = roundControl?.status === "locked";
     if (selectedDivision?.competitionFormat === "four_d") {
       const { data: resultData, error: resultError } = await supabase.rpc(
         "calculate_four_d_results",
@@ -232,6 +252,7 @@ export default async function LiveRopingPage({
       selectedRound={selectedRound}
       runs={runs}
       fourDResults={fourDResults}
+      roundLocked={roundLocked}
       mainRoundsComplete={mainRoundsComplete}
       canEdit={organization.role !== "viewer"}
     />
@@ -248,6 +269,7 @@ function LiveWorkspace({
   selectedRound,
   runs,
   fourDResults,
+  roundLocked,
   mainRoundsComplete,
   canEdit,
 }: {
@@ -260,6 +282,7 @@ function LiveWorkspace({
   selectedRound: number;
   runs: LiveRunRow[];
   fourDResults: FourDResultRow[];
+  roundLocked: boolean;
   mainRoundsComplete: boolean;
   canEdit: boolean;
 }) {
@@ -310,6 +333,7 @@ function LiveWorkspace({
             selectedDivisionId={selectedDivisionId}
             selectedRound={selectedRound}
             runs={runs}
+            roundLocked={roundLocked}
             timerCount={selectedDivision.timerCount}
             timerResolution={selectedDivision.timerResolution}
             eventStatus={status}
@@ -385,6 +409,7 @@ const previewRuns: LiveRunRow[] = [
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 0,
+    timerReadings: [],
     carryTime: 22.64,
     status: "pending",
   },
@@ -397,6 +422,7 @@ const previewRuns: LiveRunRow[] = [
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 1.5,
+    timerReadings: [],
     carryTime: 22.08,
     status: "pending",
   },
@@ -409,6 +435,7 @@ const previewRuns: LiveRunRow[] = [
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 0,
+    timerReadings: [],
     carryTime: 21.15,
     status: "pending",
   },
@@ -421,6 +448,7 @@ const previewRuns: LiveRunRow[] = [
     rawTime: null,
     penalty: 0,
     incentiveAdjustment: 0,
+    timerReadings: [],
     carryTime: 20.42,
     status: "pending",
   },
