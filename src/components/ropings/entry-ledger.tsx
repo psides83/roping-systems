@@ -11,6 +11,7 @@ import {
   type TransferDivision,
 } from "@/components/ropings/entry-transfer-dialog";
 import { formatCurrency } from "@/lib/utils";
+import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
 type PaymentStatus = "unpaid" | "paid_cash" | "comped" | "refunded";
 type PaymentSummary = PaymentStatus | "mixed";
@@ -190,7 +191,7 @@ function ContestantRow({
               <span className="py-1">
                 {entry.division} #{entry.entryNumber}
                 {entry.incentiveAdjustment
-                  ? ` · -${entry.incentiveAdjustment.toFixed(3)} sec`
+                  ? ` · ${formatFinalTimeAdjustment(entry.incentiveAdjustment)} sec`
                   : ""}
                 {entry.transferNote ? (
                   <span className="mt-0.5 block font-normal text-[#66716b]">

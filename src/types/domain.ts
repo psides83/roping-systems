@@ -11,6 +11,20 @@ export type RopingStatus =
 export type FeeScope = "entry" | "contestant_division" | "contestant_event";
 export type FeeKind = "standard" | "insurance" | "side_pot" | "other";
 export type ResultStatus = "unofficial" | "official";
+export type CompetitionFormat = "standard" | "handicap" | "four_d";
+
+export interface FourDEntryBracket {
+  minimumEntries: number;
+  maximumEntries: number | null;
+  activeDivisions: number;
+  purseBasisPoints: [number, number, number, number];
+  placesByDivision: [number, number, number, number];
+}
+
+export interface FourDSettings {
+  splitSeconds: number;
+  brackets: FourDEntryBracket[];
+}
 
 export interface MemberSummary {
   id: string;
@@ -60,5 +74,7 @@ export interface DivisionTemplateSummary {
   timerCount?: number;
   timerResolution?: "average" | "best" | "longest";
   payoutScheduleId?: string | null;
+  competitionFormat?: CompetitionFormat;
+  fourDSettings?: FourDSettings | null;
   fees: FeeTemplateSummary[];
 }

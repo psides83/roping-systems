@@ -12,7 +12,9 @@ import {
   type SettingsFormState,
 } from "@/app/(app)/settings/divisions/actions";
 import { DeleteRecordButton } from "@/components/settings/delete-record-button";
+import { FourDSettingsFields } from "@/components/settings/four-d-settings-fields";
 import type {
+  CompetitionFormat,
   DivisionTemplateSummary,
   FeeTemplateSummary,
 } from "@/types/domain";
@@ -100,6 +102,9 @@ function EventTemplateDialog({
   const [open, setOpen] = useState(false);
   const [disciplineId, setDisciplineId] = useState(
     template?.disciplineId ?? divisions[0]?.id ?? "",
+  );
+  const [competitionFormat, setCompetitionFormat] = useState<CompetitionFormat>(
+    template?.competitionFormat ?? "standard",
   );
   const [state, action, pending] = useActionState(
     template ? updateDivision : createDivision,
@@ -200,6 +205,31 @@ function EventTemplateDialog({
                 </select>
               </label>
             </div>
+            <label className="block text-sm font-semibold">
+              Competition format
+              <select
+                name="competitionFormat"
+                value={competitionFormat}
+                onChange={(event) =>
+                  setCompetitionFormat(event.target.value as CompetitionFormat)
+                }
+                className={inputClass}
+              >
+                <option value="standard">Standard aggregate</option>
+                <option value="handicap">Handicap</option>
+                <option value="four_d">4D time brackets</option>
+              </select>
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#66716b]">
+                {competitionFormat === "standard"
+                  ? "Contestants place by round and aggregate without a class handicap."
+                  : competitionFormat === "handicap"
+                    ? "Classification adjustments are applied to each contestant's final time."
+                    : "A single final time is placed into a D according to its distance from the fastest time."}
+              </span>
+            </label>
+            {competitionFormat === "four_d" ? (
+              <FourDSettingsFields initialSettings={template?.fourDSettings} />
+            ) : null}
             <label className="block text-sm font-semibold">
               Description
               <textarea

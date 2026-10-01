@@ -14,9 +14,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import type {
+  CompetitionFormat,
   DivisionTemplateSummary,
   FeeKind,
   FeeScope,
+  FourDSettings,
 } from "@/types/domain";
 
 const scopeLabels: Record<FeeScope, string> = {
@@ -64,7 +66,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, four_d_settings, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
@@ -119,6 +121,8 @@ async function getDivisionData(): Promise<{
       classificationId: division.classification_id,
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
+      competitionFormat: division.competition_format as CompetitionFormat,
+      fourDSettings: division.four_d_settings as FourDSettings | null,
       payoutScheduleId: division.payout_schedule_id,
       fees: (
         division.fee_templates as unknown as Array<{
@@ -204,6 +208,13 @@ export default async function DivisionSettingsPage() {
                   >
                     <Check size={12} />{" "}
                     {division.isActive ? "Active" : "Inactive"}
+                  </span>
+                  <span className="rounded-full bg-[#eef1ef] px-2.5 py-1 text-xs font-semibold text-[#56615b]">
+                    {division.competitionFormat === "four_d"
+                      ? "4D"
+                      : division.competitionFormat === "handicap"
+                        ? "Handicap"
+                        : "Standard"}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-[#66716b]">

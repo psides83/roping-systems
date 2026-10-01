@@ -4,6 +4,12 @@ import {
   DatabaseLiveDesk,
   type LiveRunRow,
 } from "@/components/ropings/database-live-desk";
+import {
+  FourDStandings,
+  mapFourDResult,
+  type FourDResultDatabaseRow,
+  type FourDResultRow,
+} from "@/components/ropings/four-d-standings";
 import { PageHeader } from "@/components/ui/page-header";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -14,6 +20,7 @@ import {
 } from "@/app/(app)/ropings/[ropingId]/actions";
 
 type TimerResolution = "average" | "best" | "longest";
+type CompetitionFormat = "standard" | "handicap" | "four_d";
 
 interface LiveDivision {
   id: string;
@@ -23,6 +30,7 @@ interface LiveDivision {
   shortRoundSeeded: boolean;
   timerCount: number;
   timerResolution: TimerResolution;
+  competitionFormat: CompetitionFormat;
 }
 
 export default async function LiveRopingPage({
@@ -53,6 +61,7 @@ export default async function LiveRopingPage({
           getTotalRounds(selectedDivision),
         )}
         runs={previewRuns}
+        fourDResults={[]}
         mainRoundsComplete
         canEdit={false}
       />
@@ -65,7 +74,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -83,6 +92,7 @@ export default async function LiveRopingPage({
       short_round_seeded_at: string | null;
       timer_count: number;
       timer_resolution: TimerResolution;
+      competition_format: CompetitionFormat;
     }>
   )
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -99,6 +109,7 @@ export default async function LiveRopingPage({
       shortRoundSeeded: Boolean(division.short_round_seeded_at),
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
+      competitionFormat: division.competition_format,
     }));
   const selectedDivisionId = getSelectedDivisionId(divisions, query.division);
   const selectedDivision = divisions.find(
@@ -110,6 +121,7 @@ export default async function LiveRopingPage({
   );
   let runs: LiveRunRow[] = [];
   let mainRoundsComplete = false;
+  let fourDResults: FourDResultRow[] = [];
 
   if (selectedDivisionId) {
     const { data: runData, error } = await supabase
@@ -194,6 +206,19 @@ export default async function LiveRopingPage({
     if (pendingError)
       throw new Error(`Unable to check main rounds: ${pendingError.message}`);
     mainRoundsComplete = pendingMainCount === 0;
+    if (selectedDivision?.competitionFormat === "four_d") {
+      const { data: resultData, error: resultError } = await supabase.rpc(
+        "calculate_four_d_results",
+        { target_roping_division_id: selectedDivisionId },
+      );
+      if (resultError)
+        throw new Error(
+          `Unable to calculate 4D standings: ${resultError.message}`,
+        );
+      fourDResults = ((resultData ?? []) as FourDResultDatabaseRow[]).map(
+        mapFourDResult,
+      );
+    }
   }
 
   return (
@@ -206,6 +231,7 @@ export default async function LiveRopingPage({
       selectedDivisionId={selectedDivisionId}
       selectedRound={selectedRound}
       runs={runs}
+      fourDResults={fourDResults}
       mainRoundsComplete={mainRoundsComplete}
       canEdit={organization.role !== "viewer"}
     />
@@ -221,6 +247,7 @@ function LiveWorkspace({
   selectedDivisionId,
   selectedRound,
   runs,
+  fourDResults,
   mainRoundsComplete,
   canEdit,
 }: {
@@ -232,6 +259,7 @@ function LiveWorkspace({
   selectedDivisionId?: string;
   selectedRound: number;
   runs: LiveRunRow[];
+  fourDResults: FourDResultRow[];
   mainRoundsComplete: boolean;
   canEdit: boolean;
 }) {
@@ -271,21 +299,26 @@ function LiveWorkspace({
         }
       />
       {selectedDivisionId && selectedDivision ? (
-        <DatabaseLiveDesk
-          key={`${selectedDivisionId}-${selectedRound}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}`).join("|")}`}
-          ropingId={ropingId}
-          divisions={divisions}
-          selectedDivisionId={selectedDivisionId}
-          selectedRound={selectedRound}
-          runs={runs}
-          timerCount={selectedDivision.timerCount}
-          timerResolution={selectedDivision.timerResolution}
-          eventStatus={status}
-          isShortRound={selectedRound > selectedDivision.numberOfRuns}
-          shortRoundSeeded={selectedDivision.shortRoundSeeded}
-          mainRoundsComplete={mainRoundsComplete}
-          canEdit={canEdit}
-        />
+        <>
+          {selectedDivision.competitionFormat === "four_d" ? (
+            <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
+          ) : null}
+          <DatabaseLiveDesk
+            key={`${selectedDivisionId}-${selectedRound}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}`).join("|")}`}
+            ropingId={ropingId}
+            divisions={divisions}
+            selectedDivisionId={selectedDivisionId}
+            selectedRound={selectedRound}
+            runs={runs}
+            timerCount={selectedDivision.timerCount}
+            timerResolution={selectedDivision.timerResolution}
+            eventStatus={status}
+            isShortRound={selectedRound > selectedDivision.numberOfRuns}
+            shortRoundSeeded={selectedDivision.shortRoundSeeded}
+            mainRoundsComplete={mainRoundsComplete}
+            canEdit={canEdit}
+          />
+        </>
       ) : (
         <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center">
           <p className="font-semibold">This event has no classes.</p>
@@ -328,6 +361,7 @@ const previewDivisions: LiveDivision[] = [
     shortRoundSeeded: true,
     timerCount: 2,
     timerResolution: "average",
+    competitionFormat: "standard",
   },
   {
     id: "breakaway-115",
@@ -337,6 +371,7 @@ const previewDivisions: LiveDivision[] = [
     shortRoundSeeded: false,
     timerCount: 2,
     timerResolution: "longest",
+    competitionFormat: "handicap",
   },
 ];
 

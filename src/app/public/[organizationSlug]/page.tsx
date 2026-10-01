@@ -10,10 +10,17 @@ import {
   Radio,
 } from "lucide-react";
 import { PublicResultsRefresh } from "@/components/public-results-refresh";
+import {
+  FourDStandings,
+  mapFourDResult,
+  type FourDResultDatabaseRow,
+  type FourDResultRow,
+} from "@/components/ropings/four-d-standings";
 import { ropings as demoRopings } from "@/data/demo";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getBrandStyle } from "@/lib/branding";
+import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
 interface PublicEvent {
   id: string;
@@ -49,6 +56,12 @@ interface PublicResult {
   roundsCompleted: number;
   mainRoundCount: number;
   shortRoundQualifier: boolean;
+}
+
+interface PublicFourDResult extends FourDResultRow {
+  divisionId: string;
+  divisionName: string;
+  resultStatus: string;
 }
 
 function getAggregatePlace(results: PublicResult[], result: PublicResult) {
@@ -160,6 +173,7 @@ async function getPublicData(organizationSlug: string) {
           shortRoundQualifier: false,
         },
       ] as PublicResult[],
+      fourDResults: [] as PublicFourDResult[],
     };
   }
 
@@ -197,7 +211,40 @@ async function getPublicData(organizationSlug: string) {
     schedule.find((event) => event.status === "in_progress") ??
     schedule.find((event) => event.status === "completed");
   let results: PublicResult[] = [];
+  const fourDResults: PublicFourDResult[] = [];
   if (liveEvent) {
+    const { data: formatRows, error: formatError } = await supabase
+      .from("public_competition_formats")
+      .select("division_id, division_name, competition_format")
+      .eq("organization_slug", organizationSlug)
+      .eq("roping_id", liveEvent.id);
+    if (formatError)
+      throw new Error(
+        `Unable to load competition formats: ${formatError.message}`,
+      );
+    const fourDDivisions = (formatRows ?? []).filter(
+      (row) => row.competition_format === "four_d",
+    );
+    const fourDResponses = await Promise.all(
+      fourDDivisions.map(async (division) => ({
+        division,
+        response: await supabase.rpc("calculate_four_d_results", {
+          target_roping_division_id: division.division_id,
+        }),
+      })),
+    );
+    for (const { division, response } of fourDResponses) {
+      if (response.error)
+        throw new Error(`Unable to load 4D results: ${response.error.message}`);
+      fourDResults.push(
+        ...((response.data ?? []) as FourDResultDatabaseRow[]).map((row) => ({
+          ...mapFourDResult(row),
+          divisionId: division.division_id,
+          divisionName: division.division_name,
+          resultStatus: liveEvent.result_status,
+        })),
+      );
+    }
     const { data: resultRows, error: resultError } = await supabase
       .from("public_aggregate_results")
       .select(
@@ -264,6 +311,7 @@ async function getPublicData(organizationSlug: string) {
     },
     events,
     results,
+    fourDResults,
   };
 }
 
@@ -280,7 +328,16 @@ export default async function OrganizationPublicPage({
     ["scheduled", "entries_open", "entries_closed"].includes(event.status),
   );
   const groupedResults = Map.groupBy(
-    data.results,
+    data.results.filter(
+      (result) =>
+        !data.fourDResults.some(
+          (fourDResult) => fourDResult.divisionId === result.divisionId,
+        ),
+    ),
+    (result) => result.divisionId,
+  );
+  const groupedFourDResults = Map.groupBy(
+    data.fourDResults,
     (result) => result.divisionId,
   );
   const displayDate = (value: string) =>
@@ -411,6 +468,14 @@ export default async function OrganizationPublicPage({
             </p>
           </div>
           <div className="mt-4 space-y-5">
+            {Array.from(groupedFourDResults.values()).map((results) => (
+              <FourDStandings
+                key={results[0].divisionId}
+                rows={results}
+                resultStatus={results[0].resultStatus}
+                title={results[0].divisionName}
+              />
+            ))}
             {Array.from(groupedResults.values()).map((results) => (
               <div
                 key={results[0].divisionId}
@@ -451,8 +516,10 @@ export default async function OrganizationPublicPage({
                           {result.name}
                           {result.incentiveAdjustment ? (
                             <span className="mt-1 block text-[10px] font-bold text-emerald-700">
-                              -{result.incentiveAdjustment.toFixed(3)} sec
-                              incentive
+                              {formatFinalTimeAdjustment(
+                                result.incentiveAdjustment,
+                              )}{" "}
+                              sec handicap
                             </span>
                           ) : null}
                           <span className="mt-1 block text-[10px] font-semibold text-[#758078]">

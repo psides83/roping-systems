@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Clock3, Gauge, Plus, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import type { CompetitionFormat } from "@/types/domain";
 
 export interface IncentiveClassification {
   id: string;
@@ -16,6 +17,7 @@ export interface EventTemplate {
   name: string;
   disciplineId: string | null;
   divisionName: string;
+  competitionFormat: CompetitionFormat;
   fees: Array<{
     id: string;
     title: string;
@@ -76,10 +78,10 @@ export function ScheduledClassFields({
           roundCount: occurrence.roundCount,
           incentiveEnabled: occurrence.incentiveEnabled,
           incentiveRules: Object.entries(occurrence.incentiveRules)
-            .filter(([, seconds]) => Number(seconds) > 0)
+            .filter(([, seconds]) => Number(seconds) !== 0)
             .map(([classificationId, seconds]) => ({
               classificationId,
-              adjustmentSeconds: Number(seconds),
+              adjustmentSeconds: -Number(seconds),
             })),
         })),
       ),
@@ -88,6 +90,7 @@ export function ScheduledClassFields({
 
   function addOccurrence() {
     if (!selectedTemplateId) return;
+    const template = templates.find((item) => item.id === selectedTemplateId);
     setOccurrences((current) => [
       ...current,
       {
@@ -98,7 +101,7 @@ export function ScheduledClassFields({
         startTime: "",
         scheduleNote: "",
         roundCount: allRounds,
-        incentiveEnabled: false,
+        incentiveEnabled: template?.competitionFormat === "handicap",
         incentiveRules: {},
       },
     ]);
@@ -217,7 +220,12 @@ export function ScheduledClassFields({
                     {template.name}
                   </h4>
                   <p className="mt-0.5 text-xs text-[#758078]">
-                    {template.divisionName}
+                    {template.divisionName} ·{" "}
+                    {template.competitionFormat === "four_d"
+                      ? "4D"
+                      : template.competitionFormat === "handicap"
+                        ? "Handicap"
+                        : "Standard"}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -360,31 +368,38 @@ export function ScheduledClassFields({
                   </div>
                 </div>
 
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={occurrence.incentiveEnabled}
-                    onChange={(event) =>
-                      updateOccurrence(occurrence.key, {
-                        incentiveEnabled: event.target.checked,
-                      })
-                    }
-                    className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
-                  />
-                  <Gauge
-                    size={17}
-                    className="text-[var(--brand-accent-strong)]"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold">
-                      Incentive or handicap roping
+                {template.competitionFormat !== "four_d" ? (
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={occurrence.incentiveEnabled}
+                      onChange={(event) =>
+                        updateOccurrence(occurrence.key, {
+                          incentiveEnabled: event.target.checked,
+                        })
+                      }
+                      className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
+                    />
+                    <Gauge
+                      size={17}
+                      className="text-[var(--brand-accent-strong)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-bold">
+                        Incentive or handicap roping
+                      </span>
+                      <span className="mt-1 block text-xs text-[#758078]">
+                        Apply a signed final-time adjustment by classification
+                        to this scheduled roping.
+                      </span>
                     </span>
-                    <span className="mt-1 block text-xs text-[#758078]">
-                      Apply classification-based deductions only to this
-                      scheduled roping.
-                    </span>
-                  </span>
-                </label>
+                  </label>
+                ) : (
+                  <p className="rounded-md border border-[#dce2de] bg-[#f7f9f8] p-3 text-xs leading-5 text-[#66716b]">
+                    4D placement will be calculated from each entry&apos;s final
+                    time using this template&apos;s entry brackets and D split.
+                  </p>
+                )}
 
                 {occurrence.incentiveEnabled ? (
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -399,7 +414,7 @@ export function ScheduledClassFields({
                         <span className="flex w-28 items-center rounded-md border border-[#ccd4d0] bg-white px-2">
                           <input
                             type="number"
-                            min="0"
+                            min="-60"
                             max="60"
                             step="0.001"
                             value={
@@ -428,6 +443,10 @@ export function ScheduledClassFields({
                         incentive handicaps.
                       </p>
                     ) : null}
+                    <p className="sm:col-span-2 text-xs leading-5 text-[#66716b]">
+                      Enter the change to the final time: use a negative number
+                      to subtract time and a positive number to add time.
+                    </p>
                   </div>
                 ) : null}
               </div>

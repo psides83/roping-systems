@@ -22,6 +22,7 @@ import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
+import { formatFinalTimeAdjustment } from "@/lib/scoring";
 import { updateClassEntrySpacing, updateRopingRounds } from "./actions";
 
 interface EventDetail {
@@ -566,7 +567,8 @@ export default async function RopingDetailPage({
                       >
                         {rule.classification}:{" "}
                         <span className="font-mono text-emerald-700">
-                          -{rule.adjustmentSeconds.toFixed(3)} sec
+                          {formatFinalTimeAdjustment(rule.adjustmentSeconds)}{" "}
+                          sec
                         </span>
                       </span>
                     ))}

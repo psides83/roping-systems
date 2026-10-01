@@ -22,6 +22,7 @@ import {
   type LiveRunState,
 } from "@/app/(app)/ropings/[ropingId]/actions";
 import { cn } from "@/lib/utils";
+import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
 export interface LiveRunRow {
   id: string;
@@ -370,7 +371,7 @@ export function DatabaseLiveDesk({
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-sm text-emerald-700">
                       {run.incentiveAdjustment
-                        ? `-${run.incentiveAdjustment.toFixed(3)}`
+                        ? formatFinalTimeAdjustment(run.incentiveAdjustment)
                         : "-"}
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-sm font-bold">
@@ -561,7 +562,7 @@ function RunEntryForm({
         <h2 className="mt-1 text-xl font-bold">{run.name}</h2>
         {run.incentiveAdjustment ? (
           <span className="mt-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
-            -{run.incentiveAdjustment.toFixed(3)} sec incentive
+            {formatFinalTimeAdjustment(run.incentiveAdjustment)} sec handicap
           </span>
         ) : null}
       </div>
@@ -636,7 +637,8 @@ function RunEntryForm({
           ) : null}
           {run.incentiveAdjustment ? (
             <span className="mt-1 block text-[10px] font-semibold text-emerald-700">
-              Includes -{run.incentiveAdjustment.toFixed(3)} sec incentive
+              Includes {formatFinalTimeAdjustment(run.incentiveAdjustment)} sec
+              handicap
             </span>
           ) : null}
         </span>

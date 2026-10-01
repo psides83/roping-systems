@@ -29,6 +29,7 @@ async function getRopingData() {
         disciplineId: division.name.startsWith("Breakaway")
           ? "preview-breakaway"
           : "preview-calf-roping",
+        competitionFormat: division.competitionFormat ?? "standard",
         divisionName: division.name.split(" · ")[0],
         fees: division.fees.map((fee) => ({
           id: fee.id,
@@ -77,7 +78,7 @@ async function getRopingData() {
     supabase
       .from("division_templates")
       .select(
-        "id, name, discipline_id, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
+        "id, name, discipline_id, competition_format, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
       )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
@@ -121,6 +122,7 @@ async function getRopingData() {
     id: division.id,
     name: division.name,
     disciplineId: division.discipline_id,
+    competitionFormat: division.competition_format,
     divisionName:
       (division.disciplines as unknown as { name: string } | null)?.name ??
       "Unassigned division",

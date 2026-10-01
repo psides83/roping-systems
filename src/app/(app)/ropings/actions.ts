@@ -41,7 +41,11 @@ const ropingSchema = z.object({
 
 const incentiveRuleSchema = z.object({
   classificationId: z.uuid(),
-  adjustmentSeconds: z.number().positive().max(60),
+  adjustmentSeconds: z
+    .number()
+    .min(-60)
+    .max(60)
+    .refine((value) => value !== 0),
 });
 
 const classOccurrenceSchema = z.object({
@@ -176,27 +180,30 @@ export async function createRoping(
     return { message: "You do not have permission to create events." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_roping_with_schedule", {
-    target_organization_id: organization.id,
-    event_title: parsed.data.title,
-    event_slug: parsed.data.slug,
-    event_venue_name: parsed.data.venueName,
-    event_address: parsed.data.address,
-    event_starts_at_local: parsed.data.startsAt,
-    event_ends_at_local: parsed.data.endsAt || null,
-    event_entries_open_at_local: parsed.data.entriesOpenAt || null,
-    event_entries_close_at_local: parsed.data.entriesCloseAt || null,
-    event_is_public: parsed.data.isPublic === "on",
-    event_class_occurrences: classOccurrences,
-    event_short_round_enabled: shortRoundEnabled,
-    event_short_round_brackets: shortRoundBrackets.success
-      ? shortRoundBrackets.data
-      : [],
-    event_fee_title: parsed.data.eventFeeTitle,
-    event_fee_amount_cents: parsed.data.eventFeeAmount
-      ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
-      : null,
-  });
+  const { error } = await supabase.rpc(
+    "create_roping_with_competition_formats",
+    {
+      target_organization_id: organization.id,
+      event_title: parsed.data.title,
+      event_slug: parsed.data.slug,
+      event_venue_name: parsed.data.venueName,
+      event_address: parsed.data.address,
+      event_starts_at_local: parsed.data.startsAt,
+      event_ends_at_local: parsed.data.endsAt || null,
+      event_entries_open_at_local: parsed.data.entriesOpenAt || null,
+      event_entries_close_at_local: parsed.data.entriesCloseAt || null,
+      event_is_public: parsed.data.isPublic === "on",
+      event_class_occurrences: classOccurrences,
+      event_short_round_enabled: shortRoundEnabled,
+      event_short_round_brackets: shortRoundBrackets.success
+        ? shortRoundBrackets.data
+        : [],
+      event_fee_title: parsed.data.eventFeeTitle,
+      event_fee_amount_cents: parsed.data.eventFeeAmount
+        ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
+        : null,
+    },
+  );
 
   if (error)
     return {

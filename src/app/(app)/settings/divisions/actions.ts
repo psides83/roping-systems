@@ -25,6 +25,8 @@ const divisionSchema = z.object({
   allowGuests: z.string().optional(),
   timerCount: z.coerce.number().int().min(1).max(10),
   timerResolution: z.enum(["average", "best", "longest"]),
+  competitionFormat: z.enum(["standard", "handicap", "four_d"]),
+  fourDSettings: z.string().optional(),
   payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   isActive: z.string().optional(),
 });
@@ -46,6 +48,64 @@ const feeSchema = z.object({
 const updateFeeSchema = feeSchema.extend({ feeId: z.uuid() });
 const idSchema = z.uuid();
 
+const fourDBracketSchema = z.object({
+  minimumEntries: z.number().int().min(1),
+  maximumEntries: z.number().int().min(1).nullable(),
+  activeDivisions: z.number().int().min(1).max(4),
+  purseBasisPoints: z.tuple([
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+  ]),
+  placesByDivision: z.tuple([
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+  ]),
+});
+
+const fourDSettingsSchema = z.object({
+  splitSeconds: z.number().positive().max(60),
+  brackets: z.array(fourDBracketSchema).min(1),
+});
+
+function parseFourDSettings(
+  competitionFormat: z.infer<typeof divisionSchema>["competitionFormat"],
+  rawSettings?: string,
+) {
+  if (competitionFormat !== "four_d") return { data: null } as const;
+  try {
+    const parsed = fourDSettingsSchema.safeParse(JSON.parse(rawSettings ?? ""));
+    if (!parsed.success)
+      return { error: "Complete the 4D scoring settings." } as const;
+    for (const bracket of parsed.data.brackets) {
+      if (
+        bracket.maximumEntries !== null &&
+        bracket.maximumEntries < bracket.minimumEntries
+      )
+        return { error: "A 4D entry range ends before it begins." } as const;
+      const purseTotal = bracket.purseBasisPoints
+        .slice(0, bracket.activeDivisions)
+        .reduce((total, value) => total + value, 0);
+      if (purseTotal !== 10000)
+        return {
+          error: "Each 4D entry bracket must allocate 100% of the purse.",
+        } as const;
+      if (
+        bracket.placesByDivision
+          .slice(0, bracket.activeDivisions)
+          .some((places) => places < 1)
+      )
+        return { error: "Each active D must pay at least one place." } as const;
+    }
+    return { data: parsed.data } as const;
+  } catch {
+    return { error: "Complete the 4D scoring settings." } as const;
+  }
+}
+
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
   const organization = await getActiveOrganization();
@@ -66,6 +126,12 @@ export async function createDivision(
         "Connect Supabase and sign in with manager access to create event templates.",
     };
 
+  const fourDSettings = parseFourDSettings(
+    parsed.data.competitionFormat,
+    parsed.data.fourDSettings,
+  );
+  if ("error" in fourDSettings) return { message: fourDSettings.error };
+
   const relationshipError = await validateTemplateRelationships(
     context,
     parsed.data.disciplineId,
@@ -85,6 +151,8 @@ export async function createDivision(
     allow_guests: parsed.data.allowGuests === "on",
     timer_count: parsed.data.timerCount,
     timer_resolution: parsed.data.timerResolution,
+    competition_format: parsed.data.competitionFormat,
+    four_d_settings: fourDSettings.data,
     payout_schedule_id: parsed.data.payoutScheduleId || null,
     is_active: parsed.data.isActive === "on",
   });
@@ -136,6 +204,11 @@ export async function updateDivision(
   const context = await getManagerContext();
   if (!context)
     return { message: "Sign in with manager access to edit event templates." };
+  const fourDSettings = parseFourDSettings(
+    parsed.data.competitionFormat,
+    parsed.data.fourDSettings,
+  );
+  if ("error" in fourDSettings) return { message: fourDSettings.error };
   const relationshipError = await validateTemplateRelationships(
     context,
     parsed.data.disciplineId,
@@ -156,6 +229,8 @@ export async function updateDivision(
       allow_guests: parsed.data.allowGuests === "on",
       timer_count: parsed.data.timerCount,
       timer_resolution: parsed.data.timerResolution,
+      competition_format: parsed.data.competitionFormat,
+      four_d_settings: fourDSettings.data,
       payout_schedule_id: parsed.data.payoutScheduleId || null,
       is_active: parsed.data.isActive === "on",
     })
