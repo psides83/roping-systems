@@ -68,7 +68,9 @@ export function FourDSettingsFields({
           <h3 className="text-sm font-bold">4D scoring</h3>
           <p className="mt-1 text-xs leading-5 text-[#66716b]">
             Final times are grouped into time windows measured from the fastest
-            qualified time.
+            qualified time. Purse shares are set here; the template&apos;s
+            payout schedule controls the dollar split between places within each
+            D.
           </p>
         </div>
         <label className="w-36 text-xs font-semibold">

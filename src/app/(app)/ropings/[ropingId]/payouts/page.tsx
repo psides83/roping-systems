@@ -18,6 +18,7 @@ interface PayoutPlan {
   division: string;
   numberOfRuns: number;
   shortRoundEnabled: boolean;
+  competitionFormat: "standard" | "handicap" | "four_d";
   paybackPercent: number;
   goRoundsPercent: number;
   aggregatePercent: number;
@@ -25,6 +26,13 @@ interface PayoutPlan {
   entryCount: number;
   poolCents: number;
   placesByStage: Record<PayoutStage, PayoutPlace[]>;
+  fourDBreakdown: Array<{
+    dNumber: number;
+    poolCents: number;
+    place: number;
+    percentage: number;
+    amountCents: number;
+  }>;
   results: Array<{
     entryId: string;
     sectionType: string;
@@ -33,12 +41,30 @@ interface PayoutPlan {
     contestantName: string;
     performanceSeconds: number;
     payoutCents: number;
+    dNumber: number | null;
   }>;
 }
 
 interface PayoutResultRow {
   section_type: string;
   round_number: number | null;
+  place_number: number;
+  entry_id: string;
+  contestant_name: string;
+  performance_seconds: number;
+  payout_cents: number;
+}
+
+interface FourDBreakdownRow {
+  d_number: number;
+  d_pool_cents: number;
+  place_number: number;
+  place_percentage_basis_points: number;
+  payout_cents: number;
+}
+
+interface FourDPayoutResultRow {
+  d_number: number;
   place_number: number;
   entry_id: string;
   contestant_name: string;
@@ -63,7 +89,7 @@ export default async function EventPayoutsPage({
     supabase
       .from("roping_payout_plans")
       .select(
-        "id, name, pool_type, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, roping_divisions!inner(name, scheduled_date, number_of_runs, short_round_enabled), roping_fees(kind)",
+        "id, name, pool_type, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, roping_divisions!inner(name, scheduled_date, number_of_runs, short_round_enabled, competition_format), roping_fees(kind)",
       )
       .eq("roping_id", ropingId)
       .eq("organization_id", organization.id)
@@ -74,15 +100,35 @@ export default async function EventPayoutsPage({
 
   const calculated = await Promise.all(
     (plans ?? []).map(async (plan): Promise<PayoutPlan> => {
-      const [{ data, error: calculationError }, resultCalculation] =
-        await Promise.all([
-          supabase.rpc("calculate_roping_payouts", {
-            target_plan_id: plan.id,
-          }),
-          supabase.rpc("calculate_roping_payout_results", {
-            target_plan_id: plan.id,
-          }),
-        ]);
+      const division = plan.roping_divisions as unknown as {
+        name: string;
+        scheduled_date: string;
+        number_of_runs: number;
+        short_round_enabled: boolean;
+        competition_format: "standard" | "handicap" | "four_d";
+      };
+      const isFourD =
+        division.competition_format === "four_d" && plan.pool_type === "main";
+      const [
+        { data, error: calculationError },
+        resultCalculation,
+        fourDBreakdownCalculation,
+      ] = await Promise.all([
+        supabase.rpc("calculate_roping_payouts", {
+          target_plan_id: plan.id,
+        }),
+        supabase.rpc(
+          isFourD
+            ? "calculate_four_d_payout_results"
+            : "calculate_roping_payout_results",
+          { target_plan_id: plan.id },
+        ),
+        isFourD
+          ? supabase.rpc("calculate_four_d_payout_breakdown", {
+              target_plan_id: plan.id,
+            })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
       if (calculationError)
         throw new Error(
           `Unable to calculate ${plan.name}: ${calculationError.message}`,
@@ -90,6 +136,10 @@ export default async function EventPayoutsPage({
       if (resultCalculation.error)
         throw new Error(
           `Unable to rank ${plan.name}: ${resultCalculation.error.message}`,
+        );
+      if (fourDBreakdownCalculation.error)
+        throw new Error(
+          `Unable to calculate ${plan.name} D purses: ${fourDBreakdownCalculation.error.message}`,
         );
       const rows = (data ?? []) as Array<{
         entry_count: number;
@@ -108,12 +158,6 @@ export default async function EventPayoutsPage({
           (plan.roping_fees as unknown as { kind: string } | null)?.kind ??
           null,
         division: (() => {
-          const division = plan.roping_divisions as unknown as {
-            name: string;
-            scheduled_date: string;
-            number_of_runs: number;
-            short_round_enabled: boolean;
-          };
           return `${division.name} · ${new Intl.DateTimeFormat("en-US", {
             weekday: "short",
             month: "short",
@@ -121,12 +165,9 @@ export default async function EventPayoutsPage({
             timeZone: "UTC",
           }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`;
         })(),
-        numberOfRuns: (
-          plan.roping_divisions as unknown as { number_of_runs: number }
-        ).number_of_runs,
-        shortRoundEnabled: (
-          plan.roping_divisions as unknown as { short_round_enabled: boolean }
-        ).short_round_enabled,
+        numberOfRuns: division.number_of_runs,
+        shortRoundEnabled: division.short_round_enabled,
+        competitionFormat: division.competition_format,
         paybackPercent: plan.payback_basis_points / 100,
         goRoundsPercent: plan.go_rounds_basis_points / 100,
         aggregatePercent: plan.aggregate_basis_points / 100,
@@ -147,17 +188,40 @@ export default async function EventPayoutsPage({
               })),
           ]),
         ) as Record<PayoutStage, PayoutPlace[]>,
-        results: ((resultCalculation.data ?? []) as PayoutResultRow[]).map(
-          (result) => ({
-            entryId: result.entry_id,
-            sectionType: result.section_type,
-            roundNumber: result.round_number,
-            place: result.place_number,
-            contestantName: result.contestant_name,
-            performanceSeconds: Number(result.performance_seconds),
-            payoutCents: Number(result.payout_cents),
-          }),
-        ),
+        fourDBreakdown: (
+          (fourDBreakdownCalculation.data ?? []) as FourDBreakdownRow[]
+        ).map((row) => ({
+          dNumber: row.d_number,
+          poolCents: Number(row.d_pool_cents),
+          place: row.place_number,
+          percentage: Number(row.place_percentage_basis_points) / 100,
+          amountCents: Number(row.payout_cents),
+        })),
+        results: isFourD
+          ? ((resultCalculation.data ?? []) as FourDPayoutResultRow[]).map(
+              (result) => ({
+                entryId: result.entry_id,
+                sectionType: "four_d",
+                roundNumber: null,
+                place: result.place_number,
+                contestantName: result.contestant_name,
+                performanceSeconds: Number(result.performance_seconds),
+                payoutCents: Number(result.payout_cents),
+                dNumber: result.d_number,
+              }),
+            )
+          : ((resultCalculation.data ?? []) as PayoutResultRow[]).map(
+              (result) => ({
+                entryId: result.entry_id,
+                sectionType: result.section_type,
+                roundNumber: result.round_number,
+                place: result.place_number,
+                contestantName: result.contestant_name,
+                performanceSeconds: Number(result.performance_seconds),
+                payoutCents: Number(result.payout_cents),
+                dNumber: null,
+              }),
+            ),
       };
     }),
   );
@@ -214,30 +278,29 @@ export default async function EventPayoutsPage({
                   </div>
                 </div>
                 <p className="mt-3 text-xs font-semibold text-[#66716b]">
-                  {plan.paybackPercent}% payback · {plan.goRoundsPercent}%
-                  across {plan.numberOfRuns}{" "}
-                  {plan.numberOfRuns === 1 ? "go" : "goes"} ·{" "}
-                  {plan.aggregatePercent}% aggregate
-                  {plan.shortRoundEnabled && plan.shortRoundPercent
-                    ? ` · ${plan.shortRoundPercent}% short round`
-                    : ""}
+                  {plan.competitionFormat === "four_d" &&
+                  plan.poolType === "main"
+                    ? `${plan.paybackPercent}% payback · full purse divided among the active Ds`
+                    : `${plan.paybackPercent}% payback · ${plan.goRoundsPercent}% across ${plan.numberOfRuns} ${plan.numberOfRuns === 1 ? "go" : "goes"} · ${plan.aggregatePercent}% aggregate${plan.shortRoundEnabled && plan.shortRoundPercent ? ` · ${plan.shortRoundPercent}% short round` : ""}`}
                 </p>
               </header>
-              {plan.placesByStage.go_round.length ? (
+              {plan.competitionFormat === "four_d" &&
+              plan.poolType === "main" ? (
+                plan.fourDBreakdown.length ? (
+                  <>
+                    <FourDPayoutBreakdown plan={plan} />
+                    {plan.results.length ? <PayoutResults plan={plan} /> : null}
+                  </>
+                ) : (
+                  <PayoutBracketEmpty />
+                )
+              ) : plan.placesByStage.go_round.length ? (
                 <>
                   <PayoutBreakdown plan={plan} />
                   {plan.results.length ? <PayoutResults plan={plan} /> : null}
                 </>
               ) : (
-                <div className="p-6 text-center">
-                  <p className="text-sm font-semibold">
-                    No payout bracket applies yet
-                  </p>
-                  <p className="mt-1 text-xs text-[#758078]">
-                    The current entry count is below the first configured
-                    bracket.
-                  </p>
-                </div>
+                <PayoutBracketEmpty />
               )}
             </article>
           ))}
@@ -263,6 +326,17 @@ export default async function EventPayoutsPage({
   );
 }
 
+function PayoutBracketEmpty() {
+  return (
+    <div className="p-6 text-center">
+      <p className="text-sm font-semibold">No payout bracket applies yet</p>
+      <p className="mt-1 text-xs text-[#758078]">
+        The current paid-entry count does not match a configured bracket.
+      </p>
+    </div>
+  );
+}
+
 function allocatePlaces(poolCents: number, places: PayoutPlace[]) {
   const amounts = places.map((place) =>
     Math.floor((poolCents * place.percentage) / 100),
@@ -275,11 +349,13 @@ function allocatePlaces(poolCents: number, places: PayoutPlace[]) {
 
 function PayoutResults({ plan }: { plan: PayoutPlan }) {
   const sections = Map.groupBy(plan.results, (result) =>
-    result.sectionType === "aggregate"
-      ? "Aggregate"
-      : result.sectionType === "short_round"
-        ? "Short round"
-        : `Go ${result.roundNumber}`,
+    result.dNumber
+      ? `${result.dNumber}D`
+      : result.sectionType === "aggregate"
+        ? "Aggregate"
+        : result.sectionType === "short_round"
+          ? "Short round"
+          : `Go ${result.roundNumber}`,
   );
   return (
     <section className="border-t border-[#e7ebe8] p-5">
@@ -313,6 +389,53 @@ function PayoutResults({ plan }: { plan: PayoutPlan }) {
                   </span>
                   <span className="font-bold">
                     {formatCurrency(result.payoutCents)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FourDPayoutBreakdown({ plan }: { plan: PayoutPlan }) {
+  const divisions = Map.groupBy(
+    plan.fourDBreakdown,
+    (breakdown) => breakdown.dNumber,
+  );
+
+  return (
+    <section className="border-t border-[#e7ebe8] p-5">
+      <div className="mb-4">
+        <h3 className="text-sm font-bold">Purse by D</h3>
+        <p className="mt-1 text-xs leading-5 text-[#758078]">
+          Each D receives its configured share. Place splits come from this
+          class&apos;s attached payout schedule.
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Array.from(divisions.entries()).map(([dNumber, places]) => (
+          <div key={dNumber} className="rounded-md border border-[#e3e7e5]">
+            <div className="flex items-center justify-between border-b border-[#e7ebe8] px-3 py-2.5">
+              <h4 className="font-bold">{dNumber}D</h4>
+              <span className="text-sm font-bold">
+                {formatCurrency(places[0].poolCents)}
+              </span>
+            </div>
+            <div className="divide-y divide-[#edf0ee]">
+              {places.map((place) => (
+                <div
+                  key={place.place}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2.5 text-sm"
+                >
+                  <span className="font-semibold">Place {place.place}</span>
+                  <span className="text-xs text-[#66716b]">
+                    {place.percentage}%
+                  </span>
+                  <span className="min-w-20 text-right font-bold">
+                    {formatCurrency(place.amountCents)}
                   </span>
                 </div>
               ))}
