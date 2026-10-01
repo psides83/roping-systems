@@ -32,6 +32,7 @@ import {
   type RunStatus,
 } from "@/lib/run-status";
 import { RunCorrectionDialog } from "@/components/ropings/run-correction-dialog";
+import { RerunSchedulingDialog } from "@/components/ropings/rerun-scheduling-dialog";
 
 export interface LiveRunRow {
   id: string;
@@ -45,6 +46,7 @@ export interface LiveRunRow {
   timerReadings: number[];
   carryTime: number | null;
   status: RunStatus;
+  rerunCount: number;
 }
 
 interface LiveDeskProps {
@@ -418,15 +420,30 @@ export function DatabaseLiveDesk({
                             >
                               {runStatusLabels[run.status]}
                             </p>
+                          ) : run.rerunCount ? (
+                            <p className="mt-1 text-[10px] font-bold uppercase text-amber-700">
+                              Rerun {run.rerunCount}
+                            </p>
                           ) : null}
                         </div>
                         {run.status !== "pending" ? (
-                          <RunCorrectionDialog
-                            ropingId={ropingId}
-                            run={run}
-                            timerCount={timerCount}
-                            canEdit={canEdit && eventStatus === "in_progress"}
-                          />
+                          <div className="flex items-center gap-2">
+                            {run.status === "rerun" ? (
+                              <RerunSchedulingDialog
+                                ropingId={ropingId}
+                                run={run}
+                                canEdit={
+                                  canEdit && eventStatus === "in_progress"
+                                }
+                              />
+                            ) : null}
+                            <RunCorrectionDialog
+                              ropingId={ropingId}
+                              run={run}
+                              timerCount={timerCount}
+                              canEdit={canEdit && eventStatus === "in_progress"}
+                            />
+                          </div>
                         ) : null}
                       </div>
                       {currentRun?.id === run.id ? (
@@ -592,6 +609,7 @@ function ArenaQueue({
         {current ? (
           <p className="mt-1 text-xs opacity-80">
             Draw {current.drawPosition} · Entry #{current.entryNumber}
+            {current.rerunCount ? ` · Rerun ${current.rerunCount}` : ""}
           </p>
         ) : null}
       </div>
@@ -608,6 +626,7 @@ function ArenaQueue({
               <span className="min-w-0 truncate font-semibold">{run.name}</span>
               <span className="font-mono text-xs text-[#66716b]">
                 #{run.entryNumber}
+                {run.rerunCount ? ` · R${run.rerunCount}` : ""}
               </span>
             </div>
           ))}
@@ -687,6 +706,7 @@ function RunEntryForm({
       <input type="hidden" name="penalty" value={penalty} />
       <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
         Draw {run.drawPosition ?? "-"} · Entry {run.entryNumber}
+        {run.rerunCount ? ` · Rerun ${run.rerunCount}` : ""}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mt-1 text-xl font-bold">{run.name}</h2>

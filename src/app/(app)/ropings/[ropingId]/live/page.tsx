@@ -130,7 +130,7 @@ export default async function LiveRopingPage({
     const { data: runData, error } = await supabase
       .from("runs")
       .select(
-        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, run_timer_readings(timer_number, time_seconds), entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
+        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, rerun_count, run_timer_readings(timer_number, time_seconds), entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
       )
       .eq("roping_division_id", selectedDivisionId)
       .eq("run_number", selectedRound)
@@ -163,6 +163,7 @@ export default async function LiveRopingPage({
           .map((reading) => Number(reading.time_seconds)),
         carryTime: null,
         status: run.status as RunStatus,
+        rerunCount: run.rerun_count,
       };
     });
     if (
@@ -412,6 +413,7 @@ const previewRuns: LiveRunRow[] = [
     timerReadings: [],
     carryTime: 22.64,
     status: "pending",
+    rerunCount: 0,
   },
   {
     id: "c79af70b-496b-4331-9cdf-9102e0284aa4",
@@ -425,6 +427,7 @@ const previewRuns: LiveRunRow[] = [
     timerReadings: [],
     carryTime: 22.08,
     status: "pending",
+    rerunCount: 0,
   },
   {
     id: "68067ab7-d80f-4885-bca0-8721c50c6a12",
@@ -438,6 +441,7 @@ const previewRuns: LiveRunRow[] = [
     timerReadings: [],
     carryTime: 21.15,
     status: "pending",
+    rerunCount: 0,
   },
   {
     id: "17bc849a-ff32-4c87-b42a-37fd7868a4f1",
@@ -451,5 +455,6 @@ const previewRuns: LiveRunRow[] = [
     timerReadings: [],
     carryTime: 20.42,
     status: "pending",
+    rerunCount: 0,
   },
 ];

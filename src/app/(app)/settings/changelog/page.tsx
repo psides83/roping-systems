@@ -26,6 +26,8 @@ const entityLabels: Record<string, string> = {
   entry_charges: "Entry charge",
   runs: "Run result",
   run_timer_readings: "Timer reading",
+  run_rerun_history: "Rerun schedule",
+  roping_rounds: "Roping round",
   online_entry_requests: "Online entry request",
 };
 
@@ -56,6 +58,17 @@ function describeChanges(
         field: "New entry number",
         before: "",
         after: formatValue(after?.destination_entry_number),
+      },
+    ];
+  }
+  if (entityType === "run_rerun_history" && action === "insert") {
+    return [
+      { field: "Reason", before: "", after: formatValue(after?.reason) },
+      { field: "Timing", before: "", after: formatValue(after?.timing) },
+      {
+        field: "Draw position",
+        before: formatValue(after?.previous_draw_position),
+        after: formatValue(after?.scheduled_draw_position),
       },
     ];
   }

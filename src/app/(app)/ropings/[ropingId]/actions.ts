@@ -234,6 +234,12 @@ const correctionSchema = runSchema.extend({
   reason: z.string().trim().min(5).max(300),
 });
 
+const rerunScheduleSchema = z.object({
+  runId: z.uuid(),
+  timing: z.enum(["immediate", "end_of_round"]),
+  reason: z.string().trim().min(5).max(300),
+});
+
 function getTimerReadings(formData: FormData, status: string) {
   const timerValues = formData.getAll("timerReading").map(String);
   const timerReadings = timerValues.map(Number);
@@ -304,6 +310,34 @@ export async function correctRun(
   revalidatePath(`/ropings/${ropingId}/payouts`);
   revalidatePath(`/public`);
   return { success: true, message: "Correction saved and added to the log." };
+}
+
+export async function scheduleRerun(
+  ropingId: string,
+  _state: LiveRunState,
+  formData: FormData,
+): Promise<LiveRunState> {
+  const parsed = rerunScheduleSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return { message: "Choose when to run again and enter a brief reason." };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("schedule_run_rerun", {
+    target_run_id: parsed.data.runId,
+    target_timing: parsed.data.timing,
+    entered_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  revalidatePath(`/public`);
+  return {
+    success: true,
+    message:
+      parsed.data.timing === "immediate"
+        ? "Rerun is next in the arena queue."
+        : "Rerun moved to the end of this round.",
+  };
 }
 
 export async function completeRound(
