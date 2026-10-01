@@ -64,7 +64,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, allow_guests, timer_count, timer_resolution, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
@@ -112,6 +112,7 @@ async function getDivisionData(): Promise<{
       name: division.name,
       description: division.description ?? "",
       maximumEntriesPerPerson: division.maximum_entries_per_person,
+      minimumRunsBetweenEntries: division.minimum_runs_between_entries,
       allowGuests: division.allow_guests,
       isActive: division.is_active,
       disciplineId: division.discipline_id,
@@ -216,6 +217,11 @@ export default async function DivisionSettingsPage() {
                   </span>
                   <span>
                     {division.allowGuests ? "Guests allowed" : "Members only"}
+                  </span>
+                  <span>
+                    {division.minimumRunsBetweenEntries
+                      ? `${division.minimumRunsBetweenEntries} runs between repeat entries`
+                      : "No repeat-entry spacing"}
                   </span>
                 </div>
               </div>

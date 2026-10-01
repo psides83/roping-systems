@@ -35,6 +35,11 @@ const roundCountSchema = z.object({
   roundCount: z.coerce.number().int().min(1).max(20),
 });
 
+const entrySpacingSchema = z.object({
+  divisionId: z.uuid(),
+  minimumRunsBetweenEntries: z.coerce.number().int().min(0).max(100),
+});
+
 export async function updateRopingRounds(ropingId: string, formData: FormData) {
   const parsed = roundCountSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error("Round count must be between 1 and 20.");
@@ -43,6 +48,23 @@ export async function updateRopingRounds(ropingId: string, formData: FormData) {
     target_roping_id: ropingId,
     new_round_count: parsed.data.roundCount,
     target_roping_division_id: parsed.data.divisionId || null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+}
+
+export async function updateClassEntrySpacing(
+  ropingId: string,
+  formData: FormData,
+) {
+  const parsed = entrySpacingSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    throw new Error("Entry spacing must be between 0 and 100 runs.");
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("set_division_entry_spacing", {
+    target_roping_division_id: parsed.data.divisionId,
+    new_minimum_runs: parsed.data.minimumRunsBetweenEntries,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/ropings/${ropingId}`);

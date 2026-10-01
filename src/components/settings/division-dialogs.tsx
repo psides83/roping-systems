@@ -223,6 +223,18 @@ function EventTemplateDialog({
                 />
               </label>
               <label className="block text-sm font-semibold">
+                Minimum runs between entries
+                <input
+                  name="minimumRunsBetweenEntries"
+                  defaultValue={template?.minimumRunsBetweenEntries ?? 0}
+                  type="number"
+                  min="0"
+                  max="100"
+                  className={inputClass}
+                  required
+                />
+              </label>
+              <label className="block text-sm font-semibold">
                 Payout schedule
                 <select
                   name="payoutScheduleId"

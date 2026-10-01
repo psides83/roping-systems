@@ -22,7 +22,7 @@ import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
-import { updateRopingRounds } from "./actions";
+import { updateClassEntrySpacing, updateRopingRounds } from "./actions";
 
 interface EventDetail {
   id: string;
@@ -44,6 +44,7 @@ interface EventDetail {
     id: string;
     name: string;
     runs: number;
+    minimumRunsBetweenEntries: number;
     entries: number;
     startsAt: string | null;
     scheduledDate: string;
@@ -101,6 +102,7 @@ async function getEvent(
             id: division.id,
             name: division.name,
             runs: index === 2 ? 2 : 1,
+            minimumRunsBetweenEntries: index === 1 ? 3 : 0,
             entries: index === 0 ? roping.entries : 0,
             startsAt: null,
             scheduledDate: roping.date,
@@ -162,7 +164,7 @@ async function getEvent(
       supabase
         .from("ropings")
         .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
         )
         .eq("id", ropingId)
         .eq("organization_id", organization.id)
@@ -183,6 +185,7 @@ async function getEvent(
       id: string;
       name: string;
       number_of_runs: number;
+      minimum_runs_between_entries: number;
       short_round_enabled: boolean;
       starts_at: string | null;
       scheduled_date: string;
@@ -219,6 +222,7 @@ async function getEvent(
       id: division.id,
       name: division.name,
       runs: division.number_of_runs,
+      minimumRunsBetweenEntries: division.minimum_runs_between_entries,
       entries: division.entries.length,
       startsAt: division.starts_at
         ? new Intl.DateTimeFormat("en-US", {
@@ -316,6 +320,7 @@ export default async function RopingDetailPage({
     event.status,
   );
   const roundAction = updateRopingRounds.bind(null, event.id);
+  const spacingAction = updateClassEntrySpacing.bind(null, event.id);
 
   return (
     <div className="space-y-6">
@@ -499,6 +504,31 @@ export default async function RopingDetailPage({
                         min="1"
                         max="20"
                         defaultValue={division.runs}
+                        disabled={!roundsEditable || !isSupabaseConfigured()}
+                        className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
+                      />
+                    </label>
+                    <button
+                      disabled={!roundsEditable || !isSupabaseConfigured()}
+                      className="h-9 rounded-md border border-[#d7ddda] px-3 text-xs font-semibold disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </form>
+                  <form action={spacingAction} className="flex items-end gap-2">
+                    <input
+                      type="hidden"
+                      name="divisionId"
+                      value={division.id}
+                    />
+                    <label className="text-xs font-semibold text-[#66716b]">
+                      Runs between repeat entries
+                      <input
+                        name="minimumRunsBetweenEntries"
+                        type="number"
+                        min="0"
+                        max="100"
+                        defaultValue={division.minimumRunsBetweenEntries}
                         disabled={!roundsEditable || !isSupabaseConfigured()}
                         className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
                       />

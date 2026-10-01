@@ -21,6 +21,7 @@ const divisionSchema = z.object({
     z.literal(""),
     z.coerce.number().int().min(1).max(100),
   ]),
+  minimumRunsBetweenEntries: z.coerce.number().int().min(0).max(100),
   allowGuests: z.string().optional(),
   timerCount: z.coerce.number().int().min(1).max(10),
   timerResolution: z.enum(["average", "best", "longest"]),
@@ -80,6 +81,7 @@ export async function createDivision(
     classification_id: parsed.data.classificationId,
     maximum_entries_per_person:
       parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
+    minimum_runs_between_entries: parsed.data.minimumRunsBetweenEntries,
     allow_guests: parsed.data.allowGuests === "on",
     timer_count: parsed.data.timerCount,
     timer_resolution: parsed.data.timerResolution,
@@ -150,6 +152,7 @@ export async function updateDivision(
       classification_id: parsed.data.classificationId,
       maximum_entries_per_person:
         parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
+      minimum_runs_between_entries: parsed.data.minimumRunsBetweenEntries,
       allow_guests: parsed.data.allowGuests === "on",
       timer_count: parsed.data.timerCount,
       timer_resolution: parsed.data.timerResolution,
