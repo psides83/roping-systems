@@ -14,6 +14,7 @@ const onlineEntrySchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required."),
   email: z.email("Enter a valid email address."),
   phone: z.string().trim().max(40, "Phone number is too long."),
+  birthDate: z.union([z.literal(""), z.iso.date()]),
   memberNumber: z.string().trim().max(50, "Member number is too long."),
   note: z.string().trim().max(500, "Keep the note under 500 characters."),
   website: z.string().max(0),
@@ -52,13 +53,14 @@ export async function submitOnlineEntry(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("submit_online_entry_request", {
+  const { error } = await supabase.rpc("submit_online_entry_request_v2", {
     target_organization_slug: organizationSlug,
     target_roping_slug: ropingSlug,
     contestant_first_name: parsed.data.firstName,
     contestant_last_name: parsed.data.lastName,
     contestant_email: parsed.data.email,
     contestant_phone: parsed.data.phone,
+    contestant_birth_date: parsed.data.birthDate || null,
     contestant_member_number: parsed.data.memberNumber,
     contestant_note: parsed.data.note,
     requested_divisions: requestedDivisions,

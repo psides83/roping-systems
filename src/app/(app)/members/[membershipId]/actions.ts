@@ -25,6 +25,11 @@ const reviewSchema = z.object({
   reviewId: z.uuid(),
 });
 
+const birthDateSchema = z.object({
+  membershipId: z.uuid(),
+  birthDate: z.union([z.literal(""), z.iso.date()]),
+});
+
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
   const organization = await getActiveOrganization();
@@ -78,4 +83,19 @@ export async function dismissClassificationReview(formData: FormData) {
     .eq("status", "open");
   revalidatePath(`/members/${parsed.data.membershipId}`);
   revalidatePath("/settings/classifications");
+}
+
+export async function updateMemberBirthDate(formData: FormData) {
+  const parsed = birthDateSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const context = await getManagerContext();
+  if (!context) return;
+
+  const { error } = await context.supabase.rpc("update_member_birth_date", {
+    target_organization_id: context.organization.id,
+    target_membership_id: parsed.data.membershipId,
+    new_birth_date: parsed.data.birthDate || null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/members/${parsed.data.membershipId}`);
 }

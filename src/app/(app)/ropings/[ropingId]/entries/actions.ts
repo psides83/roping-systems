@@ -34,6 +34,7 @@ const guestEntrySchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required."),
   email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
   phone: z.string().trim(),
+  birthDate: z.union([z.literal(""), z.iso.date()]),
   paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
 });
 
@@ -135,6 +136,7 @@ export async function addGuestEntry(
       guest_last_name: parsed.data.lastName,
       guest_email: parsed.data.email,
       guest_phone: parsed.data.phone,
+      guest_birth_date: parsed.data.birthDate || null,
       initial_payment_status: parsed.data.paymentStatus,
     },
   );

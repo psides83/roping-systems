@@ -21,6 +21,9 @@ interface DisciplineSummary {
     name: string;
     description: string;
     rank: number;
+    eligibilityType: "skill" | "open" | "age";
+    minimumAge: number | null;
+    maximumAge: number | null;
     isActive: boolean;
   }>;
 }
@@ -53,6 +56,9 @@ async function getClassificationData() {
               name: "Open",
               description: "Open to eligible contestants",
               rank: 200,
+              eligibilityType: "open",
+              minimumAge: null,
+              maximumAge: null,
               isActive: true,
             },
             {
@@ -60,6 +66,9 @@ async function getClassificationData() {
               name: "11.5",
               description: "",
               rank: 115,
+              eligibilityType: "skill",
+              minimumAge: null,
+              maximumAge: null,
               isActive: true,
             },
             {
@@ -67,6 +76,9 @@ async function getClassificationData() {
               name: "11",
               description: "",
               rank: 110,
+              eligibilityType: "skill",
+              minimumAge: null,
+              maximumAge: null,
               isActive: true,
             },
             {
@@ -74,6 +86,9 @@ async function getClassificationData() {
               name: "10",
               description: "",
               rank: 100,
+              eligibilityType: "skill",
+              minimumAge: null,
+              maximumAge: null,
               isActive: true,
             },
             {
@@ -81,6 +96,9 @@ async function getClassificationData() {
               name: "40+",
               description: "Age-limited classification",
               rank: 40,
+              eligibilityType: "age",
+              minimumAge: 40,
+              maximumAge: null,
               isActive: true,
             },
           ],
@@ -101,7 +119,7 @@ async function getClassificationData() {
       supabase
         .from("disciplines")
         .select(
-          "id, name, description, watch_threshold, is_active, classifications(id, name, description, rank, is_active)",
+          "id, name, description, watch_threshold, is_active, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, is_active)",
         )
         .eq("organization_id", organization.id)
         .order("sort_order")
@@ -149,8 +167,28 @@ async function getClassificationData() {
       description: discipline.description ?? "",
       isActive: discipline.is_active,
       classifications: (
-        discipline.classifications as unknown as DisciplineSummary["classifications"]
-      ).sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name)),
+        discipline.classifications as unknown as Array<{
+          id: string;
+          name: string;
+          description: string;
+          rank: number;
+          eligibility_type: "skill" | "open" | "age";
+          minimum_age: number | null;
+          maximum_age: number | null;
+          is_active: boolean;
+        }>
+      )
+        .map((classification) => ({
+          id: classification.id,
+          name: classification.name,
+          description: classification.description ?? "",
+          rank: classification.rank,
+          eligibilityType: classification.eligibility_type,
+          minimumAge: classification.minimum_age,
+          maximumAge: classification.maximum_age,
+          isActive: classification.is_active,
+        }))
+        .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name)),
     })),
   };
 }
@@ -277,11 +315,12 @@ export default async function ClassificationSettingsPage() {
               </div>
             </header>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left">
+              <table className="w-full min-w-[680px] text-left">
                 <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
                   <tr>
                     <th className="px-5 py-3">Classification</th>
                     <th className="px-5 py-3">Description</th>
+                    <th className="px-5 py-3">Eligibility</th>
                     <th className="px-5 py-3">Rank</th>
                     <th className="px-5 py-3">Status</th>
                     <th className="w-12 px-5 py-3">
@@ -297,6 +336,18 @@ export default async function ClassificationSettingsPage() {
                       </td>
                       <td className="px-5 py-3 text-sm text-[#66716b]">
                         {classification.description || "-"}
+                      </td>
+                      <td className="px-5 py-3 text-xs font-semibold text-[#66716b]">
+                        {classification.eligibilityType === "open"
+                          ? "Open to anyone"
+                          : classification.eligibilityType === "age"
+                            ? classification.minimumAge !== null &&
+                              classification.maximumAge !== null
+                              ? `Ages ${classification.minimumAge}-${classification.maximumAge}`
+                              : classification.minimumAge !== null
+                                ? `${classification.minimumAge} and over`
+                                : `${classification.maximumAge} and under`
+                            : "Skill level"}
                       </td>
                       <td className="px-5 py-3 font-mono text-xs text-[#66716b]">
                         {classification.rank}
@@ -316,7 +367,7 @@ export default async function ClassificationSettingsPage() {
                   {!discipline.classifications.length ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-5 py-7 text-center text-sm text-[#758078]"
                       >
                         Add this division&apos;s first classification.

@@ -22,12 +22,47 @@ const updateDisciplineSchema = disciplineSchema.extend({
   isActive: z.string().optional(),
 });
 
-const classificationSchema = z.object({
-  disciplineId: z.uuid(),
-  name: z.string().trim().min(1, "Classification name is required."),
-  description: z.string().trim(),
-  rank: z.coerce.number().int().min(-1000).max(1000),
-});
+const optionalAgeSchema = z
+  .union([
+    z.literal(""),
+    z.coerce.number().int().min(0, "Age cannot be negative.").max(120),
+  ])
+  .transform((value) => (value === "" ? null : value));
+
+const classificationSchema = z
+  .object({
+    disciplineId: z.uuid(),
+    name: z.string().trim().min(1, "Classification name is required."),
+    description: z.string().trim(),
+    rank: z.coerce.number().int().min(-1000).max(1000),
+    eligibilityType: z.enum(["skill", "open", "age"]),
+    minimumAge: optionalAgeSchema,
+    maximumAge: optionalAgeSchema,
+  })
+  .superRefine((data, context) => {
+    if (
+      data.eligibilityType === "age" &&
+      data.minimumAge === null &&
+      data.maximumAge === null
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["minimumAge"],
+        message: "Enter a minimum age, maximum age, or both.",
+      });
+    }
+    if (
+      data.minimumAge !== null &&
+      data.maximumAge !== null &&
+      data.minimumAge > data.maximumAge
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["maximumAge"],
+        message: "Maximum age must be at least the minimum age.",
+      });
+    }
+  });
 
 const updateClassificationSchema = classificationSchema.extend({
   classificationId: z.uuid(),
@@ -97,6 +132,11 @@ export async function createClassification(
     name: parsed.data.name,
     description: parsed.data.description || null,
     rank: parsed.data.rank,
+    eligibility_type: parsed.data.eligibilityType,
+    minimum_age:
+      parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
+    maximum_age:
+      parsed.data.eligibilityType === "age" ? parsed.data.maximumAge : null,
   });
   if (error)
     return {
@@ -167,6 +207,11 @@ export async function updateClassification(
       name: parsed.data.name,
       description: parsed.data.description || null,
       rank: parsed.data.rank,
+      eligibility_type: parsed.data.eligibilityType,
+      minimum_age:
+        parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
+      maximum_age:
+        parsed.data.eligibilityType === "age" ? parsed.data.maximumAge : null,
       is_active: parsed.data.isActive === "on",
     })
     .eq("id", parsed.data.classificationId)

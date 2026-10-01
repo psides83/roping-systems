@@ -160,6 +160,17 @@ export function EntryFormDialog({
                     Phone
                     <input name="phone" type="tel" className={inputClass} />
                   </label>
+                  <label className="block text-sm font-semibold">
+                    Birth date
+                    <input
+                      name="birthDate"
+                      type="date"
+                      className={inputClass}
+                    />
+                    <span className="mt-1 block text-xs font-normal text-[#758078]">
+                      Required for age-limited classes
+                    </span>
+                  </label>
                 </div>
                 <CommonEntryFields
                   divisions={divisions.filter(

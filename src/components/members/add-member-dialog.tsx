@@ -82,6 +82,12 @@ export function AddMemberDialog({ configured }: { configured: boolean }) {
                   error={state.errors?.phone?.[0]}
                 />
                 <FormField
+                  label="Birth date"
+                  name="birthDate"
+                  type="date"
+                  error={state.errors?.birthDate?.[0]}
+                />
+                <FormField
                   label="Member number"
                   name="memberNumber"
                   placeholder="RR-1205"

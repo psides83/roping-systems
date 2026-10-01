@@ -71,6 +71,90 @@ function FormMessage({ state }: { state: ClassificationFormState }) {
   ) : null;
 }
 
+function EligibilityFields({
+  type,
+  setType,
+  minimumAge,
+  maximumAge,
+  errors,
+}: {
+  type: "skill" | "open" | "age";
+  setType: (type: "skill" | "open" | "age") => void;
+  minimumAge?: number | null;
+  maximumAge?: number | null;
+  errors?: Record<string, string[]>;
+}) {
+  return (
+    <div className="space-y-4 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
+      <label className="block text-sm font-semibold">
+        Eligibility
+        <select
+          name="eligibilityType"
+          value={type}
+          onChange={(event) =>
+            setType(event.target.value as "skill" | "open" | "age")
+          }
+          className={inputClass}
+        >
+          <option value="skill">Skill level</option>
+          <option value="open">Open to anyone</option>
+          <option value="age">Age limited</option>
+        </select>
+      </label>
+      <p className="text-xs leading-5 text-[#66716b]">
+        {type === "skill"
+          ? "A contestant may enter their level or a lower-ranked class, but not a higher-ranked class."
+          : type === "open"
+            ? "No skill classification is required for this class."
+            : "Age is calculated on the scheduled date of this roping."}
+      </p>
+      {type === "age" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-semibold">
+            Minimum age
+            <input
+              name="minimumAge"
+              type="number"
+              min="0"
+              max="120"
+              defaultValue={minimumAge ?? ""}
+              className={inputClass}
+              placeholder="40"
+            />
+            {errors?.minimumAge ? (
+              <span className="mt-1 block text-xs text-rose-700">
+                {errors.minimumAge[0]}
+              </span>
+            ) : null}
+          </label>
+          <label className="block text-sm font-semibold">
+            Maximum age
+            <input
+              name="maximumAge"
+              type="number"
+              min="0"
+              max="120"
+              defaultValue={maximumAge ?? ""}
+              className={inputClass}
+              placeholder="19"
+            />
+            {errors?.maximumAge ? (
+              <span className="mt-1 block text-xs text-rose-700">
+                {errors.maximumAge[0]}
+              </span>
+            ) : null}
+          </label>
+        </div>
+      ) : (
+        <>
+          <input type="hidden" name="minimumAge" value="" />
+          <input type="hidden" name="maximumAge" value="" />
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(
@@ -158,6 +242,9 @@ export function CreateClassificationDialog({
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [eligibilityType, setEligibilityType] = useState<
+    "skill" | "open" | "age"
+  >("skill");
   const [state, action, pending] = useActionState(
     createClassification,
     initialState,
@@ -212,6 +299,11 @@ export function CreateClassificationDialog({
                 />
               </label>
             </div>
+            <EligibilityFields
+              type={eligibilityType}
+              setType={setEligibilityType}
+              errors={state.errors}
+            />
             <label className="block text-sm font-semibold">
               Description
               <textarea
@@ -358,11 +450,17 @@ export function EditClassificationDialog({
     name: string;
     description: string;
     rank: number;
+    eligibilityType: "skill" | "open" | "age";
+    minimumAge: number | null;
+    maximumAge: number | null;
     isActive: boolean;
   };
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [eligibilityType, setEligibilityType] = useState(
+    classification.eligibilityType,
+  );
   const [state, action, pending] = useActionState(
     updateClassification,
     initialState,
@@ -415,6 +513,13 @@ export function EditClassificationDialog({
                 />
               </label>
             </div>
+            <EligibilityFields
+              type={eligibilityType}
+              setType={setEligibilityType}
+              minimumAge={classification.minimumAge}
+              maximumAge={classification.maximumAge}
+              errors={state.errors}
+            />
             <label className="block text-sm font-semibold">
               Description
               <textarea

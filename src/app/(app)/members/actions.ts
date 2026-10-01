@@ -17,17 +17,23 @@ const memberSchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required."),
   email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
   phone: z.string().trim(),
+  birthDate: z.union([z.literal(""), z.iso.date()]),
   memberNumber: z.string().trim().min(1, "Member number is required."),
   status: z.enum(["active", "pending", "expired", "inactive"]),
 });
 
-export async function addMember(_state: MemberFormState, formData: FormData): Promise<MemberFormState> {
-  if (!isSupabaseConfigured()) return { message: "Connect Supabase before adding live records." };
+export async function addMember(
+  _state: MemberFormState,
+  formData: FormData,
+): Promise<MemberFormState> {
+  if (!isSupabaseConfigured())
+    return { message: "Connect Supabase before adding live records." };
   const parsed = memberSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 
   const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer") return { message: "You do not have permission to add members." };
+  if (!organization || organization.role === "viewer")
+    return { message: "You do not have permission to add members." };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_organization_member", {
@@ -36,12 +42,17 @@ export async function addMember(_state: MemberFormState, formData: FormData): Pr
     member_last_name: parsed.data.lastName,
     member_email: parsed.data.email,
     member_phone: parsed.data.phone,
+    member_birth_date: parsed.data.birthDate || null,
     new_member_number: parsed.data.memberNumber,
     new_status: parsed.data.status,
   });
 
   if (error) {
-    if (error.code === "23505") return { message: "That person or member number already belongs to this organization." };
+    if (error.code === "23505")
+      return {
+        message:
+          "That person or member number already belongs to this organization.",
+      };
     return { message: error.message };
   }
 

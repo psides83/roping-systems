@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  CalendarDays,
   CalendarClock,
   CircleAlert,
   History,
@@ -9,7 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { notFound } from "next/navigation";
-import { dismissClassificationReview } from "./actions";
+import { dismissClassificationReview, updateMemberBirthDate } from "./actions";
 import { AssignClassificationDialog } from "@/components/members/classification-dialogs";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getActiveOrganization } from "@/lib/organizations";
@@ -31,6 +32,7 @@ interface MemberDetail {
   email: string;
   phone: string;
   joinedOn: string | null;
+  birthDate: string | null;
   disciplines: DisciplineData[];
   history: Array<{
     id: string;
@@ -73,6 +75,7 @@ async function getMemberDetail(
       email: "jace@example.com",
       phone: "(940) 555-0182",
       joinedOn: "2024-01-12",
+      birthDate: "1992-06-18",
       canEdit: false,
       disciplines: [
         {
@@ -106,7 +109,7 @@ async function getMemberDetail(
   const { data: membership, error } = await supabase
     .from("organization_memberships")
     .select(
-      "id, member_number, status, joined_on, people!inner(first_name, last_name, email, phone)",
+      "id, member_number, status, joined_on, people!inner(first_name, last_name, email, phone, birth_date)",
     )
     .eq("id", membershipId)
     .eq("organization_id", organization.id)
@@ -120,7 +123,9 @@ async function getMemberDetail(
   ] = await Promise.all([
     supabase
       .from("disciplines")
-      .select("id, name, classifications(id, name, rank, is_active)")
+      .select(
+        "id, name, classifications(id, name, rank, eligibility_type, is_active)",
+      )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("sort_order")
@@ -159,10 +164,11 @@ async function getMemberDetail(
           id: string;
           name: string;
           rank: number;
+          eligibility_type: "skill" | "open" | "age";
           is_active: boolean;
         }>
       )
-        .filter((item) => item.is_active)
+        .filter((item) => item.is_active && item.eligibility_type === "skill")
         .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
         .map(({ id, name, rank }) => ({ id, name, rank })),
     }),
@@ -179,6 +185,7 @@ async function getMemberDetail(
     last_name: string;
     email: string | null;
     phone: string | null;
+    birth_date: string | null;
   };
 
   return {
@@ -189,6 +196,7 @@ async function getMemberDetail(
     email: person.email ?? "-",
     phone: person.phone ?? "-",
     joinedOn: membership.joined_on,
+    birthDate: person.birth_date,
     canEdit: organization.role !== "viewer",
     disciplines,
     history: (historyRows ?? []).map((row) => ({
@@ -271,7 +279,7 @@ export default async function MemberDetailPage({
           </div>
         </div>
       </div>
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
           <Mail size={17} className="text-[#758078]" />
           <div className="min-w-0">
@@ -299,6 +307,33 @@ export default async function MemberDetailPage({
             <p className="text-sm font-semibold">
               {formatDate(member.joinedOn)}
             </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
+          <CalendarDays size={17} className="shrink-0 text-[#758078]" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase text-[#8a938e]">
+              Birth date
+            </p>
+            {member.canEdit ? (
+              <form action={updateMemberBirthDate} className="mt-1 flex gap-2">
+                <input type="hidden" name="membershipId" value={member.id} />
+                <input
+                  name="birthDate"
+                  type="date"
+                  defaultValue={member.birthDate ?? ""}
+                  aria-label="Birth date"
+                  className="h-8 min-w-0 flex-1 rounded-md border border-[#ccd4d0] px-2 text-xs outline-none focus:border-[var(--brand-accent)]"
+                />
+                <button className="h-8 rounded-md border border-[#ccd4d0] px-2 text-xs font-bold">
+                  Save
+                </button>
+              </form>
+            ) : (
+              <p className="text-sm font-semibold">
+                {formatDate(member.birthDate)}
+              </p>
+            )}
           </div>
         </div>
       </section>

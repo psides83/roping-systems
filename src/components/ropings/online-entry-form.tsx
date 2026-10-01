@@ -23,6 +23,9 @@ interface EntryDivision {
   scheduleType: "fixed" | "tentative" | "follows_previous";
   scheduleNote: string | null;
   incentiveEnabled: boolean;
+  eligibilityType: "skill" | "open" | "age";
+  minimumAge: number | null;
+  maximumAge: number | null;
   options: Array<{
     id: string;
     title: string;
@@ -50,6 +53,9 @@ export function OnlineEntryForm({
   >(action, {});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const requiresBirthDate = divisions.some(
+    (division) => selected[division.id] && division.eligibilityType === "age",
+  );
 
   if (state.success) {
     return (
@@ -93,6 +99,17 @@ export function OnlineEntryForm({
             name="phone"
             type="tel"
             error={state.errors?.phone?.[0]}
+          />
+          <Field
+            label={
+              requiresBirthDate
+                ? "Birth date"
+                : "Birth date (required for age classes)"
+            }
+            name="birthDate"
+            type="date"
+            required={requiresBirthDate}
+            error={state.errors?.birthDate?.[0]}
           />
           <Field
             label={
@@ -153,6 +170,18 @@ export function OnlineEntryForm({
                       {division.allowGuests
                         ? " · Guest entries allowed"
                         : " · Active members only"}
+                    </span>
+                    <span className="mt-1 block text-xs font-semibold text-[var(--brand-accent-strong)]">
+                      {division.eligibilityType === "open"
+                        ? "Open to any contestant"
+                        : division.eligibilityType === "age"
+                          ? division.minimumAge !== null &&
+                            division.maximumAge !== null
+                            ? `Ages ${division.minimumAge}-${division.maximumAge}`
+                            : division.minimumAge !== null
+                              ? `${division.minimumAge} and over`
+                              : `${division.maximumAge} and under`
+                          : "Skill classification applies"}
                     </span>
                     <span className="mt-1 block text-xs text-[#758078]">
                       {division.scheduleType === "follows_previous"
