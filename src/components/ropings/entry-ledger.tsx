@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { ChevronDown, LoaderCircle, Search } from "lucide-react";
+import { ChevronDown, LoaderCircle, Search, ShieldAlert } from "lucide-react";
 import {
   updateContestantPayment,
   type PaymentFormState,
@@ -31,6 +31,9 @@ export interface LedgerContestant {
     paymentStatus: PaymentStatus;
     incentiveAdjustment: number;
     transferNote: string | null;
+    eligibilityOverridden: boolean;
+    eligibilityIssue: string | null;
+    eligibilityOverrideReason: string | null;
   }>;
   charges: Array<{
     id: string;
@@ -186,7 +189,7 @@ function ContestantRow({
           {contestant.entries.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center rounded-md bg-[#f0f2f1] pl-2 text-xs font-semibold"
+              className={`flex items-center rounded-md pl-2 text-xs font-semibold ${entry.eligibilityOverridden ? "bg-amber-50 text-amber-950" : "bg-[#f0f2f1]"}`}
             >
               <span className="py-1">
                 {entry.division} #{entry.entryNumber}
@@ -196,6 +199,15 @@ function ContestantRow({
                 {entry.transferNote ? (
                   <span className="mt-0.5 block font-normal text-[#66716b]">
                     {entry.transferNote}
+                  </span>
+                ) : null}
+                {entry.eligibilityOverridden ? (
+                  <span className="mt-1 flex max-w-72 items-start gap-1 font-normal leading-4 text-amber-800">
+                    <ShieldAlert size={12} className="mt-0.5 shrink-0" />
+                    <span>
+                      Eligibility override: {entry.eligibilityIssue}. Reason:{" "}
+                      {entry.eligibilityOverrideReason}
+                    </span>
                   </span>
                 ) : null}
               </span>

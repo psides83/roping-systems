@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -71,6 +71,7 @@ function RequestRow({
     action,
     {},
   );
+  const [eligibilityOverride, setEligibilityOverride] = useState(false);
   return (
     <form action={formAction} className="p-5">
       <input type="hidden" name="requestId" value={request.id} />
@@ -134,9 +135,23 @@ function RequestRow({
             Office note
             <input
               name="reviewNote"
+              required={eligibilityOverride}
+              minLength={eligibilityOverride ? 5 : undefined}
               className="mt-1.5 h-9 w-full rounded-md border border-[#ccd4d0] px-3 text-sm outline-none focus:border-[var(--brand-accent)]"
-              placeholder="Optional"
+              placeholder={
+                eligibilityOverride ? "Override reason required" : "Optional"
+              }
             />
+          </label>
+          <label className="mt-2 flex items-start gap-2 text-xs font-semibold text-[#66716b]">
+            <input
+              name="eligibilityOverride"
+              type="checkbox"
+              checked={eligibilityOverride}
+              onChange={(event) => setEligibilityOverride(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
+            />
+            Approve eligibility exception
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button

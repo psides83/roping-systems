@@ -68,6 +68,9 @@ export default async function EventEntriesPage({
                 paymentStatus: "unpaid",
                 incentiveAdjustment: 0,
                 transferNote: null,
+                eligibilityOverridden: false,
+                eligibilityIssue: null,
+                eligibilityOverrideReason: null,
               },
               {
                 id: "jace-2",
@@ -78,6 +81,9 @@ export default async function EventEntriesPage({
                 paymentStatus: "unpaid",
                 incentiveAdjustment: 0,
                 transferNote: null,
+                eligibilityOverridden: false,
+                eligibilityIssue: null,
+                eligibilityOverrideReason: null,
               },
             ],
             charges: [
@@ -123,6 +129,10 @@ export default async function EventEntriesPage({
                 paymentStatus: "paid_cash",
                 incentiveAdjustment: 1.5,
                 transferNote: "Moved from Breakaway · 11.5",
+                eligibilityOverridden: true,
+                eligibilityIssue:
+                  "Contestant classification is below this class",
+                eligibilityOverrideReason: "Approved by event director",
               },
             ],
             charges: [
@@ -175,7 +185,7 @@ export default async function EventEntriesPage({
     supabase
       .from("entries")
       .select(
-        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, roping_divisions!entries_roping_division_id_fkey!inner(id, name, scheduled_date), people!inner(first_name, last_name)",
+        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, eligibility_overridden, eligibility_note, eligibility_override_reason, roping_divisions!entries_roping_division_id_fkey!inner(id, name, scheduled_date), people!inner(first_name, last_name)",
       )
       .eq("roping_id", ropingId)
       .order("entered_at", { ascending: false }),
@@ -327,6 +337,9 @@ export default async function EventEntriesPage({
       transferNote: latestTransfer
         ? `Moved from ${divisionNames.get(latestTransfer.sourceDivisionId) ?? "another class"}`
         : null,
+      eligibilityOverridden: entry.eligibility_overridden,
+      eligibilityIssue: entry.eligibility_note,
+      eligibilityOverrideReason: entry.eligibility_override_reason,
     });
     contestantsByPerson.set(entry.person_id, contestant);
   }

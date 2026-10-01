@@ -22,41 +22,87 @@ export interface TransferFormState {
   errors?: Record<string, string[]>;
 }
 
-const existingEntrySchema = z.object({
-  divisionId: z.uuid(),
-  personId: z.uuid(),
-  paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
-});
+const eligibilityOverrideFields = {
+  eligibilityOverride: z.string().optional(),
+  eligibilityOverrideReason: z.string().trim().max(300),
+};
 
-const guestEntrySchema = z.object({
-  divisionId: z.uuid(),
-  firstName: z.string().trim().min(1, "First name is required."),
-  lastName: z.string().trim().min(1, "Last name is required."),
-  email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
-  phone: z.string().trim(),
-  birthDate: z.union([z.literal(""), z.iso.date()]),
-  paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
-});
+function requireOverrideReason(
+  data: { eligibilityOverride?: string; eligibilityOverrideReason: string },
+  context: z.RefinementCtx,
+) {
+  if (
+    data.eligibilityOverride === "on" &&
+    data.eligibilityOverrideReason.length < 5
+  )
+    context.addIssue({
+      code: "custom",
+      path: ["eligibilityOverrideReason"],
+      message: "Enter a brief reason for the eligibility override.",
+    });
+}
 
-const reviewRequestSchema = z.object({
-  requestId: z.uuid(),
-  decision: z.enum(["accepted", "declined"]),
-  reviewNote: z.string().trim().max(500, "Keep the note under 500 characters."),
-});
+const existingEntrySchema = z
+  .object({
+    divisionId: z.uuid(),
+    personId: z.uuid(),
+    paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
+    ...eligibilityOverrideFields,
+  })
+  .superRefine(requireOverrideReason);
+
+const guestEntrySchema = z
+  .object({
+    divisionId: z.uuid(),
+    firstName: z.string().trim().min(1, "First name is required."),
+    lastName: z.string().trim().min(1, "Last name is required."),
+    email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
+    phone: z.string().trim(),
+    birthDate: z.union([z.literal(""), z.iso.date()]),
+    paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
+    ...eligibilityOverrideFields,
+  })
+  .superRefine(requireOverrideReason);
+
+const reviewRequestSchema = z
+  .object({
+    requestId: z.uuid(),
+    decision: z.enum(["accepted", "declined"]),
+    reviewNote: z
+      .string()
+      .trim()
+      .max(500, "Keep the note under 500 characters."),
+    eligibilityOverride: z.string().optional(),
+  })
+  .superRefine((data, context) => {
+    if (
+      data.decision === "accepted" &&
+      data.eligibilityOverride === "on" &&
+      data.reviewNote.length < 5
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["reviewNote"],
+        message: "Explain the eligibility override in the office note.",
+      });
+  });
 
 const paymentSchema = z.object({
   personId: z.uuid(),
   paymentStatus: z.enum(["unpaid", "paid_cash", "comped", "refunded"]),
 });
 
-const transferSchema = z.object({
-  destinationDivisionId: z.uuid("Choose a destination class."),
-  reason: z
-    .string()
-    .trim()
-    .min(1, "Enter a reason for moving this entry.")
-    .max(240, "Keep the reason under 240 characters."),
-});
+const transferSchema = z
+  .object({
+    destinationDivisionId: z.uuid("Choose a destination class."),
+    reason: z
+      .string()
+      .trim()
+      .min(1, "Enter a reason for moving this entry.")
+      .max(240, "Keep the reason under 240 characters."),
+    ...eligibilityOverrideFields,
+  })
+  .superRefine(requireOverrideReason);
 
 async function requireManager() {
   const organization = await getActiveOrganization();
@@ -92,16 +138,24 @@ export async function addExistingEntry(
   formData: FormData,
 ): Promise<EntryFormState> {
   const parsed = existingEntrySchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
   const { data: entryId, error } = await context.supabase.rpc(
-    "create_event_entry",
+    "create_event_entry_with_eligibility_override",
     {
       target_roping_division_id: parsed.data.divisionId,
       target_person_id: parsed.data.personId,
       entry_origin: "office",
       initial_payment_status: parsed.data.paymentStatus,
+      entered_override_reason:
+        parsed.data.eligibilityOverride === "on"
+          ? parsed.data.eligibilityOverrideReason
+          : null,
     },
   );
   if (error) return { message: error.message };
@@ -125,11 +179,15 @@ export async function addGuestEntry(
   formData: FormData,
 ): Promise<EntryFormState> {
   const parsed = guestEntrySchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
   const { data: entryId, error } = await context.supabase.rpc(
-    "create_guest_event_entry",
+    "create_guest_event_entry_with_eligibility_override",
     {
       target_roping_division_id: parsed.data.divisionId,
       guest_first_name: parsed.data.firstName,
@@ -138,6 +196,10 @@ export async function addGuestEntry(
       guest_phone: parsed.data.phone,
       guest_birth_date: parsed.data.birthDate || null,
       initial_payment_status: parsed.data.paymentStatus,
+      entered_override_reason:
+        parsed.data.eligibilityOverride === "on"
+          ? parsed.data.eligibilityOverrideReason
+          : null,
     },
   );
   if (error) return { message: error.message };
@@ -161,16 +223,21 @@ export async function reviewOnlineEntryRequest(
   formData: FormData,
 ): Promise<EntryFormState> {
   const parsed = reviewRequestSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
 
   const { data, error } = await context.supabase.rpc(
-    "review_online_entry_request",
+    "review_online_entry_request_with_eligibility_override",
     {
       target_request_id: parsed.data.requestId,
       review_decision: parsed.data.decision,
       entered_review_note: parsed.data.reviewNote,
+      override_eligibility: parsed.data.eligibilityOverride === "on",
     },
   );
   if (error) return { message: error.message };
@@ -220,15 +287,26 @@ export async function transferEntry(
   formData: FormData,
 ): Promise<TransferFormState> {
   const parsed = transferSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
 
-  const { error } = await context.supabase.rpc("transfer_event_entry", {
-    target_entry_id: entryId,
-    target_division_id: parsed.data.destinationDivisionId,
-    transfer_reason: parsed.data.reason,
-  });
+  const { error } = await context.supabase.rpc(
+    "transfer_event_entry_with_eligibility_override",
+    {
+      target_entry_id: entryId,
+      target_division_id: parsed.data.destinationDivisionId,
+      transfer_reason: parsed.data.reason,
+      entered_override_reason:
+        parsed.data.eligibilityOverride === "on"
+          ? parsed.data.eligibilityOverrideReason
+          : null,
+    },
+  );
   if (error) return { message: error.message };
 
   revalidatePath(`/ropings/${ropingId}`);

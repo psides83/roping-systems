@@ -30,6 +30,7 @@ export function EntryTransferDialog({
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [overrideEligibility, setOverrideEligibility] = useState(false);
   const destinationDivisions = divisions.filter(
     (division) => division.id !== currentDivisionId,
   );
@@ -140,6 +141,57 @@ export function EntryTransferDialog({
                   </span>
                 ))}
               </label>
+              <div className="rounded-md border border-[#d9dfdc] bg-[#f7f8f7] p-3">
+                <label className="flex cursor-pointer items-start gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    name="eligibilityOverride"
+                    checked={overrideEligibility}
+                    onChange={(event) =>
+                      setOverrideEligibility(event.target.checked)
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[#be3f27]"
+                  />
+                  <span>
+                    <span className="block font-semibold text-[#17201c]">
+                      Approve an eligibility exception
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[#66716b]">
+                      Use this only when event staff are approving a membership,
+                      classification, or age exception for the destination
+                      class.
+                    </span>
+                  </span>
+                </label>
+                {overrideEligibility ? (
+                  <label className="mt-3 block text-sm font-semibold">
+                    Exception reason
+                    <textarea
+                      name="eligibilityOverrideReason"
+                      required
+                      minLength={5}
+                      maxLength={300}
+                      rows={2}
+                      placeholder="Approved by the event producer"
+                      className="mt-2 w-full resize-y rounded-md border border-[#ccd4d0] bg-white px-3 py-2"
+                    />
+                    {state.errors?.eligibilityOverrideReason?.map((error) => (
+                      <span
+                        key={error}
+                        className="mt-1 block text-xs text-rose-700"
+                      >
+                        {error}
+                      </span>
+                    ))}
+                  </label>
+                ) : (
+                  <input
+                    type="hidden"
+                    name="eligibilityOverrideReason"
+                    value=""
+                  />
+                )}
+              </div>
               {state.message ? (
                 <p
                   className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}

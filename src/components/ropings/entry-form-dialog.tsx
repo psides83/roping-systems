@@ -201,6 +201,7 @@ export function EntryFormDialog({
 
 function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
   const [divisionId, setDivisionId] = useState("");
+  const [eligibilityOverride, setEligibilityOverride] = useState(false);
   const options =
     divisions.find((division) => division.id === divisionId)?.options ?? [];
   return (
@@ -268,6 +269,43 @@ function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
           </div>
         </fieldset>
       ) : null}
+      <div className="border-t border-[#e7ebe8] pt-4">
+        <label className="flex items-start gap-3 text-sm font-semibold">
+          <input
+            name="eligibilityOverride"
+            type="checkbox"
+            checked={eligibilityOverride}
+            onChange={(event) => setEligibilityOverride(event.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
+          />
+          <span>
+            Approve an eligibility exception
+            <span className="mt-1 block text-xs font-normal leading-5 text-[#758078]">
+              Use only when event staff has approved an exception to membership,
+              classification, or age rules.
+            </span>
+          </span>
+        </label>
+        {eligibilityOverride ? (
+          <label className="mt-3 block text-sm font-semibold">
+            Override reason
+            <textarea
+              name="eligibilityOverrideReason"
+              minLength={5}
+              maxLength={300}
+              required
+              className="mt-2 min-h-20 w-full rounded-md border border-[#ccd4d0] p-3 outline-none focus:border-[var(--brand-accent)]"
+              placeholder="Who approved the exception and why?"
+            />
+            <span className="mt-1 block text-xs font-normal text-[#758078]">
+              The failed eligibility rule, this reason, and your account are
+              saved in the changelog.
+            </span>
+          </label>
+        ) : (
+          <input type="hidden" name="eligibilityOverrideReason" value="" />
+        )}
+      </div>
     </>
   );
 }

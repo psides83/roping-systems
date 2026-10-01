@@ -72,6 +72,29 @@ function describeChanges(
       },
     ];
   }
+  if (
+    entityType === "entries" &&
+    action === "insert" &&
+    after?.eligibility_overridden === true
+  ) {
+    return [
+      {
+        field: "Eligibility issue",
+        before: "",
+        after: formatValue(after.eligibility_note),
+      },
+      {
+        field: "Override reason",
+        before: "",
+        after: formatValue(after.eligibility_override_reason),
+      },
+      {
+        field: "Entry number",
+        before: "",
+        after: formatValue(after.entry_number),
+      },
+    ];
+  }
   if (action === "insert")
     return [{ field: "Record", before: "", after: "Created" }];
   if (action === "delete")
