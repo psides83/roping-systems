@@ -6,6 +6,10 @@ import {
   updateContestantPayment,
   type PaymentFormState,
 } from "@/app/(app)/ropings/[ropingId]/entries/actions";
+import {
+  EntryTransferDialog,
+  type TransferDivision,
+} from "@/components/ropings/entry-transfer-dialog";
 import { formatCurrency } from "@/lib/utils";
 
 type PaymentStatus = "unpaid" | "paid_cash" | "comped" | "refunded";
@@ -19,11 +23,13 @@ export interface LedgerContestant {
   totalCents: number;
   entries: Array<{
     id: string;
+    divisionId: string;
     division: string;
     entryNumber: number;
     source: string;
     paymentStatus: PaymentStatus;
     incentiveAdjustment: number;
+    transferNote: string | null;
   }>;
   charges: Array<{
     id: string;
@@ -52,10 +58,12 @@ const paymentStyles: Record<PaymentSummary, string> = {
 export function EntryLedger({
   ropingId,
   contestants,
+  divisions,
   canEdit,
 }: {
   ropingId: string;
   contestants: LedgerContestant[];
+  divisions: TransferDivision[];
   canEdit: boolean;
 }) {
   const [search, setSearch] = useState("");
@@ -127,6 +135,7 @@ export function EntryLedger({
                 key={contestant.personId}
                 ropingId={ropingId}
                 contestant={contestant}
+                divisions={divisions}
                 canEdit={canEdit}
               />
             ))}
@@ -152,10 +161,12 @@ export function EntryLedger({
 function ContestantRow({
   ropingId,
   contestant,
+  divisions,
   canEdit,
 }: {
   ropingId: string;
   contestant: LedgerContestant;
+  divisions: TransferDivision[];
   canEdit: boolean;
 }) {
   return (
@@ -172,15 +183,31 @@ function ContestantRow({
       <td className="max-w-sm px-5 py-4">
         <div className="flex flex-wrap gap-1.5">
           {contestant.entries.map((entry) => (
-            <span
+            <div
               key={entry.id}
-              className="rounded-md bg-[#f0f2f1] px-2 py-1 text-xs font-semibold"
+              className="flex items-center rounded-md bg-[#f0f2f1] pl-2 text-xs font-semibold"
             >
-              {entry.division} #{entry.entryNumber}
-              {entry.incentiveAdjustment
-                ? ` · -${entry.incentiveAdjustment.toFixed(3)} sec`
-                : ""}
-            </span>
+              <span className="py-1">
+                {entry.division} #{entry.entryNumber}
+                {entry.incentiveAdjustment
+                  ? ` · -${entry.incentiveAdjustment.toFixed(3)} sec`
+                  : ""}
+                {entry.transferNote ? (
+                  <span className="mt-0.5 block font-normal text-[#66716b]">
+                    {entry.transferNote}
+                  </span>
+                ) : null}
+              </span>
+              <EntryTransferDialog
+                ropingId={ropingId}
+                entryId={entry.id}
+                contestantName={contestant.name}
+                currentDivisionId={entry.divisionId}
+                currentDivisionName={entry.division}
+                divisions={divisions}
+                enabled={canEdit}
+              />
+            </div>
           ))}
         </div>
       </td>

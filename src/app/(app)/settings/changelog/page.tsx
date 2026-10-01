@@ -22,6 +22,7 @@ const entityLabels: Record<string, string> = {
   roping_incentive_rules: "Incentive handicap rule",
   roping_fees: "Roping fee or option",
   entries: "Entry",
+  entry_transfers: "Entry transfer",
   entry_charges: "Entry charge",
   runs: "Run result",
   run_timer_readings: "Timer reading",
@@ -38,10 +39,26 @@ function formatValue(value: unknown) {
 }
 
 function describeChanges(
+  entityType: string,
   action: string,
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ) {
+  if (entityType === "entry_transfers" && action === "insert") {
+    return [
+      { field: "Reason", before: "", after: formatValue(after?.reason) },
+      {
+        field: "Previous entry number",
+        before: "",
+        after: formatValue(after?.source_entry_number),
+      },
+      {
+        field: "New entry number",
+        before: "",
+        after: formatValue(after?.destination_entry_number),
+      },
+    ];
+  }
   if (action === "insert")
     return [{ field: "Record", before: "", after: "Created" }];
   if (action === "delete")
@@ -138,6 +155,7 @@ export default async function ChangelogPage({
         <div className="divide-y divide-[#edf0ee]">
           {data.map((item) => {
             const changes = describeChanges(
+              item.entity_type,
               item.action,
               item.before_data as Record<string, unknown> | null,
               item.after_data as Record<string, unknown> | null,

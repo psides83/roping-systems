@@ -61,19 +61,23 @@ export default async function EventEntriesPage({
             entries: [
               {
                 id: "jace-1",
+                divisionId: "calf-open",
                 division: "Calf roping · Open",
                 entryNumber: 1,
                 source: "online",
                 paymentStatus: "unpaid",
                 incentiveAdjustment: 0,
+                transferNote: null,
               },
               {
                 id: "jace-2",
+                divisionId: "calf-115",
                 division: "Calf roping · 11.5",
                 entryNumber: 1,
                 source: "office",
                 paymentStatus: "unpaid",
                 incentiveAdjustment: 0,
+                transferNote: null,
               },
             ],
             charges: [
@@ -112,11 +116,13 @@ export default async function EventEntriesPage({
             entries: [
               {
                 id: "mara-1",
+                divisionId: "breakaway-open",
                 division: "Breakaway · Open",
                 entryNumber: 1,
                 source: "office",
                 paymentStatus: "paid_cash",
                 incentiveAdjustment: 1.5,
+                transferNote: "Moved from Breakaway · 11.5",
               },
             ],
             charges: [
@@ -150,6 +156,7 @@ export default async function EventEntriesPage({
     { data: entryData, error: entryError },
     { data: chargeData, error: chargeError },
     { data: requestData, error: requestError },
+    { data: transferData, error: transferError },
   ] = await Promise.all([
     supabase
       .from("ropings")
@@ -168,7 +175,7 @@ export default async function EventEntriesPage({
     supabase
       .from("entries")
       .select(
-        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, roping_divisions!entries_roping_division_id_fkey!inner(name, scheduled_date), people!inner(first_name, last_name)",
+        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, roping_divisions!entries_roping_division_id_fkey!inner(id, name, scheduled_date), people!inner(first_name, last_name)",
       )
       .eq("roping_id", ropingId)
       .order("entered_at", { ascending: false }),
@@ -187,9 +194,14 @@ export default async function EventEntriesPage({
       .eq("roping_id", ropingId)
       .eq("status", "pending")
       .order("created_at"),
+    supabase
+      .from("entry_transfers")
+      .select("entry_id, source_division_id, reason, created_at")
+      .eq("roping_id", ropingId)
+      .order("created_at", { ascending: false }),
   ]);
   if (!roping) notFound();
-  const loadError = entryError ?? chargeError ?? requestError;
+  const loadError = entryError ?? chargeError ?? requestError ?? transferError;
   if (loadError)
     throw new Error(`Unable to load event entries: ${loadError.message}`);
 
@@ -260,6 +272,22 @@ export default async function EventEntriesPage({
     chargesByPerson.set(charge.person_id, charges);
   }
 
+  const divisionNames = new Map(
+    divisions.map((division) => [division.id, division.name]),
+  );
+  const latestTransferByEntry = new Map<
+    string,
+    { sourceDivisionId: string; reason: string }
+  >();
+  for (const transfer of transferData ?? []) {
+    if (!latestTransferByEntry.has(transfer.entry_id)) {
+      latestTransferByEntry.set(transfer.entry_id, {
+        sourceDivisionId: transfer.source_division_id,
+        reason: transfer.reason,
+      });
+    }
+  }
+
   const contestantsByPerson = new Map<string, LedgerContestant>();
   for (const entry of entryData ?? []) {
     const person = entry.people as unknown as {
@@ -267,9 +295,11 @@ export default async function EventEntriesPage({
       last_name: string;
     };
     const division = entry.roping_divisions as unknown as {
+      id: string;
       name: string;
       scheduled_date: string;
     };
+    const latestTransfer = latestTransferByEntry.get(entry.id);
     const contestant: LedgerContestant = contestantsByPerson.get(
       entry.person_id,
     ) ?? {
@@ -283,6 +313,7 @@ export default async function EventEntriesPage({
     };
     contestant.entries.push({
       id: entry.id,
+      divisionId: division.id,
       division: `${division.name} · ${new Intl.DateTimeFormat("en-US", {
         weekday: "short",
         month: "short",
@@ -293,6 +324,9 @@ export default async function EventEntriesPage({
       source: entry.source,
       paymentStatus: entry.payment_status as PaymentStatus,
       incentiveAdjustment: Number(entry.incentive_adjustment_seconds),
+      transferNote: latestTransfer
+        ? `Moved from ${divisionNames.get(latestTransfer.sourceDivisionId) ?? "another class"}`
+        : null,
     });
     contestantsByPerson.set(entry.person_id, contestant);
   }
@@ -460,6 +494,7 @@ function EntriesWorkspace({
       <EntryLedger
         ropingId={ropingId}
         contestants={contestants}
+        divisions={divisions.map(({ id, name }) => ({ id, name }))}
         canEdit={canEdit}
       />
     </div>

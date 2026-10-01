@@ -16,6 +16,12 @@ export interface PaymentFormState {
   message?: string;
 }
 
+export interface TransferFormState {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
 const existingEntrySchema = z.object({
   divisionId: z.uuid(),
   personId: z.uuid(),
@@ -40,6 +46,15 @@ const reviewRequestSchema = z.object({
 const paymentSchema = z.object({
   personId: z.uuid(),
   paymentStatus: z.enum(["unpaid", "paid_cash", "comped", "refunded"]),
+});
+
+const transferSchema = z.object({
+  destinationDivisionId: z.uuid("Choose a destination class."),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Enter a reason for moving this entry.")
+    .max(240, "Keep the reason under 240 characters."),
 });
 
 async function requireManager() {
@@ -194,4 +209,29 @@ export async function updateContestantPayment(
     success: true,
     message: `${data} ${data === 1 ? "entry" : "entries"} updated.`,
   };
+}
+
+export async function transferEntry(
+  ropingId: string,
+  entryId: string,
+  _state: TransferFormState,
+  formData: FormData,
+): Promise<TransferFormState> {
+  const parsed = transferSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const { error } = await context.supabase.rpc("transfer_event_entry", {
+    target_entry_id: entryId,
+    target_division_id: parsed.data.destinationDivisionId,
+    transfer_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  return { success: true, message: "Entry moved to the new class." };
 }
