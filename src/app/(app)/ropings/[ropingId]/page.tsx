@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ShortRoundSettingsForm } from "@/components/ropings/short-round-settings";
 import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
+import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
 import {
   ropings as demoRopings,
   divisionTemplates as demoDivisions,
@@ -23,6 +24,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
+import type { RoundOrderMethod } from "@/types/domain";
 import { updateClassEntrySpacing, updateRopingRounds } from "./actions";
 
 interface EventDetail {
@@ -46,6 +48,8 @@ interface EventDetail {
     name: string;
     runs: number;
     minimumRunsBetweenEntries: number;
+    secondRoundOrdering: RoundOrderMethod;
+    laterRoundOrdering: RoundOrderMethod;
     entries: number;
     startsAt: string | null;
     scheduledDate: string;
@@ -104,6 +108,8 @@ async function getEvent(
             name: division.name,
             runs: index === 2 ? 2 : 1,
             minimumRunsBetweenEntries: index === 1 ? 3 : 0,
+            secondRoundOrdering: "reverse_first",
+            laterRoundOrdering: "aggregate_slowest_to_fastest",
             entries: index === 0 ? roping.entries : 0,
             startsAt: null,
             scheduledDate: roping.date,
@@ -165,7 +171,7 @@ async function getEvent(
       supabase
         .from("ropings")
         .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
         )
         .eq("id", ropingId)
         .eq("organization_id", organization.id)
@@ -187,6 +193,8 @@ async function getEvent(
       name: string;
       number_of_runs: number;
       minimum_runs_between_entries: number;
+      second_round_ordering: RoundOrderMethod;
+      later_round_ordering: RoundOrderMethod;
       short_round_enabled: boolean;
       starts_at: string | null;
       scheduled_date: string;
@@ -224,6 +232,8 @@ async function getEvent(
       name: division.name,
       runs: division.number_of_runs,
       minimumRunsBetweenEntries: division.minimum_runs_between_entries,
+      secondRoundOrdering: division.second_round_ordering,
+      laterRoundOrdering: division.later_round_ordering,
       entries: division.entries.length,
       startsAt: division.starts_at
         ? new Intl.DateTimeFormat("en-US", {
@@ -543,6 +553,14 @@ export default async function RopingDetailPage({
                   </form>
                 </div>
               </div>
+              <ClassRoundOrderingForm
+                ropingId={event.id}
+                divisionId={division.id}
+                roundCount={division.runs}
+                secondRoundOrdering={division.secondRoundOrdering}
+                laterRoundOrdering={division.laterRoundOrdering}
+                editable={roundsEditable && isSupabaseConfigured()}
+              />
               <div className="mt-4 flex flex-wrap gap-2">
                 {division.fees.map((fee) => (
                   <span

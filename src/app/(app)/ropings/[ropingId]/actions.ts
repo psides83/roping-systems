@@ -40,6 +40,18 @@ const entrySpacingSchema = z.object({
   minimumRunsBetweenEntries: z.coerce.number().int().min(0).max(100),
 });
 
+const roundOrderMethodSchema = z.enum([
+  "reverse_first",
+  "aggregate_slowest_to_fastest",
+  "custom",
+]);
+
+const roundOrderingSchema = z.object({
+  divisionId: z.uuid(),
+  secondRoundOrdering: roundOrderMethodSchema,
+  laterRoundOrdering: roundOrderMethodSchema,
+});
+
 export async function updateRopingRounds(ropingId: string, formData: FormData) {
   const parsed = roundCountSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error("Round count must be between 1 and 20.");
@@ -65,6 +77,23 @@ export async function updateClassEntrySpacing(
   const { error } = await supabase.rpc("set_division_entry_spacing", {
     target_roping_division_id: parsed.data.divisionId,
     new_minimum_runs: parsed.data.minimumRunsBetweenEntries,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+}
+
+export async function updateClassRoundOrdering(
+  ropingId: string,
+  formData: FormData,
+) {
+  const parsed = roundOrderingSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) throw new Error("Choose valid round ordering rules.");
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("set_division_round_ordering", {
+    target_roping_division_id: parsed.data.divisionId,
+    new_second_round_ordering: parsed.data.secondRoundOrdering,
+    new_later_round_ordering: parsed.data.laterRoundOrdering,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/ropings/${ropingId}`);

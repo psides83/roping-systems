@@ -33,6 +33,7 @@ import {
 } from "@/lib/run-status";
 import { RunCorrectionDialog } from "@/components/ropings/run-correction-dialog";
 import { RerunSchedulingDialog } from "@/components/ropings/rerun-scheduling-dialog";
+import type { RoundOrderMethod } from "@/types/domain";
 
 export interface LiveRunRow {
   id: string;
@@ -57,6 +58,8 @@ interface LiveDeskProps {
     numberOfRuns: number;
     shortRoundEnabled: boolean;
     shortRoundSeeded: boolean;
+    secondRoundOrdering: RoundOrderMethod;
+    laterRoundOrdering: RoundOrderMethod;
   }>;
   selectedDivisionId: string;
   selectedRound: number;
@@ -129,12 +132,18 @@ export function DatabaseLiveDesk({
   const roundReadyToLock =
     orderedRuns.length > 0 &&
     orderedRuns.every((run) => isResolvedRunStatus(run.status));
+  const selectedOrderMethod =
+    selectedRound === 2
+      ? selectedDivision?.secondRoundOrdering
+      : selectedDivision?.laterRoundOrdering;
   const orderMethod =
     selectedRound === 1
       ? "First entries rope last"
-      : selectedRound === 2
+      : selectedOrderMethod === "reverse_first"
         ? "Reverse of the first-round order"
-        : "Fewest qualified times first, then slowest aggregate to fastest";
+        : selectedOrderMethod === "custom"
+          ? "Custom order · build a starting list, then move contestants"
+          : "Fewest qualified times first, then slowest aggregate to fastest";
   const normalizedSearch = search.trim().toLowerCase();
   const visibleRuns = normalizedSearch
     ? orderedRuns.filter(
@@ -296,7 +305,9 @@ export function DatabaseLiveDesk({
                   </button>
                 </form>
               ) : null}
-              {orderedRuns.length && !isShortRound ? (
+              {orderedRuns.length &&
+              !isShortRound &&
+              (!drawReady || selectedOrderMethod !== "custom") ? (
                 <form action={drawAction}>
                   <input
                     type="hidden"
@@ -309,7 +320,11 @@ export function DatabaseLiveDesk({
                     className="flex h-8 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-xs font-semibold disabled:opacity-50"
                   >
                     <ListOrdered size={14} />
-                    {drawReady ? "Rebuild order" : "Build order"}
+                    {selectedOrderMethod === "custom"
+                      ? "Build starting order"
+                      : drawReady
+                        ? "Rebuild order"
+                        : "Build order"}
                   </button>
                 </form>
               ) : null}

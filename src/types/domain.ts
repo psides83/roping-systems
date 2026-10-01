@@ -12,6 +12,10 @@ export type FeeScope = "entry" | "contestant_division" | "contestant_event";
 export type FeeKind = "standard" | "insurance" | "side_pot" | "other";
 export type ResultStatus = "unofficial" | "official";
 export type CompetitionFormat = "standard" | "handicap" | "four_d";
+export type RoundOrderMethod =
+  | "reverse_first"
+  | "aggregate_slowest_to_fastest"
+  | "custom";
 
 export interface FourDEntryBracket {
   minimumEntries: number;
@@ -76,5 +80,7 @@ export interface DivisionTemplateSummary {
   payoutScheduleId?: string | null;
   competitionFormat?: CompetitionFormat;
   fourDSettings?: FourDSettings | null;
+  secondRoundOrdering?: RoundOrderMethod;
+  laterRoundOrdering?: RoundOrderMethod;
   fees: FeeTemplateSummary[];
 }

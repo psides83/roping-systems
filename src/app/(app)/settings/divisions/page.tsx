@@ -19,12 +19,19 @@ import type {
   FeeKind,
   FeeScope,
   FourDSettings,
+  RoundOrderMethod,
 } from "@/types/domain";
 
 const scopeLabels: Record<FeeScope, string> = {
   entry: "Each entry",
   contestant_division: "Once per template",
   contestant_event: "Once per event",
+};
+
+const roundOrderLabels: Record<RoundOrderMethod, string> = {
+  reverse_first: "reverse first-round order",
+  aggregate_slowest_to_fastest: "slowest aggregate to fastest",
+  custom: "custom order",
 };
 
 async function getDivisionData(): Promise<{
@@ -35,7 +42,12 @@ async function getDivisionData(): Promise<{
 }> {
   if (!isSupabaseConfigured())
     return {
-      divisions: demoDivisions,
+      divisions: demoDivisions.map((division) => ({
+        ...division,
+        secondRoundOrdering: division.secondRoundOrdering ?? "reverse_first",
+        laterRoundOrdering:
+          division.laterRoundOrdering ?? "aggregate_slowest_to_fastest",
+      })),
       payoutSchedules: [{ id: "standard", name: "Standard 1 per 10" }],
       divisionOptions: [
         {
@@ -66,7 +78,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, four_d_settings, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, four_d_settings, second_round_ordering, later_round_ordering, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
@@ -123,6 +135,8 @@ async function getDivisionData(): Promise<{
       timerResolution: division.timer_resolution,
       competitionFormat: division.competition_format as CompetitionFormat,
       fourDSettings: division.four_d_settings as FourDSettings | null,
+      secondRoundOrdering: division.second_round_ordering as RoundOrderMethod,
+      laterRoundOrdering: division.later_round_ordering as RoundOrderMethod,
       payoutScheduleId: division.payout_schedule_id,
       fees: (
         division.fee_templates as unknown as Array<{
@@ -233,6 +247,12 @@ export default async function DivisionSettingsPage() {
                     {division.minimumRunsBetweenEntries
                       ? `${division.minimumRunsBetweenEntries} runs between repeat entries`
                       : "No repeat-entry spacing"}
+                  </span>
+                  <span>
+                    R2: {roundOrderLabels[division.secondRoundOrdering!]}
+                  </span>
+                  <span>
+                    R3+: {roundOrderLabels[division.laterRoundOrdering!]}
                   </span>
                 </div>
               </div>

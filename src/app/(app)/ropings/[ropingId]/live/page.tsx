@@ -15,6 +15,7 @@ import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import type { RunStatus } from "@/lib/run-status";
+import type { RoundOrderMethod } from "@/types/domain";
 import {
   finalizeRoping,
   startRoping,
@@ -32,6 +33,8 @@ interface LiveDivision {
   timerCount: number;
   timerResolution: TimerResolution;
   competitionFormat: CompetitionFormat;
+  secondRoundOrdering: RoundOrderMethod;
+  laterRoundOrdering: RoundOrderMethod;
 }
 
 export default async function LiveRopingPage({
@@ -76,7 +79,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -95,6 +98,8 @@ export default async function LiveRopingPage({
       timer_count: number;
       timer_resolution: TimerResolution;
       competition_format: CompetitionFormat;
+      second_round_ordering: RoundOrderMethod;
+      later_round_ordering: RoundOrderMethod;
     }>
   )
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -112,6 +117,8 @@ export default async function LiveRopingPage({
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
       competitionFormat: division.competition_format,
+      secondRoundOrdering: division.second_round_ordering,
+      laterRoundOrdering: division.later_round_ordering,
     }));
   const selectedDivisionId = getSelectedDivisionId(divisions, query.division);
   const selectedDivision = divisions.find(
@@ -387,6 +394,8 @@ const previewDivisions: LiveDivision[] = [
     timerCount: 2,
     timerResolution: "average",
     competitionFormat: "standard",
+    secondRoundOrdering: "reverse_first",
+    laterRoundOrdering: "aggregate_slowest_to_fastest",
   },
   {
     id: "breakaway-115",
@@ -397,6 +406,8 @@ const previewDivisions: LiveDivision[] = [
     timerCount: 2,
     timerResolution: "longest",
     competitionFormat: "handicap",
+    secondRoundOrdering: "reverse_first",
+    laterRoundOrdering: "aggregate_slowest_to_fastest",
   },
 ];
 

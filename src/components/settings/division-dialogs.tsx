@@ -17,11 +17,24 @@ import type {
   CompetitionFormat,
   DivisionTemplateSummary,
   FeeTemplateSummary,
+  RoundOrderMethod,
 } from "@/types/domain";
 
 const initialState: SettingsFormState = {};
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
+
+const roundOrderOptions: Array<{
+  value: RoundOrderMethod;
+  label: string;
+}> = [
+  { value: "reverse_first", label: "Reverse first-round order" },
+  {
+    value: "aggregate_slowest_to_fastest",
+    label: "Slowest aggregate to fastest",
+  },
+  { value: "custom", label: "Custom / manual order" },
+];
 
 export interface DivisionOption {
   id: string;
@@ -303,6 +316,48 @@ function EventTemplateDialog({
                   <option value="longest">Longest timer</option>
                 </select>
               </label>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Round ordering defaults</p>
+              <p className="mt-1 text-xs leading-5 text-[#66716b]">
+                These defaults are copied into each event and can be changed
+                there before competition starts.
+              </p>
+              <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-semibold">
+                  Round 2
+                  <select
+                    name="secondRoundOrdering"
+                    defaultValue={
+                      template?.secondRoundOrdering ?? "reverse_first"
+                    }
+                    className={inputClass}
+                  >
+                    {roundOrderOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm font-semibold">
+                  Round 3 and later
+                  <select
+                    name="laterRoundOrdering"
+                    defaultValue={
+                      template?.laterRoundOrdering ??
+                      "aggregate_slowest_to_fastest"
+                    }
+                    className={inputClass}
+                  >
+                    {roundOrderOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
