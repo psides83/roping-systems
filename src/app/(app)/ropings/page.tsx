@@ -32,6 +32,7 @@ async function getRopingData() {
           ? "preview-breakaway"
           : "preview-calf-roping",
         competitionFormat: division.competitionFormat ?? "standard",
+        handicapRules: division.handicapRules ?? {},
         divisionName: division.name.split(" · ")[0],
         fees: division.fees.map((fee) => ({
           id: fee.id,
@@ -74,14 +75,14 @@ async function getRopingData() {
     supabase
       .from("ropings")
       .select(
-        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, short_round_enabled, short_round_tie_policy, roping_incentive_rules(classification_id, adjustment_seconds), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order)), entries!entries_roping_id_fkey(id)",
+        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, short_round_enabled, short_round_tie_policy, roping_incentive_rules(classification_id, adjustment_seconds), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order)), entries!entries_roping_id_fkey(id)",
       )
       .eq("organization_id", organization.id)
       .order("starts_at", { ascending: false }),
     supabase
       .from("division_templates")
       .select(
-        "id, name, discipline_id, competition_format, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
+        "id, name, discipline_id, competition_format, handicap_rules, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
       )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
@@ -123,6 +124,14 @@ async function getRopingData() {
     name: division.name,
     disciplineId: division.discipline_id,
     competitionFormat: division.competition_format,
+    handicapRules: Object.fromEntries(
+      (
+        (division.handicap_rules ?? []) as Array<{
+          classificationId: string;
+          adjustmentSeconds: number;
+        }>
+      ).map((rule) => [rule.classificationId, Number(rule.adjustmentSeconds)]),
+    ),
     divisionName:
       (division.disciplines as unknown as { name: string } | null)?.name ??
       "Unassigned division",

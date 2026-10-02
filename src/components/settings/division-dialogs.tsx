@@ -47,6 +47,12 @@ export interface DivisionOption {
   name: string;
 }
 
+export interface ClassificationOption {
+  id: string;
+  disciplineId: string;
+  name: string;
+}
+
 interface PayoutOption {
   id: string;
   name: string;
@@ -111,11 +117,13 @@ function EventTemplateDialog({
   configured,
   divisions,
   payoutSchedules,
+  classifications,
   template,
 }: {
   configured: boolean;
   divisions: DivisionOption[];
   payoutSchedules: PayoutOption[];
+  classifications: ClassificationOption[];
   template?: DivisionTemplateSummary;
 }) {
   const [open, setOpen] = useState(false);
@@ -124,6 +132,9 @@ function EventTemplateDialog({
   );
   const [competitionFormat, setCompetitionFormat] = useState<CompetitionFormat>(
     template?.competitionFormat ?? "standard",
+  );
+  const [handicapRules, setHandicapRules] = useState<Record<string, number>>(
+    template?.handicapRules ?? {},
   );
   const [state, action, pending] = useActionState(
     template ? updateDivision : createDivision,
@@ -136,6 +147,9 @@ function EventTemplateDialog({
       (competitionFormat === "four_d" ? "four_d" : "standard"),
   );
   const isEditing = Boolean(template);
+  const handicapClassifications = classifications.filter(
+    (classification) => classification.disciplineId === disciplineId,
+  );
   useEffect(() => {
     if (!state.success) return;
     formRef.current?.reset();
@@ -171,6 +185,16 @@ function EventTemplateDialog({
           close={() => setOpen(false)}
         >
           <form ref={formRef} action={action} className="space-y-4 p-5">
+            <input
+              type="hidden"
+              name="handicapRules"
+              value={JSON.stringify(
+                handicapClassifications.map((classification) => ({
+                  classificationId: classification.id,
+                  adjustmentSeconds: handicapRules[classification.id] ?? 0,
+                })),
+              )}
+            />
             {template ? (
               <input type="hidden" name="divisionId" value={template.id} />
             ) : null}
@@ -228,6 +252,51 @@ function EventTemplateDialog({
                     : "A single final time is placed into a D according to its distance from the fastest time."}
               </span>
             </label>
+            {competitionFormat === "handicap" ? (
+              <div className="rounded-md border border-[#dfe4e1] bg-[#fafbfa] p-4">
+                <p className="text-sm font-bold">Default handicap deductions</p>
+                <p className="mt-1 text-xs leading-5 text-[#66716b]">
+                  These defaults are copied into each event and can be changed
+                  there without altering the template.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {handicapClassifications.map((classification) => (
+                    <label
+                      key={classification.id}
+                      className="flex items-center gap-3 rounded-md border border-[#e1e6e3] bg-white px-3 py-2"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                        {classification.name}
+                      </span>
+                      <span className="flex w-28 items-center rounded-md border border-[#ccd4d0] px-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="60"
+                          step="0.001"
+                          value={handicapRules[classification.id] ?? 0}
+                          onChange={(event) =>
+                            setHandicapRules((current) => ({
+                              ...current,
+                              [classification.id]: Number(event.target.value),
+                            }))
+                          }
+                          aria-label={`${classification.name} default seconds deducted`}
+                          className="h-9 min-w-0 flex-1 bg-transparent text-right font-mono text-sm outline-none"
+                        />
+                        <span className="ml-1 text-xs text-[#758078]">sec</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {!handicapClassifications.length ? (
+                  <p className="mt-3 text-xs font-semibold text-amber-800">
+                    Add member classifications such as Open, A, B, and C to this
+                    division first.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <label className="block text-sm font-semibold">
               Description
               <textarea
@@ -419,16 +488,19 @@ export function CreateDivisionDialog({
   configured,
   divisions,
   payoutSchedules,
+  classifications,
 }: {
   configured: boolean;
   divisions: DivisionOption[];
   payoutSchedules: PayoutOption[];
+  classifications: ClassificationOption[];
 }) {
   return (
     <EventTemplateDialog
       configured={configured}
       divisions={divisions}
       payoutSchedules={payoutSchedules}
+      classifications={classifications}
     />
   );
 }
@@ -436,11 +508,13 @@ export function EditDivisionDialog({
   configured,
   divisions,
   payoutSchedules,
+  classifications,
   template,
 }: {
   configured: boolean;
   divisions: DivisionOption[];
   payoutSchedules: PayoutOption[];
+  classifications: ClassificationOption[];
   template: DivisionTemplateSummary;
 }) {
   return (
@@ -448,6 +522,7 @@ export function EditDivisionDialog({
       configured={configured}
       divisions={divisions}
       payoutSchedules={payoutSchedules}
+      classifications={classifications}
       template={template}
     />
   );

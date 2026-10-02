@@ -5,6 +5,7 @@ interface ScheduledRopingRecord {
   id: string;
   source_template_id: string | null;
   classification_id: string | null;
+  competition_format: "standard" | "handicap" | "four_d";
   starts_at: string | null;
   scheduled_date: string;
   schedule_type: "fixed" | "tentative" | "follows_previous";
@@ -110,8 +111,9 @@ export function buildDuplicableRopingSummary({
       (scheduled) =>
         scheduled.source_template_id &&
         activeTemplateIds.has(scheduled.source_template_id) &&
-        scheduled.classification_id &&
-        activeClassificationIds.has(scheduled.classification_id),
+        (scheduled.competition_format === "handicap" ||
+          (scheduled.classification_id &&
+            activeClassificationIds.has(scheduled.classification_id))),
     );
   const shortRoundSource =
     scheduledRopings.find((scheduled) => scheduled.short_round_enabled) ??
@@ -135,7 +137,7 @@ export function buildDuplicableRopingSummary({
           : "",
         occurrences: scheduledRopings.map((scheduled) => ({
           templateId: scheduled.source_template_id!,
-          classificationId: scheduled.classification_id!,
+          classificationId: scheduled.classification_id ?? "",
           scheduledDate: scheduled.scheduled_date,
           scheduleType: scheduled.schedule_type,
           startTime: scheduled.starts_at
@@ -148,7 +150,7 @@ export function buildDuplicableRopingSummary({
           incentiveRules: Object.fromEntries(
             scheduled.roping_incentive_rules.map((rule) => [
               rule.classification_id,
-              String(-Number(rule.adjustment_seconds)),
+              String(Number(rule.adjustment_seconds)),
             ]),
           ),
           cattleDrawEnabled: scheduled.cattle_draw_enabled,

@@ -37,7 +37,23 @@ const divisionSchema = z.object({
   ]),
   payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   isActive: z.string().optional(),
+  handicapRules: z.string(),
 });
+
+const handicapRulesSchema = z.array(
+  z.object({
+    classificationId: z.uuid(),
+    adjustmentSeconds: z.coerce.number().min(0).max(60),
+  }),
+);
+
+function parseHandicapRules(value: string) {
+  try {
+    return handicapRulesSchema.safeParse(JSON.parse(value));
+  } catch {
+    return handicapRulesSchema.safeParse(null);
+  }
+}
 
 const updateDivisionSchema = divisionSchema.extend({ divisionId: z.uuid() });
 
@@ -63,6 +79,27 @@ async function getManagerContext() {
   return { organization, supabase: await createClient() };
 }
 
+async function validateHandicapRuleRelationships(
+  context: NonNullable<Awaited<ReturnType<typeof getManagerContext>>>,
+  disciplineId: string,
+  rules: z.infer<typeof handicapRulesSchema>,
+) {
+  const classificationIds = rules.map((rule) => rule.classificationId);
+  if (new Set(classificationIds).size !== classificationIds.length)
+    return "Each member classification may appear only once.";
+
+  const { data, error } = await context.supabase
+    .from("classifications")
+    .select("id")
+    .eq("organization_id", context.organization.id)
+    .eq("discipline_id", disciplineId)
+    .eq("is_active", true)
+    .in("id", classificationIds);
+  if (error || data.length !== classificationIds.length)
+    return "One or more handicap classifications are unavailable.";
+  return null;
+}
+
 export async function createDivision(
   _state: SettingsFormState,
   formData: FormData,
@@ -83,6 +120,23 @@ export async function createDivision(
     parsed.data.competitionFormat,
   );
   if (relationshipError) return { message: relationshipError };
+  const handicapRules = parseHandicapRules(parsed.data.handicapRules);
+  if (
+    parsed.data.competitionFormat === "handicap" &&
+    (!handicapRules.success || !handicapRules.data.length)
+  )
+    return {
+      message:
+        "Add at least one member classification for this handicap template.",
+    };
+  if (parsed.data.competitionFormat === "handicap" && handicapRules.success) {
+    const handicapError = await validateHandicapRuleRelationships(
+      context,
+      parsed.data.disciplineId,
+      handicapRules.data,
+    );
+    if (handicapError) return { message: handicapError };
+  }
   const { error } = await context.supabase.from("division_templates").insert({
     organization_id: context.organization.id,
     name: parsed.data.name,
@@ -96,6 +150,10 @@ export async function createDivision(
     timer_count: parsed.data.timerCount,
     timer_resolution: parsed.data.timerResolution,
     competition_format: parsed.data.competitionFormat,
+    handicap_rules:
+      parsed.data.competitionFormat === "handicap" && handicapRules.success
+        ? handicapRules.data
+        : [],
     second_round_ordering: parsed.data.secondRoundOrdering,
     later_round_ordering: parsed.data.laterRoundOrdering,
     four_d_settings: null,
@@ -164,6 +222,23 @@ export async function updateDivision(
     parsed.data.competitionFormat,
   );
   if (relationshipError) return { message: relationshipError };
+  const handicapRules = parseHandicapRules(parsed.data.handicapRules);
+  if (
+    parsed.data.competitionFormat === "handicap" &&
+    (!handicapRules.success || !handicapRules.data.length)
+  )
+    return {
+      message:
+        "Add at least one member classification for this handicap template.",
+    };
+  if (parsed.data.competitionFormat === "handicap" && handicapRules.success) {
+    const handicapError = await validateHandicapRuleRelationships(
+      context,
+      parsed.data.disciplineId,
+      handicapRules.data,
+    );
+    if (handicapError) return { message: handicapError };
+  }
   const { error } = await context.supabase
     .from("division_templates")
     .update({
@@ -178,6 +253,10 @@ export async function updateDivision(
       timer_count: parsed.data.timerCount,
       timer_resolution: parsed.data.timerResolution,
       competition_format: parsed.data.competitionFormat,
+      handicap_rules:
+        parsed.data.competitionFormat === "handicap" && handicapRules.success
+          ? handicapRules.data
+          : [],
       second_round_ordering: parsed.data.secondRoundOrdering,
       later_round_ordering: parsed.data.laterRoundOrdering,
       four_d_settings: null,

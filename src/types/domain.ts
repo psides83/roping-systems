@@ -81,5 +81,6 @@ export interface DivisionTemplateSummary {
   competitionFormat?: CompetitionFormat;
   secondRoundOrdering?: RoundOrderMethod;
   laterRoundOrdering?: RoundOrderMethod;
+  handicapRules?: Record<string, number>;
   fees: FeeTemplateSummary[];
 }

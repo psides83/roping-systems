@@ -27,6 +27,7 @@ export interface EventTemplate {
   disciplineId: string | null;
   divisionName: string;
   competitionFormat: CompetitionFormat;
+  handicapRules: Record<string, number>;
   fees: Array<{
     id: string;
     title: string;
@@ -135,17 +136,21 @@ export function ScheduledClassFields({
           scheduleNote: occurrence.scheduleNote,
           arenaName: occurrence.arenaName,
           roundCount: occurrence.roundCount,
-          incentiveEnabled: occurrence.incentiveEnabled,
+          incentiveEnabled:
+            templates.find((template) => template.id === occurrence.templateId)
+              ?.competitionFormat === "handicap"
+              ? true
+              : occurrence.incentiveEnabled,
           cattleDrawEnabled: occurrence.cattleDrawEnabled,
-          incentiveRules: Object.entries(occurrence.incentiveRules)
-            .filter(([, seconds]) => Number(seconds) !== 0)
-            .map(([classificationId, seconds]) => ({
+          incentiveRules: Object.entries(occurrence.incentiveRules).map(
+            ([classificationId, seconds]) => ({
               classificationId,
-              adjustmentSeconds: -Number(seconds),
-            })),
+              adjustmentSeconds: Number(seconds),
+            }),
+          ),
         })),
       ),
-    [occurrences],
+    [occurrences, templates],
   );
 
   function addOccurrence() {
@@ -156,12 +161,18 @@ export function ScheduledClassFields({
         classification.disciplineId === template?.disciplineId,
     );
     if (!template || !defaultClassification) return;
+    const templateClassifications = classifications.filter(
+      (classification) => classification.disciplineId === template.disciplineId,
+    );
     setOccurrences((current) => [
       ...current,
       {
         key: newKey(),
         templateId: selectedTemplateId,
-        classificationId: defaultClassification.id,
+        classificationId:
+          template.competitionFormat === "handicap"
+            ? ""
+            : defaultClassification.id,
         scheduledDate: eventStartDate,
         scheduleType: "fixed",
         startTime: "",
@@ -169,7 +180,15 @@ export function ScheduledClassFields({
         arenaName: "",
         roundCount: allRounds,
         incentiveEnabled: template?.competitionFormat === "handicap",
-        incentiveRules: {},
+        incentiveRules:
+          template.competitionFormat === "handicap"
+            ? Object.fromEntries(
+                templateClassifications.map((classification) => [
+                  classification.id,
+                  String(template.handicapRules[classification.id] ?? 0),
+                ]),
+              )
+            : {},
         cattleDrawEnabled: false,
       },
     ]);
@@ -282,10 +301,13 @@ export function ScheduledClassFields({
             (classification) =>
               classification.disciplineId === template.disciplineId,
           );
-          const selectedClassification = eligible.find(
-            (classification) =>
-              classification.id === occurrence.classificationId,
-          );
+          const selectedClassification =
+            template.competitionFormat === "handicap"
+              ? null
+              : eligible.find(
+                  (classification) =>
+                    classification.id === occurrence.classificationId,
+                );
           const canFollow = occurrences
             .slice(0, index)
             .some(
@@ -314,7 +336,10 @@ export function ScheduledClassFields({
                 </span>
                 <div className="min-w-0 flex-1">
                   <h4 className="truncate text-sm font-bold">
-                    {selectedClassification?.name ?? "Choose classification"}
+                    {template.competitionFormat === "handicap"
+                      ? "Handicap"
+                      : (selectedClassification?.name ??
+                        "Choose classification")}
                   </h4>
                   <p className="mt-0.5 text-xs text-[#758078]">
                     {template.divisionName} · {template.name} ·{" "}
@@ -372,28 +397,36 @@ export function ScheduledClassFields({
                 className={collapsed ? "hidden" : "space-y-4 p-4"}
               >
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Field label="Classification">
-                    <select
-                      value={occurrence.classificationId}
-                      onChange={(event) =>
-                        updateOccurrence(occurrence.key, {
-                          classificationId: event.target.value,
-                        })
-                      }
-                      className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-2 text-sm"
-                      required
-                    >
-                      <option value="">Choose classification</option>
-                      {eligible.map((classification) => (
-                        <option
-                          key={classification.id}
-                          value={classification.id}
-                        >
-                          {classification.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                  {template.competitionFormat === "handicap" ? (
+                    <Field label="Roping offering">
+                      <div className="flex h-10 items-center rounded-md border border-[#dfe4e1] bg-[#f7f8f7] px-3 text-sm font-bold">
+                        Handicap
+                      </div>
+                    </Field>
+                  ) : (
+                    <Field label="Classification">
+                      <select
+                        value={occurrence.classificationId}
+                        onChange={(event) =>
+                          updateOccurrence(occurrence.key, {
+                            classificationId: event.target.value,
+                          })
+                        }
+                        className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-2 text-sm"
+                        required
+                      >
+                        <option value="">Choose classification</option>
+                        {eligible.map((classification) => (
+                          <option
+                            key={classification.id}
+                            value={classification.id}
+                          >
+                            {classification.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
                   <Field label="Date">
                     <input
                       type="date"
@@ -544,7 +577,17 @@ export function ScheduledClassFields({
                   </div>
                 </div>
 
-                {template.competitionFormat !== "four_d" ? (
+                {template.competitionFormat === "handicap" ? (
+                  <div className="rounded-md border border-[#dce2de] bg-[#f7f9f8] p-3">
+                    <p className="text-sm font-bold">
+                      Handicap classifications
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[#66716b]">
+                      Every contestant ropes together. Their current member
+                      classification determines the deduction below.
+                    </p>
+                  </div>
+                ) : template.competitionFormat !== "four_d" ? (
                   <label className="flex cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
@@ -565,8 +608,8 @@ export function ScheduledClassFields({
                         Incentive or handicap roping
                       </span>
                       <span className="mt-1 block text-xs text-[#758078]">
-                        Apply a signed final-time adjustment by classification
-                        to this scheduled roping.
+                        Deduct time from the final time according to the
+                        contestant&apos;s member classification.
                       </span>
                     </span>
                   </label>
@@ -590,7 +633,7 @@ export function ScheduledClassFields({
                         <span className="flex w-28 items-center rounded-md border border-[#ccd4d0] bg-white px-2">
                           <input
                             type="number"
-                            min="-60"
+                            min="0"
                             max="60"
                             step="0.001"
                             value={
@@ -606,6 +649,7 @@ export function ScheduledClassFields({
                             }
                             className="h-9 min-w-0 flex-1 bg-transparent text-right font-mono text-sm outline-none"
                             placeholder="0.000"
+                            aria-label={`${classification.name} seconds deducted`}
                           />
                           <span className="ml-1 text-xs text-[#758078]">
                             sec
@@ -620,8 +664,9 @@ export function ScheduledClassFields({
                       </p>
                     ) : null}
                     <p className="sm:col-span-2 text-xs leading-5 text-[#66716b]">
-                      Enter the change to the final time: use a negative number
-                      to subtract time and a positive number to add time.
+                      Enter the number of seconds deducted from the
+                      contestant&apos;s final time. Use 0 when a classification,
+                      such as Open, receives no deduction.
                     </p>
                   </div>
                 ) : null}

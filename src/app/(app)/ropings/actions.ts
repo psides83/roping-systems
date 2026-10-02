@@ -41,16 +41,12 @@ const ropingSchema = z.object({
 
 const incentiveRuleSchema = z.object({
   classificationId: z.uuid(),
-  adjustmentSeconds: z
-    .number()
-    .min(-60)
-    .max(60)
-    .refine((value) => value !== 0),
+  adjustmentSeconds: z.number().min(0).max(60),
 });
 
 const classOccurrenceSchema = z.object({
   templateId: z.uuid(),
-  classificationId: z.uuid(),
+  classificationId: z.union([z.literal(""), z.uuid()]),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
   startsAt: z.union([z.literal(""), localDateTime]),

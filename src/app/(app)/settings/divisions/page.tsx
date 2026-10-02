@@ -8,6 +8,7 @@ import {
   EditDivisionDialog,
   EditFeeDialog,
   type DivisionOption,
+  type ClassificationOption,
 } from "@/components/settings/division-dialogs";
 import { divisionTemplates as demoDivisions } from "@/data/demo";
 import { getActiveOrganization } from "@/lib/organizations";
@@ -42,6 +43,7 @@ async function getDivisionData(): Promise<{
     competitionFormat: "standard" | "four_d";
   }>;
   divisionOptions: DivisionOption[];
+  classificationOptions: ClassificationOption[];
   canEdit: boolean;
 }> {
   if (!isSupabaseConfigured())
@@ -65,6 +67,7 @@ async function getDivisionData(): Promise<{
           name: "Calf roping",
         },
       ],
+      classificationOptions: [],
       canEdit: false,
     };
   const organization = await getActiveOrganization();
@@ -73,6 +76,7 @@ async function getDivisionData(): Promise<{
       divisions: [],
       payoutSchedules: [],
       divisionOptions: [],
+      classificationOptions: [],
       canEdit: false,
     };
   const supabase = await createClient();
@@ -80,11 +84,12 @@ async function getDivisionData(): Promise<{
     { data, error },
     { data: schedules, error: scheduleError },
     { data: disciplines, error: disciplineError },
+    { data: classifications, error: classificationError },
   ] = await Promise.all([
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, payout_schedule_id, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
@@ -101,6 +106,12 @@ async function getDivisionData(): Promise<{
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("sort_order"),
+    supabase
+      .from("classifications")
+      .select("id, name, discipline_id")
+      .eq("organization_id", organization.id)
+      .eq("is_active", true)
+      .order("rank", { ascending: false }),
   ]);
   if (error)
     throw new Error(`Unable to load division settings: ${error.message}`);
@@ -112,6 +123,10 @@ async function getDivisionData(): Promise<{
     throw new Error(
       `Unable to load divisions and classifications: ${disciplineError.message}`,
     );
+  if (classificationError)
+    throw new Error(
+      `Unable to load member classifications: ${classificationError.message}`,
+    );
 
   return {
     canEdit: organization.role !== "viewer",
@@ -121,6 +136,11 @@ async function getDivisionData(): Promise<{
       competitionFormat: schedule.competition_format as "standard" | "four_d",
     })),
     divisionOptions: disciplines ?? [],
+    classificationOptions: (classifications ?? []).map((classification) => ({
+      id: classification.id,
+      name: classification.name,
+      disciplineId: classification.discipline_id,
+    })),
     divisions: data.map((division) => ({
       id: division.id,
       name: division.name,
@@ -134,6 +154,17 @@ async function getDivisionData(): Promise<{
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
       competitionFormat: division.competition_format as CompetitionFormat,
+      handicapRules: Object.fromEntries(
+        (
+          (division.handicap_rules ?? []) as Array<{
+            classificationId: string;
+            adjustmentSeconds: number;
+          }>
+        ).map((rule) => [
+          rule.classificationId,
+          Number(rule.adjustmentSeconds),
+        ]),
+      ),
       secondRoundOrdering: division.second_round_ordering as RoundOrderMethod,
       laterRoundOrdering: division.later_round_ordering as RoundOrderMethod,
       payoutScheduleId: division.payout_schedule_id,
@@ -169,8 +200,13 @@ async function getDivisionData(): Promise<{
 
 export default async function DivisionSettingsPage() {
   const configured = isSupabaseConfigured();
-  const { divisions, payoutSchedules, divisionOptions, canEdit } =
-    await getDivisionData();
+  const {
+    divisions,
+    payoutSchedules,
+    divisionOptions,
+    classificationOptions,
+    canEdit,
+  } = await getDivisionData();
 
   return (
     <div className="space-y-6">
@@ -183,6 +219,7 @@ export default async function DivisionSettingsPage() {
             configured={configured && canEdit}
             divisions={divisionOptions}
             payoutSchedules={payoutSchedules}
+            classifications={classificationOptions}
           />
         }
       />
@@ -267,6 +304,7 @@ export default async function DivisionSettingsPage() {
                   configured={configured && canEdit}
                   divisions={divisionOptions}
                   payoutSchedules={payoutSchedules}
+                  classifications={classificationOptions}
                   template={division}
                 />
               </div>
