@@ -30,7 +30,33 @@ const formSchema = z.object({
   goRoundsPercent: z.coerce.number().min(0).max(100),
   aggregatePercent: z.coerce.number().min(0).max(100),
   shortRoundPercent: z.coerce.number().min(0).max(100),
+  shortRoundEnabled: z.string().optional(),
+  competitionFormat: z.enum(["standard", "four_d"]),
+  fourDSettings: z.string().optional(),
   bracketsJson: z.string(),
+});
+
+const fourDBracketSchema = z.object({
+  minimumEntries: z.number().int().min(1),
+  maximumEntries: z.number().int().min(1).nullable(),
+  activeDivisions: z.number().int().min(1).max(4),
+  purseBasisPoints: z.tuple([
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+  ]),
+  placesByDivision: z.tuple([
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+    z.number().int().min(0),
+  ]),
+});
+
+const fourDSettingsSchema = z.object({
+  splitSeconds: z.number().positive().max(60),
+  brackets: z.array(fourDBracketSchema).min(1),
 });
 
 export async function savePayoutSchedule(
@@ -39,6 +65,17 @@ export async function savePayoutSchedule(
 ): Promise<PayoutFormState> {
   const parsed = formSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  const shortRoundEnabled = parsed.data.shortRoundEnabled === "on";
+  let fourDSettings: z.infer<typeof fourDSettingsSchema> | null = null;
+  if (parsed.data.competitionFormat === "four_d") {
+    try {
+      fourDSettings = fourDSettingsSchema.parse(
+        JSON.parse(parsed.data.fourDSettings ?? ""),
+      );
+    } catch {
+      return { message: "Complete the 4D payout settings." };
+    }
+  }
   let brackets: z.infer<typeof bracketSchema>[];
   try {
     brackets = z
@@ -65,26 +102,58 @@ export async function savePayoutSchedule(
           "Each bracket must distribute exactly 100% of its payout pool.",
       };
   }
-  for (const stageType of ["go_round", "aggregate", "short_round"] as const) {
+  const requiredStages = shortRoundEnabled
+    ? (["go_round", "aggregate", "short_round"] as const)
+    : (["go_round", "aggregate"] as const);
+  for (const stageType of requiredStages) {
     if (!brackets.some((bracket) => bracket.stageType === stageType))
-      return { message: "Add at least one entry bracket for every stage." };
+      return {
+        message: `Add an entry bracket for ${stageType.replaceAll("_", " ")}.`,
+      };
   }
+  if (
+    !shortRoundEnabled &&
+    brackets.some((bracket) => bracket.stageType === "short_round")
+  )
+    return {
+      message: "Enable short-round payouts before adding its schedule.",
+    };
+  if (shortRoundEnabled && parsed.data.shortRoundPercent <= 0)
+    return { message: "Enter a short-round purse allocation greater than 0%." };
   if (
     parsed.data.goRoundsPercent +
       parsed.data.aggregatePercent +
-      parsed.data.shortRoundPercent !==
+      (shortRoundEnabled ? parsed.data.shortRoundPercent : 0) !==
     100
   )
     return {
-      message:
-        "Go-round, aggregate, and short-round allocations must total 100%.",
+      message: shortRoundEnabled
+        ? "Go-round, aggregate, and short-round allocations must total 100%."
+        : "Go-round and aggregate allocations must total 100%.",
     };
 
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
     return { message: "Manager access is required." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("save_payout_schedule", {
+  if (parsed.data.scheduleId) {
+    const { data: assignedTemplates, error: assignmentError } = await supabase
+      .from("division_templates")
+      .select("name, competition_format")
+      .eq("organization_id", organization.id)
+      .eq("payout_schedule_id", parsed.data.scheduleId);
+    if (assignmentError) return { message: assignmentError.message };
+    const incompatibleTemplate = assignedTemplates?.find(
+      (template) =>
+        (template.competition_format === "four_d" ? "four_d" : "standard") !==
+        parsed.data.competitionFormat,
+    );
+    if (incompatibleTemplate)
+      return {
+        message: `Reassign the payout schedule for ${incompatibleTemplate.name} before changing this schedule's format.`,
+      };
+  }
+  const { error } = await supabase.rpc("save_payout_schedule_v2", {
     target_organization_id: organization.id,
     target_schedule_id: parsed.data.scheduleId || null,
     schedule_name: parsed.data.name,
@@ -98,8 +167,11 @@ export async function savePayoutSchedule(
       parsed.data.aggregatePercent * 100,
     ),
     schedule_short_round_basis_points: Math.round(
-      parsed.data.shortRoundPercent * 100,
+      (shortRoundEnabled ? parsed.data.shortRoundPercent : 0) * 100,
     ),
+    schedule_short_round_enabled: shortRoundEnabled,
+    schedule_competition_format: parsed.data.competitionFormat,
+    schedule_four_d_settings: fourDSettings,
     schedule_brackets: brackets,
   });
   if (error)
@@ -125,14 +197,28 @@ export async function assignDivisionPayout(formData: FormData) {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return;
   const supabase = await createClient();
+  const { data: template } = await supabase
+    .from("division_templates")
+    .select("id, competition_format")
+    .eq("id", parsed.data.divisionId)
+    .eq("organization_id", organization.id)
+    .single();
+  if (
+    !template ||
+    (!parsed.data.scheduleId && template.competition_format === "four_d")
+  )
+    return;
   if (parsed.data.scheduleId) {
     const { data: schedule } = await supabase
       .from("payout_schedules")
-      .select("id")
+      .select("id, competition_format")
       .eq("id", parsed.data.scheduleId)
       .eq("organization_id", organization.id)
       .single();
     if (!schedule) return;
+    const requiredFormat =
+      template.competition_format === "four_d" ? "four_d" : "standard";
+    if (schedule.competition_format !== requiredFormat) return;
   }
   await supabase
     .from("division_templates")

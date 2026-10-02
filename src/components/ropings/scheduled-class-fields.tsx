@@ -39,6 +39,7 @@ type ScheduleType = "fixed" | "tentative" | "follows_previous";
 interface ScheduledOccurrence {
   key: string;
   templateId: string;
+  classificationId: string;
   scheduledDate: string;
   scheduleType: ScheduleType;
   startTime: string;
@@ -70,12 +71,20 @@ export function ScheduledClassFields({
   );
   const [allRounds, setAllRounds] = useState(1);
   const [occurrences, setOccurrences] = useState<ScheduledOccurrence[]>([]);
+  const selectedTemplate = templates.find(
+    (template) => template.id === selectedTemplateId,
+  );
+  const selectedTemplateHasClassifications = classifications.some(
+    (classification) =>
+      classification.disciplineId === selectedTemplate?.disciplineId,
+  );
 
   const serialized = useMemo(
     () =>
       JSON.stringify(
         occurrences.map((occurrence) => ({
           templateId: occurrence.templateId,
+          classificationId: occurrence.classificationId,
           scheduledDate: occurrence.scheduledDate,
           scheduleType: occurrence.scheduleType,
           startsAt:
@@ -103,11 +112,17 @@ export function ScheduledClassFields({
   function addOccurrence() {
     if (!selectedTemplateId) return;
     const template = templates.find((item) => item.id === selectedTemplateId);
+    const defaultClassification = classifications.find(
+      (classification) =>
+        classification.disciplineId === template?.disciplineId,
+    );
+    if (!template || !defaultClassification) return;
     setOccurrences((current) => [
       ...current,
       {
         key: newKey(),
         templateId: selectedTemplateId,
+        classificationId: defaultClassification.id,
         scheduledDate: eventStartDate,
         scheduleType: "fixed",
         startTime: "",
@@ -185,7 +200,7 @@ export function ScheduledClassFields({
         <select
           value={selectedTemplateId}
           onChange={(event) => setSelectedTemplateId(event.target.value)}
-          aria-label="Event template"
+          aria-label="Roping template"
           className="h-10 min-w-0 flex-1 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
         >
           {templates.map((template) => (
@@ -197,12 +212,17 @@ export function ScheduledClassFields({
         <button
           type="button"
           onClick={addOccurrence}
-          disabled={!selectedTemplateId}
+          disabled={!selectedTemplateId || !selectedTemplateHasClassifications}
           className="flex h-10 items-center justify-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-50"
         >
           <Plus size={16} /> Add to schedule
         </button>
       </div>
+      {selectedTemplateId && !selectedTemplateHasClassifications ? (
+        <p className="mt-2 text-xs font-semibold text-amber-800">
+          Add an active classification to this division before scheduling it.
+        </p>
+      ) : null}
 
       <div className="mt-3 space-y-3">
         {occurrences.map((occurrence, index) => {
@@ -213,6 +233,10 @@ export function ScheduledClassFields({
           const eligible = classifications.filter(
             (classification) =>
               classification.disciplineId === template.disciplineId,
+          );
+          const selectedClassification = eligible.find(
+            (classification) =>
+              classification.id === occurrence.classificationId,
           );
           const canFollow = occurrences
             .slice(0, index)
@@ -231,10 +255,10 @@ export function ScheduledClassFields({
                 </span>
                 <div className="min-w-0 flex-1">
                   <h4 className="truncate text-sm font-bold">
-                    {template.name}
+                    {selectedClassification?.name ?? "Choose classification"}
                   </h4>
                   <p className="mt-0.5 text-xs text-[#758078]">
-                    {template.divisionName} ·{" "}
+                    {template.divisionName} · {template.name} ·{" "}
                     {template.competitionFormat === "four_d"
                       ? "4D"
                       : template.competitionFormat === "handicap"
@@ -272,6 +296,28 @@ export function ScheduledClassFields({
 
               <div className="space-y-4 p-4">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Field label="Classification">
+                    <select
+                      value={occurrence.classificationId}
+                      onChange={(event) =>
+                        updateOccurrence(occurrence.key, {
+                          classificationId: event.target.value,
+                        })
+                      }
+                      className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-2 text-sm"
+                      required
+                    >
+                      <option value="">Choose classification</option>
+                      {eligible.map((classification) => (
+                        <option
+                          key={classification.id}
+                          value={classification.id}
+                        >
+                          {classification.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
                   <Field label="Date">
                     <input
                       type="date"
@@ -451,7 +497,7 @@ export function ScheduledClassFields({
                 ) : (
                   <p className="rounded-md border border-[#dce2de] bg-[#f7f9f8] p-3 text-xs leading-5 text-[#66716b]">
                     4D placement will be calculated from each entry&apos;s final
-                    time using this template&apos;s entry brackets and D split.
+                    time using the template&apos;s payout schedule.
                   </p>
                 )}
 

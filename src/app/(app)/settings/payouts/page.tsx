@@ -33,14 +33,24 @@ async function getPayoutData() {
           goRoundsPercent: 50,
           aggregatePercent: 50,
           shortRoundPercent: 0,
+          shortRoundEnabled: false,
+          competitionFormat: "standard",
+          fourDSettings: null,
           bracketsByStage: {
             go_round: demoBrackets([50, 30, 20]),
             aggregate: demoBrackets([45, 30, 15, 10]),
-            short_round: demoBrackets([50, 30, 20]),
+            short_round: [],
           },
         },
       ] satisfies EditablePayoutSchedule[],
-      divisions: [{ id: "open", name: "Open", payoutScheduleId: "standard" }],
+      divisions: [
+        {
+          id: "open",
+          name: "Open",
+          payoutScheduleId: "standard",
+          competitionFormat: "standard",
+        },
+      ],
     };
   const organization = await getActiveOrganization();
   if (!organization)
@@ -55,14 +65,14 @@ async function getPayoutData() {
       supabase
         .from("payout_schedules")
         .select(
-          "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
+          "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, short_round_enabled, competition_format, four_d_settings, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
         )
         .eq("organization_id", organization.id)
         .eq("is_active", true)
         .order("created_at"),
       supabase
         .from("division_templates")
-        .select("id, name, payout_schedule_id")
+        .select("id, name, payout_schedule_id, competition_format")
         .eq("organization_id", organization.id)
         .eq("is_active", true)
         .order("sort_order"),
@@ -82,6 +92,9 @@ async function getPayoutData() {
       goRoundsPercent: schedule.go_rounds_basis_points / 100,
       aggregatePercent: schedule.aggregate_basis_points / 100,
       shortRoundPercent: schedule.short_round_basis_points / 100,
+      shortRoundEnabled: schedule.short_round_enabled,
+      competitionFormat: schedule.competition_format as "standard" | "four_d",
+      fourDSettings: schedule.four_d_settings,
       bracketsByStage: Object.fromEntries(
         (["go_round", "aggregate", "short_round"] as const).map((stage) => [
           stage,
@@ -112,6 +125,10 @@ async function getPayoutData() {
       id: division.id,
       name: division.name,
       payoutScheduleId: division.payout_schedule_id,
+      competitionFormat: division.competition_format as
+        | "standard"
+        | "handicap"
+        | "four_d",
     })),
   };
 }
@@ -138,7 +155,7 @@ export default async function PayoutSettingsPage() {
           href="/settings/divisions"
           className="px-4 py-3 text-sm font-semibold text-[#66716b]"
         >
-          Event templates
+          Roping templates
         </Link>
         <Link
           href="/settings/payouts"
@@ -151,7 +168,7 @@ export default async function PayoutSettingsPage() {
         <header className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4">
           <Banknote size={19} className="text-[var(--brand-accent-strong)]" />
           <div>
-            <h2 className="font-bold">Event template defaults</h2>
+            <h2 className="font-bold">Roping template defaults</h2>
             <p className="mt-1 text-xs text-[#758078]">
               Choose the schedule copied when a new roping uses each event
               template
@@ -175,12 +192,22 @@ export default async function PayoutSettingsPage() {
                 disabled={!enabled}
                 className="h-10 min-w-64 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
               >
-                <option value="">No payout schedule</option>
-                {data.schedules.map((schedule) => (
-                  <option key={schedule.id} value={schedule.id}>
-                    {schedule.name}
-                  </option>
-                ))}
+                {division.competitionFormat !== "four_d" ? (
+                  <option value="">No payout schedule</option>
+                ) : null}
+                {data.schedules
+                  .filter(
+                    (schedule) =>
+                      schedule.competitionFormat ===
+                      (division.competitionFormat === "four_d"
+                        ? "four_d"
+                        : "standard"),
+                  )
+                  .map((schedule) => (
+                    <option key={schedule.id} value={schedule.id}>
+                      {schedule.name}
+                    </option>
+                  ))}
               </select>
               <button
                 disabled={!enabled}
@@ -192,7 +219,7 @@ export default async function PayoutSettingsPage() {
           ))}
           {!data.divisions.length ? (
             <p className="px-5 py-7 text-sm text-[#758078]">
-              Create an event template before assigning payout defaults.
+              Create a roping template before assigning payout defaults.
             </p>
           ) : null}
         </div>
@@ -208,6 +235,11 @@ export default async function PayoutSettingsPage() {
                 <div className="flex items-center gap-2">
                   <CircleDollarSign size={18} className="text-[#758078]" />
                   <h2 className="font-bold">{schedule.name}</h2>
+                  {schedule.competitionFormat === "four_d" ? (
+                    <span className="rounded bg-sky-50 px-2 py-1 text-[10px] font-bold uppercase text-sky-800">
+                      4D breakaway
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-sm text-[#66716b]">
                   {schedule.description || "No description"}
@@ -240,38 +272,40 @@ export default async function PayoutSettingsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edf0ee]">
-                  {(["go_round", "aggregate", "short_round"] as const).flatMap(
-                    (stage) =>
-                      schedule.bracketsByStage[stage].map((bracket) => (
-                        <tr
-                          key={`${stage}-${bracket.minimumEntries}-${bracket.maximumEntries}`}
-                        >
-                          <td className="px-5 py-3 text-xs font-bold uppercase text-[#66716b]">
-                            {stage === "go_round"
-                              ? "Go-round"
-                              : stage === "short_round"
-                                ? "Short round"
-                                : "Aggregate"}
-                          </td>
-                          <td className="px-5 py-3 text-sm font-semibold">
-                            {bracket.minimumEntries}
-                            {bracket.maximumEntries
-                              ? `–${bracket.maximumEntries}`
-                              : "+"}
-                          </td>
-                          <td className="px-5 py-3 text-sm">
-                            {bracket.percentages.length}
-                          </td>
-                          <td className="px-5 py-3 text-sm text-[#66716b]">
-                            {bracket.percentages
-                              .map(
-                                (percentage, index) =>
-                                  `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} ${percentage}%`,
-                              )
-                              .join(" · ")}
-                          </td>
-                        </tr>
-                      )),
+                  {(schedule.shortRoundEnabled
+                    ? (["go_round", "aggregate", "short_round"] as const)
+                    : (["go_round", "aggregate"] as const)
+                  ).flatMap((stage) =>
+                    schedule.bracketsByStage[stage].map((bracket) => (
+                      <tr
+                        key={`${stage}-${bracket.minimumEntries}-${bracket.maximumEntries}`}
+                      >
+                        <td className="px-5 py-3 text-xs font-bold uppercase text-[#66716b]">
+                          {stage === "go_round"
+                            ? "Go-round"
+                            : stage === "short_round"
+                              ? "Short round"
+                              : "Aggregate"}
+                        </td>
+                        <td className="px-5 py-3 text-sm font-semibold">
+                          {bracket.minimumEntries}
+                          {bracket.maximumEntries
+                            ? `–${bracket.maximumEntries}`
+                            : "+"}
+                        </td>
+                        <td className="px-5 py-3 text-sm">
+                          {bracket.percentages.length}
+                        </td>
+                        <td className="px-5 py-3 text-sm text-[#66716b]">
+                          {bracket.percentages
+                            .map(
+                              (percentage, index) =>
+                                `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} ${percentage}%`,
+                            )
+                            .join(" · ")}
+                        </td>
+                      </tr>
+                    )),
                   )}
                 </tbody>
               </table>

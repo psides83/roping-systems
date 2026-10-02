@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import {
   createDivision,
@@ -12,7 +12,6 @@ import {
   type SettingsFormState,
 } from "@/app/(app)/settings/divisions/actions";
 import { DeleteRecordButton } from "@/components/settings/delete-record-button";
-import { FourDSettingsFields } from "@/components/settings/four-d-settings-fields";
 import type {
   CompetitionFormat,
   DivisionTemplateSummary,
@@ -39,12 +38,12 @@ const roundOrderOptions: Array<{
 export interface DivisionOption {
   id: string;
   name: string;
-  classifications: Array<{ id: string; name: string }>;
 }
 
 interface PayoutOption {
   id: string;
   name: string;
+  competitionFormat: "standard" | "four_d";
 }
 
 function DialogFrame({
@@ -124,11 +123,10 @@ function EventTemplateDialog({
     initialState,
   );
   const formRef = useRef<HTMLFormElement>(null);
-  const classifications = useMemo(
-    () =>
-      divisions.find((division) => division.id === disciplineId)
-        ?.classifications ?? [],
-    [disciplineId, divisions],
+  const compatiblePayoutSchedules = payoutSchedules.filter(
+    (schedule) =>
+      schedule.competitionFormat ===
+      (competitionFormat === "four_d" ? "four_d" : "standard"),
   );
   const isEditing = Boolean(template);
   useEffect(() => {
@@ -153,14 +151,16 @@ function EventTemplateDialog({
           <Pencil size={16} />
         ) : (
           <>
-            <Plus size={17} /> New event template
+            <Plus size={17} /> New roping template
           </>
         )}
       </button>
       {open ? (
         <DialogFrame
-          title={isEditing ? `Edit ${template?.name}` : "Create event template"}
-          description="Define the reusable division, classification, entry rules, timing, fees, and payout defaults copied into a new roping."
+          title={
+            isEditing ? `Edit ${template?.name}` : "Create roping template"
+          }
+          description="Define reusable format, entry, timing, fee, and payout defaults for one division. Choose the classification when adding each roping to an event."
           close={() => setOpen(false)}
         >
           <form ref={formRef} action={action} className="space-y-4 p-5">
@@ -173,7 +173,7 @@ function EventTemplateDialog({
                 name="name"
                 defaultValue={template?.name}
                 className={inputClass}
-                placeholder="Breakaway · 11.5"
+                placeholder="Standard breakaway format"
                 required
               />
               {state.errors?.name ? (
@@ -182,42 +182,23 @@ function EventTemplateDialog({
                 </span>
               ) : null}
             </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-semibold">
-                Division
-                <select
-                  name="disciplineId"
-                  value={disciplineId}
-                  onChange={(event) => setDisciplineId(event.target.value)}
-                  className={inputClass}
-                  required
-                >
-                  <option value="">Choose a division</option>
-                  {divisions.map((division) => (
-                    <option key={division.id} value={division.id}>
-                      {division.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm font-semibold">
-                Classification
-                <select
-                  name="classificationId"
-                  defaultValue={template?.classificationId ?? ""}
-                  key={disciplineId}
-                  className={inputClass}
-                  required
-                >
-                  <option value="">Choose a classification</option>
-                  {classifications.map((classification) => (
-                    <option key={classification.id} value={classification.id}>
-                      {classification.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <label className="block text-sm font-semibold">
+              Division
+              <select
+                name="disciplineId"
+                value={disciplineId}
+                onChange={(event) => setDisciplineId(event.target.value)}
+                className={inputClass}
+                required
+              >
+                <option value="">Choose a division</option>
+                {divisions.map((division) => (
+                  <option key={division.id} value={division.id}>
+                    {division.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block text-sm font-semibold">
               Competition format
               <select
@@ -240,9 +221,6 @@ function EventTemplateDialog({
                     : "A single final time is placed into a D according to its distance from the fastest time."}
               </span>
             </label>
-            {competitionFormat === "four_d" ? (
-              <FourDSettingsFields initialSettings={template?.fourDSettings} />
-            ) : null}
             <label className="block text-sm font-semibold">
               Description
               <textarea
@@ -281,11 +259,19 @@ function EventTemplateDialog({
                 Payout schedule
                 <select
                   name="payoutScheduleId"
-                  defaultValue={template?.payoutScheduleId ?? ""}
+                  key={competitionFormat}
+                  defaultValue={
+                    compatiblePayoutSchedules.some(
+                      (schedule) => schedule.id === template?.payoutScheduleId,
+                    )
+                      ? (template?.payoutScheduleId ?? "")
+                      : ""
+                  }
                   className={inputClass}
+                  required={competitionFormat === "four_d"}
                 >
                   <option value="">No default schedule</option>
-                  {payoutSchedules.map((schedule) => (
+                  {compatiblePayoutSchedules.map((schedule) => (
                     <option key={schedule.id} value={schedule.id}>
                       {schedule.name}
                     </option>

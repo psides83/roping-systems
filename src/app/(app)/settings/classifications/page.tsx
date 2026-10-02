@@ -225,7 +225,7 @@ export default async function ClassificationSettingsPage() {
           href="/settings/divisions"
           className="px-4 py-3 text-sm font-semibold text-[#66716b]"
         >
-          Event templates
+          Roping templates
         </Link>
         <Link
           href="/settings/payouts"

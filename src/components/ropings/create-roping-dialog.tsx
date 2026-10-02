@@ -200,7 +200,8 @@ export function CreateRopingDialog({
 
               {!divisions.length ? (
                 <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                  Create at least one event template before scheduling a roping.
+                  Create at least one roping template before scheduling a
+                  roping.
                 </p>
               ) : null}
 

@@ -504,7 +504,7 @@ export function EditDisciplineDialog({
                 defaultChecked={discipline.isActive}
                 className="h-4 w-4 accent-[var(--brand-accent)]"
               />{" "}
-              Active for event templates and member classifications
+              Available for member classifications and scheduled ropings
             </label>
             <FormMessage state={state} />
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
@@ -638,7 +638,7 @@ export function EditClassificationDialog({
                 defaultChecked={classification.isActive}
                 className="h-4 w-4 accent-[var(--brand-accent)]"
               />{" "}
-              Active for event templates and member classifications
+              Available for member classifications and scheduled ropings
             </label>
             <FormMessage state={state} />
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
@@ -646,7 +646,7 @@ export function EditClassificationDialog({
                 <DeleteRecordButton
                   recordType="classification"
                   recordName={classification.name}
-                  warning="This can only be deleted when no templates, member classifications, incentive rules, or event history still use it."
+                  warning="This can only be deleted when no member classifications, incentive rules, or event history still use it."
                   disabled={!enabled}
                   onDelete={() => deleteClassification(classification.id)}
                   onDeleted={() => setOpen(false)}

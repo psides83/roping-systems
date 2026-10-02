@@ -18,7 +18,6 @@ import type {
   DivisionTemplateSummary,
   FeeKind,
   FeeScope,
-  FourDSettings,
   RoundOrderMethod,
 } from "@/types/domain";
 
@@ -36,7 +35,11 @@ const roundOrderLabels: Record<RoundOrderMethod, string> = {
 
 async function getDivisionData(): Promise<{
   divisions: DivisionTemplateSummary[];
-  payoutSchedules: Array<{ id: string; name: string }>;
+  payoutSchedules: Array<{
+    id: string;
+    name: string;
+    competitionFormat: "standard" | "four_d";
+  }>;
   divisionOptions: DivisionOption[];
   canEdit: boolean;
 }> {
@@ -48,15 +51,17 @@ async function getDivisionData(): Promise<{
         laterRoundOrdering:
           division.laterRoundOrdering ?? "aggregate_slowest_to_fastest",
       })),
-      payoutSchedules: [{ id: "standard", name: "Standard 1 per 10" }],
+      payoutSchedules: [
+        {
+          id: "standard",
+          name: "Standard 1 per 10",
+          competitionFormat: "standard",
+        },
+      ],
       divisionOptions: [
         {
           id: "calf-roping",
           name: "Calf roping",
-          classifications: [
-            { id: "open", name: "Open" },
-            { id: "115", name: "11.5" },
-          ],
         },
       ],
       canEdit: false,
@@ -78,20 +83,20 @@ async function getDivisionData(): Promise<{
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, classification_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, four_d_settings, second_round_ordering, later_round_ordering, payout_schedule_id, is_active, fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, payout_schedule_id, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
       .order("created_at"),
     supabase
       .from("payout_schedules")
-      .select("id, name")
+      .select("id, name, competition_format")
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("name"),
     supabase
       .from("disciplines")
-      .select("id, name, classifications(id, name, is_active)")
+      .select("id, name")
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("sort_order"),
@@ -109,18 +114,12 @@ async function getDivisionData(): Promise<{
 
   return {
     canEdit: organization.role !== "viewer",
-    payoutSchedules: schedules ?? [],
-    divisionOptions: (disciplines ?? []).map((discipline) => ({
-      id: discipline.id,
-      name: discipline.name,
-      classifications: (
-        discipline.classifications as unknown as Array<{
-          id: string;
-          name: string;
-          is_active: boolean;
-        }>
-      ).filter((classification) => classification.is_active),
+    payoutSchedules: (schedules ?? []).map((schedule) => ({
+      id: schedule.id,
+      name: schedule.name,
+      competitionFormat: schedule.competition_format as "standard" | "four_d",
     })),
+    divisionOptions: disciplines ?? [],
     divisions: data.map((division) => ({
       id: division.id,
       name: division.name,
@@ -130,11 +129,10 @@ async function getDivisionData(): Promise<{
       allowGuests: division.allow_guests,
       isActive: division.is_active,
       disciplineId: division.discipline_id,
-      classificationId: division.classification_id,
+      divisionName: (division.disciplines as unknown as { name: string }).name,
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
       competitionFormat: division.competition_format as CompetitionFormat,
-      fourDSettings: division.four_d_settings as FourDSettings | null,
       secondRoundOrdering: division.second_round_ordering as RoundOrderMethod,
       laterRoundOrdering: division.later_round_ordering as RoundOrderMethod,
       payoutScheduleId: division.payout_schedule_id,
@@ -177,8 +175,8 @@ export default async function DivisionSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Organization setup"
-        title="Event templates"
-        description="Build reusable roping setups from a division and classification. Template rules are copied into new events, where round counts and other event-specific details remain editable."
+        title="Roping templates"
+        description="Build reusable format templates for each division. Choose the classification and round count when adding each actual roping to an event."
         actions={
           <CreateDivisionDialog
             configured={configured && canEdit}
@@ -198,7 +196,7 @@ export default async function DivisionSettingsPage() {
           href="/settings/divisions"
           className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
         >
-          Event templates
+          Roping templates
         </Link>
         <Link
           href="/settings/payouts"
@@ -222,6 +220,9 @@ export default async function DivisionSettingsPage() {
                   >
                     <Check size={12} />{" "}
                     {division.isActive ? "Active" : "Inactive"}
+                  </span>
+                  <span className="rounded-full bg-[#eef1ef] px-2.5 py-1 text-xs font-semibold text-[#56615b]">
+                    {division.divisionName}
                   </span>
                   <span className="rounded-full bg-[#eef1ef] px-2.5 py-1 text-xs font-semibold text-[#56615b]">
                     {division.competitionFormat === "four_d"
@@ -335,17 +336,17 @@ export default async function DivisionSettingsPage() {
         ))}
         {!divisions.length ? (
           <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">
-            <p className="font-semibold">Create your first event template</p>
+            <p className="font-semibold">Create your first roping template</p>
             <p className="mt-2 text-sm text-[#758078]">
-              Event templates hold reusable settings for one division and
-              classification combination.
+              Roping templates hold reusable format settings for one division.
+              Classifications are selected when scheduling an event.
             </p>
           </div>
         ) : null}
       </section>
       <div className="rounded-md border border-dashed border-[#cbd2ce] p-5 text-center">
         <p className="text-sm font-semibold">
-          Event templates are organization-specific
+          Roping templates are organization-specific
         </p>
         <p className="mt-1 text-xs text-[#758078]">
           Changes here become defaults for new ropings and do not alter past

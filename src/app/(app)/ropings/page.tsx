@@ -95,7 +95,9 @@ async function getRopingData() {
   if (eventError)
     throw new Error(`Unable to load ropings: ${eventError.message}`);
   if (divisionError)
-    throw new Error(`Unable to load event templates: ${divisionError.message}`);
+    throw new Error(
+      `Unable to load roping templates: ${divisionError.message}`,
+    );
   if (classificationError)
     throw new Error(
       `Unable to load incentive classifications: ${classificationError.message}`,
@@ -253,7 +255,7 @@ export default async function RopingsPage() {
         <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center">
           <p className="font-semibold">No ropings scheduled yet</p>
           <p className="mt-2 text-sm text-[#758078]">
-            Create an event from your organization’s event templates.
+            Create an event from your organization’s roping templates.
           </p>
         </div>
       ) : null}

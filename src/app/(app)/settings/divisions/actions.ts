@@ -16,7 +16,6 @@ const divisionSchema = z.object({
   name: z.string().trim().min(1, "Template name is required."),
   description: z.string().trim(),
   disciplineId: z.uuid(),
-  classificationId: z.uuid(),
   maximumEntries: z.union([
     z.literal(""),
     z.coerce.number().int().min(1).max(100),
@@ -36,7 +35,6 @@ const divisionSchema = z.object({
     "aggregate_slowest_to_fastest",
     "custom",
   ]),
-  fourDSettings: z.string().optional(),
   payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   isActive: z.string().optional(),
 });
@@ -58,64 +56,6 @@ const feeSchema = z.object({
 const updateFeeSchema = feeSchema.extend({ feeId: z.uuid() });
 const idSchema = z.uuid();
 
-const fourDBracketSchema = z.object({
-  minimumEntries: z.number().int().min(1),
-  maximumEntries: z.number().int().min(1).nullable(),
-  activeDivisions: z.number().int().min(1).max(4),
-  purseBasisPoints: z.tuple([
-    z.number().int().min(0),
-    z.number().int().min(0),
-    z.number().int().min(0),
-    z.number().int().min(0),
-  ]),
-  placesByDivision: z.tuple([
-    z.number().int().min(0),
-    z.number().int().min(0),
-    z.number().int().min(0),
-    z.number().int().min(0),
-  ]),
-});
-
-const fourDSettingsSchema = z.object({
-  splitSeconds: z.number().positive().max(60),
-  brackets: z.array(fourDBracketSchema).min(1),
-});
-
-function parseFourDSettings(
-  competitionFormat: z.infer<typeof divisionSchema>["competitionFormat"],
-  rawSettings?: string,
-) {
-  if (competitionFormat !== "four_d") return { data: null } as const;
-  try {
-    const parsed = fourDSettingsSchema.safeParse(JSON.parse(rawSettings ?? ""));
-    if (!parsed.success)
-      return { error: "Complete the 4D scoring settings." } as const;
-    for (const bracket of parsed.data.brackets) {
-      if (
-        bracket.maximumEntries !== null &&
-        bracket.maximumEntries < bracket.minimumEntries
-      )
-        return { error: "A 4D entry range ends before it begins." } as const;
-      const purseTotal = bracket.purseBasisPoints
-        .slice(0, bracket.activeDivisions)
-        .reduce((total, value) => total + value, 0);
-      if (purseTotal !== 10000)
-        return {
-          error: "Each 4D entry bracket must allocate 100% of the purse.",
-        } as const;
-      if (
-        bracket.placesByDivision
-          .slice(0, bracket.activeDivisions)
-          .some((places) => places < 1)
-      )
-        return { error: "Each active D must pay at least one place." } as const;
-    }
-    return { data: parsed.data } as const;
-  } catch {
-    return { error: "Complete the 4D scoring settings." } as const;
-  }
-}
-
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
   const organization = await getActiveOrganization();
@@ -133,20 +73,14 @@ export async function createDivision(
   if (!context)
     return {
       message:
-        "Connect Supabase and sign in with manager access to create event templates.",
+        "Connect Supabase and sign in with manager access to create roping templates.",
     };
-
-  const fourDSettings = parseFourDSettings(
-    parsed.data.competitionFormat,
-    parsed.data.fourDSettings,
-  );
-  if ("error" in fourDSettings) return { message: fourDSettings.error };
 
   const relationshipError = await validateTemplateRelationships(
     context,
     parsed.data.disciplineId,
-    parsed.data.classificationId,
     parsed.data.payoutScheduleId,
+    parsed.data.competitionFormat,
   );
   if (relationshipError) return { message: relationshipError };
   const { error } = await context.supabase.from("division_templates").insert({
@@ -154,7 +88,7 @@ export async function createDivision(
     name: parsed.data.name,
     description: parsed.data.description || null,
     discipline_id: parsed.data.disciplineId,
-    classification_id: parsed.data.classificationId,
+    classification_id: null,
     maximum_entries_per_person:
       parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
     minimum_runs_between_entries: parsed.data.minimumRunsBetweenEntries,
@@ -164,7 +98,7 @@ export async function createDivision(
     competition_format: parsed.data.competitionFormat,
     second_round_ordering: parsed.data.secondRoundOrdering,
     later_round_ordering: parsed.data.laterRoundOrdering,
-    four_d_settings: fourDSettings.data,
+    four_d_settings: null,
     payout_schedule_id: parsed.data.payoutScheduleId || null,
     is_active: parsed.data.isActive === "on",
   });
@@ -172,37 +106,44 @@ export async function createDivision(
     return {
       message:
         error.code === "23505"
-          ? "An event template with that name already exists."
+          ? "A roping template with that name already exists."
           : error.message,
     };
   revalidatePath("/settings/divisions");
-  return { success: true, message: "Event template created." };
+  return { success: true, message: "Roping template created." };
 }
 
 async function validateTemplateRelationships(
   context: NonNullable<Awaited<ReturnType<typeof getManagerContext>>>,
   disciplineId: string,
-  classificationId: string,
   payoutScheduleId: string,
+  competitionFormat: "standard" | "handicap" | "four_d",
 ) {
-  const { data: classification } = await context.supabase
-    .from("classifications")
+  const { data: discipline } = await context.supabase
+    .from("disciplines")
     .select("id")
-    .eq("id", classificationId)
-    .eq("discipline_id", disciplineId)
+    .eq("id", disciplineId)
     .eq("organization_id", context.organization.id)
     .single();
-  if (!classification)
-    return "Choose a classification that belongs to the selected division.";
+  if (!discipline)
+    return "Choose a division that belongs to this organization.";
   if (payoutScheduleId) {
     const { data: schedule } = await context.supabase
       .from("payout_schedules")
-      .select("id")
+      .select("id, competition_format")
       .eq("id", payoutScheduleId)
       .eq("organization_id", context.organization.id)
       .single();
     if (!schedule)
       return "That payout schedule is not available in this organization.";
+    const requiredFormat =
+      competitionFormat === "four_d" ? "four_d" : "standard";
+    if (schedule.competition_format !== requiredFormat)
+      return competitionFormat === "four_d"
+        ? "Choose a 4D payout schedule for this template."
+        : "Choose a standard payout schedule for this template.";
+  } else if (competitionFormat === "four_d") {
+    return "Choose a 4D payout schedule for this template.";
   }
   return null;
 }
@@ -215,17 +156,12 @@ export async function updateDivision(
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
   if (!context)
-    return { message: "Sign in with manager access to edit event templates." };
-  const fourDSettings = parseFourDSettings(
-    parsed.data.competitionFormat,
-    parsed.data.fourDSettings,
-  );
-  if ("error" in fourDSettings) return { message: fourDSettings.error };
+    return { message: "Sign in with manager access to edit roping templates." };
   const relationshipError = await validateTemplateRelationships(
     context,
     parsed.data.disciplineId,
-    parsed.data.classificationId,
     parsed.data.payoutScheduleId,
+    parsed.data.competitionFormat,
   );
   if (relationshipError) return { message: relationshipError };
   const { error } = await context.supabase
@@ -234,7 +170,7 @@ export async function updateDivision(
       name: parsed.data.name,
       description: parsed.data.description || null,
       discipline_id: parsed.data.disciplineId,
-      classification_id: parsed.data.classificationId,
+      classification_id: null,
       maximum_entries_per_person:
         parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
       minimum_runs_between_entries: parsed.data.minimumRunsBetweenEntries,
@@ -244,7 +180,7 @@ export async function updateDivision(
       competition_format: parsed.data.competitionFormat,
       second_round_ordering: parsed.data.secondRoundOrdering,
       later_round_ordering: parsed.data.laterRoundOrdering,
-      four_d_settings: fourDSettings.data,
+      four_d_settings: null,
       payout_schedule_id: parsed.data.payoutScheduleId || null,
       is_active: parsed.data.isActive === "on",
     })
@@ -254,14 +190,14 @@ export async function updateDivision(
     return {
       message:
         error.code === "23505"
-          ? "An event template with that name already exists."
+          ? "A roping template with that name already exists."
           : error.message,
     };
   revalidatePath("/settings/divisions");
   revalidatePath("/settings/payouts");
   revalidatePath("/settings/timing");
   revalidatePath("/ropings");
-  return { success: true, message: "Event template updated." };
+  return { success: true, message: "Roping template updated." };
 }
 
 export async function createFee(
@@ -285,7 +221,7 @@ export async function createFee(
     .single();
   if (!division)
     return {
-      message: "That event template is not available in this organization.",
+      message: "That roping template is not available in this organization.",
     };
   if (parsed.data.payoutScheduleId) {
     const { data: schedule } = await context.supabase
@@ -382,11 +318,11 @@ export async function deleteDivision(
   divisionId: string,
 ): Promise<SettingsFormState> {
   const parsed = idSchema.safeParse(divisionId);
-  if (!parsed.success) return { message: "Choose a valid event template." };
+  if (!parsed.success) return { message: "Choose a valid roping template." };
   const context = await getManagerContext();
   if (!context)
     return {
-      message: "Sign in with manager access to delete event templates.",
+      message: "Sign in with manager access to delete roping templates.",
     };
   const { data, error } = await context.supabase
     .from("division_templates")
@@ -396,12 +332,12 @@ export async function deleteDivision(
     .select("id")
     .maybeSingle();
   if (error) return { message: error.message };
-  if (!data) return { message: "That event template is no longer available." };
+  if (!data) return { message: "That roping template is no longer available." };
   revalidatePath("/settings/divisions");
   revalidatePath("/settings/payouts");
   revalidatePath("/settings/timing");
   revalidatePath("/ropings");
-  return { success: true, message: "Event template deleted." };
+  return { success: true, message: "Roping template deleted." };
 }
 
 export async function deleteFee(feeId: string): Promise<SettingsFormState> {

@@ -74,12 +74,11 @@ export interface DivisionTemplateSummary {
   allowGuests: boolean;
   isActive: boolean;
   disciplineId?: string | null;
-  classificationId?: string | null;
+  divisionName?: string;
   timerCount?: number;
   timerResolution?: "average" | "best" | "longest";
   payoutScheduleId?: string | null;
   competitionFormat?: CompetitionFormat;
-  fourDSettings?: FourDSettings | null;
   secondRoundOrdering?: RoundOrderMethod;
   laterRoundOrdering?: RoundOrderMethod;
   fees: FeeTemplateSummary[];

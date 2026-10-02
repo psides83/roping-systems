@@ -8,6 +8,8 @@ import {
   type PayoutFormState,
 } from "@/app/(app)/settings/payouts/actions";
 import { DeleteRecordButton } from "@/components/settings/delete-record-button";
+import { FourDSettingsFields } from "@/components/settings/four-d-settings-fields";
+import type { CompetitionFormat, FourDSettings } from "@/types/domain";
 
 interface EditableBracket {
   key: string;
@@ -33,6 +35,9 @@ export interface EditablePayoutSchedule {
   goRoundsPercent: number;
   aggregatePercent: number;
   shortRoundPercent: number;
+  shortRoundEnabled: boolean;
+  competitionFormat: "standard" | "four_d";
+  fourDSettings: FourDSettings | null;
   bracketsByStage: Record<
     PayoutStage,
     Array<{
@@ -62,6 +67,12 @@ export function PayoutScheduleDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<PayoutStage>("go_round");
+  const [shortRoundEnabled, setShortRoundEnabled] = useState(
+    schedule?.shortRoundEnabled ?? false,
+  );
+  const [competitionFormat, setCompetitionFormat] = useState<
+    Extract<CompetitionFormat, "standard" | "four_d">
+  >(schedule?.competitionFormat ?? "standard");
   const [bracketsByStage, setBracketsByStage] = useState<
     Record<PayoutStage, EditableBracket[]>
   >(
@@ -72,9 +83,12 @@ export function PayoutScheduleDialog({
           schedule?.bracketsByStage[id].map((bracket, index) => ({
             ...bracket,
             key: `${schedule.id}-${id}-${index}`,
-          })) ?? [newBracket(0)],
+          })) ?? (id === "short_round" ? [] : [newBracket(0)]),
         ]),
       ) as Record<PayoutStage, EditableBracket[]>,
+  );
+  const activePayoutStages = payoutStages.filter(
+    (stage) => stage.id !== "short_round" || shortRoundEnabled,
   );
   const brackets = bracketsByStage[selectedStage];
   const setBrackets = (
@@ -99,7 +113,7 @@ export function PayoutScheduleDialog({
   const bracketsJson = useMemo(
     () =>
       JSON.stringify(
-        payoutStages.flatMap(({ id }) =>
+        activePayoutStages.flatMap(({ id }) =>
           bracketsByStage[id].map((bracket) => ({
             stageType: id,
             minimumEntries: Number(bracket.minimumEntries),
@@ -114,7 +128,7 @@ export function PayoutScheduleDialog({
           })),
         ),
       ),
-    [bracketsByStage],
+    [activePayoutStages, bracketsByStage],
   );
 
   const updateBracket = (index: number, update: Partial<EditableBracket>) =>
@@ -198,6 +212,11 @@ export function PayoutScheduleDialog({
                 value={schedule?.id ?? ""}
               />
               <input type="hidden" name="bracketsJson" value={bracketsJson} />
+              <input
+                type="hidden"
+                name="competitionFormat"
+                value={competitionFormat}
+              />
               <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
                 <label className="block text-sm font-semibold">
                   Schedule name
@@ -237,12 +256,38 @@ export function PayoutScheduleDialog({
                 />
               </label>
               <section className="rounded-md border border-[#dfe4e1] p-4">
+                <label className="block text-sm font-semibold">
+                  Payout format
+                  <select
+                    value={competitionFormat}
+                    onChange={(event) =>
+                      setCompetitionFormat(
+                        event.target.value as "standard" | "four_d",
+                      )
+                    }
+                    className={inputClass}
+                  >
+                    <option value="standard">Standard places</option>
+                    <option value="four_d">4D breakaway</option>
+                  </select>
+                </label>
+                {competitionFormat === "four_d" ? (
+                  <FourDSettingsFields
+                    initialSettings={schedule?.fourDSettings}
+                  />
+                ) : (
+                  <input type="hidden" name="fourDSettings" value="" />
+                )}
+              </section>
+              <section className="rounded-md border border-[#dfe4e1] p-4">
                 <h3 className="text-sm font-bold">Purse allocation</h3>
                 <p className="mt-1 text-xs text-[#758078]">
                   Payback is applied to collected payout fees. The go-round
                   share is divided evenly across the configured main rounds.
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div
+                  className={`mt-3 grid gap-3 sm:grid-cols-2 ${shortRoundEnabled ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+                >
                   <label className="text-xs font-bold">
                     Payback
                     <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
@@ -291,23 +336,53 @@ export function PayoutScheduleDialog({
                       <span>%</span>
                     </span>
                   </label>
-                  <label className="text-xs font-bold">
-                    Short round
-                    <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
-                      <input
-                        name="shortRoundPercent"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        defaultValue={schedule?.shortRoundPercent ?? 0}
-                        className="min-w-0 flex-1 bg-transparent outline-none"
-                        required
-                      />
-                      <span>%</span>
-                    </span>
-                  </label>
+                  {shortRoundEnabled ? (
+                    <label className="text-xs font-bold">
+                      Short round
+                      <span className="mt-2 flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3">
+                        <input
+                          name="shortRoundPercent"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          defaultValue={schedule?.shortRoundPercent ?? 0}
+                          className="min-w-0 flex-1 bg-transparent outline-none"
+                          required
+                        />
+                        <span>%</span>
+                      </span>
+                    </label>
+                  ) : (
+                    <input type="hidden" name="shortRoundPercent" value="0" />
+                  )}
                 </div>
+                <label className="mt-4 flex items-start gap-3 border-t border-[#e7ebe8] pt-4 text-sm font-semibold">
+                  <input
+                    name="shortRoundEnabled"
+                    type="checkbox"
+                    checked={shortRoundEnabled}
+                    onChange={(event) => {
+                      const enabled = event.target.checked;
+                      setShortRoundEnabled(enabled);
+                      if (enabled && !bracketsByStage.short_round.length)
+                        setBracketsByStage((current) => ({
+                          ...current,
+                          short_round: [newBracket(0)],
+                        }));
+                      if (!enabled && selectedStage === "short_round")
+                        setSelectedStage("go_round");
+                    }}
+                    className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
+                  />
+                  <span>
+                    Include a short-round payout
+                    <span className="mt-1 block text-xs font-normal leading-5 text-[#758078]">
+                      Adds a separate purse allocation and paid-place schedule
+                      for the short round.
+                    </span>
+                  </span>
+                </label>
               </section>
               <div className="space-y-3">
                 <div>
@@ -316,8 +391,10 @@ export function PayoutScheduleDialog({
                     Each stage can pay a different number of places.
                   </p>
                 </div>
-                <div className="grid grid-cols-3 rounded-md bg-[#eef1ef] p-1">
-                  {payoutStages.map((stage) => (
+                <div
+                  className={`grid rounded-md bg-[#eef1ef] p-1 ${shortRoundEnabled ? "grid-cols-3" : "grid-cols-2"}`}
+                >
+                  {activePayoutStages.map((stage) => (
                     <button
                       key={stage.id}
                       type="button"

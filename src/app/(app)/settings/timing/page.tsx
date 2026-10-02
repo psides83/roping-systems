@@ -44,7 +44,7 @@ export default async function TimingSettingsPage() {
             <Clock3 size={18} />
           </span>
           <div>
-            <h2 className="font-bold">Event template timing defaults</h2>
+            <h2 className="font-bold">Roping template timing defaults</h2>
             <p className="mt-1 text-xs text-[#758078]">
               Copied into new ropings so historical timing rules stay unchanged
             </p>
@@ -101,7 +101,7 @@ export default async function TimingSettingsPage() {
           ))}
           {!divisions.length ? (
             <p className="p-8 text-center text-sm text-[#758078]">
-              Create an event template before setting timing rules.
+              Create a roping template before setting timing rules.
             </p>
           ) : null}
         </div>

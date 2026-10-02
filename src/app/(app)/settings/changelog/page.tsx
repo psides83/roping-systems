@@ -7,7 +7,7 @@ const entityLabels: Record<string, string> = {
   organizations: "Organization settings",
   organization_users: "Team access",
   organization_memberships: "Membership",
-  division_templates: "Event template",
+  division_templates: "Roping template",
   fee_templates: "Fee template",
   disciplines: "Division",
   classifications: "Classification",

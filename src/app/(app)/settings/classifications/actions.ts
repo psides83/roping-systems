@@ -270,8 +270,8 @@ function deletionMessage(
 ) {
   if (error.code !== "23503") return error.message;
   return record === "division"
-    ? "This division is still used by classifications, templates, members, or event history. Remove those connections before deleting it."
-    : "This classification is still used by a template, member, incentive rule, or event history. Remove those connections before deleting it.";
+    ? "This division is still used by classifications, roping templates, members, or event history. Remove those connections before deleting it."
+    : "This classification is still used by a member, incentive rule, or event history. Remove those connections before deleting it.";
 }
 
 export async function deleteDiscipline(

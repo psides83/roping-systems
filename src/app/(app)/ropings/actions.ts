@@ -50,6 +50,7 @@ const incentiveRuleSchema = z.object({
 
 const classOccurrenceSchema = z.object({
   templateId: z.uuid(),
+  classificationId: z.uuid(),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
   startsAt: z.union([z.literal(""), localDateTime]),
