@@ -6,6 +6,7 @@ import {
   type EditablePayoutSchedule,
 } from "@/components/settings/payout-schedule-dialog";
 import { PageHeader } from "@/components/ui/page-header";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -226,12 +227,13 @@ export default async function PayoutSettingsPage() {
       </section>
       <section className="space-y-4">
         {data.schedules.map((schedule) => (
-          <article
+          <CollapsibleCard
             key={schedule.id}
-            className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
-          >
-            <header className="flex flex-col gap-3 border-b border-[#e7ebe8] p-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+            actions={
+              <PayoutScheduleDialog schedule={schedule} enabled={enabled} />
+            }
+            summary={
+              <>
                 <div className="flex items-center gap-2">
                   <CircleDollarSign size={18} className="text-[#758078]" />
                   <h2 className="font-bold">{schedule.name}</h2>
@@ -258,9 +260,9 @@ export default async function PayoutSettingsPage() {
                     ? ` · ${schedule.shortRoundPercent}% short round`
                     : ""}
                 </p>
-              </div>
-              <PayoutScheduleDialog schedule={schedule} enabled={enabled} />
-            </header>
+              </>
+            }
+          >
             <div className="overflow-x-auto">
               <table className="w-full min-w-[580px] text-left">
                 <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
@@ -310,7 +312,7 @@ export default async function PayoutSettingsPage() {
                 </tbody>
               </table>
             </div>
-          </article>
+          </CollapsibleCard>
         ))}
         {!data.schedules.length ? (
           <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">

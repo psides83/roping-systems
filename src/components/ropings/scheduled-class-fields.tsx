@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   Beef,
+  ChevronDown,
   Clock3,
   Gauge,
   Plus,
@@ -88,6 +89,9 @@ export function ScheduledClassFields({
       ...occurrence,
       key: `copied-${index}`,
     })),
+  );
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(
+    () => new Set(),
   );
   const previousEventStartDate = useRef(eventStartDate);
   useEffect(() => {
@@ -189,6 +193,15 @@ export function ScheduledClassFields({
     });
   }
 
+  function toggleOccurrence(key: string) {
+    setCollapsedKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   return (
     <fieldset>
       <input type="hidden" name="classOccurrences" value={serialized} />
@@ -278,6 +291,17 @@ export function ScheduledClassFields({
             .some(
               (previous) => previous.scheduledDate === occurrence.scheduledDate,
             );
+          const collapsed = collapsedKeys.has(occurrence.key);
+          const scheduleSummary = [
+            occurrence.scheduledDate || "Date not set",
+            occurrence.scheduleType === "follows_previous"
+              ? "Follows previous"
+              : occurrence.startTime || "Time not set",
+            occurrence.arenaName || null,
+            `${occurrence.roundCount} ${occurrence.roundCount === 1 ? "round" : "rounds"}`,
+          ]
+            .filter(Boolean)
+            .join(" · ");
 
           return (
             <section
@@ -300,8 +324,22 @@ export function ScheduledClassFields({
                         ? "Handicap"
                         : "Standard"}
                   </p>
+                  <p className="mt-1 truncate text-xs font-semibold text-[#66716b]">
+                    {scheduleSummary}
+                  </p>
                 </div>
                 <div className="flex gap-1">
+                  <IconButton
+                    label={collapsed ? "Expand roping" : "Collapse roping"}
+                    expanded={!collapsed}
+                    controls={`scheduled-roping-${occurrence.key}`}
+                    onClick={() => toggleOccurrence(occurrence.key)}
+                  >
+                    <ChevronDown
+                      size={15}
+                      className={`transition-transform ${collapsed ? "" : "rotate-180"}`}
+                    />
+                  </IconButton>
                   <IconButton
                     label="Move earlier"
                     disabled={index === 0}
@@ -329,7 +367,10 @@ export function ScheduledClassFields({
                 </div>
               </header>
 
-              <div className="space-y-4 p-4">
+              <div
+                id={`scheduled-roping-${occurrence.key}`}
+                className={collapsed ? "hidden" : "space-y-4 p-4"}
+              >
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <Field label="Classification">
                     <select
@@ -618,11 +659,15 @@ function Field({
 function IconButton({
   label,
   disabled,
+  expanded,
+  controls,
   onClick,
   children,
 }: {
   label: string;
   disabled?: boolean;
+  expanded?: boolean;
+  controls?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -632,6 +677,8 @@ function IconButton({
       aria-label={label}
       title={label}
       disabled={disabled}
+      aria-expanded={expanded}
+      aria-controls={controls}
       onClick={onClick}
       className="grid h-8 w-8 place-items-center rounded-md border border-[#d7ddda] text-[#66716b] disabled:opacity-30"
     >
