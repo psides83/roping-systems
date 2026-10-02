@@ -51,7 +51,14 @@ const classificationSchema = z
     disciplineId: z.uuid(),
     name: z.string().trim().min(1, "Classification name is required."),
     description: z.string().trim(),
-    rank: z.coerce.number().int().min(-1000).max(1000),
+    rank: z.coerce
+      .number()
+      .min(0, "Classification number cannot be negative.")
+      .max(100)
+      .refine(
+        (value) => Number.isInteger(value * 10),
+        "Use no more than one decimal place.",
+      ),
     eligibilityType: z.enum(["skill", "open", "age"]),
     minimumAge: optionalAgeSchema,
     maximumAge: optionalAgeSchema,
@@ -157,7 +164,10 @@ export async function createClassification(
     discipline_id: discipline.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
-    rank: parsed.data.rank,
+    rank:
+      parsed.data.eligibilityType === "skill"
+        ? Math.round(parsed.data.rank * 10)
+        : 0,
     eligibility_type: parsed.data.eligibilityType,
     minimum_age:
       parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
@@ -241,7 +251,10 @@ export async function updateClassification(
     .update({
       name: parsed.data.name,
       description: parsed.data.description || null,
-      rank: parsed.data.rank,
+      rank:
+        parsed.data.eligibilityType === "skill"
+          ? Math.round(parsed.data.rank * 10)
+          : 0,
       eligibility_type: parsed.data.eligibilityType,
       minimum_age:
         parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,

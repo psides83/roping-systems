@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { LoaderCircle, Pencil, Plus, X } from "lucide-react";
+import { CircleHelp, LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import {
   createClassification,
   createDiscipline,
@@ -16,6 +16,74 @@ import { DeleteRecordButton } from "@/components/settings/delete-record-button";
 const initialState: ClassificationFormState = {};
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
+
+const classificationNumberHelp =
+  "Use the contestant skill number, such as 11.5, 11, or 10. Open, youth, senior, and other age-based classes use 0.";
+
+function ClassificationNumberLabel() {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      Classification number
+      <span
+        className="group relative inline-flex text-[#758078]"
+        tabIndex={0}
+        aria-label={classificationNumberHelp}
+      >
+        <CircleHelp size={15} aria-hidden="true" />
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full right-0 z-10 mb-2 hidden w-64 rounded-md bg-[#17201b] px-3 py-2 text-left text-xs font-normal leading-5 text-white shadow-lg group-hover:block group-focus:block"
+        >
+          {classificationNumberHelp}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function ClassificationNumberField({
+  eligibilityType,
+  defaultRank = 0,
+  error,
+}: {
+  eligibilityType: "skill" | "open" | "age";
+  defaultRank?: number;
+  error?: string;
+}) {
+  const usesNumber = eligibilityType === "skill";
+
+  return (
+    <label className="block text-sm font-semibold">
+      <ClassificationNumberLabel />
+      {usesNumber ? (
+        <input
+          name="rank"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          defaultValue={defaultRank / 10}
+          className={inputClass}
+          required
+        />
+      ) : (
+        <>
+          <input type="hidden" name="rank" value="0" />
+          <input
+            type="number"
+            value="0"
+            className={`${inputClass} cursor-not-allowed bg-[#f3f5f4] text-[#758078]`}
+            disabled
+            aria-label="Classification number"
+          />
+        </>
+      )}
+      {error ? (
+        <span className="mt-1 block text-xs text-rose-700">{error}</span>
+      ) : null}
+    </label>
+  );
+}
 
 function DialogFrame({
   title,
@@ -103,7 +171,7 @@ function EligibilityFields({
       </label>
       <p className="text-xs leading-5 text-[#66716b]">
         {type === "skill"
-          ? "A contestant may enter their level or a lower-ranked class, but not a higher-ranked class."
+          ? "A contestant may enter their classification or a lower-numbered class, but not a higher-numbered class."
           : type === "open"
             ? "No skill classification is required for this class."
             : "Age is calculated on the scheduled date of this roping."}
@@ -360,7 +428,7 @@ export function CreateClassificationDialog({
       {open ? (
         <DialogFrame
           title={`Add ${disciplineName} classification`}
-          description="Classifications may represent skill level, an open class, or an age-limited group. Rank controls their organization-defined order."
+          description="Create a numbered skill class, an open class, or an age-based class."
           close={() => setOpen(false)}
         >
           <form ref={formRef} action={action} className="space-y-4 p-5">
@@ -380,16 +448,10 @@ export function CreateClassificationDialog({
                   </span>
                 ) : null}
               </label>
-              <label className="block text-sm font-semibold">
-                Rank
-                <input
-                  name="rank"
-                  type="number"
-                  defaultValue="0"
-                  className={inputClass}
-                  required
-                />
-              </label>
+              <ClassificationNumberField
+                eligibilityType={eligibilityType}
+                error={state.errors?.rank?.[0]}
+              />
             </div>
             <EligibilityFields
               type={eligibilityType}
@@ -605,16 +667,11 @@ export function EditClassificationDialog({
                   required
                 />
               </label>
-              <label className="block text-sm font-semibold">
-                Rank
-                <input
-                  name="rank"
-                  type="number"
-                  defaultValue={classification.rank}
-                  className={inputClass}
-                  required
-                />
-              </label>
+              <ClassificationNumberField
+                eligibilityType={eligibilityType}
+                defaultRank={classification.rank}
+                error={state.errors?.rank?.[0]}
+              />
             </div>
             <EligibilityFields
               type={eligibilityType}

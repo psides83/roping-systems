@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Check, ListChecks } from "lucide-react";
+import { AlertTriangle, Check, CircleHelp, ListChecks } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   CreateClassificationDialog,
@@ -61,7 +61,7 @@ async function getClassificationData() {
               id: "open",
               name: "Open",
               description: "Open to eligible contestants",
-              rank: 200,
+              rank: 0,
               eligibilityType: "open",
               minimumAge: null,
               maximumAge: null,
@@ -101,7 +101,7 @@ async function getClassificationData() {
               id: "40-plus",
               name: "40+",
               description: "Age-limited classification",
-              rank: 40,
+              rank: 0,
               eligibilityType: "age",
               minimumAge: 40,
               maximumAge: null,
@@ -341,7 +341,26 @@ export default async function ClassificationSettingsPage() {
                     <th className="px-5 py-3">Classification</th>
                     <th className="px-5 py-3">Description</th>
                     <th className="px-5 py-3">Eligibility</th>
-                    <th className="px-5 py-3">Rank</th>
+                    <th className="px-5 py-3">
+                      <span className="inline-flex items-center gap-1.5">
+                        Classification number
+                        <span
+                          className="group relative inline-flex normal-case text-[#758078]"
+                          tabIndex={0}
+                          aria-label="Numbered skill classes use their contestant classification number. Open and age-based classes use 0."
+                        >
+                          <CircleHelp size={14} aria-hidden="true" />
+                          <span
+                            role="tooltip"
+                            className="pointer-events-none absolute bottom-full right-0 z-10 mb-2 hidden w-64 rounded-md bg-[#17201b] px-3 py-2 text-left text-xs font-normal leading-5 text-white shadow-lg group-hover:block group-focus:block"
+                          >
+                            Numbered skill classes use their contestant
+                            classification number. Open and age-based classes
+                            use 0.
+                          </span>
+                        </span>
+                      </span>
+                    </th>
                     <th className="px-5 py-3">Status</th>
                     <th className="w-12 px-5 py-3">
                       <span className="sr-only">Edit</span>
@@ -370,7 +389,9 @@ export default async function ClassificationSettingsPage() {
                             : "Skill level"}
                       </td>
                       <td className="px-5 py-3 font-mono text-xs text-[#66716b]">
-                        {classification.rank}
+                        {classification.eligibilityType === "skill"
+                          ? classification.rank / 10
+                          : 0}
                       </td>
                       <td className="px-5 py-3 text-xs font-semibold text-[#66716b]">
                         {classification.isActive ? "Active" : "Inactive"}
