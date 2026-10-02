@@ -1,12 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { LoaderCircle, Pencil, Plus, X } from "lucide-react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { Check, Copy, LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import {
   createDivision,
   createFee,
   deleteDivision,
   deleteFee,
+  duplicateDivision,
   updateDivision,
   updateFee,
   type SettingsFormState,
@@ -443,6 +450,54 @@ export function EditDivisionDialog({
       payoutSchedules={payoutSchedules}
       template={template}
     />
+  );
+}
+
+export function DuplicateDivisionButton({
+  configured,
+  template,
+}: {
+  configured: boolean;
+  template: Pick<DivisionTemplateSummary, "id" | "name">;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<SettingsFormState>({});
+
+  function duplicate() {
+    setResult({});
+    startTransition(async () => {
+      setResult(await duplicateDivision(template.id));
+    });
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={!configured || pending}
+        onClick={duplicate}
+        title={`Duplicate ${template.name}`}
+        aria-label={`Duplicate ${template.name}`}
+        className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-sm font-semibold hover:bg-[#f7f8f7] disabled:opacity-50"
+      >
+        {pending ? (
+          <LoaderCircle size={16} className="animate-spin" />
+        ) : result.success ? (
+          <Check size={16} className="text-emerald-700" />
+        ) : (
+          <Copy size={16} />
+        )}
+        {pending ? "Duplicating" : result.success ? "Duplicated" : "Duplicate"}
+      </button>
+      {result.message && !result.success ? (
+        <p
+          role="alert"
+          className="absolute right-0 top-11 z-20 w-72 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 shadow-lg"
+        >
+          {result.message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

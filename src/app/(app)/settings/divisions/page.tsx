@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import {
   AddFeeDialog,
   CreateDivisionDialog,
+  DuplicateDivisionButton,
   EditDivisionDialog,
   EditFeeDialog,
   type DivisionOption,
@@ -257,12 +258,18 @@ export default async function DivisionSettingsPage() {
                   </span>
                 </div>
               </div>
-              <EditDivisionDialog
-                configured={configured && canEdit}
-                divisions={divisionOptions}
-                payoutSchedules={payoutSchedules}
-                template={division}
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                <DuplicateDivisionButton
+                  configured={configured && canEdit}
+                  template={division}
+                />
+                <EditDivisionDialog
+                  configured={configured && canEdit}
+                  divisions={divisionOptions}
+                  payoutSchedules={payoutSchedules}
+                  template={division}
+                />
+              </div>
             </div>
             <div className="p-5">
               <div className="mb-3 flex items-center justify-between">

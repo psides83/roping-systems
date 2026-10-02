@@ -340,6 +340,28 @@ export async function deleteDivision(
   return { success: true, message: "Roping template deleted." };
 }
 
+export async function duplicateDivision(
+  divisionId: string,
+): Promise<SettingsFormState> {
+  const parsed = idSchema.safeParse(divisionId);
+  if (!parsed.success) return { message: "Choose a valid roping template." };
+  const context = await getManagerContext();
+  if (!context)
+    return {
+      message: "Sign in with manager access to duplicate roping templates.",
+    };
+  const { error } = await context.supabase.rpc("duplicate_division_template", {
+    target_organization_id: context.organization.id,
+    source_template_id: parsed.data,
+  });
+  if (error) return { message: error.message };
+  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/payouts");
+  revalidatePath("/settings/timing");
+  revalidatePath("/ropings");
+  return { success: true, message: "Roping template duplicated." };
+}
+
 export async function deleteFee(feeId: string): Promise<SettingsFormState> {
   const parsed = idSchema.safeParse(feeId);
   if (!parsed.success) return { message: "Choose a valid fee or option." };
