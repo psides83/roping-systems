@@ -199,7 +199,7 @@ export default async function EventEntriesPage({
     supabase
       .from("online_entry_requests")
       .select(
-        "id, first_name, last_name, email, phone, birth_date, member_number, membership_id, contestant_note, created_at, online_entry_request_items!online_entry_request_items_request_id_fkey(quantity, roping_divisions!online_entry_request_items_roping_division_id_fkey!inner(name, scheduled_date))",
+        "id, first_name, last_name, email, phone, birth_date, competition_gender, member_number, membership_id, contestant_note, created_at, online_entry_request_items!online_entry_request_items_request_id_fkey(quantity, roping_divisions!online_entry_request_items_roping_division_id_fkey!inner(name, scheduled_date))",
       )
       .eq("roping_id", ropingId)
       .eq("status", "pending")
@@ -367,6 +367,7 @@ export default async function EventEntriesPage({
     email: request.email,
     phone: request.phone,
     birthDate: request.birth_date,
+    competitionGender: request.competition_gender,
     memberNumber: request.member_number,
     contestantNote: request.contestant_note,
     submittedAt: new Intl.DateTimeFormat("en-US", {
@@ -438,6 +439,7 @@ function EntriesWorkspace({
     email: string;
     phone: string | null;
     birthDate: string | null;
+    competitionGender: "female" | "male" | null;
     memberNumber: string | null;
     contestantNote: string | null;
     submittedAt: string;

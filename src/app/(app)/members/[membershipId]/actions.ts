@@ -30,6 +30,11 @@ const birthDateSchema = z.object({
   birthDate: z.union([z.literal(""), z.iso.date()]),
 });
 
+const genderSchema = z.object({
+  membershipId: z.uuid(),
+  competitionGender: z.enum(["female", "male"]),
+});
+
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
   const organization = await getActiveOrganization();
@@ -96,6 +101,24 @@ export async function updateMemberBirthDate(formData: FormData) {
     target_membership_id: parsed.data.membershipId,
     new_birth_date: parsed.data.birthDate || null,
   });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/members/${parsed.data.membershipId}`);
+}
+
+export async function updateMemberCompetitionGender(formData: FormData) {
+  const parsed = genderSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const context = await getManagerContext();
+  if (!context) return;
+
+  const { error } = await context.supabase.rpc(
+    "update_member_competition_gender",
+    {
+      target_organization_id: context.organization.id,
+      target_membership_id: parsed.data.membershipId,
+      new_competition_gender: parsed.data.competitionGender,
+    },
+  );
   if (error) throw new Error(error.message);
   revalidatePath(`/members/${parsed.data.membershipId}`);
 }

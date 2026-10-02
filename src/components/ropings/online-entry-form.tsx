@@ -111,6 +111,26 @@ export function OnlineEntryForm({
             required={requiresBirthDate}
             error={state.errors?.birthDate?.[0]}
           />
+          <label className="block text-sm font-semibold">
+            Competition gender
+            <select
+              name="competitionGender"
+              defaultValue=""
+              className={inputClass}
+              required
+            >
+              <option value="" disabled>
+                Select gender
+              </option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+            {state.errors?.competitionGender ? (
+              <span className="mt-1.5 block text-xs font-medium text-rose-700">
+                {state.errors.competitionGender[0]}
+              </span>
+            ) : null}
+          </label>
           <Field
             label={
               allowGuests ? "Member number (if applicable)" : "Member number"

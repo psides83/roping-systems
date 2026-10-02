@@ -12,22 +12,39 @@ export interface ClassificationFormState {
   errors?: Record<string, string[]>;
 }
 
-const disciplineSchema = z.object({
-  name: z.string().trim().min(1, "Division name is required."),
-  description: z.string().trim(),
-});
-
-const updateDisciplineSchema = disciplineSchema.extend({
-  disciplineId: z.uuid(),
-  isActive: z.string().optional(),
-});
-
 const optionalAgeSchema = z
   .union([
     z.literal(""),
     z.coerce.number().int().min(0, "Age cannot be negative.").max(120),
   ])
   .transform((value) => (value === "" ? null : value));
+
+const disciplineSchema = z
+  .object({
+    name: z.string().trim().min(1, "Division name is required."),
+    description: z.string().trim(),
+    genderPolicy: z.enum(["open", "women_only"]),
+    maleYouthMaximumAge: optionalAgeSchema,
+    maleSeniorMinimumAge: optionalAgeSchema,
+  })
+  .superRefine((data, context) => {
+    if (
+      data.genderPolicy === "women_only" &&
+      data.maleYouthMaximumAge !== null &&
+      data.maleSeniorMinimumAge !== null &&
+      data.maleYouthMaximumAge >= data.maleSeniorMinimumAge
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["maleSeniorMinimumAge"],
+        message: "Senior minimum age must be above the youth maximum age.",
+      });
+  });
+
+const updateDisciplineSchema = disciplineSchema.extend({
+  disciplineId: z.uuid(),
+  isActive: z.string().optional(),
+});
 
 const classificationSchema = z
   .object({
@@ -92,6 +109,15 @@ export async function createDiscipline(
     name: parsed.data.name,
     description: parsed.data.description || null,
     watch_threshold: null,
+    gender_policy: parsed.data.genderPolicy,
+    male_youth_maximum_age:
+      parsed.data.genderPolicy === "women_only"
+        ? parsed.data.maleYouthMaximumAge
+        : null,
+    male_senior_minimum_age:
+      parsed.data.genderPolicy === "women_only"
+        ? parsed.data.maleSeniorMinimumAge
+        : null,
   });
   if (error)
     return {
@@ -166,6 +192,15 @@ export async function updateDiscipline(
       name: parsed.data.name,
       description: parsed.data.description || null,
       is_active: parsed.data.isActive === "on",
+      gender_policy: parsed.data.genderPolicy,
+      male_youth_maximum_age:
+        parsed.data.genderPolicy === "women_only"
+          ? parsed.data.maleYouthMaximumAge
+          : null,
+      male_senior_minimum_age:
+        parsed.data.genderPolicy === "women_only"
+          ? parsed.data.maleSeniorMinimumAge
+          : null,
     })
     .eq("id", parsed.data.disciplineId)
     .eq("organization_id", context.organization.id);

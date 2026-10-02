@@ -171,6 +171,21 @@ export function EntryFormDialog({
                       Required for age-limited classes
                     </span>
                   </label>
+                  <label className="block text-sm font-semibold">
+                    Competition gender
+                    <select
+                      name="competitionGender"
+                      defaultValue=""
+                      className={inputClass}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select gender
+                      </option>
+                      <option value="female">Female</option>
+                      <option value="male">Male</option>
+                    </select>
+                  </label>
                 </div>
                 <CommonEntryFields
                   divisions={divisions.filter(

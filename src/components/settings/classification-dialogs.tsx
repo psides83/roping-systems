@@ -155,8 +155,95 @@ function EligibilityFields({
   );
 }
 
+function GenderEligibilityFields({
+  policy,
+  setPolicy,
+  youthMaximumAge,
+  seniorMinimumAge,
+  errors,
+}: {
+  policy: "open" | "women_only";
+  setPolicy: (policy: "open" | "women_only") => void;
+  youthMaximumAge?: number | null;
+  seniorMinimumAge?: number | null;
+  errors?: Record<string, string[]>;
+}) {
+  return (
+    <div className="space-y-4 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
+      <label className="block text-sm font-semibold">
+        Gender eligibility
+        <select
+          name="genderPolicy"
+          value={policy}
+          onChange={(event) =>
+            setPolicy(event.target.value as "open" | "women_only")
+          }
+          className={inputClass}
+        >
+          <option value="open">Open to all contestants</option>
+          <option value="women_only">
+            Women only, with optional exceptions
+          </option>
+        </select>
+      </label>
+      {policy === "women_only" ? (
+        <>
+          <p className="text-xs leading-5 text-[#66716b]">
+            Female contestants are eligible. Leave both ages blank for no male
+            exceptions, or set either exception used by this organization.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-semibold">
+              Boys this age and younger
+              <input
+                name="maleYouthMaximumAge"
+                type="number"
+                min="0"
+                max="120"
+                defaultValue={youthMaximumAge ?? ""}
+                className={inputClass}
+                placeholder="12"
+              />
+              {errors?.maleYouthMaximumAge ? (
+                <span className="mt-1 block text-xs text-rose-700">
+                  {errors.maleYouthMaximumAge[0]}
+                </span>
+              ) : null}
+            </label>
+            <label className="block text-sm font-semibold">
+              Men this age and older
+              <input
+                name="maleSeniorMinimumAge"
+                type="number"
+                min="0"
+                max="120"
+                defaultValue={seniorMinimumAge ?? ""}
+                className={inputClass}
+                placeholder="55"
+              />
+              {errors?.maleSeniorMinimumAge ? (
+                <span className="mt-1 block text-xs text-rose-700">
+                  {errors.maleSeniorMinimumAge[0]}
+                </span>
+              ) : null}
+            </label>
+          </div>
+        </>
+      ) : (
+        <>
+          <input type="hidden" name="maleYouthMaximumAge" value="" />
+          <input type="hidden" name="maleSeniorMinimumAge" value="" />
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
+  const [genderPolicy, setGenderPolicy] = useState<"open" | "women_only">(
+    "open",
+  );
   const [state, action, pending] = useActionState(
     createDiscipline,
     initialState,
@@ -198,6 +285,11 @@ export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
                 </span>
               ) : null}
             </label>
+            <GenderEligibilityFields
+              policy={genderPolicy}
+              setPolicy={setGenderPolicy}
+              errors={state.errors}
+            />
             <label className="block text-sm font-semibold">
               Description
               <textarea
@@ -347,10 +439,14 @@ export function EditDisciplineDialog({
     name: string;
     description: string;
     isActive: boolean;
+    genderPolicy: "open" | "women_only";
+    maleYouthMaximumAge: number | null;
+    maleSeniorMinimumAge: number | null;
   };
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [genderPolicy, setGenderPolicy] = useState(discipline.genderPolicy);
   const [state, action, pending] = useActionState(
     updateDiscipline,
     initialState,
@@ -386,6 +482,13 @@ export function EditDisciplineDialog({
                 required
               />
             </label>
+            <GenderEligibilityFields
+              policy={genderPolicy}
+              setPolicy={setGenderPolicy}
+              youthMaximumAge={discipline.maleYouthMaximumAge}
+              seniorMinimumAge={discipline.maleSeniorMinimumAge}
+              errors={state.errors}
+            />
             <label className="block text-sm font-semibold">
               Description
               <textarea

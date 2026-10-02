@@ -7,10 +7,15 @@ import {
   History,
   Mail,
   Phone,
+  UsersRound,
   UserRound,
 } from "lucide-react";
 import { notFound } from "next/navigation";
-import { dismissClassificationReview, updateMemberBirthDate } from "./actions";
+import {
+  dismissClassificationReview,
+  updateMemberBirthDate,
+  updateMemberCompetitionGender,
+} from "./actions";
 import { AssignClassificationDialog } from "@/components/members/classification-dialogs";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getActiveOrganization } from "@/lib/organizations";
@@ -33,6 +38,7 @@ interface MemberDetail {
   phone: string;
   joinedOn: string | null;
   birthDate: string | null;
+  competitionGender: "female" | "male" | null;
   disciplines: DisciplineData[];
   history: Array<{
     id: string;
@@ -76,6 +82,7 @@ async function getMemberDetail(
       phone: "(940) 555-0182",
       joinedOn: "2024-01-12",
       birthDate: "1992-06-18",
+      competitionGender: "male",
       canEdit: false,
       disciplines: [
         {
@@ -109,7 +116,7 @@ async function getMemberDetail(
   const { data: membership, error } = await supabase
     .from("organization_memberships")
     .select(
-      "id, member_number, status, joined_on, people!inner(first_name, last_name, email, phone, birth_date)",
+      "id, member_number, status, joined_on, people!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
     )
     .eq("id", membershipId)
     .eq("organization_id", organization.id)
@@ -186,6 +193,7 @@ async function getMemberDetail(
     email: string | null;
     phone: string | null;
     birth_date: string | null;
+    competition_gender: "female" | "male" | null;
   };
 
   return {
@@ -197,6 +205,7 @@ async function getMemberDetail(
     phone: person.phone ?? "-",
     joinedOn: membership.joined_on,
     birthDate: person.birth_date,
+    competitionGender: person.competition_gender,
     canEdit: organization.role !== "viewer",
     disciplines,
     history: (historyRows ?? []).map((row) => ({
@@ -279,7 +288,7 @@ export default async function MemberDetailPage({
           </div>
         </div>
       </div>
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
           <Mail size={17} className="text-[#758078]" />
           <div className="min-w-0">
@@ -332,6 +341,46 @@ export default async function MemberDetailPage({
             ) : (
               <p className="text-sm font-semibold">
                 {formatDate(member.birthDate)}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
+          <UsersRound size={17} className="shrink-0 text-[#758078]" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase text-[#8a938e]">
+              Competition gender
+            </p>
+            {member.canEdit ? (
+              <form
+                action={updateMemberCompetitionGender}
+                className="mt-1 flex gap-2"
+              >
+                <input type="hidden" name="membershipId" value={member.id} />
+                <select
+                  name="competitionGender"
+                  defaultValue={member.competitionGender ?? ""}
+                  aria-label="Competition gender"
+                  className="h-8 min-w-0 flex-1 rounded-md border border-[#ccd4d0] bg-white px-2 text-xs outline-none focus:border-[var(--brand-accent)]"
+                  required
+                >
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                </select>
+                <button className="h-8 rounded-md border border-[#ccd4d0] px-2 text-xs font-bold">
+                  Save
+                </button>
+              </form>
+            ) : (
+              <p className="text-sm font-semibold">
+                {member.competitionGender === "female"
+                  ? "Female"
+                  : member.competitionGender === "male"
+                    ? "Male"
+                    : "Not set"}
               </p>
             )}
           </div>

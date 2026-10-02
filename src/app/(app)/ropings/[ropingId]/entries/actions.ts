@@ -59,6 +59,7 @@ const guestEntrySchema = z
     email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
     phone: z.string().trim(),
     birthDate: z.union([z.literal(""), z.iso.date()]),
+    competitionGender: z.enum(["female", "male"]),
     paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
     ...eligibilityOverrideFields,
   })
@@ -187,7 +188,7 @@ export async function addGuestEntry(
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
   const { data: entryId, error } = await context.supabase.rpc(
-    "create_guest_event_entry_with_eligibility_override",
+    "create_guest_event_entry_v2_with_eligibility_override",
     {
       target_roping_division_id: parsed.data.divisionId,
       guest_first_name: parsed.data.firstName,
@@ -195,6 +196,7 @@ export async function addGuestEntry(
       guest_email: parsed.data.email,
       guest_phone: parsed.data.phone,
       guest_birth_date: parsed.data.birthDate || null,
+      guest_competition_gender: parsed.data.competitionGender,
       initial_payment_status: parsed.data.paymentStatus,
       entered_override_reason:
         parsed.data.eligibilityOverride === "on"

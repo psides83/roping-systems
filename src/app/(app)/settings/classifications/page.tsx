@@ -16,6 +16,9 @@ interface DisciplineSummary {
   name: string;
   description: string;
   isActive: boolean;
+  genderPolicy: "open" | "women_only";
+  maleYouthMaximumAge: number | null;
+  maleSeniorMinimumAge: number | null;
   classifications: Array<{
     id: string;
     name: string;
@@ -50,6 +53,9 @@ async function getClassificationData() {
           name: "Calf roping",
           description: "Timed calf roping division",
           isActive: true,
+          genderPolicy: "open",
+          maleYouthMaximumAge: null,
+          maleSeniorMinimumAge: null,
           classifications: [
             {
               id: "open",
@@ -119,7 +125,7 @@ async function getClassificationData() {
       supabase
         .from("disciplines")
         .select(
-          "id, name, description, watch_threshold, is_active, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, is_active)",
+          "id, name, description, watch_threshold, is_active, gender_policy, male_youth_maximum_age, male_senior_minimum_age, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, is_active)",
         )
         .eq("organization_id", organization.id)
         .order("sort_order")
@@ -166,6 +172,9 @@ async function getClassificationData() {
       name: discipline.name,
       description: discipline.description ?? "",
       isActive: discipline.is_active,
+      genderPolicy: discipline.gender_policy as "open" | "women_only",
+      maleYouthMaximumAge: discipline.male_youth_maximum_age,
+      maleSeniorMinimumAge: discipline.male_senior_minimum_age,
       classifications: (
         discipline.classifications as unknown as Array<{
           id: string;
@@ -301,6 +310,17 @@ export default async function ClassificationSettingsPage() {
                 <p className="mt-1 text-sm text-[#66716b]">
                   {discipline.description || "No description"}
                 </p>
+                {discipline.genderPolicy === "women_only" ? (
+                  <p className="mt-2 text-xs font-semibold text-[#66716b]">
+                    Women only
+                    {discipline.maleYouthMaximumAge !== null
+                      ? ` · Boys ${discipline.maleYouthMaximumAge} and under`
+                      : ""}
+                    {discipline.maleSeniorMinimumAge !== null
+                      ? ` · Men ${discipline.maleSeniorMinimumAge} and over`
+                      : ""}
+                  </p>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
                 <CreateClassificationDialog

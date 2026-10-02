@@ -6,7 +6,19 @@ import { addMember, type MemberFormState } from "@/app/(app)/members/actions";
 
 const initialState: MemberFormState = {};
 
-export function AddMemberDialog({ configured }: { configured: boolean }) {
+interface DisciplineOption {
+  id: string;
+  name: string;
+  classifications: Array<{ id: string; name: string }>;
+}
+
+export function AddMemberDialog({
+  configured,
+  disciplines,
+}: {
+  configured: boolean;
+  disciplines: DisciplineOption[];
+}) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(addMember, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -87,6 +99,26 @@ export function AddMemberDialog({ configured }: { configured: boolean }) {
                   type="date"
                   error={state.errors?.birthDate?.[0]}
                 />
+                <label className="block text-sm font-semibold">
+                  Competition gender
+                  <select
+                    name="competitionGender"
+                    defaultValue=""
+                    className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]"
+                    required
+                  >
+                    <option value="" disabled>
+                      Select gender
+                    </option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                  {state.errors?.competitionGender ? (
+                    <span className="mt-1.5 block text-xs font-medium text-rose-700">
+                      {state.errors.competitionGender[0]}
+                    </span>
+                  ) : null}
+                </label>
                 <FormField
                   label="Member number"
                   name="memberNumber"
@@ -107,6 +139,42 @@ export function AddMemberDialog({ configured }: { configured: boolean }) {
                   </select>
                 </label>
               </div>
+              {disciplines.length ? (
+                <fieldset className="rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
+                  <legend className="px-1 text-sm font-bold">
+                    Starting classifications
+                  </legend>
+                  <p className="mb-4 text-xs leading-5 text-[#66716b]">
+                    Assign a skill classification for each applicable division.
+                    These can be changed later from the member profile.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {disciplines.map((discipline) => (
+                      <label
+                        key={discipline.id}
+                        className="block text-sm font-semibold"
+                      >
+                        {discipline.name}
+                        <select
+                          name="classificationIds"
+                          defaultValue=""
+                          className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]"
+                        >
+                          <option value="">Not classified</option>
+                          {discipline.classifications.map((classification) => (
+                            <option
+                              key={classification.id}
+                              value={classification.id}
+                            >
+                              {classification.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
               {state.message ? (
                 <p
                   className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}

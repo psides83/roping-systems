@@ -7,6 +7,7 @@ import {
   LoaderCircle,
   Mail,
   Phone,
+  UsersRound,
   X,
 } from "lucide-react";
 import {
@@ -20,6 +21,7 @@ interface EntryRequest {
   email: string;
   phone: string | null;
   birthDate: string | null;
+  competitionGender: "female" | "male" | null;
   memberNumber: string | null;
   contestantNote: string | null;
   submittedAt: string;
@@ -109,6 +111,12 @@ function RequestRow({
                   dateStyle: "medium",
                   timeZone: "UTC",
                 }).format(new Date(`${request.birthDate}T12:00:00Z`))}
+              </span>
+            ) : null}
+            {request.competitionGender ? (
+              <span className="flex items-center gap-1.5">
+                <UsersRound size={13} />
+                {request.competitionGender === "female" ? "Female" : "Male"}
               </span>
             ) : null}
             <span>{request.submittedAt}</span>
