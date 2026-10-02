@@ -57,6 +57,7 @@ const classOccurrenceSchema = z.object({
   roundCount: z.number().int().min(1).max(20),
   incentiveEnabled: z.boolean(),
   incentiveRules: z.array(incentiveRuleSchema),
+  cattleDrawEnabled: z.boolean(),
 });
 
 const shortRoundBracketSchema = z

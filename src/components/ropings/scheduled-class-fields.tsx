@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Clock3, Gauge, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Beef,
+  Clock3,
+  Gauge,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { CompetitionFormat } from "@/types/domain";
 
@@ -38,6 +46,7 @@ interface ScheduledOccurrence {
   roundCount: number;
   incentiveEnabled: boolean;
   incentiveRules: Record<string, string>;
+  cattleDrawEnabled: boolean;
 }
 
 function newKey() {
@@ -77,6 +86,7 @@ export function ScheduledClassFields({
           scheduleNote: occurrence.scheduleNote,
           roundCount: occurrence.roundCount,
           incentiveEnabled: occurrence.incentiveEnabled,
+          cattleDrawEnabled: occurrence.cattleDrawEnabled,
           incentiveRules: Object.entries(occurrence.incentiveRules)
             .filter(([, seconds]) => Number(seconds) !== 0)
             .map(([classificationId, seconds]) => ({
@@ -103,6 +113,7 @@ export function ScheduledClassFields({
         roundCount: allRounds,
         incentiveEnabled: template?.competitionFormat === "handicap",
         incentiveRules: {},
+        cattleDrawEnabled: false,
       },
     ]);
   }
@@ -345,6 +356,32 @@ export function ScheduledClassFields({
                     placeholder="Arena drag before this roping"
                   />
                 </Field>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-3">
+                  <input
+                    type="checkbox"
+                    checked={occurrence.cattleDrawEnabled}
+                    onChange={(event) =>
+                      updateOccurrence(occurrence.key, {
+                        cattleDrawEnabled: event.target.checked,
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
+                  />
+                  <Beef
+                    size={17}
+                    className="text-[var(--brand-accent-strong)]"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold">
+                      Draw and track cattle
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[#758078]">
+                      Assign numbered cattle to contestants. Leave off when
+                      cattle simply run through the chute in order.
+                    </span>
+                  </span>
+                </label>
 
                 <div>
                   <p className="text-xs font-semibold text-[#66716b]">

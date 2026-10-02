@@ -35,6 +35,7 @@ interface LiveDivision {
   competitionFormat: CompetitionFormat;
   secondRoundOrdering: RoundOrderMethod;
   laterRoundOrdering: RoundOrderMethod;
+  cattleDrawEnabled: boolean;
 }
 
 export default async function LiveRopingPage({
@@ -65,6 +66,7 @@ export default async function LiveRopingPage({
           getTotalRounds(selectedDivision),
         )}
         runs={previewRuns}
+        cattleTags={[]}
         fourDResults={[]}
         roundLocked={false}
         mainRoundsComplete
@@ -79,7 +81,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -100,6 +102,7 @@ export default async function LiveRopingPage({
       competition_format: CompetitionFormat;
       second_round_ordering: RoundOrderMethod;
       later_round_ordering: RoundOrderMethod;
+      cattle_draw_enabled: boolean;
     }>
   )
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -119,6 +122,7 @@ export default async function LiveRopingPage({
       competitionFormat: division.competition_format,
       secondRoundOrdering: division.second_round_ordering,
       laterRoundOrdering: division.later_round_ordering,
+      cattleDrawEnabled: division.cattle_draw_enabled,
     }));
   const selectedDivisionId = getSelectedDivisionId(divisions, query.division);
   const selectedDivision = divisions.find(
@@ -132,12 +136,13 @@ export default async function LiveRopingPage({
   let mainRoundsComplete = false;
   let fourDResults: FourDResultRow[] = [];
   let roundLocked = false;
+  let cattleTags: string[] = [];
 
   if (selectedDivisionId) {
     const { data: runData, error } = await supabase
       .from("runs")
       .select(
-        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, rerun_count, run_timer_readings(timer_number, time_seconds), entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
+        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), entries!runs_entry_id_fkey!inner(entry_number, incentive_adjustment_seconds, people!inner(first_name, last_name))",
       )
       .eq("roping_division_id", selectedDivisionId)
       .eq("run_number", selectedRound)
@@ -171,8 +176,22 @@ export default async function LiveRopingPage({
         carryTime: null,
         status: run.status as RunStatus,
         rerunCount: run.rerun_count,
+        cattleTag:
+          (run.event_cattle as unknown as { tag_number: string } | null)
+            ?.tag_number ?? null,
       };
     });
+    if (selectedDivision?.cattleDrawEnabled) {
+      const { data: cattleData, error: cattleError } = await supabase
+        .from("event_cattle")
+        .select("tag_number")
+        .eq("roping_id", ropingId)
+        .eq("is_active", true)
+        .order("tag_number");
+      if (cattleError)
+        throw new Error(`Unable to load event cattle: ${cattleError.message}`);
+      cattleTags = cattleData.map((animal) => animal.tag_number);
+    }
     if (
       selectedDivision &&
       selectedRound > selectedDivision.numberOfRuns &&
@@ -259,6 +278,7 @@ export default async function LiveRopingPage({
       selectedDivisionId={selectedDivisionId}
       selectedRound={selectedRound}
       runs={runs}
+      cattleTags={cattleTags}
       fourDResults={fourDResults}
       roundLocked={roundLocked}
       mainRoundsComplete={mainRoundsComplete}
@@ -276,6 +296,7 @@ function LiveWorkspace({
   selectedDivisionId,
   selectedRound,
   runs,
+  cattleTags,
   fourDResults,
   roundLocked,
   mainRoundsComplete,
@@ -289,6 +310,7 @@ function LiveWorkspace({
   selectedDivisionId?: string;
   selectedRound: number;
   runs: LiveRunRow[];
+  cattleTags: string[];
   fourDResults: FourDResultRow[];
   roundLocked: boolean;
   mainRoundsComplete: boolean;
@@ -335,12 +357,13 @@ function LiveWorkspace({
             <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
           ) : null}
           <DatabaseLiveDesk
-            key={`${selectedDivisionId}-${selectedRound}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}`).join("|")}`}
+            key={`${selectedDivisionId}-${selectedRound}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
             ropingId={ropingId}
             divisions={divisions}
             selectedDivisionId={selectedDivisionId}
             selectedRound={selectedRound}
             runs={runs}
+            cattleTags={cattleTags}
             roundLocked={roundLocked}
             timerCount={selectedDivision.timerCount}
             timerResolution={selectedDivision.timerResolution}
@@ -396,6 +419,7 @@ const previewDivisions: LiveDivision[] = [
     competitionFormat: "standard",
     secondRoundOrdering: "reverse_first",
     laterRoundOrdering: "aggregate_slowest_to_fastest",
+    cattleDrawEnabled: true,
   },
   {
     id: "breakaway-115",
@@ -408,6 +432,7 @@ const previewDivisions: LiveDivision[] = [
     competitionFormat: "handicap",
     secondRoundOrdering: "reverse_first",
     laterRoundOrdering: "aggregate_slowest_to_fastest",
+    cattleDrawEnabled: false,
   },
 ];
 
@@ -425,6 +450,7 @@ const previewRuns: LiveRunRow[] = [
     carryTime: 22.64,
     status: "pending",
     rerunCount: 0,
+    cattleTag: "104",
   },
   {
     id: "c79af70b-496b-4331-9cdf-9102e0284aa4",
@@ -439,6 +465,7 @@ const previewRuns: LiveRunRow[] = [
     carryTime: 22.08,
     status: "pending",
     rerunCount: 0,
+    cattleTag: "112",
   },
   {
     id: "68067ab7-d80f-4885-bca0-8721c50c6a12",
@@ -453,6 +480,7 @@ const previewRuns: LiveRunRow[] = [
     carryTime: 21.15,
     status: "pending",
     rerunCount: 0,
+    cattleTag: "107",
   },
   {
     id: "17bc849a-ff32-4c87-b42a-37fd7868a4f1",
@@ -467,5 +495,6 @@ const previewRuns: LiveRunRow[] = [
     carryTime: 20.42,
     status: "pending",
     rerunCount: 0,
+    cattleTag: "101",
   },
 ];

@@ -15,6 +15,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { ShortRoundSettingsForm } from "@/components/ropings/short-round-settings";
 import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
+import { ClassCattleDrawForm } from "@/components/ropings/class-cattle-draw-form";
 import {
   ropings as demoRopings,
   divisionTemplates as demoDivisions,
@@ -50,6 +51,7 @@ interface EventDetail {
     minimumRunsBetweenEntries: number;
     secondRoundOrdering: RoundOrderMethod;
     laterRoundOrdering: RoundOrderMethod;
+    cattleDrawEnabled: boolean;
     entries: number;
     startsAt: string | null;
     scheduledDate: string;
@@ -110,6 +112,7 @@ async function getEvent(
             minimumRunsBetweenEntries: index === 1 ? 3 : 0,
             secondRoundOrdering: "reverse_first",
             laterRoundOrdering: "aggregate_slowest_to_fastest",
+            cattleDrawEnabled: false,
             entries: index === 0 ? roping.entries : 0,
             startsAt: null,
             scheduledDate: roping.date,
@@ -171,7 +174,7 @@ async function getEvent(
       supabase
         .from("ropings")
         .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
         )
         .eq("id", ropingId)
         .eq("organization_id", organization.id)
@@ -195,6 +198,7 @@ async function getEvent(
       minimum_runs_between_entries: number;
       second_round_ordering: RoundOrderMethod;
       later_round_ordering: RoundOrderMethod;
+      cattle_draw_enabled: boolean;
       short_round_enabled: boolean;
       starts_at: string | null;
       scheduled_date: string;
@@ -234,6 +238,7 @@ async function getEvent(
       minimumRunsBetweenEntries: division.minimum_runs_between_entries,
       secondRoundOrdering: division.second_round_ordering,
       laterRoundOrdering: division.later_round_ordering,
+      cattleDrawEnabled: division.cattle_draw_enabled,
       entries: division.entries.length,
       startsAt: division.starts_at
         ? new Intl.DateTimeFormat("en-US", {
@@ -559,6 +564,12 @@ export default async function RopingDetailPage({
                 roundCount={division.runs}
                 secondRoundOrdering={division.secondRoundOrdering}
                 laterRoundOrdering={division.laterRoundOrdering}
+                editable={roundsEditable && isSupabaseConfigured()}
+              />
+              <ClassCattleDrawForm
+                ropingId={event.id}
+                divisionId={division.id}
+                enabled={division.cattleDrawEnabled}
                 editable={roundsEditable && isSupabaseConfigured()}
               />
               <div className="mt-4 flex flex-wrap gap-2">

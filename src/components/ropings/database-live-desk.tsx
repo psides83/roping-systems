@@ -33,6 +33,7 @@ import {
 } from "@/lib/run-status";
 import { RunCorrectionDialog } from "@/components/ropings/run-correction-dialog";
 import { RerunSchedulingDialog } from "@/components/ropings/rerun-scheduling-dialog";
+import { CattleDrawPanel } from "@/components/ropings/cattle-draw-panel";
 import type { RoundOrderMethod } from "@/types/domain";
 
 export interface LiveRunRow {
@@ -48,6 +49,7 @@ export interface LiveRunRow {
   carryTime: number | null;
   status: RunStatus;
   rerunCount: number;
+  cattleTag: string | null;
 }
 
 interface LiveDeskProps {
@@ -60,10 +62,12 @@ interface LiveDeskProps {
     shortRoundSeeded: boolean;
     secondRoundOrdering: RoundOrderMethod;
     laterRoundOrdering: RoundOrderMethod;
+    cattleDrawEnabled: boolean;
   }>;
   selectedDivisionId: string;
   selectedRound: number;
   runs: LiveRunRow[];
+  cattleTags: string[];
   roundLocked: boolean;
   timerCount: number;
   timerResolution: "average" | "best" | "longest";
@@ -80,6 +84,7 @@ export function DatabaseLiveDesk({
   selectedDivisionId,
   selectedRound,
   runs,
+  cattleTags,
   roundLocked,
   timerCount,
   timerResolution,
@@ -129,6 +134,10 @@ export function DatabaseLiveDesk({
     isResolvedRunStatus(run.status),
   ).length;
   const rerunCount = orderedRuns.filter((run) => run.status === "rerun").length;
+  const cattleDrawEnabled = selectedDivision?.cattleDrawEnabled ?? false;
+  const assignedCattleCount = orderedRuns.filter(
+    (run) => run.cattleTag !== null,
+  ).length;
   const roundReadyToLock =
     orderedRuns.length > 0 &&
     orderedRuns.every((run) => isResolvedRunStatus(run.status));
@@ -363,6 +372,9 @@ export function DatabaseLiveDesk({
                 <th className="w-28 px-5 py-3">Draw</th>
                 <th className="px-5 py-3">Contestant</th>
                 <th className="px-5 py-3">Entry</th>
+                {cattleDrawEnabled ? (
+                  <th className="px-5 py-3">Cattle</th>
+                ) : null}
                 {isShortRound ? (
                   <th className="px-5 py-3 text-right">Carry</th>
                 ) : null}
@@ -468,6 +480,11 @@ export function DatabaseLiveDesk({
                       ) : null}
                     </td>
                     <td className="px-5 py-4 text-sm">#{run.entryNumber}</td>
+                    {cattleDrawEnabled ? (
+                      <td className="px-5 py-4 font-mono text-sm font-bold">
+                        {run.cattleTag ?? "-"}
+                      </td>
+                    ) : null}
                     {isShortRound ? (
                       <td className="px-5 py-4 text-right font-mono text-sm font-semibold">
                         {run.carryTime?.toFixed(3) ?? "-"}
@@ -521,6 +538,20 @@ export function DatabaseLiveDesk({
       </section>
 
       <aside className="order-1 space-y-4 xl:order-2">
+        {cattleDrawEnabled ? (
+          <CattleDrawPanel
+            ropingId={ropingId}
+            divisionId={selectedDivisionId}
+            runNumber={selectedRound}
+            cattleTags={cattleTags}
+            assignedCount={assignedCattleCount}
+            runCount={orderedRuns.length}
+            canEdit={canEdit}
+            canRedraw={orderedRuns.every((run) =>
+              ["pending", "rerun"].includes(run.status),
+            )}
+          />
+        ) : null}
         {drawReady && !dirty ? (
           <ArenaQueue current={currentRun} upcoming={upcomingRuns} />
         ) : null}
@@ -624,6 +655,7 @@ function ArenaQueue({
         {current ? (
           <p className="mt-1 text-xs opacity-80">
             Draw {current.drawPosition} · Entry #{current.entryNumber}
+            {current.cattleTag ? ` · Cattle ${current.cattleTag}` : ""}
             {current.rerunCount ? ` · Rerun ${current.rerunCount}` : ""}
           </p>
         ) : null}
@@ -641,6 +673,7 @@ function ArenaQueue({
               <span className="min-w-0 truncate font-semibold">{run.name}</span>
               <span className="font-mono text-xs text-[#66716b]">
                 #{run.entryNumber}
+                {run.cattleTag ? ` · C${run.cattleTag}` : ""}
                 {run.rerunCount ? ` · R${run.rerunCount}` : ""}
               </span>
             </div>
@@ -721,6 +754,7 @@ function RunEntryForm({
       <input type="hidden" name="penalty" value={penalty} />
       <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
         Draw {run.drawPosition ?? "-"} · Entry {run.entryNumber}
+        {run.cattleTag ? ` · Cattle ${run.cattleTag}` : ""}
         {run.rerunCount ? ` · Rerun ${run.rerunCount}` : ""}
       </p>
       <div className="flex flex-wrap items-center gap-2">

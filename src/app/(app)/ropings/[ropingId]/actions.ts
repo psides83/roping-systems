@@ -12,6 +12,7 @@ export interface LiveRunState {
 
 export type DrawOrderState = LiveRunState;
 export type ScheduleFormState = LiveRunState;
+export type CattleFormState = LiveRunState;
 
 const shortRoundBracketSchema = z
   .array(
@@ -98,6 +99,74 @@ export async function updateClassRoundOrdering(
   if (error) throw new Error(error.message);
   revalidatePath(`/ropings/${ropingId}`);
   revalidatePath(`/ropings/${ropingId}/live`);
+}
+
+export async function updateClassCattleDraw(
+  ropingId: string,
+  divisionId: string,
+  _state: CattleFormState,
+  formData: FormData,
+): Promise<CattleFormState> {
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("set_division_cattle_draw_enabled", {
+    target_roping_division_id: divisionId,
+    cattle_draw_is_enabled: formData.get("cattleDrawEnabled") === "on",
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return { success: true, message: "Cattle draw setting saved." };
+}
+
+export async function saveEventCattle(
+  ropingId: string,
+  _state: CattleFormState,
+  formData: FormData,
+): Promise<CattleFormState> {
+  const tags = String(formData.get("cattleTags") ?? "")
+    .split(/[\n,]+/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  if (tags.some((tag) => tag.length > 40))
+    return { message: "Keep each cattle number under 40 characters." };
+
+  const supabase = await requireManager();
+  const { data, error } = await supabase.rpc("save_event_cattle", {
+    target_roping_id: ropingId,
+    cattle_tags: tags,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return {
+    success: true,
+    message: `${data} ${data === 1 ? "animal is" : "animals are"} active for this event.`,
+  };
+}
+
+export async function drawRoundCattle(
+  ropingId: string,
+  _state: CattleFormState,
+  formData: FormData,
+): Promise<CattleFormState> {
+  const parsed = z
+    .object({
+      divisionId: z.uuid(),
+      runNumber: z.coerce.number().int().min(1),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { message: "Choose a valid class and round." };
+
+  const supabase = await requireManager();
+  const { data, error } = await supabase.rpc("draw_round_cattle", {
+    target_roping_division_id: parsed.data.divisionId,
+    target_run_number: parsed.data.runNumber,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  return {
+    success: true,
+    message: `${data} ${data === 1 ? "run" : "runs"} received a cattle draw.`,
+  };
 }
 
 const scheduleSchema = z.object({
