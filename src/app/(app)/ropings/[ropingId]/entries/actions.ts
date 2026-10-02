@@ -27,6 +27,12 @@ export interface EntryOptionFormState {
   message?: string;
 }
 
+export interface ChargeWaiverFormState {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
 const eligibilityOverrideFields = {
   eligibilityOverride: z.string().optional(),
   eligibilityOverrideReason: z.string().trim().max(300),
@@ -109,6 +115,15 @@ const transferSchema = z
     ...eligibilityOverrideFields,
   })
   .superRefine(requireOverrideReason);
+
+const chargeWaiverSchema = z.object({
+  action: z.enum(["waive", "restore"]),
+  reason: z
+    .string()
+    .trim()
+    .min(5, "Enter a brief reason for this fee correction.")
+    .max(300, "Keep the reason under 300 characters."),
+});
 
 async function requireManager() {
   const organization = await getActiveOrganization();
@@ -346,5 +361,38 @@ export async function updateEntryOptions(
   return {
     success: true,
     message: `${data} optional ${data === 1 ? "fee" : "fees"} selected.`,
+  };
+}
+
+export async function updateChargeWaiver(
+  ropingId: string,
+  chargeId: string,
+  _state: ChargeWaiverFormState,
+  formData: FormData,
+): Promise<ChargeWaiverFormState> {
+  if (!z.uuid().safeParse(chargeId).success)
+    return { message: "This charge is unavailable." };
+  const parsed = chargeWaiverSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const shouldWaive = parsed.data.action === "waive";
+  const { error } = await context.supabase.rpc("set_entry_charge_waiver", {
+    target_charge_id: chargeId,
+    should_waive: shouldWaive,
+    adjustment_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  return {
+    success: true,
+    message: shouldWaive ? "Charge waived." : "Charge restored.",
   };
 }

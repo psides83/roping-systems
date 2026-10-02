@@ -94,24 +94,28 @@ export default async function EventEntriesPage({
                 title: "Open entry fee",
                 amountCents: 5000,
                 waived: false,
+                waiverReason: null,
               },
               {
                 id: "jace-stock-1",
                 title: "Stock fee",
                 amountCents: 1000,
                 waived: false,
+                waiverReason: null,
               },
               {
                 id: "jace-entry-2",
                 title: "11.5 entry fee",
                 amountCents: 5000,
                 waived: false,
+                waiverReason: null,
               },
               {
                 id: "jace-office",
                 title: "Office fee",
                 amountCents: 500,
                 waived: false,
+                waiverReason: null,
               },
             ],
           },
@@ -144,12 +148,14 @@ export default async function EventEntriesPage({
                 title: "Entry fee",
                 amountCents: 3000,
                 waived: false,
+                waiverReason: null,
               },
               {
                 id: "mara-office",
                 title: "Office fee",
                 amountCents: 500,
                 waived: false,
+                waiverReason: null,
               },
             ],
           },
@@ -281,6 +287,7 @@ export default async function EventEntriesPage({
       title: charge.title,
       amountCents: charge.amount_cents,
       waived: Boolean(charge.waived_at),
+      waiverReason: charge.waiver_reason,
     });
     chargesByPerson.set(charge.person_id, charges);
   }

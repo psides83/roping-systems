@@ -14,6 +14,7 @@ import {
   EntryOptionsDialog,
   type EntryOptionChoice,
 } from "@/components/ropings/entry-options-dialog";
+import { ChargeWaiverDialog } from "@/components/ropings/charge-waiver-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
@@ -45,6 +46,7 @@ export interface LedgerContestant {
     title: string;
     amountCents: number;
     waived: boolean;
+    waiverReason: string | null;
   }>;
 }
 
@@ -268,10 +270,10 @@ function ContestantRow({
             {contestant.charges.map((charge) => (
               <div
                 key={charge.id}
-                className="flex items-center justify-between gap-4 py-1 text-xs"
+                className="flex items-center gap-2 py-1 text-xs"
               >
                 <span
-                  className={charge.waived ? "line-through opacity-60" : ""}
+                  className={`min-w-0 flex-1 ${charge.waived ? "line-through opacity-60" : ""}`}
                 >
                   {charge.title}
                 </span>
@@ -280,6 +282,15 @@ function ContestantRow({
                     ? "Waived"
                     : formatCurrency(charge.amountCents)}
                 </span>
+                <ChargeWaiverDialog
+                  ropingId={ropingId}
+                  chargeId={charge.id}
+                  title={charge.title}
+                  amountCents={charge.amountCents}
+                  waived={charge.waived}
+                  waiverReason={charge.waiverReason}
+                  enabled={canEdit}
+                />
               </div>
             ))}
             {!contestant.charges.length ? (
