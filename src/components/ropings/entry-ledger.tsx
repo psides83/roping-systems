@@ -15,6 +15,7 @@ import {
   type EntryOptionChoice,
 } from "@/components/ropings/entry-options-dialog";
 import { ChargeWaiverDialog } from "@/components/ropings/charge-waiver-dialog";
+import { EntryWithdrawalDialog } from "@/components/ropings/entry-withdrawal-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
@@ -40,6 +41,8 @@ export interface LedgerContestant {
     eligibilityIssue: string | null;
     eligibilityOverrideReason: string | null;
     options: EntryOptionChoice[];
+    competitionStatus: "active" | "withdrawn";
+    withdrawalReason: string | null;
   }>;
   charges: Array<{
     id: string;
@@ -196,13 +199,18 @@ function ContestantRow({
           {contestant.entries.map((entry) => (
             <div
               key={entry.id}
-              className={`flex items-center rounded-md pl-2 text-xs font-semibold ${entry.eligibilityOverridden ? "bg-amber-50 text-amber-950" : "bg-[#f0f2f1]"}`}
+              className={`flex items-center rounded-md pl-2 text-xs font-semibold ${entry.competitionStatus === "withdrawn" ? "bg-rose-50 text-rose-950" : entry.eligibilityOverridden ? "bg-amber-50 text-amber-950" : "bg-[#f0f2f1]"}`}
             >
               <span className="py-1">
                 {entry.division} #{entry.entryNumber}
                 {entry.incentiveAdjustment
                   ? ` · ${formatFinalTimeAdjustment(entry.incentiveAdjustment)} sec`
                   : ""}
+                {entry.competitionStatus === "withdrawn" ? (
+                  <span className="mt-0.5 block font-bold text-rose-700">
+                    Withdrawn
+                  </span>
+                ) : null}
                 {entry.transferNote ? (
                   <span className="mt-0.5 block font-normal text-[#66716b]">
                     {entry.transferNote}
@@ -232,7 +240,7 @@ function ContestantRow({
                 contestantName={contestant.name}
                 divisionName={entry.division}
                 options={entry.options}
-                enabled={canEdit}
+                enabled={canEdit && entry.competitionStatus === "active"}
               />
               <EntryTransferDialog
                 ropingId={ropingId}
@@ -241,6 +249,15 @@ function ContestantRow({
                 currentDivisionId={entry.divisionId}
                 currentDivisionName={entry.division}
                 divisions={divisions}
+                enabled={canEdit && entry.competitionStatus === "active"}
+              />
+              <EntryWithdrawalDialog
+                ropingId={ropingId}
+                entryId={entry.id}
+                contestantName={contestant.name}
+                divisionName={entry.division}
+                withdrawn={entry.competitionStatus === "withdrawn"}
+                withdrawalReason={entry.withdrawalReason}
                 enabled={canEdit}
               />
             </div>

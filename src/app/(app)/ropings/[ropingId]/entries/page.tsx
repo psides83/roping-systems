@@ -72,6 +72,8 @@ export default async function EventEntriesPage({
                 eligibilityIssue: null,
                 eligibilityOverrideReason: null,
                 options: [],
+                competitionStatus: "active",
+                withdrawalReason: null,
               },
               {
                 id: "jace-2",
@@ -86,6 +88,8 @@ export default async function EventEntriesPage({
                 eligibilityIssue: null,
                 eligibilityOverrideReason: null,
                 options: [],
+                competitionStatus: "active",
+                withdrawalReason: null,
               },
             ],
             charges: [
@@ -140,6 +144,8 @@ export default async function EventEntriesPage({
                   "Contestant classification is below this class",
                 eligibilityOverrideReason: "Approved by event director",
                 options: [],
+                competitionStatus: "active",
+                withdrawalReason: null,
               },
             ],
             charges: [
@@ -176,6 +182,7 @@ export default async function EventEntriesPage({
     { data: chargeData, error: chargeError },
     { data: requestData, error: requestError },
     { data: transferData, error: transferError },
+    { data: withdrawalData, error: withdrawalError },
   ] = await Promise.all([
     supabase
       .from("ropings")
@@ -194,7 +201,7 @@ export default async function EventEntriesPage({
     supabase
       .from("entries")
       .select(
-        "id, entry_number, source, payment_status, person_id, incentive_adjustment_seconds, eligibility_overridden, eligibility_note, eligibility_override_reason, roping_divisions!entries_roping_division_id_fkey!inner(id, name, scheduled_date), people!inner(first_name, last_name)",
+        "id, entry_number, source, payment_status, competition_status, person_id, incentive_adjustment_seconds, eligibility_overridden, eligibility_note, eligibility_override_reason, roping_divisions!entries_roping_division_id_fkey!inner(id, name, scheduled_date), people!inner(first_name, last_name)",
       )
       .eq("roping_id", ropingId)
       .order("entered_at", { ascending: false }),
@@ -218,9 +225,19 @@ export default async function EventEntriesPage({
       .select("entry_id, source_division_id, reason, created_at")
       .eq("roping_id", ropingId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("entry_withdrawals")
+      .select("entry_id, reason, financial_action, withdrawn_at")
+      .eq("roping_id", ropingId)
+      .is("reinstated_at", null),
   ]);
   if (!roping) notFound();
-  const loadError = entryError ?? chargeError ?? requestError ?? transferError;
+  const loadError =
+    entryError ??
+    chargeError ??
+    requestError ??
+    transferError ??
+    withdrawalError;
   if (loadError)
     throw new Error(`Unable to load event entries: ${loadError.message}`);
 
@@ -310,6 +327,12 @@ export default async function EventEntriesPage({
       });
     }
   }
+  const activeWithdrawalByEntry = new Map(
+    (withdrawalData ?? []).map((withdrawal) => [
+      withdrawal.entry_id,
+      withdrawal,
+    ]),
+  );
 
   const contestantsByPerson = new Map<string, LedgerContestant>();
   for (const entry of entryData ?? []) {
@@ -362,6 +385,8 @@ export default async function EventEntriesPage({
             (charge.entry_id === entry.id || charge.entry_id === null),
         ),
       })),
+      competitionStatus: entry.competition_status,
+      withdrawalReason: activeWithdrawalByEntry.get(entry.id)?.reason ?? null,
     });
     contestantsByPerson.set(entry.person_id, contestant);
   }

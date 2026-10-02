@@ -33,6 +33,12 @@ export interface ChargeWaiverFormState {
   errors?: Record<string, string[]>;
 }
 
+export interface EntryWithdrawalFormState {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
 const eligibilityOverrideFields = {
   eligibilityOverride: z.string().optional(),
   eligibilityOverrideReason: z.string().trim().max(300),
@@ -122,6 +128,18 @@ const chargeWaiverSchema = z.object({
     .string()
     .trim()
     .min(5, "Enter a brief reason for this fee correction.")
+    .max(300, "Keep the reason under 300 characters."),
+});
+
+const entryWithdrawalSchema = z.object({
+  action: z.enum(["withdraw", "reinstate"]),
+  financialAction: z
+    .enum(["keep_charges", "waive_charges", "refund"])
+    .optional(),
+  reason: z
+    .string()
+    .trim()
+    .min(5, "Enter a brief reason for this change.")
     .max(300, "Keep the reason under 300 characters."),
 });
 
@@ -394,5 +412,51 @@ export async function updateChargeWaiver(
   return {
     success: true,
     message: shouldWaive ? "Charge waived." : "Charge restored.",
+  };
+}
+
+export async function changeEntryWithdrawal(
+  ropingId: string,
+  entryId: string,
+  _state: EntryWithdrawalFormState,
+  formData: FormData,
+): Promise<EntryWithdrawalFormState> {
+  if (!z.uuid().safeParse(entryId).success)
+    return { message: "This entry is unavailable." };
+  const parsed = entryWithdrawalSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
+  if (parsed.data.action === "withdraw" && !parsed.data.financialAction)
+    return { message: "Choose how to handle this entry’s charges." };
+
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const result =
+    parsed.data.action === "withdraw"
+      ? await context.supabase.rpc("withdraw_event_entry", {
+          target_entry_id: entryId,
+          withdrawal_reason: parsed.data.reason,
+          selected_financial_action: parsed.data.financialAction,
+        })
+      : await context.supabase.rpc("reinstate_event_entry", {
+          target_entry_id: entryId,
+          reinstatement_reason: parsed.data.reason,
+        });
+  if (result.error) return { message: result.error.message };
+
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  return {
+    success: true,
+    message:
+      parsed.data.action === "withdraw"
+        ? "Entry withdrawn."
+        : "Entry reinstated.",
   };
 }
