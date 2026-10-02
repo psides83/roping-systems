@@ -12,6 +12,12 @@ export interface MemberClassificationFormState {
   errors?: Record<string, string[]>;
 }
 
+export interface MemberProfileFormState {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
 const assignmentSchema = z.object({
   membershipId: z.uuid(),
   classificationId: z.uuid(),
@@ -35,11 +41,86 @@ const genderSchema = z.object({
   competitionGender: z.enum(["female", "male"]),
 });
 
+const profileSchema = z.object({
+  membershipId: z.uuid(),
+  firstName: z.string().trim().min(1, "First name is required."),
+  lastName: z.string().trim().min(1, "Last name is required."),
+  email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
+  phone: z.string().trim(),
+  birthDate: z.union([z.literal(""), z.iso.date()]),
+  competitionGender: z.enum(["female", "male"]),
+  memberNumber: z.string().trim().min(1, "Member number is required."),
+  status: z.enum(["active", "pending", "expired", "inactive"]),
+  joinedOn: z.union([z.literal(""), z.iso.date()]),
+  expiresOn: z.union([z.literal(""), z.iso.date()]),
+  notes: z.string().trim(),
+  classificationEffectiveOn: z.iso.date(),
+  classificationReason: z.string().trim(),
+  classificationChanges: z.string(),
+});
+
+const classificationChangesSchema = z.array(
+  z.object({
+    disciplineId: z.uuid(),
+    classificationId: z.union([z.literal(""), z.uuid()]),
+  }),
+);
+
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return null;
   return { organization, supabase: await createClient() };
+}
+
+export async function updateMember(
+  _state: MemberProfileFormState,
+  formData: FormData,
+): Promise<MemberProfileFormState> {
+  const parsed = profileSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  let classificationChanges: z.infer<typeof classificationChangesSchema>;
+  try {
+    classificationChanges = classificationChangesSchema.parse(
+      JSON.parse(parsed.data.classificationChanges),
+    );
+  } catch {
+    return { message: "Check the member's classification selections." };
+  }
+  const context = await getManagerContext();
+  if (!context)
+    return { message: "Manager access is required to edit members." };
+
+  const { error } = await context.supabase.rpc("update_organization_member", {
+    target_organization_id: context.organization.id,
+    target_membership_id: parsed.data.membershipId,
+    member_first_name: parsed.data.firstName,
+    member_last_name: parsed.data.lastName,
+    member_email: parsed.data.email,
+    member_phone: parsed.data.phone,
+    member_birth_date: parsed.data.birthDate || null,
+    member_competition_gender: parsed.data.competitionGender,
+    new_member_number: parsed.data.memberNumber,
+    new_status: parsed.data.status,
+    new_joined_on: parsed.data.joinedOn || null,
+    new_expires_on: parsed.data.expiresOn || null,
+    new_notes: parsed.data.notes,
+    classification_changes: classificationChanges,
+    classification_effective_on: parsed.data.classificationEffectiveOn,
+    classification_change_reason: parsed.data.classificationReason,
+  });
+  if (error)
+    return {
+      message:
+        error.code === "23505"
+          ? "That member number or email address is already in use."
+          : error.message,
+    };
+
+  revalidatePath(`/members/${parsed.data.membershipId}`);
+  revalidatePath("/members");
+  revalidatePath("/settings/classifications");
+  return { success: true, message: "Member updated." };
 }
 
 export async function assignMemberClassification(

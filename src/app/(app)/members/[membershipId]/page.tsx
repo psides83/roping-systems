@@ -11,12 +11,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { notFound } from "next/navigation";
-import {
-  dismissClassificationReview,
-  updateMemberBirthDate,
-  updateMemberCompetitionGender,
-} from "./actions";
+import { dismissClassificationReview } from "./actions";
 import { AssignClassificationDialog } from "@/components/members/classification-dialogs";
+import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -31,23 +28,29 @@ interface DisciplineData {
 
 interface MemberDetail {
   id: string;
+  firstName: string;
+  lastName: string;
   name: string;
   memberNumber: string;
   status: MembershipStatus;
   email: string;
   phone: string;
   joinedOn: string | null;
+  expiresOn: string | null;
+  notes: string;
   birthDate: string | null;
   competitionGender: "female" | "male" | null;
   disciplines: DisciplineData[];
   history: Array<{
     id: string;
     disciplineId: string;
+    classificationId: string;
     discipline: string;
     classification: string;
     effectiveOn: string;
     endedOn: string | null;
     reason: string;
+    endedReason: string | null;
   }>;
   reviews: Array<{
     id: string;
@@ -75,12 +78,16 @@ async function getMemberDetail(
   if (!isSupabaseConfigured()) {
     return {
       id: membershipId,
+      firstName: "Jace",
+      lastName: "Holloway",
       name: "Jace Holloway",
       memberNumber: "RR-1042",
       status: "active",
       email: "jace@example.com",
       phone: "(940) 555-0182",
       joinedOn: "2024-01-12",
+      expiresOn: null,
+      notes: "",
       birthDate: "1992-06-18",
       competitionGender: "male",
       canEdit: false,
@@ -99,11 +106,13 @@ async function getMemberDetail(
         {
           id: "history-1",
           disciplineId: "calf-roping",
+          classificationId: "115",
           discipline: "Calf roping",
           classification: "11.5",
           effectiveOn: "2026-01-01",
           endedOn: null,
           reason: "Annual classification review",
+          endedReason: null,
         },
       ],
       reviews: [],
@@ -116,7 +125,7 @@ async function getMemberDetail(
   const { data: membership, error } = await supabase
     .from("organization_memberships")
     .select(
-      "id, member_number, status, joined_on, people!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
+      "id, member_number, status, joined_on, expires_on, notes, people!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
     )
     .eq("id", membershipId)
     .eq("organization_id", organization.id)
@@ -140,7 +149,7 @@ async function getMemberDetail(
     supabase
       .from("member_classifications")
       .select(
-        "id, discipline_id, effective_on, ended_on, reason, disciplines!inner(name), classifications!inner(name)",
+        "id, discipline_id, classification_id, effective_on, ended_on, reason, ended_reason, disciplines!inner(name), classifications!inner(name)",
       )
       .eq("organization_id", organization.id)
       .eq("membership_id", membershipId)
@@ -198,12 +207,16 @@ async function getMemberDetail(
 
   return {
     id: membership.id,
+    firstName: person.first_name,
+    lastName: person.last_name,
     name: `${person.first_name} ${person.last_name}`.trim(),
     memberNumber: membership.member_number,
     status: membership.status as MembershipStatus,
     email: person.email ?? "-",
     phone: person.phone ?? "-",
     joinedOn: membership.joined_on,
+    expiresOn: membership.expires_on,
+    notes: membership.notes ?? "",
     birthDate: person.birth_date,
     competitionGender: person.competition_gender,
     canEdit: organization.role !== "viewer",
@@ -211,11 +224,13 @@ async function getMemberDetail(
     history: (historyRows ?? []).map((row) => ({
       id: row.id,
       disciplineId: row.discipline_id,
+      classificationId: row.classification_id,
       discipline: (row.disciplines as unknown as { name: string }).name,
       classification: (row.classifications as unknown as { name: string }).name,
       effectiveOn: row.effective_on,
       endedOn: row.ended_on,
       reason: row.reason ?? "-",
+      endedReason: row.ended_reason,
     })),
     reviews: (reviewRows ?? []).map((row) => ({
       id: row.id,
@@ -249,6 +264,11 @@ export default async function MemberDetailPage({
       .filter((item) => !item.endedOn)
       .map((item) => [item.disciplineId, item]),
   );
+  const currentClassifications = Object.fromEntries(
+    member.history
+      .filter((item) => !item.endedOn)
+      .map((item) => [item.disciplineId, item.classificationId]),
+  );
 
   return (
     <div className="space-y-6">
@@ -280,6 +300,25 @@ export default async function MemberDetailPage({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <EditMemberDialog
+              member={{
+                id: member.id,
+                firstName: member.firstName,
+                lastName: member.lastName,
+                email: member.email === "-" ? "" : member.email,
+                phone: member.phone === "-" ? "" : member.phone,
+                birthDate: member.birthDate,
+                competitionGender: member.competitionGender,
+                memberNumber: member.memberNumber,
+                status: member.status,
+                joinedOn: member.joinedOn,
+                expiresOn: member.expiresOn,
+                notes: member.notes,
+              }}
+              disciplines={options}
+              currentClassifications={currentClassifications}
+              enabled={member.canEdit}
+            />
             <AssignClassificationDialog
               membershipId={member.id}
               disciplines={options}
@@ -324,25 +363,9 @@ export default async function MemberDetailPage({
             <p className="text-[10px] font-bold uppercase text-[#8a938e]">
               Birth date
             </p>
-            {member.canEdit ? (
-              <form action={updateMemberBirthDate} className="mt-1 flex gap-2">
-                <input type="hidden" name="membershipId" value={member.id} />
-                <input
-                  name="birthDate"
-                  type="date"
-                  defaultValue={member.birthDate ?? ""}
-                  aria-label="Birth date"
-                  className="h-8 min-w-0 flex-1 rounded-md border border-[#ccd4d0] px-2 text-xs outline-none focus:border-[var(--brand-accent)]"
-                />
-                <button className="h-8 rounded-md border border-[#ccd4d0] px-2 text-xs font-bold">
-                  Save
-                </button>
-              </form>
-            ) : (
-              <p className="text-sm font-semibold">
-                {formatDate(member.birthDate)}
-              </p>
-            )}
+            <p className="text-sm font-semibold">
+              {formatDate(member.birthDate)}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
@@ -351,38 +374,13 @@ export default async function MemberDetailPage({
             <p className="text-[10px] font-bold uppercase text-[#8a938e]">
               Competition gender
             </p>
-            {member.canEdit ? (
-              <form
-                action={updateMemberCompetitionGender}
-                className="mt-1 flex gap-2"
-              >
-                <input type="hidden" name="membershipId" value={member.id} />
-                <select
-                  name="competitionGender"
-                  defaultValue={member.competitionGender ?? ""}
-                  aria-label="Competition gender"
-                  className="h-8 min-w-0 flex-1 rounded-md border border-[#ccd4d0] bg-white px-2 text-xs outline-none focus:border-[var(--brand-accent)]"
-                  required
-                >
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  <option value="female">Female</option>
-                  <option value="male">Male</option>
-                </select>
-                <button className="h-8 rounded-md border border-[#ccd4d0] px-2 text-xs font-bold">
-                  Save
-                </button>
-              </form>
-            ) : (
-              <p className="text-sm font-semibold">
-                {member.competitionGender === "female"
-                  ? "Female"
-                  : member.competitionGender === "male"
-                    ? "Male"
-                    : "Not set"}
-              </p>
-            )}
+            <p className="text-sm font-semibold">
+              {member.competitionGender === "female"
+                ? "Female"
+                : member.competitionGender === "male"
+                  ? "Male"
+                  : "Not set"}
+            </p>
           </div>
         </div>
       </section>
@@ -489,6 +487,7 @@ export default async function MemberDetailPage({
             <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
               <tr>
                 <th className="px-5 py-3">Effective</th>
+                <th className="px-5 py-3">Ended</th>
                 <th className="px-5 py-3">Division</th>
                 <th className="px-5 py-3">Classification</th>
                 <th className="px-5 py-3">Reason</th>
@@ -501,20 +500,25 @@ export default async function MemberDetailPage({
                     {formatDate(item.effectiveOn)}
                   </td>
                   <td className="px-5 py-3 text-sm text-[#66716b]">
+                    {item.endedOn ? formatDate(item.endedOn) : "Current"}
+                  </td>
+                  <td className="px-5 py-3 text-sm text-[#66716b]">
                     {item.discipline}
                   </td>
                   <td className="px-5 py-3 text-sm font-bold">
                     {item.classification}
                   </td>
                   <td className="px-5 py-3 text-sm text-[#66716b]">
-                    {item.reason}
+                    {item.endedReason
+                      ? `${item.reason} · Ended: ${item.endedReason}`
+                      : item.reason}
                   </td>
                 </tr>
               ))}
               {!member.history.length ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-5 py-8 text-center text-sm text-[#758078]"
                   >
                     No classification history yet.
