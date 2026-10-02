@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -34,10 +34,9 @@ export interface EventTemplate {
   }>;
 }
 
-type ScheduleType = "fixed" | "tentative" | "follows_previous";
+export type ScheduleType = "fixed" | "tentative" | "follows_previous";
 
-interface ScheduledOccurrence {
-  key: string;
+export interface ScheduledOccurrenceDraft {
   templateId: string;
   classificationId: string;
   scheduledDate: string;
@@ -51,26 +50,62 @@ interface ScheduledOccurrence {
   cattleDrawEnabled: boolean;
 }
 
+interface ScheduledOccurrence extends ScheduledOccurrenceDraft {
+  key: string;
+}
+
 function newKey() {
   return crypto.randomUUID();
+}
+
+function shiftDate(value: string, dayDifference: number) {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + dayDifference);
+  return date.toISOString().slice(0, 10);
 }
 
 export function ScheduledClassFields({
   templates,
   classifications,
   eventStartDate,
+  initialOccurrences = [],
   error,
 }: {
   templates: EventTemplate[];
   classifications: IncentiveClassification[];
   eventStartDate: string;
+  initialOccurrences?: ScheduledOccurrenceDraft[];
   error?: string;
 }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState(
     templates[0]?.id ?? "",
   );
-  const [allRounds, setAllRounds] = useState(1);
-  const [occurrences, setOccurrences] = useState<ScheduledOccurrence[]>([]);
+  const [allRounds, setAllRounds] = useState(
+    initialOccurrences[0]?.roundCount ?? 1,
+  );
+  const [occurrences, setOccurrences] = useState<ScheduledOccurrence[]>(() =>
+    initialOccurrences.map((occurrence, index) => ({
+      ...occurrence,
+      key: `copied-${index}`,
+    })),
+  );
+  const previousEventStartDate = useRef(eventStartDate);
+  useEffect(() => {
+    const previous = previousEventStartDate.current;
+    previousEventStartDate.current = eventStartDate;
+    if (!previous || !eventStartDate || previous === eventStartDate) return;
+    const dayDifference = Math.round(
+      (Date.parse(`${eventStartDate}T12:00:00Z`) -
+        Date.parse(`${previous}T12:00:00Z`)) /
+        86_400_000,
+    );
+    setOccurrences((current) =>
+      current.map((occurrence) => ({
+        ...occurrence,
+        scheduledDate: shiftDate(occurrence.scheduledDate, dayDifference),
+      })),
+    );
+  }, [eventStartDate]);
   const selectedTemplate = templates.find(
     (template) => template.id === selectedTemplateId,
   );

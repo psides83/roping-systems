@@ -1,13 +1,9 @@
 import Link from "next/link";
+import { Calendar, CalendarDays, List, MapPin, Users } from "lucide-react";
 import {
-  Calendar,
-  CalendarDays,
-  List,
-  MapPin,
-  MoreHorizontal,
-  Users,
-} from "lucide-react";
-import { CreateRopingDialog } from "@/components/ropings/create-roping-dialog";
+  CreateRopingDialog,
+  type RopingDraft,
+} from "@/components/ropings/create-roping-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
@@ -15,14 +11,20 @@ import {
   divisionTemplates as demoDivisions,
 } from "@/data/demo";
 import { getActiveOrganization } from "@/lib/organizations";
+import {
+  buildDuplicableRopingSummary,
+  type RopingListRecord,
+} from "@/lib/ropings/build-duplicate-draft";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-import type { RopingStatus, RopingSummary } from "@/types/domain";
 
 async function getRopingData() {
   if (!isSupabaseConfigured())
     return {
-      ropings: demoRopings,
+      ropings: demoRopings.map((roping) => ({
+        ...roping,
+        duplicationDraft: undefined as RopingDraft | undefined,
+      })),
       divisions: demoDivisions.map((division) => ({
         id: division.id,
         name: division.name,
@@ -67,11 +69,12 @@ async function getRopingData() {
     { data: eventData, error: eventError },
     { data: divisionData, error: divisionError },
     { data: classificationData, error: classificationError },
+    { data: eventFeeData, error: eventFeeError },
   ] = await Promise.all([
     supabase
       .from("ropings")
       .select(
-        "id, title, starts_at, venue_name, address, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id), entries!entries_roping_id_fkey(id)",
+        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, short_round_enabled, short_round_tie_policy, roping_incentive_rules(classification_id, adjustment_seconds), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order)), entries!entries_roping_id_fkey(id)",
       )
       .eq("organization_id", organization.id)
       .order("starts_at", { ascending: false }),
@@ -91,6 +94,11 @@ async function getRopingData() {
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
+    supabase
+      .from("roping_fees")
+      .select("roping_id, title, amount_cents")
+      .eq("organization_id", organization.id)
+      .is("roping_division_id", null),
   ]);
   if (eventError)
     throw new Error(`Unable to load ropings: ${eventError.message}`);
@@ -102,24 +110,14 @@ async function getRopingData() {
     throw new Error(
       `Unable to load incentive classifications: ${classificationError.message}`,
     );
+  if (eventFeeError)
+    throw new Error(`Unable to load event charges: ${eventFeeError.message}`);
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
     timeZone: organization.timezone,
   });
-  const ropings: RopingSummary[] = eventData.map((event) => ({
-    id: event.id,
-    title: event.title,
-    date: dateFormatter.format(new Date(event.starts_at)),
-    location:
-      [event.venue_name, event.address].filter(Boolean).join(", ") ||
-      "Location pending",
-    divisions: (event.roping_divisions as unknown as unknown[]).length,
-    entries: (event.entries as unknown as unknown[]).length,
-    status: event.status as RopingStatus,
-    resultStatus: event.result_status,
-  }));
   const divisions = divisionData.map((division) => ({
     id: division.id,
     name: division.name,
@@ -149,6 +147,22 @@ async function getRopingData() {
     divisionName: (classification.disciplines as unknown as { name: string })
       .name,
   }));
+  const activeTemplateIds = new Set(divisions.map((division) => division.id));
+  const activeClassificationIds = new Set(
+    incentiveClassifications.map((classification) => classification.id),
+  );
+  const existingSlugs = new Set(eventData.map((event) => event.slug));
+  const ropings = eventData.map((event) =>
+    buildDuplicableRopingSummary({
+      event: event as unknown as RopingListRecord,
+      eventFees: eventFeeData ?? [],
+      activeTemplateIds,
+      activeClassificationIds,
+      existingSlugs,
+      timeZone: organization.timezone,
+      dateFormatter,
+    }),
+  );
   return { ropings, divisions, incentiveClassifications };
 }
 
@@ -226,6 +240,14 @@ export default async function RopingsPage() {
                 </div>
               </div>
               <div className="flex shrink-0 gap-2">
+                {roping.duplicationDraft ? (
+                  <CreateRopingDialog
+                    configured={configured}
+                    divisions={divisions}
+                    incentiveClassifications={incentiveClassifications}
+                    initialValues={roping.duplicationDraft}
+                  />
+                ) : null}
                 <Link
                   href={
                     roping.status === "in_progress" && !configured
@@ -240,12 +262,6 @@ export default async function RopingsPage() {
                       ? "View results"
                       : "Manage event"}
                 </Link>
-                <button
-                  aria-label={`More options for ${roping.title}`}
-                  className="grid h-10 w-10 place-items-center rounded-md border border-[#d7ddda]"
-                >
-                  <MoreHorizontal size={18} />
-                </button>
               </div>
             </div>
           </article>

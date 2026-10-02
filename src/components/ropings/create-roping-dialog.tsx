@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import {
   CalendarPlus,
   CircleDollarSign,
+  Copy,
   LoaderCircle,
   Plus,
   X,
@@ -16,8 +17,13 @@ import {
   ScheduledClassFields,
   type EventTemplate,
   type IncentiveClassification,
+  type ScheduledOccurrenceDraft,
 } from "@/components/ropings/scheduled-class-fields";
-import { ShortRoundFields } from "@/components/ropings/short-round-settings";
+import {
+  ShortRoundFields,
+  type ShortRoundBracket,
+  type ShortRoundTiePolicy,
+} from "@/components/ropings/short-round-settings";
 
 const initialState: RopingFormState = {};
 const inputClass =
@@ -31,20 +37,56 @@ function toSlug(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+function shiftLocalDateTime(value: string, milliseconds: number) {
+  if (!value) return "";
+  return new Date(Date.parse(`${value}:00Z`) + milliseconds)
+    .toISOString()
+    .slice(0, 16);
+}
+
+export interface RopingDraft {
+  sourceTitle: string;
+  title: string;
+  slug: string;
+  venueName: string;
+  address: string;
+  startsAt: string;
+  endsAt: string;
+  entriesOpenAt: string;
+  entriesCloseAt: string;
+  isPublic: boolean;
+  eventFeeTitle: string;
+  eventFeeAmount: string;
+  occurrences: ScheduledOccurrenceDraft[];
+  shortRoundEnabled: boolean;
+  shortRoundBrackets: ShortRoundBracket[];
+  shortRoundTiePolicy: ShortRoundTiePolicy;
+}
+
 export function CreateRopingDialog({
   configured,
   divisions,
   incentiveClassifications,
+  initialValues,
 }: {
   configured: boolean;
   divisions: EventTemplate[];
   incentiveClassifications: IncentiveClassification[];
+  initialValues?: RopingDraft;
 }) {
+  const isDuplicate = Boolean(initialValues);
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
+  const [title, setTitle] = useState(initialValues?.title ?? "");
+  const [slug, setSlug] = useState(initialValues?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [startsAt, setStartsAt] = useState("");
+  const [startsAt, setStartsAt] = useState(initialValues?.startsAt ?? "");
+  const [endsAt, setEndsAt] = useState(initialValues?.endsAt ?? "");
+  const [entriesOpenAt, setEntriesOpenAt] = useState(
+    initialValues?.entriesOpenAt ?? "",
+  );
+  const [entriesCloseAt, setEntriesCloseAt] = useState(
+    initialValues?.entriesCloseAt ?? "",
+  );
   const [state, action, pending] = useActionState(createRoping, initialState);
 
   useEffect(() => {
@@ -56,10 +98,16 @@ export function CreateRopingDialog({
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"
+        className={
+          isDuplicate
+            ? "flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-sm font-semibold hover:bg-[#f7f8f7]"
+            : "flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"
+        }
       >
-        <Plus size={17} /> Create roping
+        {isDuplicate ? <Copy size={16} /> : <Plus size={17} />}
+        {isDuplicate ? "Duplicate" : "Create roping"}
       </button>
       {open ? (
         <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
@@ -80,11 +128,14 @@ export function CreateRopingDialog({
                     size={19}
                     className="text-[var(--brand-accent-strong)]"
                   />
-                  Create roping event
+                  {isDuplicate
+                    ? "Duplicate roping event"
+                    : "Create roping event"}
                 </h2>
                 <p className="mt-1 text-sm text-[#66716b]">
-                  Schedule the weekend, then add each actual roping in running
-                  order.
+                  {isDuplicate
+                    ? `Review the copied setup from ${initialValues?.sourceTitle} before creating the new event.`
+                    : "Schedule the weekend, then add each actual roping in running order."}
                 </p>
               </div>
               <button
@@ -97,6 +148,13 @@ export function CreateRopingDialog({
             </header>
 
             <form action={action} className="space-y-6 p-5">
+              {isDuplicate ? (
+                <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
+                  The event setup is copied for review. Entries, payments,
+                  draws, recorded times, results, and payouts from the original
+                  event are not copied.
+                </p>
+              ) : null}
               <section>
                 <h3 className="text-sm font-bold">Event details</h3>
                 <p className="mt-1 text-xs text-[#758078]">
@@ -136,6 +194,7 @@ export function CreateRopingDialog({
                     Venue
                     <input
                       name="venueName"
+                      defaultValue={initialValues?.venueName}
                       className={inputClass}
                       placeholder="Red River Arena"
                     />
@@ -144,6 +203,7 @@ export function CreateRopingDialog({
                     Address
                     <input
                       name="address"
+                      defaultValue={initialValues?.address}
                       className={inputClass}
                       placeholder="Wichita Falls, TX"
                     />
@@ -154,7 +214,24 @@ export function CreateRopingDialog({
                       name="startsAt"
                       type="datetime-local"
                       value={startsAt}
-                      onChange={(event) => setStartsAt(event.target.value)}
+                      onChange={(event) => {
+                        const nextStartsAt = event.target.value;
+                        if (startsAt && nextStartsAt) {
+                          const difference =
+                            Date.parse(`${nextStartsAt}:00Z`) -
+                            Date.parse(`${startsAt}:00Z`);
+                          setEndsAt((current) =>
+                            shiftLocalDateTime(current, difference),
+                          );
+                          setEntriesOpenAt((current) =>
+                            shiftLocalDateTime(current, difference),
+                          );
+                          setEntriesCloseAt((current) =>
+                            shiftLocalDateTime(current, difference),
+                          );
+                        }
+                        setStartsAt(nextStartsAt);
+                      }}
                       className={inputClass}
                       required
                     />
@@ -164,6 +241,8 @@ export function CreateRopingDialog({
                     <input
                       name="endsAt"
                       type="datetime-local"
+                      value={endsAt}
+                      onChange={(event) => setEndsAt(event.target.value)}
                       className={inputClass}
                     />
                     {state.errors?.endsAt ? (
@@ -177,6 +256,8 @@ export function CreateRopingDialog({
                     <input
                       name="entriesOpenAt"
                       type="datetime-local"
+                      value={entriesOpenAt}
+                      onChange={(event) => setEntriesOpenAt(event.target.value)}
                       className={inputClass}
                     />
                   </label>
@@ -185,6 +266,10 @@ export function CreateRopingDialog({
                     <input
                       name="entriesCloseAt"
                       type="datetime-local"
+                      value={entriesCloseAt}
+                      onChange={(event) =>
+                        setEntriesCloseAt(event.target.value)
+                      }
                       className={inputClass}
                     />
                   </label>
@@ -195,6 +280,7 @@ export function CreateRopingDialog({
                 templates={divisions}
                 classifications={incentiveClassifications}
                 eventStartDate={startsAt.slice(0, 10)}
+                initialOccurrences={initialValues?.occurrences}
                 error={state.errors?.classOccurrences?.[0]}
               />
 
@@ -205,7 +291,11 @@ export function CreateRopingDialog({
                 </p>
               ) : null}
 
-              <ShortRoundFields />
+              <ShortRoundFields
+                defaultEnabled={initialValues?.shortRoundEnabled}
+                defaultBrackets={initialValues?.shortRoundBrackets}
+                defaultTiePolicy={initialValues?.shortRoundTiePolicy}
+              />
               {state.errors?.shortRoundBrackets ? (
                 <p className="text-xs text-rose-700">
                   {state.errors.shortRoundBrackets[0]}
@@ -233,6 +323,7 @@ export function CreateRopingDialog({
                     Charge name
                     <input
                       name="eventFeeTitle"
+                      defaultValue={initialValues?.eventFeeTitle}
                       className={inputClass}
                       placeholder="Office charge"
                     />
@@ -246,6 +337,7 @@ export function CreateRopingDialog({
                         type="number"
                         min="0"
                         step="0.01"
+                        defaultValue={initialValues?.eventFeeAmount}
                         className="min-w-0 flex-1 bg-transparent pl-2 outline-none"
                         placeholder="20.00"
                       />
@@ -263,7 +355,7 @@ export function CreateRopingDialog({
                 <input
                   name="isPublic"
                   type="checkbox"
-                  defaultChecked
+                  defaultChecked={initialValues?.isPublic ?? true}
                   className="h-4 w-4 accent-[var(--brand-accent)]"
                 />
                 Publish this event on the organization schedule
@@ -297,7 +389,7 @@ export function CreateRopingDialog({
                   {pending ? (
                     <LoaderCircle size={16} className="animate-spin" />
                   ) : null}
-                  Create event
+                  {isDuplicate ? "Create duplicate" : "Create event"}
                 </button>
               </div>
             </form>
