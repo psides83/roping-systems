@@ -11,7 +11,16 @@ export function PublicResultsRefresh() {
     const supabase = createClient();
     const channel = supabase
       .channel("public-live-results")
-      .on("postgres_changes", { event: "*", schema: "public", table: "runs" }, () => router.refresh())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "runs" },
+        () => router.refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "roping_divisions" },
+        () => router.refresh(),
+      )
       .subscribe();
 
     return () => {

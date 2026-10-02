@@ -16,6 +16,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import type { RunStatus } from "@/lib/run-status";
 import type { RoundOrderMethod } from "@/types/domain";
+import type { ClassEventDayStatus } from "@/components/ropings/class-operations-dialog";
 import {
   finalizeRoping,
   startRoping,
@@ -36,6 +37,27 @@ interface LiveDivision {
   secondRoundOrdering: RoundOrderMethod;
   laterRoundOrdering: RoundOrderMethod;
   cattleDrawEnabled: boolean;
+  arenaName: string | null;
+  eventDayStatus: ClassEventDayStatus;
+  estimatedStart: string;
+  eventDayNote: string | null;
+}
+
+function toLocalDateTimeInput(value: string, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(value))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
 export default async function LiveRopingPage({
@@ -81,7 +103,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -103,6 +125,10 @@ export default async function LiveRopingPage({
       second_round_ordering: RoundOrderMethod;
       later_round_ordering: RoundOrderMethod;
       cattle_draw_enabled: boolean;
+      arena_name: string | null;
+      event_day_status: ClassEventDayStatus;
+      estimated_starts_at: string | null;
+      event_day_note: string | null;
     }>
   )
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -123,6 +149,15 @@ export default async function LiveRopingPage({
       secondRoundOrdering: division.second_round_ordering,
       laterRoundOrdering: division.later_round_ordering,
       cattleDrawEnabled: division.cattle_draw_enabled,
+      arenaName: division.arena_name,
+      eventDayStatus: division.event_day_status,
+      estimatedStart: division.estimated_starts_at
+        ? toLocalDateTimeInput(
+            division.estimated_starts_at,
+            organization.timezone,
+          )
+        : "",
+      eventDayNote: division.event_day_note,
     }));
   const selectedDivisionId = getSelectedDivisionId(divisions, query.division);
   const selectedDivision = divisions.find(
@@ -357,7 +392,7 @@ function LiveWorkspace({
             <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
           ) : null}
           <DatabaseLiveDesk
-            key={`${selectedDivisionId}-${selectedRound}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
+            key={`${selectedDivisionId}-${selectedRound}-${selectedDivision.eventDayStatus}-${selectedDivision.arenaName ?? ""}-${selectedDivision.estimatedStart}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
             ropingId={ropingId}
             divisions={divisions}
             selectedDivisionId={selectedDivisionId}
@@ -420,6 +455,10 @@ const previewDivisions: LiveDivision[] = [
     secondRoundOrdering: "reverse_first",
     laterRoundOrdering: "aggregate_slowest_to_fastest",
     cattleDrawEnabled: true,
+    arenaName: "Arena 1",
+    eventDayStatus: "in_progress",
+    estimatedStart: "",
+    eventDayNote: null,
   },
   {
     id: "breakaway-115",
@@ -433,6 +472,10 @@ const previewDivisions: LiveDivision[] = [
     secondRoundOrdering: "reverse_first",
     laterRoundOrdering: "aggregate_slowest_to_fastest",
     cattleDrawEnabled: false,
+    arenaName: "Arena 2",
+    eventDayStatus: "delayed",
+    estimatedStart: "2026-09-27T10:30",
+    eventDayNote: "Holding for arena preparation",
   },
 ];
 

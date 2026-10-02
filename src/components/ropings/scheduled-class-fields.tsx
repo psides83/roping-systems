@@ -43,6 +43,7 @@ interface ScheduledOccurrence {
   scheduleType: ScheduleType;
   startTime: string;
   scheduleNote: string;
+  arenaName: string;
   roundCount: number;
   incentiveEnabled: boolean;
   incentiveRules: Record<string, string>;
@@ -84,6 +85,7 @@ export function ScheduledClassFields({
               ? ""
               : `${occurrence.scheduledDate}T${occurrence.startTime}`,
           scheduleNote: occurrence.scheduleNote,
+          arenaName: occurrence.arenaName,
           roundCount: occurrence.roundCount,
           incentiveEnabled: occurrence.incentiveEnabled,
           cattleDrawEnabled: occurrence.cattleDrawEnabled,
@@ -110,6 +112,7 @@ export function ScheduledClassFields({
         scheduleType: "fixed",
         startTime: "",
         scheduleNote: "",
+        arenaName: "",
         roundCount: allRounds,
         incentiveEnabled: template?.competitionFormat === "handicap",
         incentiveRules: {},
@@ -354,6 +357,20 @@ export function ScheduledClassFields({
                     maxLength={120}
                     className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
                     placeholder="Arena drag before this roping"
+                  />
+                </Field>
+
+                <Field label="Arena (optional)">
+                  <input
+                    value={occurrence.arenaName}
+                    onChange={(event) =>
+                      updateOccurrence(occurrence.key, {
+                        arenaName: event.target.value,
+                      })
+                    }
+                    maxLength={80}
+                    className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
+                    placeholder="Arena 1"
                   />
                 </Field>
 

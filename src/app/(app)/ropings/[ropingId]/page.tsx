@@ -17,6 +17,11 @@ import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog"
 import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
 import { ClassCattleDrawForm } from "@/components/ropings/class-cattle-draw-form";
 import {
+  ClassOperationsDialog,
+  classEventDayStatusLabels,
+  type ClassEventDayStatus,
+} from "@/components/ropings/class-operations-dialog";
+import {
   ropings as demoRopings,
   divisionTemplates as demoDivisions,
 } from "@/data/demo";
@@ -52,6 +57,10 @@ interface EventDetail {
     secondRoundOrdering: RoundOrderMethod;
     laterRoundOrdering: RoundOrderMethod;
     cattleDrawEnabled: boolean;
+    arenaName: string | null;
+    eventDayStatus: ClassEventDayStatus;
+    estimatedStart: string;
+    eventDayNote: string | null;
     entries: number;
     startsAt: string | null;
     scheduledDate: string;
@@ -78,6 +87,23 @@ interface EventDetail {
       included: boolean;
     }>;
   }>;
+}
+
+function toLocalDateTimeInput(value: string, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(value))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
 async function getEvent(
@@ -113,6 +139,10 @@ async function getEvent(
             secondRoundOrdering: "reverse_first",
             laterRoundOrdering: "aggregate_slowest_to_fastest",
             cattleDrawEnabled: false,
+            arenaName: index % 2 === 0 ? "Arena 1" : "Arena 2",
+            eventDayStatus: "scheduled",
+            estimatedStart: "",
+            eventDayNote: null,
             entries: index === 0 ? roping.entries : 0,
             startsAt: null,
             scheduledDate: roping.date,
@@ -174,7 +204,7 @@ async function getEvent(
       supabase
         .from("ropings")
         .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
         )
         .eq("id", ropingId)
         .eq("organization_id", organization.id)
@@ -199,6 +229,10 @@ async function getEvent(
       second_round_ordering: RoundOrderMethod;
       later_round_ordering: RoundOrderMethod;
       cattle_draw_enabled: boolean;
+      arena_name: string | null;
+      event_day_status: ClassEventDayStatus;
+      estimated_starts_at: string | null;
+      event_day_note: string | null;
       short_round_enabled: boolean;
       starts_at: string | null;
       scheduled_date: string;
@@ -239,6 +273,15 @@ async function getEvent(
       secondRoundOrdering: division.second_round_ordering,
       laterRoundOrdering: division.later_round_ordering,
       cattleDrawEnabled: division.cattle_draw_enabled,
+      arenaName: division.arena_name,
+      eventDayStatus: division.event_day_status,
+      estimatedStart: division.estimated_starts_at
+        ? toLocalDateTimeInput(
+            division.estimated_starts_at,
+            organization.timezone,
+          )
+        : "",
+      eventDayNote: division.event_day_note,
       entries: division.entries.length,
       startsAt: division.starts_at
         ? new Intl.DateTimeFormat("en-US", {
@@ -335,6 +378,7 @@ export default async function RopingDetailPage({
   const roundsEditable = !["in_progress", "completed", "cancelled"].includes(
     event.status,
   );
+  const operationsEditable = !["completed", "cancelled"].includes(event.status);
   const roundAction = updateRopingRounds.bind(null, event.id);
   const spacingAction = updateClassEntrySpacing.bind(null, event.id);
 
@@ -489,6 +533,23 @@ export default async function RopingDetailPage({
                             : ""
                         }`}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                    {division.arenaName ? (
+                      <span className="rounded-md bg-[#f1f3f2] px-2 py-1">
+                        {division.arenaName}
+                      </span>
+                    ) : null}
+                    {division.eventDayStatus !== "scheduled" ? (
+                      <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">
+                        {classEventDayStatusLabels[division.eventDayStatus]}
+                      </span>
+                    ) : null}
+                  </div>
+                  {division.eventDayNote ? (
+                    <p className="mt-2 text-xs font-semibold text-amber-800">
+                      {division.eventDayNote}
+                    </p>
+                  ) : null}
                   {division.scheduleNote ? (
                     <p className="mt-1 text-xs text-[#758078]">
                       {division.scheduleNote}
@@ -505,6 +566,17 @@ export default async function RopingDetailPage({
                     startTime={division.startTime}
                     scheduleNote={division.scheduleNote}
                     editable={roundsEditable && isSupabaseConfigured()}
+                  />
+                  <ClassOperationsDialog
+                    ropingId={event.id}
+                    divisionId={division.id}
+                    className={division.name}
+                    arenaName={division.arenaName}
+                    status={division.eventDayStatus}
+                    estimatedStart={division.estimatedStart}
+                    note={division.eventDayNote}
+                    editable={operationsEditable && isSupabaseConfigured()}
+                    compact
                   />
                   <form action={roundAction} className="flex items-end gap-2">
                     <input

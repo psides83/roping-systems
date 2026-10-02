@@ -13,6 +13,7 @@ export interface LiveRunState {
 export type DrawOrderState = LiveRunState;
 export type ScheduleFormState = LiveRunState;
 export type CattleFormState = LiveRunState;
+export type EventDayFormState = LiveRunState;
 
 const shortRoundBracketSchema = z
   .array(
@@ -167,6 +168,47 @@ export async function drawRoundCattle(
     success: true,
     message: `${data} ${data === 1 ? "run" : "runs"} received a cattle draw.`,
   };
+}
+
+const eventDaySchema = z.object({
+  arenaName: z.string().trim().max(80),
+  eventDayStatus: z.enum([
+    "scheduled",
+    "delayed",
+    "holding",
+    "in_progress",
+    "completed",
+  ]),
+  estimatedStart: z.union([
+    z.literal(""),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+  ]),
+  eventDayNote: z.string().trim().max(180),
+});
+
+export async function updateClassEventDayStatus(
+  ropingId: string,
+  divisionId: string,
+  _state: EventDayFormState,
+  formData: FormData,
+): Promise<EventDayFormState> {
+  const parsed = eventDaySchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return { message: "Check the arena, status, expected start, and note." };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("update_class_event_day_status", {
+    target_roping_division_id: divisionId,
+    new_arena_name: parsed.data.arenaName,
+    new_event_day_status: parsed.data.eventDayStatus,
+    new_estimated_starts_at_local: parsed.data.estimatedStart || null,
+    new_event_day_note: parsed.data.eventDayNote,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath("/public");
+  return { success: true, message: "Live schedule update published." };
 }
 
 const scheduleSchema = z.object({

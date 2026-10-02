@@ -34,6 +34,11 @@ import {
 import { RunCorrectionDialog } from "@/components/ropings/run-correction-dialog";
 import { RerunSchedulingDialog } from "@/components/ropings/rerun-scheduling-dialog";
 import { CattleDrawPanel } from "@/components/ropings/cattle-draw-panel";
+import {
+  ClassOperationsDialog,
+  classEventDayStatusLabels,
+  type ClassEventDayStatus,
+} from "@/components/ropings/class-operations-dialog";
 import type { RoundOrderMethod } from "@/types/domain";
 
 export interface LiveRunRow {
@@ -63,6 +68,10 @@ interface LiveDeskProps {
     secondRoundOrdering: RoundOrderMethod;
     laterRoundOrdering: RoundOrderMethod;
     cattleDrawEnabled: boolean;
+    arenaName: string | null;
+    eventDayStatus: ClassEventDayStatus;
+    estimatedStart: string;
+    eventDayNote: string | null;
   }>;
   selectedDivisionId: string;
   selectedRound: number;
@@ -183,6 +192,27 @@ export function DatabaseLiveDesk({
               {isShortRound ? "Short round" : `Round ${selectedRound}`} ·{" "}
               {orderedRuns.length} entries
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase">
+              {selectedDivision?.arenaName ? (
+                <span className="rounded-md bg-[#eef1ef] px-2 py-1 text-[#526059]">
+                  {selectedDivision.arenaName}
+                </span>
+              ) : null}
+              {selectedDivision?.eventDayStatus !== "scheduled" ? (
+                <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">
+                  {
+                    classEventDayStatusLabels[
+                      selectedDivision?.eventDayStatus ?? "scheduled"
+                    ]
+                  }
+                </span>
+              ) : null}
+              {selectedDivision?.eventDayNote ? (
+                <span className="normal-case text-amber-800">
+                  {selectedDivision.eventDayNote}
+                </span>
+              ) : null}
+            </div>
           </div>
           <label className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
             <Search size={15} />
@@ -538,6 +568,18 @@ export function DatabaseLiveDesk({
       </section>
 
       <aside className="order-1 space-y-4 xl:order-2">
+        {selectedDivision ? (
+          <ClassOperationsDialog
+            ropingId={ropingId}
+            divisionId={selectedDivisionId}
+            className={selectedDivision.name}
+            arenaName={selectedDivision.arenaName}
+            status={selectedDivision.eventDayStatus}
+            estimatedStart={selectedDivision.estimatedStart}
+            note={selectedDivision.eventDayNote}
+            editable={canEdit && eventStatus !== "completed"}
+          />
+        ) : null}
         {cattleDrawEnabled ? (
           <CattleDrawPanel
             ropingId={ropingId}

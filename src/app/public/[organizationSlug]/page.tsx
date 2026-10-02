@@ -40,6 +40,10 @@ interface PublicEvent {
     startsAt: string | null;
     scheduleType: "fixed" | "tentative" | "follows_previous";
     scheduleNote: string | null;
+    arenaName: string | null;
+    eventDayStatus: string;
+    estimatedStartsAt: string | null;
+    eventDayNote: string | null;
   }>;
 }
 
@@ -95,6 +99,10 @@ async function getPublicData(organizationSlug: string) {
           startsAt: "9:00 AM",
           scheduleType: "fixed",
           scheduleNote: null,
+          arenaName: "Arena 1",
+          eventDayStatus: "scheduled",
+          estimatedStartsAt: null,
+          eventDayNote: null,
         },
         {
           id: `${event.id}-2`,
@@ -103,6 +111,10 @@ async function getPublicData(organizationSlug: string) {
           startsAt: null,
           scheduleType: "follows_previous",
           scheduleNote: null,
+          arenaName: "Arena 2",
+          eventDayStatus: "delayed",
+          estimatedStartsAt: null,
+          eventDayNote: "Holding for arena preparation",
         },
       ],
     }));
@@ -198,7 +210,7 @@ async function getPublicData(organizationSlug: string) {
   const { data: scheduleRows, error: classScheduleError } = await supabase
     .from("public_event_entry_options")
     .select(
-      "roping_id, division_id, division_name, division_starts_at, scheduled_date, schedule_type, schedule_note, sort_order",
+      "roping_id, division_id, division_name, division_starts_at, scheduled_date, schedule_type, schedule_note, arena_name, event_day_status, estimated_starts_at, event_day_note, sort_order",
     )
     .eq("organization_slug", organizationSlug)
     .order("scheduled_date")
@@ -294,6 +306,10 @@ async function getPublicData(organizationSlug: string) {
         startsAt: row.division_starts_at,
         scheduleType: row.schedule_type,
         scheduleNote: row.schedule_note,
+        arenaName: row.arena_name,
+        eventDayStatus: row.event_day_status,
+        estimatedStartsAt: row.estimated_starts_at,
+        eventDayNote: row.event_day_note,
       })),
   }));
   const logoUrl = organization.logo_path
@@ -449,6 +465,9 @@ export default async function OrganizationPublicPage({
                 </p>
               </div>
             </div>
+            {liveEvent.scheduledRopings.length ? (
+              <PublicClassSchedule ropings={liveEvent.scheduledRopings} live />
+            ) : null}
           </section>
         ) : (
           <section>
@@ -567,36 +586,7 @@ export default async function OrganizationPublicPage({
                     {[event.venue, event.address].filter(Boolean).join(", ")}
                   </p>
                   {event.scheduledRopings.length ? (
-                    <ol className="mt-4 divide-y divide-[#e7ebe8] border-y border-[#e7ebe8]">
-                      {event.scheduledRopings.map((roping) => (
-                        <li
-                          key={roping.id}
-                          className="flex items-start justify-between gap-3 py-2.5 text-xs"
-                        >
-                          <span className="font-semibold">{roping.name}</span>
-                          <span className="shrink-0 text-right text-[#66716b]">
-                            {roping.scheduleType === "follows_previous"
-                              ? "Follows previous"
-                              : `${new Intl.DateTimeFormat("en-US", {
-                                  weekday: "short",
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                }).format(new Date(roping.startsAt!))}${
-                                  roping.scheduleType === "tentative"
-                                    ? " tentative"
-                                    : ""
-                                }`}
-                            {roping.scheduleNote ? (
-                              <span className="block text-[10px]">
-                                {roping.scheduleNote}
-                              </span>
-                            ) : null}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
+                    <PublicClassSchedule ropings={event.scheduledRopings} />
                   ) : null}
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <p
@@ -630,5 +620,76 @@ export default async function OrganizationPublicPage({
         </section>
       </div>
     </main>
+  );
+}
+
+function PublicClassSchedule({
+  ropings,
+  live = false,
+}: {
+  ropings: PublicEvent["scheduledRopings"];
+  live?: boolean;
+}) {
+  const statusLabels: Record<string, string> = {
+    scheduled: "Scheduled",
+    delayed: "Delayed",
+    holding: "Holding",
+    in_progress: "In progress",
+    completed: "Completed",
+  };
+
+  return (
+    <ol
+      className={`${live ? "mt-6" : "mt-4"} divide-y divide-[#e7ebe8] border-y border-[#e7ebe8]`}
+    >
+      {ropings.map((roping) => {
+        const displayStart = roping.estimatedStartsAt ?? roping.startsAt;
+        return (
+          <li
+            key={roping.id}
+            className="flex items-start justify-between gap-3 py-3 text-xs"
+          >
+            <span className="min-w-0 font-semibold">
+              <span className="block truncate">{roping.name}</span>
+              {roping.arenaName ? (
+                <span className="mt-1 block text-[10px] font-medium text-[#66716b]">
+                  {roping.arenaName}
+                </span>
+              ) : null}
+            </span>
+            <span className="shrink-0 text-right text-[#66716b]">
+              <span className="block">
+                {displayStart
+                  ? `${roping.estimatedStartsAt ? "Updated " : ""}${new Intl.DateTimeFormat(
+                      "en-US",
+                      {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      },
+                    ).format(new Date(displayStart))}`
+                  : "Follows previous"}
+                {!roping.estimatedStartsAt &&
+                roping.scheduleType === "tentative"
+                  ? " tentative"
+                  : ""}
+              </span>
+              {roping.eventDayStatus !== "scheduled" ? (
+                <span className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 font-bold text-amber-800">
+                  {statusLabels[roping.eventDayStatus] ?? roping.eventDayStatus}
+                </span>
+              ) : null}
+              {(roping.eventDayNote ?? roping.scheduleNote) ? (
+                <span className="mt-1 block max-w-64 text-[10px]">
+                  {roping.eventDayNote ?? roping.scheduleNote}
+                </span>
+              ) : null}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
