@@ -39,6 +39,10 @@ import {
   classEventDayStatusLabels,
   type ClassEventDayStatus,
 } from "@/components/ropings/class-operations-dialog";
+import {
+  ShortRoundFieldDialog,
+  type ShortRoundCandidate,
+} from "@/components/ropings/short-round-field-dialog";
 import type { RoundOrderMethod } from "@/types/domain";
 
 export interface LiveRunRow {
@@ -65,6 +69,7 @@ interface LiveDeskProps {
     numberOfRuns: number;
     shortRoundEnabled: boolean;
     shortRoundSeeded: boolean;
+    shortRoundLocked: boolean;
     secondRoundOrdering: RoundOrderMethod;
     laterRoundOrdering: RoundOrderMethod;
     cattleDrawEnabled: boolean;
@@ -77,6 +82,7 @@ interface LiveDeskProps {
   selectedRound: number;
   runs: LiveRunRow[];
   cattleTags: string[];
+  shortRoundCandidates: ShortRoundCandidate[];
   roundLocked: boolean;
   timerCount: number;
   timerResolution: "average" | "best" | "longest";
@@ -94,6 +100,7 @@ export function DatabaseLiveDesk({
   selectedRound,
   runs,
   cattleTags,
+  shortRoundCandidates,
   roundLocked,
   timerCount,
   timerResolution,
@@ -314,6 +321,19 @@ export function DatabaseLiveDesk({
                     Build short round
                   </button>
                 </form>
+              ) : null}
+              {isShortRound && shortRoundSeeded ? (
+                <ShortRoundFieldDialog
+                  ropingId={ropingId}
+                  divisionId={selectedDivisionId}
+                  candidates={shortRoundCandidates}
+                  locked={selectedDivision?.shortRoundLocked ?? false}
+                  editable={
+                    canEdit &&
+                    eventStatus === "in_progress" &&
+                    orderedRuns.every((run) => run.status === "pending")
+                  }
+                />
               ) : null}
               {dirty ? (
                 <form action={orderFormAction}>

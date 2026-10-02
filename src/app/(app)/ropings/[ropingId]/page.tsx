@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
-import { ShortRoundSettingsForm } from "@/components/ropings/short-round-settings";
+import {
+  ShortRoundSettingsForm,
+  type ShortRoundTiePolicy,
+} from "@/components/ropings/short-round-settings";
 import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
 import { ClassCattleDrawForm } from "@/components/ropings/class-cattle-draw-form";
@@ -75,6 +78,7 @@ interface EventDetail {
       adjustmentSeconds: number;
     }>;
     shortRoundEnabled: boolean;
+    shortRoundTiePolicy: ShortRoundTiePolicy;
     shortRoundBrackets: Array<{
       minimumEntries: number;
       maximumEntries: number | null;
@@ -170,6 +174,7 @@ async function getEvent(
                   ]
                 : [],
             shortRoundEnabled: index === 0,
+            shortRoundTiePolicy: "advance_all",
             shortRoundBrackets:
               index === 0
                 ? [
@@ -204,7 +209,7 @@ async function getEvent(
       supabase
         .from("ropings")
         .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
         )
         .eq("id", ropingId)
         .eq("organization_id", organization.id)
@@ -234,6 +239,7 @@ async function getEvent(
       estimated_starts_at: string | null;
       event_day_note: string | null;
       short_round_enabled: boolean;
+      short_round_tie_policy: ShortRoundTiePolicy;
       starts_at: string | null;
       scheduled_date: string;
       schedule_type: "fixed" | "tentative" | "follows_previous";
@@ -317,6 +323,7 @@ async function getEvent(
         adjustmentSeconds: Number(rule.adjustment_seconds),
       })),
       shortRoundEnabled: division.short_round_enabled,
+      shortRoundTiePolicy: division.short_round_tie_policy,
       shortRoundBrackets: division.roping_short_round_brackets
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((bracket) => ({
@@ -681,6 +688,7 @@ export default async function RopingDetailPage({
                 divisionId={division.id}
                 enabled={division.shortRoundEnabled}
                 brackets={division.shortRoundBrackets}
+                tiePolicy={division.shortRoundTiePolicy}
                 editable={roundsEditable && isSupabaseConfigured()}
               />
             </div>

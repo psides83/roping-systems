@@ -13,6 +13,8 @@ export interface ShortRoundBracket {
   comebackCount: number;
 }
 
+export type ShortRoundTiePolicy = "advance_all" | "fastest_last_round";
+
 const inputClass =
   "h-9 w-full rounded-md border border-[#ccd4d0] bg-white px-2 font-mono text-sm outline-none focus:border-[var(--brand-accent)] disabled:bg-[#f1f3f2]";
 
@@ -25,10 +27,12 @@ const defaultBracket: ShortRoundBracket = {
 export function ShortRoundFields({
   defaultEnabled = false,
   defaultBrackets = [defaultBracket],
+  defaultTiePolicy = "advance_all",
   disabled = false,
 }: {
   defaultEnabled?: boolean;
   defaultBrackets?: ShortRoundBracket[];
+  defaultTiePolicy?: ShortRoundTiePolicy;
   disabled?: boolean;
 }) {
   const [enabled, setEnabled] = useState(defaultEnabled);
@@ -94,6 +98,20 @@ export function ShortRoundFields({
       </label>
       {enabled ? (
         <div className="space-y-3 border-t border-[#e7ebe8] p-4">
+          <label className="block text-xs font-semibold text-[#66716b]">
+            Tie at the finalist cutoff
+            <select
+              name="shortRoundTiePolicy"
+              defaultValue={defaultTiePolicy}
+              disabled={disabled}
+              className="mt-2 h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal text-[#17201c] disabled:bg-[#f1f3f2]"
+            >
+              <option value="advance_all">Advance every tied entry</option>
+              <option value="fastest_last_round">
+                Fastest final main-round time advances
+              </option>
+            </select>
+          </label>
           <div>
             <p className="text-sm font-bold">Comeback schedule</p>
             <p className="mt-1 text-xs leading-5 text-[#758078]">
@@ -178,6 +196,13 @@ export function ShortRoundFields({
           </button>
         </div>
       ) : null}
+      {!enabled ? (
+        <input
+          type="hidden"
+          name="shortRoundTiePolicy"
+          value={defaultTiePolicy}
+        />
+      ) : null}
     </section>
   );
 }
@@ -187,12 +212,14 @@ export function ShortRoundSettingsForm({
   divisionId,
   enabled,
   brackets,
+  tiePolicy,
   editable,
 }: {
   ropingId: string;
   divisionId: string;
   enabled: boolean;
   brackets: ShortRoundBracket[];
+  tiePolicy: ShortRoundTiePolicy;
   editable: boolean;
 }) {
   const action = saveShortRoundSettings.bind(null, ropingId, divisionId);
@@ -206,6 +233,7 @@ export function ShortRoundSettingsForm({
       <ShortRoundFields
         defaultEnabled={enabled}
         defaultBrackets={brackets}
+        defaultTiePolicy={tiePolicy}
         disabled={!editable}
       />
       {state.message ? (

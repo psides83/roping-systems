@@ -167,8 +167,14 @@ export async function createRoping(
     };
 
   const shortRoundEnabled = formData.get("shortRoundEnabled") === "on";
+  const shortRoundTiePolicy = z
+    .enum(["advance_all", "fastest_last_round"])
+    .safeParse(formData.get("shortRoundTiePolicy"));
   const shortRoundBrackets = getShortRoundBrackets(formData);
-  if (shortRoundEnabled && !shortRoundBrackets.success)
+  if (
+    shortRoundEnabled &&
+    (!shortRoundBrackets.success || !shortRoundTiePolicy.success)
+  )
     return {
       errors: {
         shortRoundBrackets: [
@@ -182,27 +188,33 @@ export async function createRoping(
     return { message: "You do not have permission to create events." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_roping_with_event_operations", {
-    target_organization_id: organization.id,
-    event_title: parsed.data.title,
-    event_slug: parsed.data.slug,
-    event_venue_name: parsed.data.venueName,
-    event_address: parsed.data.address,
-    event_starts_at_local: parsed.data.startsAt,
-    event_ends_at_local: parsed.data.endsAt || null,
-    event_entries_open_at_local: parsed.data.entriesOpenAt || null,
-    event_entries_close_at_local: parsed.data.entriesCloseAt || null,
-    event_is_public: parsed.data.isPublic === "on",
-    event_class_occurrences: classOccurrences,
-    event_short_round_enabled: shortRoundEnabled,
-    event_short_round_brackets: shortRoundBrackets.success
-      ? shortRoundBrackets.data
-      : [],
-    event_fee_title: parsed.data.eventFeeTitle,
-    event_fee_amount_cents: parsed.data.eventFeeAmount
-      ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
-      : null,
-  });
+  const { error } = await supabase.rpc(
+    "create_roping_with_short_round_policy",
+    {
+      target_organization_id: organization.id,
+      event_title: parsed.data.title,
+      event_slug: parsed.data.slug,
+      event_venue_name: parsed.data.venueName,
+      event_address: parsed.data.address,
+      event_starts_at_local: parsed.data.startsAt,
+      event_ends_at_local: parsed.data.endsAt || null,
+      event_entries_open_at_local: parsed.data.entriesOpenAt || null,
+      event_entries_close_at_local: parsed.data.entriesCloseAt || null,
+      event_is_public: parsed.data.isPublic === "on",
+      event_class_occurrences: classOccurrences,
+      event_short_round_enabled: shortRoundEnabled,
+      event_short_round_brackets: shortRoundBrackets.success
+        ? shortRoundBrackets.data
+        : [],
+      event_short_round_tie_policy: shortRoundTiePolicy.success
+        ? shortRoundTiePolicy.data
+        : "advance_all",
+      event_fee_title: parsed.data.eventFeeTitle,
+      event_fee_amount_cents: parsed.data.eventFeeAmount
+        ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
+        : null,
+    },
+  );
 
   if (error)
     return {

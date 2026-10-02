@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { RunStatus } from "@/lib/run-status";
 import type { RoundOrderMethod } from "@/types/domain";
 import type { ClassEventDayStatus } from "@/components/ropings/class-operations-dialog";
+import type { ShortRoundCandidate } from "@/components/ropings/short-round-field-dialog";
 import {
   finalizeRoping,
   startRoping,
@@ -31,6 +32,7 @@ interface LiveDivision {
   numberOfRuns: number;
   shortRoundEnabled: boolean;
   shortRoundSeeded: boolean;
+  shortRoundLocked: boolean;
   timerCount: number;
   timerResolution: TimerResolution;
   competitionFormat: CompetitionFormat;
@@ -89,6 +91,7 @@ export default async function LiveRopingPage({
         )}
         runs={previewRuns}
         cattleTags={[]}
+        shortRoundCandidates={[]}
         fourDResults={[]}
         roundLocked={false}
         mainRoundsComplete
@@ -103,7 +106,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note)",
+      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, short_round_locked_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -119,6 +122,7 @@ export default async function LiveRopingPage({
       number_of_runs: number;
       short_round_enabled: boolean;
       short_round_seeded_at: string | null;
+      short_round_locked_at: string | null;
       timer_count: number;
       timer_resolution: TimerResolution;
       competition_format: CompetitionFormat;
@@ -143,6 +147,7 @@ export default async function LiveRopingPage({
       numberOfRuns: division.number_of_runs,
       shortRoundEnabled: division.short_round_enabled,
       shortRoundSeeded: Boolean(division.short_round_seeded_at),
+      shortRoundLocked: Boolean(division.short_round_locked_at),
       timerCount: division.timer_count,
       timerResolution: division.timer_resolution,
       competitionFormat: division.competition_format,
@@ -172,6 +177,7 @@ export default async function LiveRopingPage({
   let fourDResults: FourDResultRow[] = [];
   let roundLocked = false;
   let cattleTags: string[] = [];
+  let shortRoundCandidates: ShortRoundCandidate[] = [];
 
   if (selectedDivisionId) {
     const { data: runData, error } = await supabase
@@ -226,6 +232,31 @@ export default async function LiveRopingPage({
       if (cattleError)
         throw new Error(`Unable to load event cattle: ${cattleError.message}`);
       cattleTags = cattleData.map((animal) => animal.tag_number);
+    }
+    if (selectedDivision?.shortRoundSeeded) {
+      const { data: candidateData, error: candidateError } = await supabase.rpc(
+        "get_short_round_candidates",
+        { target_roping_division_id: selectedDivisionId },
+      );
+      if (candidateError)
+        throw new Error(
+          `Unable to load short round finalists: ${candidateError.message}`,
+        );
+      shortRoundCandidates = (
+        (candidateData ?? []) as Array<{
+          entry_id: string;
+          contestant_name: string;
+          aggregate_time: number;
+          last_round_time: number;
+          is_qualifier: boolean;
+        }>
+      ).map((candidate) => ({
+        entryId: candidate.entry_id,
+        name: candidate.contestant_name,
+        aggregateTime: Number(candidate.aggregate_time),
+        lastRoundTime: Number(candidate.last_round_time),
+        isQualifier: candidate.is_qualifier,
+      }));
     }
     if (
       selectedDivision &&
@@ -314,6 +345,7 @@ export default async function LiveRopingPage({
       selectedRound={selectedRound}
       runs={runs}
       cattleTags={cattleTags}
+      shortRoundCandidates={shortRoundCandidates}
       fourDResults={fourDResults}
       roundLocked={roundLocked}
       mainRoundsComplete={mainRoundsComplete}
@@ -332,6 +364,7 @@ function LiveWorkspace({
   selectedRound,
   runs,
   cattleTags,
+  shortRoundCandidates,
   fourDResults,
   roundLocked,
   mainRoundsComplete,
@@ -346,6 +379,7 @@ function LiveWorkspace({
   selectedRound: number;
   runs: LiveRunRow[];
   cattleTags: string[];
+  shortRoundCandidates: ShortRoundCandidate[];
   fourDResults: FourDResultRow[];
   roundLocked: boolean;
   mainRoundsComplete: boolean;
@@ -392,13 +426,14 @@ function LiveWorkspace({
             <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
           ) : null}
           <DatabaseLiveDesk
-            key={`${selectedDivisionId}-${selectedRound}-${selectedDivision.eventDayStatus}-${selectedDivision.arenaName ?? ""}-${selectedDivision.estimatedStart}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
+            key={`${selectedDivisionId}-${selectedRound}-${selectedDivision.shortRoundLocked}-${selectedDivision.eventDayStatus}-${selectedDivision.arenaName ?? ""}-${selectedDivision.estimatedStart}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
             ropingId={ropingId}
             divisions={divisions}
             selectedDivisionId={selectedDivisionId}
             selectedRound={selectedRound}
             runs={runs}
             cattleTags={cattleTags}
+            shortRoundCandidates={shortRoundCandidates}
             roundLocked={roundLocked}
             timerCount={selectedDivision.timerCount}
             timerResolution={selectedDivision.timerResolution}
@@ -449,6 +484,7 @@ const previewDivisions: LiveDivision[] = [
     numberOfRuns: 2,
     shortRoundEnabled: true,
     shortRoundSeeded: true,
+    shortRoundLocked: false,
     timerCount: 2,
     timerResolution: "average",
     competitionFormat: "standard",
@@ -466,6 +502,7 @@ const previewDivisions: LiveDivision[] = [
     numberOfRuns: 1,
     shortRoundEnabled: false,
     shortRoundSeeded: false,
+    shortRoundLocked: false,
     timerCount: 2,
     timerResolution: "longest",
     competitionFormat: "handicap",

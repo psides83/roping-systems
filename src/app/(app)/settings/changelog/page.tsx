@@ -28,6 +28,7 @@ const entityLabels: Record<string, string> = {
   run_timer_readings: "Timer reading",
   run_rerun_history: "Rerun schedule",
   roping_rounds: "Roping round",
+  short_round_field_changes: "Short round finalist change",
   online_entry_requests: "Online entry request",
 };
 
@@ -70,6 +71,12 @@ function describeChanges(
         before: formatValue(after?.previous_draw_position),
         after: formatValue(after?.scheduled_draw_position),
       },
+    ];
+  }
+  if (entityType === "short_round_field_changes" && action === "insert") {
+    return [
+      { field: "Change", before: "", after: formatValue(after?.action) },
+      { field: "Reason", before: "", after: formatValue(after?.reason) },
     ];
   }
   if (

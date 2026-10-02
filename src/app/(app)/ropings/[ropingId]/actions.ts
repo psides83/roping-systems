@@ -311,6 +311,9 @@ export async function saveShortRoundSettings(
   formData: FormData,
 ): Promise<LiveRunState> {
   const enabled = formData.get("shortRoundEnabled") === "on";
+  const tiePolicy = z
+    .enum(["advance_all", "fastest_last_round"])
+    .safeParse(formData.get("shortRoundTiePolicy"));
   let brackets: z.infer<typeof shortRoundBracketSchema> = [];
   try {
     const parsed = shortRoundBracketSchema.safeParse(
@@ -324,11 +327,17 @@ export async function saveShortRoundSettings(
   }
 
   const supabase = await requireManager();
-  const { error } = await supabase.rpc("save_short_round_settings", {
-    target_roping_division_id: divisionId,
-    short_round_is_enabled: enabled,
-    short_round_brackets: enabled ? brackets : [],
-  });
+  if (!tiePolicy.success) return { message: "Choose how cutoff ties advance." };
+
+  const { error } = await supabase.rpc(
+    "save_short_round_settings_with_tie_policy",
+    {
+      target_roping_division_id: divisionId,
+      short_round_is_enabled: enabled,
+      short_round_brackets: enabled ? brackets : [],
+      tie_policy: tiePolicy.data,
+    },
+  );
   if (error) return { message: error.message };
   revalidatePath(`/ropings/${ropingId}`);
   revalidatePath(`/ropings/${ropingId}/live`);
@@ -355,6 +364,61 @@ export async function seedShortRound(
     success: true,
     message: `${data} ${data === 1 ? "entry" : "entries"} advanced to the short round.`,
   };
+}
+
+const shortRoundFieldChangeSchema = z.object({
+  entryId: z.uuid(),
+  fieldAction: z.enum(["added", "removed"]),
+  reason: z.string().trim().min(5).max(300),
+});
+
+export async function changeShortRoundQualifier(
+  ropingId: string,
+  divisionId: string,
+  _state: LiveRunState,
+  formData: FormData,
+): Promise<LiveRunState> {
+  const parsed = shortRoundFieldChangeSchema.safeParse(
+    Object.fromEntries(formData),
+  );
+  if (!parsed.success)
+    return { message: "Choose a contestant and enter a brief reason." };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("manage_short_round_qualifier", {
+    target_roping_division_id: divisionId,
+    target_entry_id: parsed.data.entryId,
+    field_action: parsed.data.fieldAction,
+    change_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath("/public");
+  return {
+    success: true,
+    message:
+      parsed.data.fieldAction === "added"
+        ? "Finalist added and the short-round order rebuilt."
+        : "Finalist removed and the short-round order rebuilt.",
+  };
+}
+
+export async function lockShortRoundField(
+  ropingId: string,
+  divisionId: string,
+  _state: LiveRunState,
+  _formData: FormData,
+): Promise<LiveRunState> {
+  void _state;
+  void _formData;
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("lock_short_round_field", {
+    target_roping_division_id: divisionId,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath("/public");
+  return { success: true, message: "Short round field locked." };
 }
 
 const runSchema = z.object({
