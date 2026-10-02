@@ -71,6 +71,7 @@ export default async function EventEntriesPage({
                 eligibilityOverridden: false,
                 eligibilityIssue: null,
                 eligibilityOverrideReason: null,
+                options: [],
               },
               {
                 id: "jace-2",
@@ -84,6 +85,7 @@ export default async function EventEntriesPage({
                 eligibilityOverridden: false,
                 eligibilityIssue: null,
                 eligibilityOverrideReason: null,
+                options: [],
               },
             ],
             charges: [
@@ -133,6 +135,7 @@ export default async function EventEntriesPage({
                 eligibilityIssue:
                   "Contestant classification is below this class",
                 eligibilityOverrideReason: "Approved by event director",
+                options: [],
               },
             ],
             charges: [
@@ -192,7 +195,7 @@ export default async function EventEntriesPage({
     supabase
       .from("entry_charges")
       .select(
-        "id, person_id, entry_id, title, amount_cents, waived_at, waiver_reason",
+        "id, person_id, entry_id, roping_fee_id, title, amount_cents, waived_at, waiver_reason",
       )
       .eq("roping_id", ropingId)
       .order("created_at"),
@@ -285,6 +288,9 @@ export default async function EventEntriesPage({
   const divisionNames = new Map(
     divisions.map((division) => [division.id, division.name]),
   );
+  const divisionOptions = new Map(
+    divisions.map((division) => [division.id, division.options]),
+  );
   const latestTransferByEntry = new Map<
     string,
     { sourceDivisionId: string; reason: string }
@@ -340,6 +346,15 @@ export default async function EventEntriesPage({
       eligibilityOverridden: entry.eligibility_overridden,
       eligibilityIssue: entry.eligibility_note,
       eligibilityOverrideReason: entry.eligibility_override_reason,
+      options: (divisionOptions.get(division.id) ?? []).map((option) => ({
+        ...option,
+        selected: (chargeData ?? []).some(
+          (charge) =>
+            charge.person_id === entry.person_id &&
+            charge.roping_fee_id === option.id &&
+            (charge.entry_id === entry.id || charge.entry_id === null),
+        ),
+      })),
     });
     contestantsByPerson.set(entry.person_id, contestant);
   }

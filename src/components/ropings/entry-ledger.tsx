@@ -10,6 +10,10 @@ import {
   EntryTransferDialog,
   type TransferDivision,
 } from "@/components/ropings/entry-transfer-dialog";
+import {
+  EntryOptionsDialog,
+  type EntryOptionChoice,
+} from "@/components/ropings/entry-options-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
@@ -34,6 +38,7 @@ export interface LedgerContestant {
     eligibilityOverridden: boolean;
     eligibilityIssue: string | null;
     eligibilityOverrideReason: string | null;
+    options: EntryOptionChoice[];
   }>;
   charges: Array<{
     id: string;
@@ -201,6 +206,14 @@ function ContestantRow({
                     {entry.transferNote}
                   </span>
                 ) : null}
+                {entry.options.some((option) => option.selected) ? (
+                  <span className="mt-1 block font-normal text-[#66716b]">
+                    {entry.options
+                      .filter((option) => option.selected)
+                      .map((option) => option.title)
+                      .join(" · ")}
+                  </span>
+                ) : null}
                 {entry.eligibilityOverridden ? (
                   <span className="mt-1 flex max-w-72 items-start gap-1 font-normal leading-4 text-amber-800">
                     <ShieldAlert size={12} className="mt-0.5 shrink-0" />
@@ -211,6 +224,14 @@ function ContestantRow({
                   </span>
                 ) : null}
               </span>
+              <EntryOptionsDialog
+                ropingId={ropingId}
+                entryId={entry.id}
+                contestantName={contestant.name}
+                divisionName={entry.division}
+                options={entry.options}
+                enabled={canEdit}
+              />
               <EntryTransferDialog
                 ropingId={ropingId}
                 entryId={entry.id}

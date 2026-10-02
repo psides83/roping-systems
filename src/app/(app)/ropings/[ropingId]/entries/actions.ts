@@ -22,6 +22,11 @@ export interface TransferFormState {
   errors?: Record<string, string[]>;
 }
 
+export interface EntryOptionFormState {
+  success?: boolean;
+  message?: string;
+}
+
 const eligibilityOverrideFields = {
   eligibilityOverride: z.string().optional(),
   eligibilityOverrideReason: z.string().trim().max(300),
@@ -316,4 +321,30 @@ export async function transferEntry(
   revalidatePath(`/ropings/${ropingId}/live`);
   revalidatePath(`/ropings/${ropingId}/payouts`);
   return { success: true, message: "Entry moved to the new class." };
+}
+
+export async function updateEntryOptions(
+  ropingId: string,
+  entryId: string,
+  _state: EntryOptionFormState,
+  formData: FormData,
+): Promise<EntryOptionFormState> {
+  if (!z.uuid().safeParse(entryId).success)
+    return { message: "This entry is unavailable." };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const optionIds = getOptionIds(formData);
+  const { data, error } = await context.supabase.rpc("set_entry_options", {
+    target_entry_id: entryId,
+    selected_roping_fee_ids: optionIds,
+  });
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  return {
+    success: true,
+    message: `${data} optional ${data === 1 ? "fee" : "fees"} selected.`,
+  };
 }
