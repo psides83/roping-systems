@@ -71,7 +71,7 @@ async function getClassificationData() {
               id: "115",
               name: "11.5",
               description: "",
-              rank: 115,
+              rank: 11.5,
               eligibilityType: "skill",
               minimumAge: null,
               maximumAge: null,
@@ -81,7 +81,7 @@ async function getClassificationData() {
               id: "11",
               name: "11",
               description: "",
-              rank: 110,
+              rank: 11,
               eligibilityType: "skill",
               minimumAge: null,
               maximumAge: null,
@@ -91,7 +91,7 @@ async function getClassificationData() {
               id: "10",
               name: "10",
               description: "",
-              rank: 100,
+              rank: 10,
               eligibilityType: "skill",
               minimumAge: null,
               maximumAge: null,
@@ -390,7 +390,7 @@ export default async function ClassificationSettingsPage() {
                       </td>
                       <td className="px-5 py-3 font-mono text-xs text-[#66716b]">
                         {classification.eligibilityType === "skill"
-                          ? classification.rank / 10
+                          ? classification.rank
                           : 0}
                       </td>
                       <td className="px-5 py-3 text-xs font-semibold text-[#66716b]">

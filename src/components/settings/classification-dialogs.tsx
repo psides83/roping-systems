@@ -62,7 +62,7 @@ function ClassificationNumberField({
           min="0"
           max="100"
           step="0.1"
-          defaultValue={defaultRank / 10}
+          defaultValue={defaultRank}
           className={inputClass}
           required
         />

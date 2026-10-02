@@ -96,9 +96,9 @@ async function getMemberDetail(
           id: "calf-roping",
           name: "Calf roping",
           classifications: [
-            { id: "open", name: "Open", rank: 200 },
-            { id: "115", name: "11.5", rank: 115 },
-            { id: "11", name: "11", rank: 110 },
+            { id: "open", name: "Open", rank: 0 },
+            { id: "115", name: "11.5", rank: 11.5 },
+            { id: "11", name: "11", rank: 11 },
           ],
         },
       ],

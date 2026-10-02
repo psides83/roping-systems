@@ -164,10 +164,7 @@ export async function createClassification(
     discipline_id: discipline.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
-    rank:
-      parsed.data.eligibilityType === "skill"
-        ? Math.round(parsed.data.rank * 10)
-        : 0,
+    rank: parsed.data.eligibilityType === "skill" ? parsed.data.rank : 0,
     eligibility_type: parsed.data.eligibilityType,
     minimum_age:
       parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
@@ -251,10 +248,7 @@ export async function updateClassification(
     .update({
       name: parsed.data.name,
       description: parsed.data.description || null,
-      rank:
-        parsed.data.eligibilityType === "skill"
-          ? Math.round(parsed.data.rank * 10)
-          : 0,
+      rank: parsed.data.eligibilityType === "skill" ? parsed.data.rank : 0,
       eligibility_type: parsed.data.eligibilityType,
       minimum_age:
         parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
