@@ -14,6 +14,7 @@ export type DrawOrderState = LiveRunState;
 export type ScheduleFormState = LiveRunState;
 export type CattleFormState = LiveRunState;
 export type EventDayFormState = LiveRunState;
+export type EventScheduleFormState = LiveRunState;
 
 const shortRoundBracketSchema = z
   .array(
@@ -30,6 +31,88 @@ async function requireManager() {
   if (!organization || organization.role === "viewer")
     throw new Error("Manager access is required.");
   return createClient();
+}
+
+const addEventRopingSchema = z.object({
+  templateId: z.uuid(),
+  classificationId: z.union([z.literal(""), z.uuid()]),
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
+  startTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .or(z.literal("")),
+  scheduleNote: z.string().trim().max(120),
+  arenaName: z.string().trim().max(80),
+  roundCount: z.coerce.number().int().min(1).max(20),
+  cattleDrawEnabled: z.string().optional(),
+});
+
+export async function addRopingToEvent(
+  ropingId: string,
+  _state: EventScheduleFormState,
+  formData: FormData,
+): Promise<EventScheduleFormState> {
+  const parsed = addEventRopingSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return {
+      message: parsed.error.issues[0]?.message ?? "Check the roping setup.",
+    };
+  if (parsed.data.scheduleType !== "follows_previous" && !parsed.data.startTime)
+    return { message: "Set and tentative schedules require a start time." };
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("add_roping_to_event", {
+    target_roping_id: ropingId,
+    target_template_id: parsed.data.templateId,
+    target_classification_id: parsed.data.classificationId || null,
+    target_scheduled_date: parsed.data.scheduledDate,
+    target_schedule_type: parsed.data.scheduleType,
+    target_starts_at_local:
+      parsed.data.scheduleType === "follows_previous"
+        ? null
+        : `${parsed.data.scheduledDate}T${parsed.data.startTime}:00`,
+    target_schedule_note: parsed.data.scheduleNote,
+    target_arena_name: parsed.data.arenaName,
+    target_round_count: parsed.data.roundCount,
+    target_cattle_draw_enabled: parsed.data.cattleDrawEnabled === "on",
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath("/public");
+  return { success: true, message: "Roping added to the event." };
+}
+
+const removeEventRopingSchema = z.object({
+  reason: z.string().trim().min(5, "Enter a brief removal reason.").max(300),
+});
+
+export async function removeRopingFromEvent(
+  ropingId: string,
+  divisionId: string,
+  _state: EventScheduleFormState,
+  formData: FormData,
+): Promise<EventScheduleFormState> {
+  const parsed = removeEventRopingSchema.safeParse(
+    Object.fromEntries(formData),
+  );
+  if (!parsed.success) return { message: parsed.error.issues[0]?.message };
+  const supabase = await requireManager();
+  const { data, error } = await supabase.rpc("remove_roping_from_event", {
+    target_roping_division_id: divisionId,
+    removal_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/live`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  revalidatePath("/public");
+  return {
+    success: true,
+    message: `Roping removed${data ? ` with ${data} ${data === 1 ? "entry" : "entries"}` : ""}.`,
+  };
 }
 
 const roundCountSchema = z.object({

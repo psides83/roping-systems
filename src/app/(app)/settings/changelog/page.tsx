@@ -31,6 +31,7 @@ const entityLabels: Record<string, string> = {
   short_round_field_changes: "Short round finalist change",
   online_entry_requests: "Online entry request",
   event_payments: "Cash payment",
+  event_roping_removals: "Removed event roping",
 };
 
 const ignoredFields = new Set(["updated_at", "created_at"]);
@@ -77,6 +78,17 @@ function describeChanges(
   if (entityType === "short_round_field_changes" && action === "insert") {
     return [
       { field: "Change", before: "", after: formatValue(after?.action) },
+      { field: "Reason", before: "", after: formatValue(after?.reason) },
+    ];
+  }
+  if (entityType === "event_roping_removals" && action === "insert") {
+    return [
+      { field: "Roping", before: "", after: formatValue(after?.roping_name) },
+      {
+        field: "Entries removed",
+        before: "",
+        after: formatValue(after?.entry_count),
+      },
       { field: "Reason", before: "", after: formatValue(after?.reason) },
     ];
   }

@@ -25,6 +25,12 @@ import {
   type ClassEventDayStatus,
 } from "@/components/ropings/class-operations-dialog";
 import {
+  AddEventRopingDialog,
+  RemoveEventRopingDialog,
+  type AddRopingClassification,
+  type AddRopingTemplate,
+} from "@/components/ropings/event-schedule-roster";
+import {
   ropings as demoRopings,
   divisionTemplates as demoDivisions,
 } from "@/data/demo";
@@ -47,6 +53,10 @@ interface EventDetail {
   isPublic: boolean;
   entriesOpenAt: string | null;
   entriesCloseAt: string | null;
+  defaultScheduleDate: string;
+  canManage: boolean;
+  availableTemplates: AddRopingTemplate[];
+  availableClassifications: AddRopingClassification[];
   eventFees: Array<{
     id: string;
     title: string;
@@ -130,6 +140,10 @@ async function getEvent(
         isPublic: true,
         entriesOpenAt: null,
         entriesCloseAt: null,
+        defaultScheduleDate: "2026-09-27",
+        canManage: false,
+        availableTemplates: [],
+        availableClassifications: [],
         eventFees: [
           { id: "preview-office", title: "Office charge", amountCents: 2000 },
         ],
@@ -204,27 +218,45 @@ async function getEvent(
   const organization = await getActiveOrganization();
   if (!organization) return { event: null, organizationSlug: "" };
   const supabase = await createClient();
-  const [{ data, error }, { data: eventFeeData, error: eventFeeError }] =
-    await Promise.all([
-      supabase
-        .from("ropings")
-        .select(
-          "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
-        )
-        .eq("id", ropingId)
-        .eq("organization_id", organization.id)
-        .single(),
-      supabase
-        .from("roping_fees")
-        .select("id, title, amount_cents")
-        .eq("roping_id", ropingId)
-        .eq("organization_id", organization.id)
-        .is("roping_division_id", null),
-    ]);
+  const [
+    { data, error },
+    { data: eventFeeData, error: eventFeeError },
+    { data: templateData, error: templateError },
+    { data: classificationData, error: classificationError },
+  ] = await Promise.all([
+    supabase
+      .from("ropings")
+      .select(
+        "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+      )
+      .eq("id", ropingId)
+      .eq("organization_id", organization.id)
+      .single(),
+    supabase
+      .from("roping_fees")
+      .select("id, title, amount_cents")
+      .eq("roping_id", ropingId)
+      .eq("organization_id", organization.id)
+      .is("roping_division_id", null),
+    supabase
+      .from("division_templates")
+      .select("id, name, discipline_id, competition_format, disciplines(name)")
+      .eq("organization_id", organization.id)
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase
+      .from("classifications")
+      .select("id, name, discipline_id")
+      .eq("organization_id", organization.id)
+      .eq("is_active", true)
+      .order("rank", { ascending: false }),
+  ]);
   if (error || !data)
     return { event: null, organizationSlug: organization.slug };
   if (eventFeeError)
     throw new Error(`Unable to load event charges: ${eventFeeError.message}`);
+  if (templateError || classificationError)
+    throw new Error("Unable to load the available roping setup.");
   const divisions = (
     data.roping_divisions as unknown as Array<{
       id: string;
@@ -357,6 +389,29 @@ async function getEvent(
       isPublic: data.is_public,
       entriesOpenAt: data.entries_open_at,
       entriesCloseAt: data.entries_close_at,
+      defaultScheduleDate: new Intl.DateTimeFormat("en-CA", {
+        timeZone: organization.timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(data.starts_at)),
+      canManage: organization.role !== "viewer",
+      availableTemplates: (templateData ?? []).map((template) => ({
+        id: template.id,
+        name: template.name,
+        disciplineId: template.discipline_id,
+        divisionName:
+          (template.disciplines as unknown as { name: string } | null)?.name ??
+          "Unassigned division",
+        competitionFormat: template.competition_format,
+      })),
+      availableClassifications: (classificationData ?? []).map(
+        (classification) => ({
+          id: classification.id,
+          name: classification.name,
+          disciplineId: classification.discipline_id,
+        }),
+      ),
       eventFees: (eventFeeData ?? []).map((fee) => ({
         id: fee.id,
         title: fee.title,
@@ -518,6 +573,17 @@ export default async function RopingDetailPage({
               Apply to all
             </button>
           </form>
+          <AddEventRopingDialog
+            ropingId={event.id}
+            templates={event.availableTemplates}
+            classifications={event.availableClassifications}
+            defaultDate={event.defaultScheduleDate}
+            enabled={
+              event.canManage &&
+              !["completed", "cancelled"].includes(event.status) &&
+              isSupabaseConfigured()
+            }
+          />
         </div>
         <div className="divide-y divide-[#e7ebe8]">
           {event.divisions.map((division) => (
@@ -584,6 +650,19 @@ export default async function RopingDetailPage({
                     note={division.eventDayNote}
                     editable={operationsEditable && isSupabaseConfigured()}
                     compact
+                  />
+                  <RemoveEventRopingDialog
+                    ropingId={event.id}
+                    divisionId={division.id}
+                    name={division.name}
+                    entryCount={division.entries}
+                    enabled={
+                      event.canManage &&
+                      !["in_progress", "completed"].includes(
+                        division.eventDayStatus,
+                      ) &&
+                      isSupabaseConfigured()
+                    }
                   />
                   <form action={roundAction} className="flex items-end gap-2">
                     <input
