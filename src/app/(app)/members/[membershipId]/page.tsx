@@ -15,6 +15,12 @@ import { dismissClassificationReview } from "./actions";
 import { AssignClassificationDialog } from "@/components/members/classification-dialogs";
 import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { StatusPill } from "@/components/ui/status-pill";
+import {
+  getMemberProfileSections,
+  type CustomMembershipSection,
+  type MemberProfileSection,
+  type SelectedMembershipField,
+} from "@/lib/membership-forms";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -41,6 +47,8 @@ interface MemberDetail {
   notes: string;
   birthDate: string | null;
   competitionGender: "female" | "male" | null;
+  profileFields: Record<string, string | boolean>;
+  profileSections: MemberProfileSection[];
   disciplines: DisciplineData[];
   history: Array<{
     id: string;
@@ -91,6 +99,8 @@ async function getMemberDetail(
       notes: "",
       birthDate: "1992-06-18",
       competitionGender: "male",
+      profileFields: {},
+      profileSections: [],
       canEdit: false,
       disciplines: [
         {
@@ -126,7 +136,7 @@ async function getMemberDetail(
   const { data: membership, error } = await supabase
     .from("organization_memberships")
     .select(
-      "id, member_number, status, joined_on, expires_on, notes, people!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
+      "id, member_number, status, joined_on, expires_on, notes, profile_fields, people!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
     )
     .eq("id", membershipId)
     .eq("organization_id", organization.id)
@@ -137,6 +147,7 @@ async function getMemberDetail(
     { data: disciplineRows, error: disciplineError },
     { data: historyRows, error: historyError },
     { data: reviewRows, error: reviewError },
+    { data: membershipForm, error: membershipFormError },
   ] = await Promise.all([
     supabase
       .from("disciplines")
@@ -165,8 +176,14 @@ async function getMemberDetail(
       .eq("membership_id", membershipId)
       .eq("status", "open")
       .order("review_on"),
+    supabase
+      .from("membership_forms")
+      .select("standard_fields, custom_sections")
+      .eq("organization_id", organization.id)
+      .maybeSingle(),
   ]);
-  const loadError = disciplineError ?? historyError ?? reviewError;
+  const loadError =
+    disciplineError ?? historyError ?? reviewError ?? membershipFormError;
   if (loadError)
     throw new Error(
       `Unable to load member classification details: ${loadError.message}`,
@@ -220,6 +237,16 @@ async function getMemberDetail(
     notes: membership.notes ?? "",
     birthDate: person.birth_date,
     competitionGender: person.competition_gender,
+    profileFields: membership.profile_fields as Record<
+      string,
+      string | boolean
+    >,
+    profileSections: membershipForm
+      ? getMemberProfileSections(
+          membershipForm.standard_fields as unknown as SelectedMembershipField[],
+          membershipForm.custom_sections as unknown as CustomMembershipSection[],
+        )
+      : [],
     canEdit: organization.role !== "viewer",
     disciplines,
     history: (historyRows ?? []).map((row) => ({
@@ -315,9 +342,11 @@ export default async function MemberDetailPage({
                 joinedOn: member.joinedOn,
                 expiresOn: member.expiresOn,
                 notes: member.notes,
+                profileFields: member.profileFields,
               }}
               disciplines={options}
               currentClassifications={currentClassifications}
+              profileSections={member.profileSections}
               enabled={member.canEdit}
             />
             <AssignClassificationDialog

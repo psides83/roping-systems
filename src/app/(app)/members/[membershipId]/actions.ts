@@ -2,10 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  getMemberProfileSections,
+  type CustomMembershipSection,
+  type MemberProfileField,
+  type SelectedMembershipField,
+} from "@/lib/membership-forms";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-import { formatProperNoun } from "@/lib/utils";
+import { formatPhoneNumber, formatProperNoun } from "@/lib/utils";
 
 export interface MemberClassificationFormState {
   success?: boolean;
@@ -82,6 +88,71 @@ async function getManagerContext() {
   return { organization, supabase: await createClient() };
 }
 
+const properNounProfileFields = new Set(["city", "state", "completer_name"]);
+
+function cleanProfileFieldValue(
+  field: MemberProfileField,
+  value: FormDataEntryValue | undefined,
+) {
+  if (field.type === "checkbox") return value === "true";
+  const text = typeof value === "string" ? value.trim() : "";
+  if (field.type === "phone") return formatPhoneNumber(text);
+  if (properNounProfileFields.has(field.key)) return formatProperNoun(text);
+  return text;
+}
+
+async function parseMemberProfileFields(
+  context: NonNullable<Awaited<ReturnType<typeof getManagerContext>>>,
+  formData: FormData,
+) {
+  const { data: form, error } = await context.supabase
+    .from("membership_forms")
+    .select("standard_fields, custom_sections")
+    .eq("organization_id", context.organization.id)
+    .maybeSingle();
+  if (error) return { message: error.message };
+  if (!form) return { values: {} as Record<string, string | boolean> };
+
+  const sections = getMemberProfileSections(
+    form.standard_fields as unknown as SelectedMembershipField[],
+    form.custom_sections as unknown as CustomMembershipSection[],
+  );
+  const values: Record<string, string | boolean> = {};
+  const errors: Record<string, string[]> = {};
+
+  for (const field of sections.flatMap((section) => section.fields)) {
+    const inputName = `profileField:${field.key}`;
+    const entries = formData.getAll(inputName);
+    const value = cleanProfileFieldValue(field, entries.at(-1));
+    if (field.required && (value === "" || value === false))
+      errors[inputName] = [`${field.label} is required.`];
+    if (
+      field.type === "email" &&
+      typeof value === "string" &&
+      value &&
+      !z.email().safeParse(value).success
+    )
+      errors[inputName] = ["Enter a valid email address."];
+    if (
+      field.type === "date" &&
+      typeof value === "string" &&
+      value &&
+      !z.iso.date().safeParse(value).success
+    )
+      errors[inputName] = ["Enter a valid date."];
+    if (
+      field.type === "select" &&
+      typeof value === "string" &&
+      value &&
+      !field.options.includes(value)
+    )
+      errors[inputName] = ["Choose an available option."];
+    values[field.key] = value;
+  }
+
+  return Object.keys(errors).length ? { errors } : { values };
+}
+
 export async function updateMember(
   _state: MemberProfileFormState,
   formData: FormData,
@@ -99,25 +170,32 @@ export async function updateMember(
   const context = await getManagerContext();
   if (!context)
     return { message: "Manager access is required to edit members." };
+  const profileFields = await parseMemberProfileFields(context, formData);
+  if ("message" in profileFields) return { message: profileFields.message };
+  if ("errors" in profileFields) return { errors: profileFields.errors };
 
-  const { error } = await context.supabase.rpc("update_organization_member", {
-    target_organization_id: context.organization.id,
-    target_membership_id: parsed.data.membershipId,
-    member_first_name: parsed.data.firstName,
-    member_last_name: parsed.data.lastName,
-    member_email: parsed.data.email,
-    member_phone: parsed.data.phone,
-    member_birth_date: parsed.data.birthDate || null,
-    member_competition_gender: parsed.data.competitionGender,
-    new_member_number: parsed.data.memberNumber,
-    new_status: parsed.data.status,
-    new_joined_on: parsed.data.joinedOn || null,
-    new_expires_on: parsed.data.expiresOn || null,
-    new_notes: parsed.data.notes,
-    classification_changes: classificationChanges,
-    classification_effective_on: parsed.data.classificationEffectiveOn,
-    classification_change_reason: parsed.data.classificationReason,
-  });
+  const { error } = await context.supabase.rpc(
+    "update_organization_member_v2",
+    {
+      target_organization_id: context.organization.id,
+      target_membership_id: parsed.data.membershipId,
+      member_first_name: parsed.data.firstName,
+      member_last_name: parsed.data.lastName,
+      member_email: parsed.data.email,
+      member_phone: parsed.data.phone,
+      member_birth_date: parsed.data.birthDate || null,
+      member_competition_gender: parsed.data.competitionGender,
+      new_member_number: parsed.data.memberNumber,
+      new_status: parsed.data.status,
+      new_joined_on: parsed.data.joinedOn || null,
+      new_expires_on: parsed.data.expiresOn || null,
+      new_notes: parsed.data.notes,
+      classification_changes: classificationChanges,
+      classification_effective_on: parsed.data.classificationEffectiveOn,
+      classification_change_reason: parsed.data.classificationReason,
+      member_profile_fields: profileFields.values,
+    },
+  );
   if (error)
     return {
       message:

@@ -34,6 +34,17 @@ export interface CustomMembershipSection {
   fields: CustomMembershipField[];
 }
 
+export interface MemberProfileField extends CustomMembershipField {
+  key: string;
+}
+
+export interface MemberProfileSection {
+  id: string;
+  title: string;
+  details: string;
+  fields: MemberProfileField[];
+}
+
 export const standardMembershipFields: StandardMembershipField[] = [
   { key: "first_name", label: "First name", type: "text" },
   { key: "last_name", label: "Last name", type: "text" },
@@ -80,4 +91,58 @@ export const standardMembershipFields: StandardMembershipField[] = [
 
 export function getStandardMembershipField(key: string) {
   return standardMembershipFields.find((field) => field.key === key);
+}
+
+const coreMemberFieldKeys = new Set([
+  "first_name",
+  "last_name",
+  "birth_date",
+  "competition_gender",
+  "email",
+  "phone",
+  "member_number",
+]);
+
+export function getMemberProfileSections(
+  selectedStandardFields: SelectedMembershipField[],
+  customSections: CustomMembershipSection[],
+): MemberProfileSection[] {
+  const additionalStandardFields = selectedStandardFields.flatMap(
+    (selected) => {
+      const field = getStandardMembershipField(selected.key);
+      if (!field || coreMemberFieldKeys.has(field.key)) return [];
+      return [
+        {
+          id: field.key,
+          key: field.key,
+          label: field.label,
+          type: field.type,
+          required: selected.required,
+          options: field.options ?? [],
+        },
+      ];
+    },
+  );
+
+  return [
+    ...(additionalStandardFields.length
+      ? [
+          {
+            id: "additional-member-information",
+            title: "Additional member information",
+            details: "",
+            fields: additionalStandardFields,
+          },
+        ]
+      : []),
+    ...customSections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      details: section.details,
+      fields: section.fields.map((field) => ({
+        ...field,
+        key: `custom_${field.id}`,
+      })),
+    })),
+  ];
 }

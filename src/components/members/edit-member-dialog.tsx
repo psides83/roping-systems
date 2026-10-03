@@ -7,6 +7,10 @@ import {
   type MemberProfileFormState,
 } from "@/app/(app)/members/[membershipId]/actions";
 import { PhoneInput } from "@/components/ui/phone-input";
+import type {
+  MemberProfileField,
+  MemberProfileSection,
+} from "@/lib/membership-forms";
 
 interface DisciplineOption {
   id: string;
@@ -27,6 +31,7 @@ export interface EditableMember {
   joinedOn: string | null;
   expiresOn: string | null;
   notes: string;
+  profileFields: Record<string, string | boolean>;
 }
 
 const initialState: MemberProfileFormState = {};
@@ -45,11 +50,13 @@ export function EditMemberDialog({
   member,
   disciplines,
   currentClassifications,
+  profileSections,
   enabled,
 }: {
   member: EditableMember;
   disciplines: DisciplineOption[];
   currentClassifications: Record<string, string>;
+  profileSections: MemberProfileSection[];
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -184,6 +191,29 @@ export function EditMemberDialog({
                   </label>
                 </div>
               </section>
+              {profileSections.map((section) => (
+                <section
+                  key={section.id}
+                  className="border-t border-[#e7ebe8] pt-5"
+                >
+                  <h3 className="text-sm font-bold">{section.title}</h3>
+                  {section.details ? (
+                    <p className="mt-1 text-xs leading-5 text-[#66716b]">
+                      {section.details}
+                    </p>
+                  ) : null}
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    {section.fields.map((field) => (
+                      <ProfileField
+                        key={field.key}
+                        field={field}
+                        value={member.profileFields[field.key]}
+                        error={state.errors?.[`profileField:${field.key}`]?.[0]}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
               <section className="border-t border-[#e7ebe8] pt-5">
                 <h3 className="text-sm font-bold">Membership</h3>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -348,6 +378,93 @@ function Field({
           className={inputClass}
         />
       )}
+    </label>
+  );
+}
+
+function ProfileField({
+  field,
+  value,
+  error,
+}: {
+  field: MemberProfileField;
+  value: string | boolean | undefined;
+  error?: string;
+}) {
+  const name = `profileField:${field.key}`;
+  if (field.type === "checkbox") {
+    return (
+      <label className="flex min-h-11 items-center gap-3 rounded-md border border-[#dfe4e1] px-3 text-sm font-semibold sm:col-span-2">
+        <input type="hidden" name={name} value="false" />
+        <input
+          name={name}
+          type="checkbox"
+          value="true"
+          defaultChecked={value === true}
+          required={field.required}
+          className="h-4 w-4 accent-[var(--brand-accent)]"
+        />
+        <span>
+          {field.label}
+          {field.required ? <span className="text-rose-700"> *</span> : null}
+        </span>
+        {error ? (
+          <span className="ml-auto text-xs text-rose-700">{error}</span>
+        ) : null}
+      </label>
+    );
+  }
+
+  const stringValue = typeof value === "string" ? value : "";
+  return (
+    <label
+      className={`block text-sm font-semibold ${field.type === "textarea" ? "sm:col-span-2" : ""}`}
+    >
+      {field.label}
+      {field.required ? <span className="text-rose-700"> *</span> : null}
+      {field.type === "select" ? (
+        <select
+          name={name}
+          defaultValue={stringValue}
+          required={field.required}
+          className={inputClass}
+        >
+          <option value="">Select</option>
+          {field.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : field.type === "textarea" ? (
+        <textarea
+          name={name}
+          defaultValue={stringValue}
+          required={field.required}
+          rows={4}
+          className="mt-2 w-full rounded-md border border-[#ccd4d0] bg-white p-3 outline-none focus:border-[var(--brand-accent)]"
+        />
+      ) : field.type === "phone" ? (
+        <PhoneInput
+          name={name}
+          defaultValue={stringValue}
+          required={field.required}
+          className={inputClass}
+        />
+      ) : (
+        <input
+          name={name}
+          type={field.type}
+          defaultValue={stringValue}
+          required={field.required}
+          className={inputClass}
+        />
+      )}
+      {error ? (
+        <span className="mt-1 block text-xs font-semibold text-rose-700">
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }
