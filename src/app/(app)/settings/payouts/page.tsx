@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Banknote, CircleDollarSign } from "lucide-react";
 import { assignDivisionPayout } from "./actions";
 import {
@@ -7,6 +6,7 @@ import {
 } from "@/components/settings/payout-schedule-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
+import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -145,26 +145,7 @@ export default async function PayoutSettingsPage() {
         description="Define how entry counts determine paid places and how each purse is split. Schedules are copied into new ropings to preserve history."
         actions={<PayoutScheduleDialog enabled={enabled} />}
       />
-      <div className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]">
-        <Link
-          href="/settings/classifications"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Divisions & classifications
-        </Link>
-        <Link
-          href="/settings/divisions"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Roping templates
-        </Link>
-        <Link
-          href="/settings/payouts"
-          className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
-        >
-          Payouts
-        </Link>
-      </div>
+      <RopingSetupTabs active="payouts" />
       <section className="rounded-md border border-[#dfe4e1] bg-white">
         <header className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4">
           <Banknote size={19} className="text-[var(--brand-accent-strong)]" />

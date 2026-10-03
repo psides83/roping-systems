@@ -1,6 +1,7 @@
 import { Clock3 } from "lucide-react";
 import { updateDivisionTiming } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
+import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -34,10 +35,11 @@ export default async function TimingSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Organization setup"
+        eyebrow="Roping setup"
         title="Timing rules"
         description="Choose how many timer readings are entered for each run and how those readings become the official raw time."
       />
+      <RopingSetupTabs active="timing" />
       <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
         <header className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4">
           <span className="grid h-9 w-9 place-items-center rounded-md bg-[#eef1ef]">

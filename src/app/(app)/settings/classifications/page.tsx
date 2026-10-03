@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Check, CircleHelp, ListChecks } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import {
   CreateClassificationDialog,
   CreateDisciplineDialog,
@@ -214,26 +215,7 @@ export default async function ClassificationSettingsPage() {
         description="Create divisions such as Calf roping or Breakaway, then define each division’s skill, open, and age-limited classifications."
         actions={<CreateDisciplineDialog enabled={enabled} />}
       />
-      <div className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]">
-        <Link
-          href="/settings/classifications"
-          className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
-        >
-          Divisions & classifications
-        </Link>
-        <Link
-          href="/settings/divisions"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Roping templates
-        </Link>
-        <Link
-          href="/settings/payouts"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Payouts
-        </Link>
-      </div>
+      <RopingSetupTabs active="classifications" />
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="flex items-center gap-4 rounded-md border border-[#dfe4e1] bg-white p-4">
           <span className="grid h-10 w-10 place-items-center rounded-md bg-amber-50 text-amber-700">

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { Check, CircleDollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import {
   AddFeeDialog,
   CreateDivisionDialog,
@@ -232,26 +232,7 @@ export default async function DivisionSettingsPage() {
           />
         }
       />
-      <div className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]">
-        <Link
-          href="/settings/classifications"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Divisions & classifications
-        </Link>
-        <Link
-          href="/settings/divisions"
-          className="border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
-        >
-          Roping templates
-        </Link>
-        <Link
-          href="/settings/payouts"
-          className="px-4 py-3 text-sm font-semibold text-[#66716b]"
-        >
-          Payouts
-        </Link>
-      </div>
+      <RopingSetupTabs active="templates" />
       <section className="space-y-4">
         {divisions.map((division) => (
           <article

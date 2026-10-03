@@ -17,6 +17,14 @@ export async function updateDivisionTiming(formData: FormData) {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return;
   const supabase = await createClient();
-  await supabase.from("division_templates").update({ timer_count: parsed.data.timerCount, timer_resolution: parsed.data.timerResolution }).eq("id", parsed.data.divisionId).eq("organization_id", organization.id);
+  await supabase
+    .from("division_templates")
+    .update({
+      timer_count: parsed.data.timerCount,
+      timer_resolution: parsed.data.timerResolution,
+    })
+    .eq("id", parsed.data.divisionId)
+    .eq("organization_id", organization.id);
   revalidatePath("/settings/timing");
+  revalidatePath("/settings/divisions");
 }

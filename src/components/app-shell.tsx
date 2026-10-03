@@ -37,7 +37,6 @@ const navigation = [
     href: "/settings/classifications",
     icon: SlidersHorizontal,
   },
-  { name: "Timing rules", href: "/settings/timing", icon: CalendarDays },
   { name: "Changelog", href: "/settings/changelog", icon: History },
 ];
 
@@ -176,6 +175,7 @@ export function AppShell({
                     "/settings/classifications",
                     "/settings/divisions",
                     "/settings/payouts",
+                    "/settings/timing",
                   ].some((href) => pathname === href)
                 : item.href === currentNavigationHref;
             const Icon = item.icon;
