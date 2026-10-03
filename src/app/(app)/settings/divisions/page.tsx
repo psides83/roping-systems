@@ -50,6 +50,8 @@ async function getDivisionData(): Promise<{
     return {
       divisions: demoDivisions.map((division) => ({
         ...division,
+        numberOfRuns: division.numberOfRuns ?? 1,
+        cattleDrawEnabled: division.cattleDrawEnabled ?? false,
         secondRoundOrdering: division.secondRoundOrdering ?? "reverse_first",
         laterRoundOrdering:
           division.laterRoundOrdering ?? "aggregate_slowest_to_fastest",
