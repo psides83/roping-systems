@@ -7,7 +7,7 @@ export function CollapsibleCard({
   summary,
   actions,
   children,
-  defaultOpen = true,
+  defaultOpen = false,
 }: {
   summary: React.ReactNode;
   actions?: React.ReactNode;

@@ -106,7 +106,7 @@ export function ScheduledClassFields({
     })),
   );
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(initialOccurrences.map((_, index) => `copied-${index}`)),
   );
   const previousEventStartDate = useRef(eventStartDate);
   useEffect(() => {
@@ -188,13 +188,14 @@ export function ScheduledClassFields({
         classification.disciplineId === template?.disciplineId,
     );
     if (!template || !defaultClassification) return;
+    const occurrenceKey = newKey();
     const templateClassifications = classifications.filter(
       (classification) => classification.disciplineId === template.disciplineId,
     );
     setOccurrences((current) => [
       ...current,
       {
-        key: newKey(),
+        key: occurrenceKey,
         templateId: selectedTemplateId,
         classificationId:
           template.competitionFormat === "handicap"
@@ -224,6 +225,7 @@ export function ScheduledClassFields({
         maleMinimumClassificationNumber: "",
       },
     ]);
+    setCollapsedKeys((current) => new Set(current).add(occurrenceKey));
   }
 
   function updateOccurrence(key: string, update: Partial<ScheduledOccurrence>) {
