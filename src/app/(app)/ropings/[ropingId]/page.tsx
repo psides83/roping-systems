@@ -660,9 +660,15 @@ export default async function RopingDetailPage({
         (division) =>
           !["completed", "in_progress"].includes(division.eventDayStatus),
       ) ?? null;
-  const firstScheduledRoping = event.divisions.find(
-    (division) => division.eventDayStatus !== "completed",
-  );
+  const firstScheduledRoping =
+    event.divisions.find(
+      (division) =>
+        division.eventDayStatus !== "completed" &&
+        division.scheduleType !== "follows_previous",
+    ) ??
+    event.divisions.find(
+      (division) => division.eventDayStatus !== "completed",
+    );
   const dashboardMetrics = getDashboardMetrics({
     event,
     totalEntries,
