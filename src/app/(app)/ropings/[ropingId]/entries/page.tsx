@@ -58,6 +58,9 @@ export default async function EventEntriesPage({
             memberNumber: "RR-1042",
             paymentStatus: "unpaid",
             totalCents: 11500,
+            amountPaidCents: 0,
+            balanceDueCents: 11500,
+            payments: [],
             checkedIn: false,
             checkedInAt: null,
             entries: [
@@ -97,6 +100,7 @@ export default async function EventEntriesPage({
             charges: [
               {
                 id: "jace-entry-1",
+                entryId: "jace-1",
                 title: "Open entry fee",
                 amountCents: 5000,
                 waived: false,
@@ -104,6 +108,7 @@ export default async function EventEntriesPage({
               },
               {
                 id: "jace-stock-1",
+                entryId: "jace-1",
                 title: "Stock fee",
                 amountCents: 1000,
                 waived: false,
@@ -111,6 +116,7 @@ export default async function EventEntriesPage({
               },
               {
                 id: "jace-entry-2",
+                entryId: "jace-2",
                 title: "11.5 entry fee",
                 amountCents: 5000,
                 waived: false,
@@ -118,6 +124,7 @@ export default async function EventEntriesPage({
               },
               {
                 id: "jace-office",
+                entryId: null,
                 title: "Office fee",
                 amountCents: 500,
                 waived: false,
@@ -131,6 +138,9 @@ export default async function EventEntriesPage({
             memberNumber: "RR-1088",
             paymentStatus: "paid_cash",
             totalCents: 3500,
+            amountPaidCents: 3500,
+            balanceDueCents: 0,
+            payments: [],
             checkedIn: true,
             checkedInAt: "8:42 AM",
             entries: [
@@ -155,6 +165,7 @@ export default async function EventEntriesPage({
             charges: [
               {
                 id: "mara-entry",
+                entryId: "mara-1",
                 title: "Entry fee",
                 amountCents: 3000,
                 waived: false,
@@ -162,6 +173,7 @@ export default async function EventEntriesPage({
               },
               {
                 id: "mara-office",
+                entryId: null,
                 title: "Office fee",
                 amountCents: 500,
                 waived: false,
@@ -188,6 +200,7 @@ export default async function EventEntriesPage({
     { data: transferData, error: transferError },
     { data: withdrawalData, error: withdrawalError },
     { data: checkInData, error: checkInError },
+    { data: paymentData, error: paymentError },
   ] = await Promise.all([
     supabase
       .from("ropings")
@@ -239,6 +252,14 @@ export default async function EventEntriesPage({
       .from("event_contestant_check_ins")
       .select("person_id, checked_in_at, checked_in_by")
       .eq("roping_id", ropingId),
+    supabase
+      .from("event_payments")
+      .select(
+        "id, person_id, amount_cents, note, received_by_label, received_at",
+      )
+      .eq("roping_id", ropingId)
+      .is("voided_at", null)
+      .order("received_at", { ascending: false }),
   ]);
   if (!roping) notFound();
   const loadError =
@@ -247,7 +268,8 @@ export default async function EventEntriesPage({
     requestError ??
     transferError ??
     withdrawalError ??
-    checkInError;
+    checkInError ??
+    paymentError;
   if (loadError)
     throw new Error(`Unable to load event entries: ${loadError.message}`);
 
@@ -311,6 +333,7 @@ export default async function EventEntriesPage({
     const charges = chargesByPerson.get(charge.person_id) ?? [];
     charges.push({
       id: charge.id,
+      entryId: charge.entry_id,
       title: charge.title,
       amountCents: charge.amount_cents,
       waived: Boolean(charge.waived_at),
@@ -346,6 +369,22 @@ export default async function EventEntriesPage({
   const checkInByPerson = new Map(
     (checkInData ?? []).map((checkIn) => [checkIn.person_id, checkIn]),
   );
+  const paymentsByPerson = new Map<string, LedgerContestant["payments"]>();
+  for (const payment of paymentData ?? []) {
+    const payments = paymentsByPerson.get(payment.person_id) ?? [];
+    payments.push({
+      id: payment.id,
+      amountCents: payment.amount_cents,
+      note: payment.note,
+      receivedBy: payment.received_by_label,
+      receivedAt: new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: organization.timezone,
+      }).format(new Date(payment.received_at)),
+    });
+    paymentsByPerson.set(payment.person_id, payments);
+  }
 
   const contestantsByPerson = new Map<string, LedgerContestant>();
   for (const entry of entryData ?? []) {
@@ -368,6 +407,9 @@ export default async function EventEntriesPage({
       memberNumber: memberNumbers.get(entry.person_id) ?? null,
       paymentStatus: entry.payment_status as PaymentStatus,
       totalCents: 0,
+      amountPaidCents: 0,
+      balanceDueCents: 0,
+      payments: paymentsByPerson.get(entry.person_id) ?? [],
       checkedIn: Boolean(checkIn),
       checkedInAt: checkIn
         ? new Intl.DateTimeFormat("en-US", {
@@ -418,6 +460,39 @@ export default async function EventEntriesPage({
       const statuses = new Set(
         contestant.entries.map((entry) => entry.paymentStatus),
       );
+      const payableEntryIds = new Set(
+        contestant.entries
+          .filter(
+            (entry) =>
+              entry.competitionStatus === "active" &&
+              !["comped", "refunded"].includes(entry.paymentStatus),
+          )
+          .map((entry) => entry.id),
+      );
+      const amountDueCents = contestant.charges.reduce(
+        (sum, charge) =>
+          sum +
+          (!charge.waived &&
+          (charge.entryId
+            ? payableEntryIds.has(charge.entryId)
+            : payableEntryIds.size > 0)
+            ? charge.amountCents
+            : 0),
+        0,
+      );
+      const recordedPaymentCents = contestant.payments.reduce(
+        (sum, payment) => sum + payment.amountCents,
+        0,
+      );
+      const legacyPaid =
+        !contestant.payments.length &&
+        payableEntryIds.size > 0 &&
+        contestant.entries
+          .filter((entry) => payableEntryIds.has(entry.id))
+          .every((entry) => entry.paymentStatus === "paid_cash");
+      const amountPaidCents = legacyPaid
+        ? amountDueCents
+        : recordedPaymentCents;
       return {
         ...contestant,
         paymentStatus:
@@ -426,6 +501,8 @@ export default async function EventEntriesPage({
           (sum, charge) => sum + (charge.waived ? 0 : charge.amountCents),
           0,
         ),
+        amountPaidCents,
+        balanceDueCents: Math.max(amountDueCents - amountPaidCents, 0),
       } satisfies LedgerContestant;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -522,9 +599,10 @@ function EntriesWorkspace({
     (sum, contestant) => sum + contestant.totalCents,
     0,
   );
-  const cashCollected = contestants
-    .filter((contestant) => contestant.paymentStatus === "paid_cash")
-    .reduce((sum, contestant) => sum + contestant.totalCents, 0);
+  const cashCollected = contestants.reduce(
+    (sum, contestant) => sum + contestant.amountPaidCents,
+    0,
+  );
   const unpaidContestants = contestants.filter(
     (contestant) =>
       contestant.paymentStatus === "unpaid" ||

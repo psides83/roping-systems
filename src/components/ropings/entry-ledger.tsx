@@ -17,6 +17,10 @@ import {
 import { ChargeWaiverDialog } from "@/components/ropings/charge-waiver-dialog";
 import { EntryWithdrawalDialog } from "@/components/ropings/entry-withdrawal-dialog";
 import { ContestantCheckInButton } from "@/components/ropings/contestant-check-in-button";
+import {
+  CashPaymentDialog,
+  type CashPaymentRecord,
+} from "@/components/ropings/cash-payment-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
@@ -29,6 +33,9 @@ export interface LedgerContestant {
   memberNumber: string | null;
   paymentStatus: PaymentSummary;
   totalCents: number;
+  amountPaidCents: number;
+  balanceDueCents: number;
+  payments: CashPaymentRecord[];
   checkedIn: boolean;
   checkedInAt: string | null;
   entries: Array<{
@@ -49,6 +56,7 @@ export interface LedgerContestant {
   }>;
   charges: Array<{
     id: string;
+    entryId: string | null;
     title: string;
     amountCents: number;
     waived: boolean;
@@ -304,6 +312,20 @@ function ContestantRow({
         >
           {paymentLabels[contestant.paymentStatus]}
         </span>
+        <p className="mt-2 text-[11px] text-[#66716b]">
+          {formatCurrency(contestant.amountPaidCents)} received
+          {contestant.balanceDueCents
+            ? ` · ${formatCurrency(contestant.balanceDueCents)} due`
+            : " · Paid in full"}
+        </p>
+        <CashPaymentDialog
+          ropingId={ropingId}
+          personId={contestant.personId}
+          contestantName={contestant.name}
+          balanceDueCents={contestant.balanceDueCents}
+          payments={contestant.payments}
+          enabled={canEdit && hasActiveEntries}
+        />
       </td>
       <td className="px-5 py-4 text-right">
         <p className="text-sm font-bold">
@@ -396,7 +418,9 @@ function PaymentForm({
             </option>
           ) : null}
           <option value="unpaid">Unpaid</option>
-          <option value="paid_cash">Paid cash</option>
+          {contestant.paymentStatus === "paid_cash" ? (
+            <option value="paid_cash">Paid cash</option>
+          ) : null}
           <option value="comped">Comped</option>
           <option value="refunded">Refunded</option>
         </select>

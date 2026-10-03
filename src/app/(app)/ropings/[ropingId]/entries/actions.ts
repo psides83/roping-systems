@@ -44,6 +44,12 @@ export interface CheckInFormState {
   message?: string;
 }
 
+export interface CashPaymentFormState {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
 const eligibilityOverrideFields = {
   eligibilityOverride: z.string().optional(),
   eligibilityOverrideReason: z.string().trim().max(300),
@@ -146,6 +152,14 @@ const entryWithdrawalSchema = z.object({
     .trim()
     .min(5, "Enter a brief reason for this change.")
     .max(300, "Keep the reason under 300 characters."),
+});
+
+const cashPaymentSchema = z.object({
+  amount: z.coerce
+    .number()
+    .positive("Enter a payment amount greater than zero.")
+    .max(1000000, "Enter a smaller payment amount."),
+  note: z.string().trim().max(240, "Keep the note under 240 characters."),
 });
 
 async function requireManager() {
@@ -493,4 +507,35 @@ export async function updateContestantCheckIn(
     success: true,
     message: checkedIn ? "Contestant checked in." : "Check-in undone.",
   };
+}
+
+export async function recordCashPayment(
+  ropingId: string,
+  personId: string,
+  _state: CashPaymentFormState,
+  formData: FormData,
+): Promise<CashPaymentFormState> {
+  if (!z.uuid().safeParse(personId).success)
+    return { message: "This contestant is unavailable." };
+  const parsed = cashPaymentSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const amountCents = Math.round(parsed.data.amount * 100);
+  const { error } = await context.supabase.rpc("record_event_cash_payment", {
+    target_roping_id: ropingId,
+    target_person_id: personId,
+    payment_amount_cents: amountCents,
+    payment_note: parsed.data.note,
+  });
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  return { success: true, message: "Cash payment recorded." };
 }
