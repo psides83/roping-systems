@@ -226,14 +226,20 @@ function EligibilityFields({
 function GenderEligibilityFields({
   policy,
   setPolicy,
+  classificationDivisions,
   youthMaximumAge,
   seniorMinimumAge,
+  classificationDisciplineId,
+  minimumClassificationNumber,
   errors,
 }: {
   policy: "open" | "women_only";
   setPolicy: (policy: "open" | "women_only") => void;
+  classificationDivisions: Array<{ id: string; name: string }>;
   youthMaximumAge?: number | null;
   seniorMinimumAge?: number | null;
+  classificationDisciplineId?: string | null;
+  minimumClassificationNumber?: number | null;
   errors?: Record<string, string[]>;
 }) {
   return (
@@ -257,8 +263,8 @@ function GenderEligibilityFields({
       {policy === "women_only" ? (
         <>
           <p className="text-xs leading-5 text-[#66716b]">
-            Female contestants are eligible. Leave both ages blank for no male
-            exceptions, or set either exception used by this organization.
+            Female contestants are eligible. Male contestants may qualify
+            through either an age range or the minimum classification below.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
@@ -296,18 +302,77 @@ function GenderEligibilityFields({
               ) : null}
             </label>
           </div>
+          <div className="border-t border-[#dfe4e1] pt-4">
+            <p className="text-sm font-bold">Classification exception</p>
+            <p className="mt-1 text-xs leading-5 text-[#66716b]">
+              Leave both fields blank when this producer does not allow a male
+              contestant based on classification number.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">
+                Number classification from
+                <select
+                  name="maleClassificationDisciplineId"
+                  defaultValue={classificationDisciplineId ?? ""}
+                  className={inputClass}
+                >
+                  <option value="">No classification exception</option>
+                  {classificationDivisions.map((division) => (
+                    <option key={division.id} value={division.id}>
+                      {division.name}
+                    </option>
+                  ))}
+                </select>
+                {errors?.maleClassificationDisciplineId ? (
+                  <span className="mt-1 block text-xs text-rose-700">
+                    {errors.maleClassificationDisciplineId[0]}
+                  </span>
+                ) : null}
+              </label>
+              <label className="block text-sm font-semibold">
+                Minimum classification number
+                <input
+                  name="maleMinimumClassificationNumber"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  defaultValue={minimumClassificationNumber ?? ""}
+                  className={inputClass}
+                  placeholder="10"
+                />
+                {errors?.maleMinimumClassificationNumber ? (
+                  <span className="mt-1 block text-xs text-rose-700">
+                    {errors.maleMinimumClassificationNumber[0]}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          </div>
         </>
       ) : (
         <>
           <input type="hidden" name="maleYouthMaximumAge" value="" />
           <input type="hidden" name="maleSeniorMinimumAge" value="" />
+          <input type="hidden" name="maleClassificationDisciplineId" value="" />
+          <input
+            type="hidden"
+            name="maleMinimumClassificationNumber"
+            value=""
+          />
         </>
       )}
     </div>
   );
 }
 
-export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
+export function CreateDisciplineDialog({
+  classificationDivisions,
+  enabled,
+}: {
+  classificationDivisions: Array<{ id: string; name: string }>;
+  enabled: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [genderPolicy, setGenderPolicy] = useState<"open" | "women_only">(
     "open",
@@ -356,6 +421,7 @@ export function CreateDisciplineDialog({ enabled }: { enabled: boolean }) {
             <GenderEligibilityFields
               policy={genderPolicy}
               setPolicy={setGenderPolicy}
+              classificationDivisions={classificationDivisions}
               errors={state.errors}
             />
             <label className="block text-sm font-semibold">
@@ -494,6 +560,7 @@ export function CreateClassificationDialog({
 
 export function EditDisciplineDialog({
   discipline,
+  classificationDivisions,
   enabled,
 }: {
   discipline: {
@@ -504,7 +571,10 @@ export function EditDisciplineDialog({
     genderPolicy: "open" | "women_only";
     maleYouthMaximumAge: number | null;
     maleSeniorMinimumAge: number | null;
+    maleClassificationDisciplineId: string | null;
+    maleMinimumClassificationNumber: number | null;
   };
+  classificationDivisions: Array<{ id: string; name: string }>;
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -547,8 +617,15 @@ export function EditDisciplineDialog({
             <GenderEligibilityFields
               policy={genderPolicy}
               setPolicy={setGenderPolicy}
+              classificationDivisions={classificationDivisions}
               youthMaximumAge={discipline.maleYouthMaximumAge}
               seniorMinimumAge={discipline.maleSeniorMinimumAge}
+              classificationDisciplineId={
+                discipline.maleClassificationDisciplineId
+              }
+              minimumClassificationNumber={
+                discipline.maleMinimumClassificationNumber
+              }
               errors={state.errors}
             />
             <label className="block text-sm font-semibold">

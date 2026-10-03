@@ -20,6 +20,24 @@ const optionalAgeSchema = z
   ])
   .transform((value) => (value === "" ? null : value));
 
+const optionalUuidSchema = z
+  .union([z.literal(""), z.uuid()])
+  .transform((value) => (value === "" ? null : value));
+
+const optionalClassificationNumberSchema = z
+  .union([
+    z.literal(""),
+    z.coerce
+      .number()
+      .min(0, "Classification number cannot be negative.")
+      .max(100)
+      .refine(
+        (value) => Number.isInteger(value * 10),
+        "Use no more than one decimal place.",
+      ),
+  ])
+  .transform((value) => (value === "" ? null : value));
+
 const disciplineSchema = z
   .object({
     name: z
@@ -31,6 +49,8 @@ const disciplineSchema = z
     genderPolicy: z.enum(["open", "women_only"]),
     maleYouthMaximumAge: optionalAgeSchema,
     maleSeniorMinimumAge: optionalAgeSchema,
+    maleClassificationDisciplineId: optionalUuidSchema,
+    maleMinimumClassificationNumber: optionalClassificationNumberSchema,
   })
   .superRefine((data, context) => {
     if (
@@ -43,6 +63,17 @@ const disciplineSchema = z
         code: "custom",
         path: ["maleSeniorMinimumAge"],
         message: "Senior minimum age must be above the youth maximum age.",
+      });
+    if (
+      data.genderPolicy === "women_only" &&
+      Boolean(data.maleClassificationDisciplineId) !==
+        (data.maleMinimumClassificationNumber !== null)
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["maleMinimumClassificationNumber"],
+        message:
+          "Choose a classification division and enter its minimum number.",
       });
   });
 
@@ -110,6 +141,20 @@ async function getManagerContext() {
   return { organization, supabase: await createClient() };
 }
 
+async function classificationDisciplineIsAvailable(
+  context: NonNullable<Awaited<ReturnType<typeof getManagerContext>>>,
+  disciplineId: string | null,
+) {
+  if (!disciplineId) return true;
+  const { data } = await context.supabase
+    .from("disciplines")
+    .select("id")
+    .eq("id", disciplineId)
+    .eq("organization_id", context.organization.id)
+    .single();
+  return Boolean(data);
+}
+
 export async function createDiscipline(
   _state: ClassificationFormState,
   formData: FormData,
@@ -119,6 +164,19 @@ export async function createDiscipline(
   const context = await getManagerContext();
   if (!context)
     return { message: "Sign in with manager access to create divisions." };
+  if (
+    !(await classificationDisciplineIsAvailable(
+      context,
+      parsed.data.maleClassificationDisciplineId,
+    ))
+  )
+    return {
+      errors: {
+        maleClassificationDisciplineId: [
+          "Choose a classification division from this producer.",
+        ],
+      },
+    };
 
   const { error } = await context.supabase.from("disciplines").insert({
     organization_id: context.organization.id,
@@ -133,6 +191,14 @@ export async function createDiscipline(
     male_senior_minimum_age:
       parsed.data.genderPolicy === "women_only"
         ? parsed.data.maleSeniorMinimumAge
+        : null,
+    male_classification_discipline_id:
+      parsed.data.genderPolicy === "women_only"
+        ? parsed.data.maleClassificationDisciplineId
+        : null,
+    male_minimum_classification_number:
+      parsed.data.genderPolicy === "women_only"
+        ? parsed.data.maleMinimumClassificationNumber
         : null,
   });
   if (error)
@@ -201,6 +267,19 @@ export async function updateDiscipline(
   const context = await getManagerContext();
   if (!context)
     return { message: "Sign in with manager access to edit divisions." };
+  if (
+    !(await classificationDisciplineIsAvailable(
+      context,
+      parsed.data.maleClassificationDisciplineId,
+    ))
+  )
+    return {
+      errors: {
+        maleClassificationDisciplineId: [
+          "Choose a classification division from this producer.",
+        ],
+      },
+    };
 
   const { error } = await context.supabase
     .from("disciplines")
@@ -216,6 +295,14 @@ export async function updateDiscipline(
       male_senior_minimum_age:
         parsed.data.genderPolicy === "women_only"
           ? parsed.data.maleSeniorMinimumAge
+          : null,
+      male_classification_discipline_id:
+        parsed.data.genderPolicy === "women_only"
+          ? parsed.data.maleClassificationDisciplineId
+          : null,
+      male_minimum_classification_number:
+        parsed.data.genderPolicy === "women_only"
+          ? parsed.data.maleMinimumClassificationNumber
           : null,
     })
     .eq("id", parsed.data.disciplineId)

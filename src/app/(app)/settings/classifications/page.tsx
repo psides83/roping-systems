@@ -20,6 +20,8 @@ interface DisciplineSummary {
   genderPolicy: "open" | "women_only";
   maleYouthMaximumAge: number | null;
   maleSeniorMinimumAge: number | null;
+  maleClassificationDisciplineId: string | null;
+  maleMinimumClassificationNumber: number | null;
   classifications: Array<{
     id: string;
     name: string;
@@ -57,6 +59,8 @@ async function getClassificationData() {
           genderPolicy: "open",
           maleYouthMaximumAge: null,
           maleSeniorMinimumAge: null,
+          maleClassificationDisciplineId: null,
+          maleMinimumClassificationNumber: null,
           classifications: [
             {
               id: "open",
@@ -126,7 +130,7 @@ async function getClassificationData() {
       supabase
         .from("disciplines")
         .select(
-          "id, name, description, watch_threshold, is_active, gender_policy, male_youth_maximum_age, male_senior_minimum_age, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, is_active)",
+          "id, name, description, watch_threshold, is_active, gender_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_discipline_id, male_minimum_classification_number, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, is_active)",
         )
         .eq("organization_id", organization.id)
         .order("sort_order")
@@ -176,6 +180,10 @@ async function getClassificationData() {
       genderPolicy: discipline.gender_policy as "open" | "women_only",
       maleYouthMaximumAge: discipline.male_youth_maximum_age,
       maleSeniorMinimumAge: discipline.male_senior_minimum_age,
+      maleClassificationDisciplineId:
+        discipline.male_classification_discipline_id,
+      maleMinimumClassificationNumber:
+        discipline.male_minimum_classification_number,
       classifications: (
         discipline.classifications as unknown as Array<{
           id: string;
@@ -206,6 +214,10 @@ async function getClassificationData() {
 export default async function ClassificationSettingsPage() {
   const data = await getClassificationData();
   const enabled = isSupabaseConfigured() && data.role !== "viewer";
+  const classificationDivisions = data.disciplines.map((discipline) => ({
+    id: discipline.id,
+    name: discipline.name,
+  }));
 
   return (
     <div className="space-y-6">
@@ -213,7 +225,12 @@ export default async function ClassificationSettingsPage() {
         eyebrow="Organization setup"
         title="Divisions & classifications"
         description="Create divisions such as Calf roping or Breakaway, then define each division’s skill, open, and age-limited classifications."
-        actions={<CreateDisciplineDialog enabled={enabled} />}
+        actions={
+          <CreateDisciplineDialog
+            classificationDivisions={classificationDivisions}
+            enabled={enabled}
+          />
+        }
       />
       <RopingSetupTabs active="classifications" />
       <section className="grid gap-3 sm:grid-cols-2">
@@ -301,6 +318,10 @@ export default async function ClassificationSettingsPage() {
                     {discipline.maleSeniorMinimumAge !== null
                       ? ` · Men ${discipline.maleSeniorMinimumAge} and over`
                       : ""}
+                    {discipline.maleClassificationDisciplineId &&
+                    discipline.maleMinimumClassificationNumber !== null
+                      ? ` · ${data.disciplines.find((item) => item.id === discipline.maleClassificationDisciplineId)?.name ?? "Number"} ${discipline.maleMinimumClassificationNumber}+`
+                      : ""}
                   </p>
                 ) : null}
               </div>
@@ -312,6 +333,7 @@ export default async function ClassificationSettingsPage() {
                 />
                 <EditDisciplineDialog
                   discipline={discipline}
+                  classificationDivisions={classificationDivisions}
                   enabled={enabled}
                 />
               </div>
