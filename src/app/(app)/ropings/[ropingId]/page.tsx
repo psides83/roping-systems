@@ -19,6 +19,7 @@ import {
 import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
 import { ClassCattleDrawForm } from "@/components/ropings/class-cattle-draw-form";
+import { EventDetailsDialog } from "@/components/ropings/event-details-dialog";
 import {
   ClassOperationsDialog,
   classEventDayStatusLabels,
@@ -47,12 +48,18 @@ interface EventDetail {
   title: string;
   slug: string;
   startsAt: string;
+  startsAtValue: string;
+  endsAtValue: string;
+  venueName: string;
+  address: string;
   location: string;
   status: string;
   resultStatus: string;
   isPublic: boolean;
   entriesOpenAt: string | null;
   entriesCloseAt: string | null;
+  entriesOpenAtValue: string;
+  entriesCloseAtValue: string;
   defaultScheduleDate: string;
   canManage: boolean;
   availableTemplates: AddRopingTemplate[];
@@ -134,12 +141,18 @@ async function getEvent(
         title: roping.title,
         slug: roping.id,
         startsAt: roping.date,
+        startsAtValue: "2026-09-27T09:00",
+        endsAtValue: "2026-09-27T18:00",
+        venueName: roping.location,
+        address: "",
         location: roping.location,
         status: roping.status,
         resultStatus: roping.resultStatus ?? "unofficial",
         isPublic: true,
         entriesOpenAt: null,
         entriesCloseAt: null,
+        entriesOpenAtValue: "",
+        entriesCloseAtValue: "",
         defaultScheduleDate: "2026-09-27",
         canManage: false,
         availableTemplates: [],
@@ -381,6 +394,15 @@ async function getEvent(
         timeStyle: "short",
         timeZone: organization.timezone,
       }).format(new Date(data.starts_at)),
+      startsAtValue: toLocalDateTimeInput(
+        data.starts_at,
+        organization.timezone,
+      ),
+      endsAtValue: data.ends_at
+        ? toLocalDateTimeInput(data.ends_at, organization.timezone)
+        : "",
+      venueName: data.venue_name ?? "",
+      address: data.address ?? "",
       location:
         [data.venue_name, data.address].filter(Boolean).join(", ") ||
         "Location pending",
@@ -389,6 +411,12 @@ async function getEvent(
       isPublic: data.is_public,
       entriesOpenAt: data.entries_open_at,
       entriesCloseAt: data.entries_close_at,
+      entriesOpenAtValue: data.entries_open_at
+        ? toLocalDateTimeInput(data.entries_open_at, organization.timezone)
+        : "",
+      entriesCloseAtValue: data.entries_close_at
+        ? toLocalDateTimeInput(data.entries_close_at, organization.timezone)
+        : "",
       defaultScheduleDate: new Intl.DateTimeFormat("en-CA", {
         timeZone: organization.timezone,
         year: "numeric",
@@ -437,10 +465,12 @@ export default async function RopingDetailPage({
       .flatMap((division) => division.fees)
       .reduce((sum, fee) => sum + fee.amountCents, 0) +
     event.eventFees.reduce((sum, fee) => sum + fee.amountCents, 0);
-  const roundsEditable = !["in_progress", "completed", "cancelled"].includes(
-    event.status,
-  );
-  const operationsEditable = !["completed", "cancelled"].includes(event.status);
+  const setupEditable =
+    event.canManage &&
+    !["in_progress", "completed", "cancelled"].includes(event.status);
+  const roundsEditable = setupEditable;
+  const operationsEditable =
+    event.canManage && !["completed", "cancelled"].includes(event.status);
   const roundAction = updateRopingRounds.bind(null, event.id);
   const spacingAction = updateClassEntrySpacing.bind(null, event.id);
 
@@ -461,6 +491,30 @@ export default async function RopingDetailPage({
             </Link>
             {isSupabaseConfigured() ? (
               <>
+                <EventDetailsDialog
+                  event={{
+                    id: event.id,
+                    title: event.title,
+                    slug: event.slug,
+                    venueName: event.venueName,
+                    address: event.address,
+                    startsAt: event.startsAtValue,
+                    endsAt: event.endsAtValue,
+                    entriesOpenAt: event.entriesOpenAtValue,
+                    entriesCloseAt: event.entriesCloseAtValue,
+                    isPublic: event.isPublic,
+                    eventFee: event.eventFees[0]
+                      ? {
+                          id: event.eventFees[0].id,
+                          title: event.eventFees[0].title,
+                          amount: (
+                            event.eventFees[0].amountCents / 100
+                          ).toFixed(2),
+                        }
+                      : null,
+                  }}
+                  editable={setupEditable}
+                />
                 <Link
                   href={`/ropings/${event.id}/entries`}
                   className="flex h-10 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"
@@ -578,11 +632,7 @@ export default async function RopingDetailPage({
             templates={event.availableTemplates}
             classifications={event.availableClassifications}
             defaultDate={event.defaultScheduleDate}
-            enabled={
-              event.canManage &&
-              !["completed", "cancelled"].includes(event.status) &&
-              isSupabaseConfigured()
-            }
+            enabled={setupEditable && isSupabaseConfigured()}
           />
         </div>
         <div className="divide-y divide-[#e7ebe8]">
@@ -657,7 +707,7 @@ export default async function RopingDetailPage({
                     name={division.name}
                     entryCount={division.entries}
                     enabled={
-                      event.canManage &&
+                      setupEditable &&
                       !["in_progress", "completed"].includes(
                         division.eventDayStatus,
                       ) &&

@@ -15,6 +15,37 @@ export type ScheduleFormState = LiveRunState;
 export type CattleFormState = LiveRunState;
 export type EventDayFormState = LiveRunState;
 export type EventScheduleFormState = LiveRunState;
+export interface EventDetailsFormState extends LiveRunState {
+  errors?: Record<string, string[]>;
+}
+
+const localDateTime = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Choose a valid date and time.");
+
+const eventDetailsSchema = z.object({
+  title: z.string().trim().min(2, "Event title is required."),
+  slug: z
+    .string()
+    .trim()
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Use lowercase letters, numbers, and hyphens only.",
+    ),
+  venueName: z.string().trim(),
+  address: z.string().trim(),
+  startsAt: localDateTime,
+  endsAt: z.union([z.literal(""), localDateTime]),
+  entriesOpenAt: z.union([z.literal(""), localDateTime]),
+  entriesCloseAt: z.union([z.literal(""), localDateTime]),
+  eventFeeId: z.union([z.literal(""), z.uuid()]),
+  eventFeeTitle: z.string().trim(),
+  eventFeeAmount: z.union([
+    z.literal(""),
+    z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
+  ]),
+  isPublic: z.string().optional(),
+});
 
 const shortRoundBracketSchema = z
   .array(
@@ -31,6 +62,69 @@ async function requireManager() {
   if (!organization || organization.role === "viewer")
     throw new Error("Manager access is required.");
   return createClient();
+}
+
+export async function updateEventDetails(
+  ropingId: string,
+  _state: EventDetailsFormState,
+  formData: FormData,
+): Promise<EventDetailsFormState> {
+  const parsed = eventDetailsSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (parsed.data.endsAt && parsed.data.endsAt < parsed.data.startsAt)
+    return { errors: { endsAt: ["The event end must be after its start."] } };
+  if (
+    parsed.data.entriesOpenAt &&
+    parsed.data.entriesCloseAt &&
+    parsed.data.entriesCloseAt < parsed.data.entriesOpenAt
+  )
+    return {
+      errors: {
+        entriesCloseAt: ["Entries must close after they open."],
+      },
+    };
+  if (
+    Boolean(parsed.data.eventFeeTitle) !== Boolean(parsed.data.eventFeeAmount)
+  )
+    return {
+      errors: {
+        eventFeeAmount: [
+          "Enter both a charge name and amount, or leave both blank.",
+        ],
+      },
+    };
+
+  const supabase = await requireManager();
+  const { error } = await supabase.rpc("update_event_details", {
+    target_roping_id: ropingId,
+    event_title: parsed.data.title,
+    event_slug: parsed.data.slug,
+    event_venue_name: parsed.data.venueName,
+    event_address: parsed.data.address,
+    event_starts_at_local: parsed.data.startsAt,
+    event_ends_at_local: parsed.data.endsAt || null,
+    event_entries_open_at_local: parsed.data.entriesOpenAt || null,
+    event_entries_close_at_local: parsed.data.entriesCloseAt || null,
+    event_is_public: parsed.data.isPublic === "on",
+    event_fee_id: parsed.data.eventFeeId || null,
+    event_fee_title: parsed.data.eventFeeTitle,
+    event_fee_amount_cents: parsed.data.eventFeeAmount
+      ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
+      : null,
+  });
+  if (error)
+    return {
+      message:
+        error.code === "23505"
+          ? "Another event already uses that public URL."
+          : error.message,
+    };
+
+  revalidatePath("/ropings");
+  revalidatePath(`/ropings/${ropingId}`);
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/public`);
+  return { success: true, message: "Event details saved." };
 }
 
 const addEventRopingSchema = z.object({
