@@ -33,6 +33,8 @@ async function getRopingData() {
           : "preview-calf-roping",
         competitionFormat: division.competitionFormat ?? "standard",
         handicapRules: division.handicapRules ?? {},
+        numberOfRuns: division.numberOfRuns ?? 1,
+        cattleDrawEnabled: division.cattleDrawEnabled ?? false,
         divisionName: division.name.split(" · ")[0],
         fees: division.fees.map((fee) => ({
           id: fee.id,
@@ -85,7 +87,7 @@ async function getRopingData() {
     supabase
       .from("division_templates")
       .select(
-        "id, name, discipline_id, competition_format, handicap_rules, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
+        "id, name, discipline_id, competition_format, handicap_rules, number_of_runs, cattle_draw_enabled, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, is_required)",
       )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
@@ -127,6 +129,8 @@ async function getRopingData() {
     name: division.name,
     disciplineId: division.discipline_id,
     competitionFormat: division.competition_format,
+    numberOfRuns: division.number_of_runs,
+    cattleDrawEnabled: division.cattle_draw_enabled,
     handicapRules: Object.fromEntries(
       (
         (division.handicap_rules ?? []) as Array<{

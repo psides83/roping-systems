@@ -28,6 +28,7 @@ export function AddEventRopingDialog({
   templates,
   classifications,
   defaultDate,
+  finalDate,
   arenaCount,
   existingRopings,
   enabled,
@@ -36,6 +37,7 @@ export function AddEventRopingDialog({
   templates: AddRopingTemplate[];
   classifications: AddRopingClassification[];
   defaultDate: string;
+  finalDate: string;
   arenaCount: number;
   existingRopings: Array<{
     name: string;
@@ -150,6 +152,8 @@ export function AddEventRopingDialog({
                 <input
                   name="scheduledDate"
                   type="date"
+                  min={defaultDate}
+                  max={finalDate}
                   value={scheduledDate}
                   onChange={(event) => {
                     const nextDate = event.target.value;
@@ -199,18 +203,6 @@ export function AddEventRopingDialog({
                 <input type="hidden" name="startTime" value="" />
               )}
               <label className="text-sm font-semibold">
-                Main rounds
-                <input
-                  name="roundCount"
-                  type="number"
-                  min="1"
-                  max="20"
-                  defaultValue="1"
-                  className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3"
-                  required
-                />
-              </label>
-              <label className="text-sm font-semibold">
                 Arena
                 <select
                   name="arenaName"
@@ -246,14 +238,6 @@ export function AddEventRopingDialog({
                   maxLength={120}
                   className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3"
                 />
-              </label>
-              <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
-                <input
-                  name="cattleDrawEnabled"
-                  type="checkbox"
-                  className="h-4 w-4 accent-[var(--brand-accent)]"
-                />{" "}
-                Draw and track cattle
               </label>
               {state.message && !state.success ? (
                 <p className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 sm:col-span-2">

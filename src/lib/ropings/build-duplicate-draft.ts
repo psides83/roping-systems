@@ -11,8 +11,6 @@ interface ScheduledRopingRecord {
   schedule_type: "fixed" | "tentative" | "follows_previous";
   schedule_note: string | null;
   sort_order: number;
-  number_of_runs: number;
-  cattle_draw_enabled: boolean;
   arena_name: string | null;
   incentive_enabled: boolean;
   male_eligibility_policy: import("@/components/ropings/scheduled-class-fields").MaleEligibilityPolicy;
@@ -148,7 +146,6 @@ export function buildDuplicableRopingSummary({
             : "",
           scheduleNote: scheduled.schedule_note ?? "",
           arenaName: scheduled.arena_name ?? "Arena 1",
-          roundCount: scheduled.number_of_runs,
           incentiveEnabled: scheduled.incentive_enabled,
           incentiveRules: Object.fromEntries(
             scheduled.roping_incentive_rules.map((rule) => [
@@ -156,7 +153,6 @@ export function buildDuplicableRopingSummary({
               String(Number(rule.adjustment_seconds)),
             ]),
           ),
-          cattleDrawEnabled: scheduled.cattle_draw_enabled,
           maleEligibilityPolicy: scheduled.male_eligibility_policy,
           maleYouthMaximumAge:
             scheduled.male_youth_maximum_age?.toString() ?? "",

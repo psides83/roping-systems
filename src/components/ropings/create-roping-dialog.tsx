@@ -328,6 +328,7 @@ export function CreateRopingDialog({
                 templates={divisions}
                 classifications={incentiveClassifications}
                 eventStartDate={startsAt.slice(0, 10)}
+                eventEndDate={(endsAt || startsAt).slice(0, 10)}
                 arenaCount={arenaCount}
                 initialOccurrences={initialValues?.occurrences}
                 error={state.errors?.classOccurrences?.[0]}

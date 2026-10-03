@@ -61,10 +61,8 @@ const classOccurrenceSchema = z.object({
   startsAt: z.union([z.literal(""), localDateTime]),
   scheduleNote: z.string().trim().max(120),
   arenaName: z.string().trim().min(1).max(80),
-  roundCount: z.number().int().min(1).max(20),
   incentiveEnabled: z.boolean(),
   incentiveRules: z.array(incentiveRuleSchema),
-  cattleDrawEnabled: z.boolean(),
   maleEligibilityPolicy: z.enum([
     "producer_default",
     "none",
@@ -165,7 +163,7 @@ export async function createRoping(
     return {
       errors: {
         classOccurrences: [
-          "Check each scheduled roping's date, time, arena, rounds, order, and incentive settings.",
+          "Check each scheduled roping's date, time, arena, order, and incentive settings.",
         ],
       },
     };
@@ -195,6 +193,34 @@ export async function createRoping(
     return { message: "You do not have permission to create events." };
 
   const supabase = await createClient();
+  const templateIds = [
+    ...new Set(classOccurrences.map(({ templateId }) => templateId)),
+  ];
+  const { data: templateSettings, error: templateSettingsError } =
+    await supabase
+      .from("division_templates")
+      .select("id, number_of_runs, cattle_draw_enabled")
+      .eq("organization_id", organization.id)
+      .eq("is_active", true)
+      .in("id", templateIds);
+  if (templateSettingsError) return { message: templateSettingsError.message };
+  if (templateSettings?.length !== templateIds.length)
+    return {
+      message: "One or more selected roping templates are no longer available.",
+    };
+
+  const settingsByTemplate = new Map(
+    templateSettings.map((template) => [template.id, template]),
+  );
+  const configuredOccurrences = classOccurrences.map((occurrence) => {
+    const template = settingsByTemplate.get(occurrence.templateId)!;
+    return {
+      ...occurrence,
+      roundCount: template.number_of_runs,
+      cattleDrawEnabled: template.cattle_draw_enabled,
+    };
+  });
+
   const { data: newRopingId, error } = await supabase.rpc(
     "create_roping_with_short_round_policy",
     {
@@ -211,7 +237,7 @@ export async function createRoping(
       event_entries_open_at_local: parsed.data.entriesOpenAt || null,
       event_entries_close_at_local: parsed.data.entriesCloseAt || null,
       event_publication_state: parsed.data.publicationState,
-      event_class_occurrences: classOccurrences,
+      event_class_occurrences: configuredOccurrences,
       event_short_round_enabled: false,
       event_short_round_brackets: [],
       event_short_round_tie_policy: "advance_all",

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
-  Beef,
   ChevronDown,
   Clock3,
   Gauge,
@@ -37,6 +36,8 @@ export interface EventTemplate {
   divisionName: string;
   competitionFormat: CompetitionFormat;
   handicapRules: Record<string, number>;
+  numberOfRuns: number;
+  cattleDrawEnabled: boolean;
   fees: Array<{
     id: string;
     title: string;
@@ -55,10 +56,8 @@ export interface ScheduledOccurrenceDraft {
   startTime: string;
   scheduleNote: string;
   arenaName: string;
-  roundCount: number;
   incentiveEnabled: boolean;
   incentiveRules: Record<string, string>;
-  cattleDrawEnabled: boolean;
   maleEligibilityPolicy: MaleEligibilityPolicy;
   maleYouthMaximumAge: string;
   maleSeniorMinimumAge: string;
@@ -84,6 +83,7 @@ export function ScheduledClassFields({
   templates,
   classifications,
   eventStartDate,
+  eventEndDate,
   arenaCount,
   initialOccurrences = [],
   error,
@@ -91,15 +91,13 @@ export function ScheduledClassFields({
   templates: EventTemplate[];
   classifications: IncentiveClassification[];
   eventStartDate: string;
+  eventEndDate: string;
   arenaCount: number;
   initialOccurrences?: ScheduledOccurrenceDraft[];
   error?: string;
 }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState(
     templates[0]?.id ?? "",
-  );
-  const [allRounds, setAllRounds] = useState(
-    initialOccurrences[0]?.roundCount ?? 1,
   );
   const [occurrences, setOccurrences] = useState<ScheduledOccurrence[]>(() =>
     initialOccurrences.map((occurrence, index) => ({
@@ -151,13 +149,11 @@ export function ScheduledClassFields({
               : `${occurrence.scheduledDate}T${occurrence.startTime}`,
           scheduleNote: occurrence.scheduleNote,
           arenaName: occurrence.arenaName,
-          roundCount: occurrence.roundCount,
           incentiveEnabled:
             templates.find((template) => template.id === occurrence.templateId)
               ?.competitionFormat === "handicap"
               ? true
               : occurrence.incentiveEnabled,
-          cattleDrawEnabled: occurrence.cattleDrawEnabled,
           maleEligibilityPolicy: occurrence.maleEligibilityPolicy,
           maleYouthMaximumAge: occurrence.maleYouthMaximumAge
             ? Number(occurrence.maleYouthMaximumAge)
@@ -208,7 +204,6 @@ export function ScheduledClassFields({
         startTime: "",
         scheduleNote: "",
         arenaName: "Arena 1",
-        roundCount: allRounds,
         incentiveEnabled: template?.competitionFormat === "handicap",
         incentiveRules:
           template.competitionFormat === "handicap"
@@ -219,7 +214,6 @@ export function ScheduledClassFields({
                 ]),
               )
             : {},
-        cattleDrawEnabled: false,
         maleEligibilityPolicy: "producer_default",
         maleYouthMaximumAge: "",
         maleSeniorMinimumAge: "",
@@ -268,35 +262,6 @@ export function ScheduledClassFields({
             more than once.
           </p>
         </div>
-        {occurrences.length ? (
-          <div className="flex items-end gap-2">
-            <label className="text-xs font-semibold text-[#66716b]">
-              Main rounds for all
-              <input
-                value={allRounds}
-                onChange={(event) => setAllRounds(Number(event.target.value))}
-                type="number"
-                min="1"
-                max="20"
-                className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() =>
-                setOccurrences((current) =>
-                  current.map((occurrence) => ({
-                    ...occurrence,
-                    roundCount: allRounds,
-                  })),
-                )
-              }
-              className="h-9 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold"
-            >
-              Apply to all
-            </button>
-          </div>
-        ) : null}
       </div>
 
       <div className="mt-3 flex flex-col gap-2 rounded-md border border-[#dfe4e1] bg-[#f7f8f7] p-3 sm:flex-row">
@@ -383,7 +348,7 @@ export function ScheduledClassFields({
               ? `Follows ${followedRopingName ?? "previous roping"}`
               : occurrence.startTime || "Time not set",
             occurrence.arenaName || null,
-            `${occurrence.roundCount} ${occurrence.roundCount === 1 ? "round" : "rounds"}`,
+            `${template.numberOfRuns} ${template.numberOfRuns === 1 ? "round" : "rounds"}`,
           ]
             .filter(Boolean)
             .join(" · ");
@@ -493,6 +458,8 @@ export function ScheduledClassFields({
                   <Field label="Date">
                     <input
                       type="date"
+                      min={eventStartDate}
+                      max={eventEndDate || eventStartDate}
                       value={occurrence.scheduledDate}
                       onChange={(event) =>
                         updateOccurrence(occurrence.key, {
@@ -550,20 +517,6 @@ export function ScheduledClassFields({
                       {followedRopingName ?? "previous roping"}
                     </div>
                   )}
-                  <Field label="Main rounds">
-                    <input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={occurrence.roundCount}
-                      onChange={(event) =>
-                        updateOccurrence(occurrence.key, {
-                          roundCount: Number(event.target.value),
-                        })
-                      }
-                      className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-2 text-center font-mono text-sm"
-                    />
-                  </Field>
                 </div>
 
                 <Field label="Schedule note (optional)">
@@ -621,31 +574,17 @@ export function ScheduledClassFields({
                   </select>
                 </Field>
 
-                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-3">
-                  <input
-                    type="checkbox"
-                    checked={occurrence.cattleDrawEnabled}
-                    onChange={(event) =>
-                      updateOccurrence(occurrence.key, {
-                        cattleDrawEnabled: event.target.checked,
-                      })
-                    }
-                    className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
-                  />
-                  <Beef
-                    size={17}
-                    className="text-[var(--brand-accent-strong)]"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold">
-                      Draw and track cattle
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[#758078]">
-                      Assign numbered cattle to contestants. Leave off when
-                      cattle simply run through the chute in order.
-                    </span>
+                <div className="flex flex-wrap gap-2 text-xs font-semibold text-[#56615b]">
+                  <span className="rounded-md bg-[#f1f3f2] px-3 py-2">
+                    {template.numberOfRuns}{" "}
+                    {template.numberOfRuns === 1 ? "round" : "rounds"}
                   </span>
-                </label>
+                  <span className="rounded-md bg-[#f1f3f2] px-3 py-2">
+                    {template.cattleDrawEnabled
+                      ? "Drawn cattle"
+                      : "Cattle run in order"}
+                  </span>
+                </div>
 
                 <div>
                   <p className="text-xs font-semibold text-[#66716b]">

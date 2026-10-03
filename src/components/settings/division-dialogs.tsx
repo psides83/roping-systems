@@ -309,6 +309,18 @@ function EventTemplateDialog({
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
+                Main rounds
+                <input
+                  name="numberOfRuns"
+                  defaultValue={template?.numberOfRuns ?? 1}
+                  type="number"
+                  min="1"
+                  max="20"
+                  className={inputClass}
+                  required
+                />
+              </label>
+              <label className="block text-sm font-semibold">
                 Maximum entries per contestant
                 <input
                   name="maximumEntries"
@@ -431,6 +443,15 @@ function EventTemplateDialog({
               />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+                <input
+                  name="cattleDrawEnabled"
+                  type="checkbox"
+                  defaultChecked={template?.cattleDrawEnabled}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Draw and track cattle
+              </label>
               <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
                 <input
                   name="allowGuests"

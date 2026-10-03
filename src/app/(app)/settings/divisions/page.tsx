@@ -89,7 +89,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, number_of_runs, cattle_draw_enabled, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
@@ -147,6 +147,8 @@ async function getDivisionData(): Promise<{
       description: division.description ?? "",
       maximumEntriesPerPerson: division.maximum_entries_per_person,
       minimumRunsBetweenEntries: division.minimum_runs_between_entries,
+      numberOfRuns: division.number_of_runs,
+      cattleDrawEnabled: division.cattle_draw_enabled,
       allowGuests: division.allow_guests,
       isActive: division.is_active,
       disciplineId: division.discipline_id,
@@ -222,7 +224,7 @@ export default async function DivisionSettingsPage() {
       <PageHeader
         eyebrow="Organization setup"
         title="Roping templates"
-        description="Build reusable format templates for each division. Choose the classification and round count when adding each actual roping to an event."
+        description="Build reusable format templates for each division. Choose the classification and schedule when adding each actual roping to an event."
         actions={
           <CreateDivisionDialog
             configured={configured && canEdit}
@@ -264,6 +266,15 @@ export default async function DivisionSettingsPage() {
                   {division.description || "No description"}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-[#758078]">
+                  <span>
+                    {division.numberOfRuns}{" "}
+                    {division.numberOfRuns === 1 ? "round" : "rounds"}
+                  </span>
+                  <span>
+                    {division.cattleDrawEnabled
+                      ? "Drawn cattle"
+                      : "Cattle run in order"}
+                  </span>
                   <span>
                     {division.maximumEntriesPerPerson
                       ? `${division.maximumEntriesPerPerson} per contestant`

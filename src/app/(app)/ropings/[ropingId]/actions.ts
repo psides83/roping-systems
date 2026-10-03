@@ -166,8 +166,6 @@ const addEventRopingSchema = z.object({
     .or(z.literal("")),
   scheduleNote: z.string().trim().max(120),
   arenaName: z.string().trim().min(1).max(80).transform(formatProperNoun),
-  roundCount: z.coerce.number().int().min(1).max(20),
-  cattleDrawEnabled: z.string().optional(),
 });
 
 export async function addRopingToEvent(
@@ -183,16 +181,28 @@ export async function addRopingToEvent(
   if (parsed.data.scheduleType !== "follows_previous" && !parsed.data.startTime)
     return { message: "Set and tentative schedules require a start time." };
   const supabase = await requireManager();
-  const [{ data: event }, { data: previousRopings }] = await Promise.all([
-    supabase.from("ropings").select("arena_count").eq("id", ropingId).single(),
-    supabase
-      .from("roping_divisions")
-      .select("id")
-      .eq("roping_id", ropingId)
-      .eq("scheduled_date", parsed.data.scheduledDate)
-      .eq("arena_name", parsed.data.arenaName)
-      .limit(1),
-  ]);
+  const [{ data: event }, { data: previousRopings }, { data: template }] =
+    await Promise.all([
+      supabase
+        .from("ropings")
+        .select("arena_count")
+        .eq("id", ropingId)
+        .single(),
+      supabase
+        .from("roping_divisions")
+        .select("id")
+        .eq("roping_id", ropingId)
+        .eq("scheduled_date", parsed.data.scheduledDate)
+        .eq("arena_name", parsed.data.arenaName)
+        .limit(1),
+      supabase
+        .from("division_templates")
+        .select("number_of_runs, cattle_draw_enabled")
+        .eq("id", parsed.data.templateId)
+        .eq("is_active", true)
+        .single(),
+    ]);
+  if (!template) return { message: "That roping template is unavailable." };
   const arenaNumber = parsed.data.arenaName.match(/^Arena (\d+)$/)?.[1];
   if (
     parsed.data.arenaName !== "First Available" &&
@@ -219,8 +229,8 @@ export async function addRopingToEvent(
         : `${parsed.data.scheduledDate}T${parsed.data.startTime}:00`,
     target_schedule_note: parsed.data.scheduleNote,
     target_arena_name: parsed.data.arenaName,
-    target_round_count: parsed.data.roundCount,
-    target_cattle_draw_enabled: parsed.data.cattleDrawEnabled === "on",
+    target_round_count: template.number_of_runs,
+    target_cattle_draw_enabled: template.cattle_draw_enabled,
   });
   if (error) return { message: error.message };
   revalidatePath(`/ropings/${ropingId}`);
@@ -261,11 +271,6 @@ export async function removeRopingFromEvent(
   };
 }
 
-const roundCountSchema = z.object({
-  divisionId: z.union([z.literal(""), z.uuid()]),
-  roundCount: z.coerce.number().int().min(1).max(20),
-});
-
 const entrySpacingSchema = z.object({
   divisionId: z.uuid(),
   minimumRunsBetweenEntries: z.coerce.number().int().min(0).max(100),
@@ -282,20 +287,6 @@ const roundOrderingSchema = z.object({
   secondRoundOrdering: roundOrderMethodSchema,
   laterRoundOrdering: roundOrderMethodSchema,
 });
-
-export async function updateRopingRounds(ropingId: string, formData: FormData) {
-  const parsed = roundCountSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) throw new Error("Round count must be between 1 and 20.");
-  const supabase = await requireManager();
-  const { error } = await supabase.rpc("set_roping_round_count", {
-    target_roping_id: ropingId,
-    new_round_count: parsed.data.roundCount,
-    target_roping_division_id: parsed.data.divisionId || null,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath(`/ropings/${ropingId}`);
-  revalidatePath(`/ropings/${ropingId}/live`);
-}
 
 export async function updateClassEntrySpacing(
   ropingId: string,
@@ -329,23 +320,6 @@ export async function updateClassRoundOrdering(
   if (error) throw new Error(error.message);
   revalidatePath(`/ropings/${ropingId}`);
   revalidatePath(`/ropings/${ropingId}/live`);
-}
-
-export async function updateClassCattleDraw(
-  ropingId: string,
-  divisionId: string,
-  _state: CattleFormState,
-  formData: FormData,
-): Promise<CattleFormState> {
-  const supabase = await requireManager();
-  const { error } = await supabase.rpc("set_division_cattle_draw_enabled", {
-    target_roping_division_id: divisionId,
-    cattle_draw_is_enabled: formData.get("cattleDrawEnabled") === "on",
-  });
-  if (error) return { message: error.message };
-  revalidatePath(`/ropings/${ropingId}`);
-  revalidatePath(`/ropings/${ropingId}/live`);
-  return { success: true, message: "Cattle draw setting saved." };
 }
 
 export async function saveEventCattle(

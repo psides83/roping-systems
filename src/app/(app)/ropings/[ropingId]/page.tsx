@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  ArrowLeft,
   BadgeCheck,
   ChevronDown,
+  ChevronRight,
   CircleDollarSign,
   ClipboardList,
   Clock3,
@@ -21,7 +23,6 @@ import { StatusPill } from "@/components/ui/status-pill";
 import type { ShortRoundTiePolicy } from "@/components/ropings/short-round-settings";
 import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
-import { ClassCattleDrawForm } from "@/components/ropings/class-cattle-draw-form";
 import { EventDetailsDialog } from "@/components/ropings/event-details-dialog";
 import {
   ClassOperationsDialog,
@@ -44,7 +45,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 import type { RoundOrderMethod } from "@/types/domain";
-import { updateClassEntrySpacing, updateRopingRounds } from "./actions";
+import { updateClassEntrySpacing } from "./actions";
 
 interface EventDetail {
   id: string;
@@ -69,6 +70,7 @@ interface EventDetail {
   entriesOpenAtValue: string;
   entriesCloseAtValue: string;
   defaultScheduleDate: string;
+  finalScheduleDate: string;
   canManage: boolean;
   availableTemplates: AddRopingTemplate[];
   availableClassifications: AddRopingClassification[];
@@ -176,6 +178,7 @@ async function getEvent(
         entriesOpenAtValue: "",
         entriesCloseAtValue: "",
         defaultScheduleDate: "2026-09-27",
+        finalScheduleDate: "2026-09-27",
         canManage: false,
         availableTemplates: [],
         availableClassifications: [],
@@ -530,10 +533,7 @@ async function getEvent(
         throw new Error("Unable to calculate the event payout status.");
       payoutTotalCents += (
         (result.data ?? []) as Array<{ payout_cents: number | string }>
-      ).reduce(
-        (total, award) => total + Number(award.payout_cents),
-        0,
-      );
+      ).reduce((total, award) => total + Number(award.payout_cents), 0);
     }
     payoutCompletedCents = (payoutPayments.data ?? []).reduce(
       (total, payment) => total + payment.amount_cents,
@@ -590,6 +590,12 @@ async function getEvent(
         month: "2-digit",
         day: "2-digit",
       }).format(new Date(data.starts_at)),
+      finalScheduleDate: new Intl.DateTimeFormat("en-CA", {
+        timeZone: organization.timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(data.ends_at ?? data.starts_at)),
       canManage: organization.role !== "viewer",
       availableTemplates: (templateData ?? []).map((template) => ({
         id: template.id,
@@ -642,7 +648,6 @@ export default async function RopingDetailPage({
   const roundsEditable = setupEditable;
   const operationsEditable =
     event.canManage && !["completed", "cancelled"].includes(event.status);
-  const roundAction = updateRopingRounds.bind(null, event.id);
   const spacingAction = updateClassEntrySpacing.bind(null, event.id);
   const activeRoping =
     event.divisions.find(
@@ -666,9 +671,7 @@ export default async function RopingDetailPage({
         division.eventDayStatus !== "completed" &&
         division.scheduleType !== "follows_previous",
     ) ??
-    event.divisions.find(
-      (division) => division.eventDayStatus !== "completed",
-    );
+    event.divisions.find((division) => division.eventDayStatus !== "completed");
   const dashboardMetrics = getDashboardMetrics({
     event,
     totalEntries,
@@ -679,6 +682,26 @@ export default async function RopingDetailPage({
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-1.5 text-sm text-[#66716b]"
+        >
+          <Link href="/ropings" className="font-semibold hover:text-[#17201c]">
+            Events
+          </Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <span className="max-w-64 truncate" aria-current="page">
+            {event.title}
+          </span>
+        </nav>
+        <Link
+          href="/ropings"
+          className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold hover:bg-[#f7f8f7]"
+        >
+          <ArrowLeft size={15} /> Back to events
+        </Link>
+      </div>
       <PageHeader
         eyebrow="Roping workspace"
         title={event.title}
@@ -807,6 +830,7 @@ export default async function RopingDetailPage({
             templates={event.availableTemplates}
             classifications={event.availableClassifications}
             defaultDate={event.defaultScheduleDate}
+            finalDate={event.finalScheduleDate}
             arenaCount={event.arenaCount}
             existingRopings={event.divisions.map((division) => ({
               name: division.name,
@@ -815,36 +839,6 @@ export default async function RopingDetailPage({
             }))}
             enabled={setupEditable && isSupabaseConfigured()}
           />
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-md border border-[#dfe4e1] bg-[#f7f8f7] p-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-bold">Set all main rounds</p>
-            <p className="mt-1 text-xs text-[#758078]">
-              Apply one round count to every roping in this event.
-            </p>
-          </div>
-          <form action={roundAction} className="flex items-end gap-2">
-            <input type="hidden" name="divisionId" value="" />
-            <label className="text-xs font-semibold text-[#66716b]">
-              Rounds
-              <input
-                name="roundCount"
-                type="number"
-                min="1"
-                max="20"
-                defaultValue="1"
-                disabled={!roundsEditable || !isSupabaseConfigured()}
-                className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] bg-white px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
-              />
-            </label>
-            <button
-              disabled={!roundsEditable || !isSupabaseConfigured()}
-              className="h-9 rounded-md border border-[#ccd4d0] bg-white px-3 text-xs font-semibold disabled:opacity-50"
-            >
-              Apply to all
-            </button>
-          </form>
         </div>
 
         <div className="space-y-3">
@@ -937,32 +931,21 @@ export default async function RopingDetailPage({
 
                 <div className="px-4 py-5">
                   <h4 className="text-sm font-bold">Roping format</h4>
-                  <div className="mt-3 grid gap-4 lg:grid-cols-2">
-                    <form action={roundAction} className="flex items-end gap-2">
-                      <input
-                        type="hidden"
-                        name="divisionId"
-                        value={division.id}
-                      />
-                      <label className="min-w-0 flex-1 text-xs font-semibold text-[#66716b]">
-                        Main rounds
-                        <input
-                          name="roundCount"
-                          type="number"
-                          min="1"
-                          max="20"
-                          defaultValue={division.runs}
-                          disabled={!roundsEditable || !isSupabaseConfigured()}
-                          className="mt-1 block h-10 w-full rounded-md border border-[#ccd4d0] px-3 font-mono text-sm disabled:bg-[#f1f3f2]"
-                        />
-                      </label>
-                      <button
-                        disabled={!roundsEditable || !isSupabaseConfigured()}
-                        className="h-10 rounded-md border border-[#d7ddda] px-4 text-xs font-semibold disabled:opacity-50"
-                      >
-                        Save
-                      </button>
-                    </form>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#56615b]">
+                    <span className="rounded-md bg-[#f1f3f2] px-3 py-2">
+                      {division.runs} {division.runs === 1 ? "round" : "rounds"}
+                    </span>
+                    <span className="rounded-md bg-[#f1f3f2] px-3 py-2">
+                      {division.cattleDrawEnabled
+                        ? "Drawn cattle"
+                        : "Cattle run in order"}
+                    </span>
+                    <span className="rounded-md bg-[#f1f3f2] px-3 py-2">
+                      Short round:{" "}
+                      {division.shortRoundEnabled ? "Included" : "Not included"}
+                    </span>
+                  </div>
+                  <div className="mt-4 max-w-xl">
                     <form
                       action={spacingAction}
                       className="flex items-end gap-2"
@@ -992,28 +975,17 @@ export default async function RopingDetailPage({
                       </button>
                     </form>
                   </div>
-                  <p className="mt-3 text-xs text-[#758078]">
-                    Short round:{" "}
-                    {division.shortRoundEnabled ? "Included" : "Not included"}
-                  </p>
                 </div>
 
                 <div className="border-t border-[#e7ebe8] px-4 py-5">
                   <h4 className="text-sm font-bold">Competition order</h4>
-                  <div className="mt-3 space-y-4">
+                  <div className="mt-3">
                     <ClassRoundOrderingForm
                       ropingId={event.id}
                       divisionId={division.id}
                       roundCount={division.runs}
                       secondRoundOrdering={division.secondRoundOrdering}
                       laterRoundOrdering={division.laterRoundOrdering}
-                      editable={roundsEditable && isSupabaseConfigured()}
-                      embedded
-                    />
-                    <ClassCattleDrawForm
-                      ropingId={event.id}
-                      divisionId={division.id}
-                      enabled={division.cattleDrawEnabled}
                       editable={roundsEditable && isSupabaseConfigured()}
                       embedded
                     />

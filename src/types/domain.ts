@@ -72,6 +72,8 @@ export interface DivisionTemplateSummary {
   description: string;
   maximumEntriesPerPerson: number | null;
   minimumRunsBetweenEntries?: number;
+  numberOfRuns?: number;
+  cattleDrawEnabled?: boolean;
   allowGuests: boolean;
   isActive: boolean;
   disciplineId?: string | null;
