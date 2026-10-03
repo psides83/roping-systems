@@ -22,6 +22,7 @@ interface EntryDivision {
   startsAt: string | null;
   scheduledDate: string;
   scheduleType: "fixed" | "tentative" | "follows_previous";
+  followsRopingName: string | null;
   scheduleNote: string | null;
   incentiveEnabled: boolean;
   eligibilityType: "skill" | "open" | "age";
@@ -206,7 +207,7 @@ export function OnlineEntryForm({
                     </span>
                     <span className="mt-1 block text-xs text-[#758078]">
                       {division.scheduleType === "follows_previous"
-                        ? `${division.scheduledDate} · Follows previous roping`
+                        ? `${division.scheduledDate} · Follows ${division.followsRopingName ?? "previous roping"}`
                         : `${division.startsAt ?? division.scheduledDate}${
                             division.scheduleType === "tentative"
                               ? " · Tentative"

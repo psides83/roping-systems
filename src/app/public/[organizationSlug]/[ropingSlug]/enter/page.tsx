@@ -18,28 +18,27 @@ export default async function PublicOnlineEntryPage({
     { data: rows, error },
     { data: optionalFees, error: feeError },
     { data: location, error: locationError },
-  ] =
-    await Promise.all([
-      supabase
-        .from("public_event_entry_options")
-        .select(
-          "organization_name, logo_path, brand_primary, brand_accent, allow_guest_entries, roping_id, title, venue_name, address, starts_at, ends_at, entries_close_at, entries_are_open, incentive_enabled, division_id, division_name, division_description, division_starts_at, scheduled_date, schedule_type, schedule_note, maximum_entries_per_person, allow_guests, eligibility_type, minimum_age, maximum_age, estimated_first_entry_cents, sort_order",
-        )
-        .eq("organization_slug", organizationSlug)
-        .eq("roping_slug", ropingSlug)
-        .order("sort_order"),
-      supabase
-        .from("public_event_optional_fees")
-        .select("division_id, fee_id, title, amount_cents, kind, scope")
-        .eq("organization_slug", organizationSlug)
-        .eq("roping_slug", ropingSlug),
-      supabase
-        .from("public_roping_schedule")
-        .select("venue_name, address, venue_city, venue_state, venue_postal_code")
-        .eq("organization_slug", organizationSlug)
-        .eq("slug", ropingSlug)
-        .single(),
-    ]);
+  ] = await Promise.all([
+    supabase
+      .from("public_event_entry_options")
+      .select(
+        "organization_name, logo_path, brand_primary, brand_accent, allow_guest_entries, roping_id, title, venue_name, address, starts_at, ends_at, entries_close_at, entries_are_open, incentive_enabled, division_id, division_name, division_description, division_starts_at, scheduled_date, schedule_type, schedule_note, arena_name, maximum_entries_per_person, allow_guests, eligibility_type, minimum_age, maximum_age, estimated_first_entry_cents, sort_order",
+      )
+      .eq("organization_slug", organizationSlug)
+      .eq("roping_slug", ropingSlug)
+      .order("sort_order"),
+    supabase
+      .from("public_event_optional_fees")
+      .select("division_id, fee_id, title, amount_cents, kind, scope")
+      .eq("organization_slug", organizationSlug)
+      .eq("roping_slug", ropingSlug),
+    supabase
+      .from("public_roping_schedule")
+      .select("venue_name, address, venue_city, venue_state, venue_postal_code")
+      .eq("organization_slug", organizationSlug)
+      .eq("slug", ropingSlug)
+      .single(),
+  ]);
 
   if (error) throw new Error(`Unable to load online entries: ${error.message}`);
   if (feeError)
@@ -63,7 +62,7 @@ export default async function PublicOnlineEntryPage({
         timeStyle: "short",
       }).format(new Date(event.entries_close_at))
     : null;
-  const divisions = rows.map((row) => ({
+  const divisions = rows.map((row, index) => ({
     id: row.division_id,
     name: row.division_name,
     description: row.division_description,
@@ -86,6 +85,16 @@ export default async function PublicOnlineEntryPage({
       timeZone: "UTC",
     }).format(new Date(`${row.scheduled_date}T12:00:00Z`)),
     scheduleType: row.schedule_type,
+    followsRopingName:
+      row.schedule_type === "follows_previous"
+        ? (rows
+            .slice(0, index)
+            .findLast(
+              (previous) =>
+                previous.scheduled_date === row.scheduled_date &&
+                previous.arena_name === row.arena_name,
+            )?.division_name ?? null)
+        : null,
     scheduleNote: row.schedule_note,
     incentiveEnabled: row.incentive_enabled,
     eligibilityType: row.eligibility_type ?? "skill",

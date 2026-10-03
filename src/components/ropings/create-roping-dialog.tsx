@@ -48,6 +48,7 @@ export interface RopingDraft {
   city: string;
   state: string;
   postalCode: string;
+  arenaCount: number;
   startsAt: string;
   endsAt: string;
   entriesOpenAt: string;
@@ -82,6 +83,7 @@ export function CreateRopingDialog({
   const [entriesCloseAt, setEntriesCloseAt] = useState(
     initialValues?.entriesCloseAt ?? "",
   );
+  const [arenaCount, setArenaCount] = useState(initialValues?.arenaCount ?? 1);
   const [state, action, pending] = useActionState(createRoping, initialState);
 
   useEffect(() => {
@@ -229,6 +231,21 @@ export function CreateRopingDialog({
                     ) : null}
                   </label>
                   <label className="block text-sm font-semibold">
+                    Number of arenas
+                    <input
+                      name="arenaCount"
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={arenaCount}
+                      onChange={(event) =>
+                        setArenaCount(Number(event.target.value))
+                      }
+                      className={inputClass}
+                      required
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
                     Entries open
                     <input
                       name="entriesOpenAt"
@@ -311,6 +328,7 @@ export function CreateRopingDialog({
                 templates={divisions}
                 classifications={incentiveClassifications}
                 eventStartDate={startsAt.slice(0, 10)}
+                arenaCount={arenaCount}
                 initialOccurrences={initialValues?.occurrences}
                 error={state.errors?.classOccurrences?.[0]}
               />

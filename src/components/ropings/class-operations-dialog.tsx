@@ -27,6 +27,7 @@ export function ClassOperationsDialog({
   divisionId,
   className,
   arenaName,
+  arenaCount,
   status,
   estimatedStart,
   note,
@@ -37,6 +38,7 @@ export function ClassOperationsDialog({
   divisionId: string;
   className: string;
   arenaName: string | null;
+  arenaCount: number;
   status: ClassEventDayStatus;
   estimatedStart: string;
   note: string | null;
@@ -100,13 +102,18 @@ export function ClassOperationsDialog({
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-semibold">
                   Current arena
-                  <input
+                  <select
                     name="arenaName"
-                    defaultValue={arenaName ?? ""}
-                    maxLength={80}
-                    placeholder="Arena 1"
-                    className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3"
-                  />
+                    defaultValue={arenaName ?? "Arena 1"}
+                    className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
+                  >
+                    {Array.from({ length: arenaCount }, (_, index) => (
+                      <option key={index + 1} value={`Arena ${index + 1}`}>
+                        Arena {index + 1}
+                      </option>
+                    ))}
+                    <option value="First Available">First Available</option>
+                  </select>
                 </label>
                 <label className="text-sm font-semibold">
                   Status

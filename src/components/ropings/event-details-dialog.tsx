@@ -16,6 +16,7 @@ export interface EditableEventDetails {
   city: string;
   state: string;
   postalCode: string;
+  arenaCount: number;
   startsAt: string;
   endsAt: string;
   entriesOpenAt: string;
@@ -240,6 +241,29 @@ export function EventDetailsDialog({
                       />
                     </Field>
                   </div>
+                </div>
+              </section>
+
+              <section className="rounded-md border border-[#dfe4e1] p-4">
+                <h3 className="text-sm font-bold">Arena setup</h3>
+                <p className="mt-1 text-xs leading-5 text-[#758078]">
+                  Ropings can use a numbered arena or the first available arena.
+                </p>
+                <div className="mt-3 max-w-48">
+                  <Field
+                    label="Number of arenas"
+                    error={state.errors?.arenaCount?.[0]}
+                  >
+                    <input
+                      name="arenaCount"
+                      type="number"
+                      min="1"
+                      max="20"
+                      defaultValue={event.arenaCount}
+                      className={inputClass}
+                      required
+                    />
+                  </Field>
                 </div>
               </section>
 

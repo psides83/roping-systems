@@ -39,6 +39,7 @@ interface PublicEvent {
     scheduledDate: string;
     startsAt: string | null;
     scheduleType: "fixed" | "tentative" | "follows_previous";
+    followsRopingName: string | null;
     scheduleNote: string | null;
     arenaName: string | null;
     eventDayStatus: string;
@@ -98,6 +99,7 @@ async function getPublicData(organizationSlug: string) {
           scheduledDate: event.date,
           startsAt: "9:00 AM",
           scheduleType: "fixed",
+          followsRopingName: null,
           scheduleNote: null,
           arenaName: "Arena 1",
           eventDayStatus: "scheduled",
@@ -110,6 +112,7 @@ async function getPublicData(organizationSlug: string) {
           scheduledDate: event.date,
           startsAt: null,
           scheduleType: "follows_previous",
+          followsRopingName: "Calf roping · Open",
           scheduleNote: null,
           arenaName: "Arena 2",
           eventDayStatus: "delayed",
@@ -296,38 +299,51 @@ async function getPublicData(organizationSlug: string) {
       shortRoundQualifier: row.is_short_round_qualifier,
     }));
   }
-  const events: PublicEvent[] = schedule.map((event) => ({
-    id: event.id,
-    title: event.title,
-    slug: event.slug,
-    startsAt: event.starts_at,
-    venue: event.venue_name ?? "Location pending",
-    address: [
-      event.address,
-      event.venue_city,
-      [event.venue_state, event.venue_postal_code].filter(Boolean).join(" "),
-    ]
-      .filter(Boolean)
-      .join(", "),
-    status: event.status,
-    resultStatus: event.result_status,
-    entriesOpenAt: event.entries_open_at,
-    entriesCloseAt: event.entries_close_at,
-    scheduledRopings: (scheduleRows ?? [])
-      .filter((row) => row.roping_id === event.id)
-      .map((row) => ({
+  const events: PublicEvent[] = schedule.map((event) => {
+    const eventRows = (scheduleRows ?? []).filter(
+      (row) => row.roping_id === event.id,
+    );
+    return {
+      id: event.id,
+      title: event.title,
+      slug: event.slug,
+      startsAt: event.starts_at,
+      venue: event.venue_name ?? "Location pending",
+      address: [
+        event.address,
+        event.venue_city,
+        [event.venue_state, event.venue_postal_code].filter(Boolean).join(" "),
+      ]
+        .filter(Boolean)
+        .join(", "),
+      status: event.status,
+      resultStatus: event.result_status,
+      entriesOpenAt: event.entries_open_at,
+      entriesCloseAt: event.entries_close_at,
+      scheduledRopings: eventRows.map((row, index) => ({
         id: row.division_id,
         name: row.division_name,
         scheduledDate: row.scheduled_date,
         startsAt: row.division_starts_at,
         scheduleType: row.schedule_type,
+        followsRopingName:
+          row.schedule_type === "follows_previous"
+            ? (eventRows
+                .slice(0, index)
+                .findLast(
+                  (previous) =>
+                    previous.scheduled_date === row.scheduled_date &&
+                    previous.arena_name === row.arena_name,
+                )?.division_name ?? null)
+            : null,
         scheduleNote: row.schedule_note,
         arenaName: row.arena_name,
         eventDayStatus: row.event_day_status,
         estimatedStartsAt: row.estimated_starts_at,
         eventDayNote: row.event_day_note,
       })),
-  }));
+    };
+  });
   const logoUrl = organization.logo_path
     ? supabase.storage
         .from("organization-logos")
@@ -695,7 +711,7 @@ function PublicClassSchedule({
                         minute: "2-digit",
                       },
                     ).format(new Date(displayStart))}`
-                  : "Follows previous"}
+                  : `Follows ${roping.followsRopingName ?? "previous roping"}`}
                 {!roping.estimatedStartsAt &&
                 roping.scheduleType === "tentative"
                   ? " tentative"

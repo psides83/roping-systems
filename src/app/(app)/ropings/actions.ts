@@ -35,6 +35,7 @@ const ropingSchema = z.object({
   city: z.string().trim().transform(formatProperNoun),
   state: z.string().trim().max(40).transform(formatProperNoun),
   postalCode: z.string().trim().max(20),
+  arenaCount: z.coerce.number().int().min(1).max(20),
   startsAt: localDateTime,
   endsAt: z.union([z.literal(""), localDateTime]),
   entriesOpenAt: z.union([z.literal(""), localDateTime]),
@@ -59,7 +60,7 @@ const classOccurrenceSchema = z.object({
   scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
   startsAt: z.union([z.literal(""), localDateTime]),
   scheduleNote: z.string().trim().max(120),
-  arenaName: z.string().trim().max(80),
+  arenaName: z.string().trim().min(1).max(80),
   roundCount: z.number().int().min(1).max(20),
   incentiveEnabled: z.boolean(),
   incentiveRules: z.array(incentiveRuleSchema),
@@ -78,7 +79,7 @@ const classOccurrenceSchema = z.object({
   maleMinimumClassificationNumber: z.number().min(0).max(100).nullable(),
 });
 
-function getClassOccurrences(formData: FormData) {
+function getClassOccurrences(formData: FormData, arenaCount: number) {
   try {
     const parsed = z
       .array(classOccurrenceSchema)
@@ -87,6 +88,12 @@ function getClassOccurrences(formData: FormData) {
     if (!parsed.success) return null;
 
     for (const [index, occurrence] of parsed.data.entries()) {
+      const arenaNumber = occurrence.arenaName.match(/^Arena (\d+)$/)?.[1];
+      if (
+        occurrence.arenaName !== "First Available" &&
+        (!arenaNumber || Number(arenaNumber) > arenaCount)
+      )
+        return null;
       if (
         occurrence.scheduleType !== "follows_previous" &&
         (!occurrence.startsAt ||
@@ -98,7 +105,9 @@ function getClassOccurrences(formData: FormData) {
         !parsed.data
           .slice(0, index)
           .some(
-            (previous) => previous.scheduledDate === occurrence.scheduledDate,
+            (previous) =>
+              previous.scheduledDate === occurrence.scheduledDate &&
+              previous.arenaName === occurrence.arenaName,
           )
       )
         return null;
@@ -148,12 +157,15 @@ export async function createRoping(
       },
     };
 
-  const classOccurrences = getClassOccurrences(formData);
+  const classOccurrences = getClassOccurrences(
+    formData,
+    parsed.data.arenaCount,
+  );
   if (!classOccurrences)
     return {
       errors: {
         classOccurrences: [
-          "Check each scheduled roping's date, time, rounds, order, and incentive settings.",
+          "Check each scheduled roping's date, time, arena, rounds, order, and incentive settings.",
         ],
       },
     };
@@ -183,7 +195,7 @@ export async function createRoping(
     return { message: "You do not have permission to create events." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc(
+  const { data: newRopingId, error } = await supabase.rpc(
     "create_roping_with_short_round_policy",
     {
       target_organization_id: organization.id,
@@ -217,6 +229,12 @@ export async function createRoping(
           ? "An event already uses that public URL."
           : error.message,
     };
+
+  const { error: arenaError } = await supabase.rpc("set_event_arena_count", {
+    target_roping_id: newRopingId,
+    new_arena_count: parsed.data.arenaCount,
+  });
+  if (arenaError) return { message: arenaError.message };
 
   revalidatePath("/ropings");
   return {

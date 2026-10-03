@@ -63,6 +63,7 @@ export interface LiveRunRow {
 
 interface LiveDeskProps {
   ropingId: string;
+  arenaCount: number;
   divisions: Array<{
     id: string;
     name: string;
@@ -95,6 +96,7 @@ interface LiveDeskProps {
 
 export function DatabaseLiveDesk({
   ropingId,
+  arenaCount,
   divisions,
   selectedDivisionId,
   selectedRound,
@@ -594,6 +596,7 @@ export function DatabaseLiveDesk({
             divisionId={selectedDivisionId}
             className={selectedDivision.name}
             arenaName={selectedDivision.arenaName}
+            arenaCount={arenaCount}
             status={selectedDivision.eventDayStatus}
             estimatedStart={selectedDivision.estimatedStart}
             note={selectedDivision.eventDayNote}

@@ -28,17 +28,27 @@ export function AddEventRopingDialog({
   templates,
   classifications,
   defaultDate,
+  arenaCount,
+  existingRopings,
   enabled,
 }: {
   ropingId: string;
   templates: AddRopingTemplate[];
   classifications: AddRopingClassification[];
   defaultDate: string;
+  arenaCount: number;
+  existingRopings: Array<{
+    name: string;
+    scheduledDate: string;
+    arenaName: string | null;
+  }>;
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [scheduleType, setScheduleType] = useState("fixed");
+  const [scheduledDate, setScheduledDate] = useState(defaultDate);
+  const [arenaName, setArenaName] = useState("Arena 1");
   const template = templates.find((item) => item.id === templateId);
   const eligible = classifications.filter(
     (item) => item.disciplineId === template?.disciplineId,
@@ -54,6 +64,10 @@ export function AddEventRopingDialog({
     return () => window.clearTimeout(timeoutId);
   }, [state.success]);
   const firstClassification = useMemo(() => eligible[0]?.id ?? "", [eligible]);
+  const followedRoping = existingRopings.findLast(
+    (item) =>
+      item.scheduledDate === scheduledDate && item.arenaName === arenaName,
+  );
 
   return (
     <>
@@ -136,7 +150,20 @@ export function AddEventRopingDialog({
                 <input
                   name="scheduledDate"
                   type="date"
-                  defaultValue={defaultDate}
+                  value={scheduledDate}
+                  onChange={(event) => {
+                    const nextDate = event.target.value;
+                    setScheduledDate(nextDate);
+                    if (
+                      scheduleType === "follows_previous" &&
+                      !existingRopings.some(
+                        (item) =>
+                          item.scheduledDate === nextDate &&
+                          item.arenaName === arenaName,
+                      )
+                    )
+                      setScheduleType("fixed");
+                  }}
                   className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3"
                   required
                 />
@@ -151,7 +178,11 @@ export function AddEventRopingDialog({
                 >
                   <option value="fixed">Set time</option>
                   <option value="tentative">Tentative time</option>
-                  <option value="follows_previous">Follows previous</option>
+                  <option value="follows_previous" disabled={!followedRoping}>
+                    {followedRoping
+                      ? `Follows ${followedRoping.name}`
+                      : "Follows previous in this arena"}
+                  </option>
                 </select>
               </label>
               {scheduleType !== "follows_previous" ? (
@@ -180,13 +211,32 @@ export function AddEventRopingDialog({
                 />
               </label>
               <label className="text-sm font-semibold">
-                Arena{" "}
-                <span className="font-normal text-[#758078]">(optional)</span>
-                <input
+                Arena
+                <select
                   name="arenaName"
-                  maxLength={80}
-                  className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3"
-                />
+                  value={arenaName}
+                  onChange={(event) => {
+                    const nextArena = event.target.value;
+                    setArenaName(nextArena);
+                    if (
+                      scheduleType === "follows_previous" &&
+                      !existingRopings.some(
+                        (item) =>
+                          item.scheduledDate === scheduledDate &&
+                          item.arenaName === nextArena,
+                      )
+                    )
+                      setScheduleType("fixed");
+                  }}
+                  className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
+                >
+                  {Array.from({ length: arenaCount }, (_, index) => (
+                    <option key={index + 1} value={`Arena ${index + 1}`}>
+                      Arena {index + 1}
+                    </option>
+                  ))}
+                  <option value="First Available">First Available</option>
+                </select>
               </label>
               <label className="text-sm font-semibold sm:col-span-2">
                 Schedule note{" "}

@@ -53,6 +53,7 @@ interface EventDetail {
   city: string;
   state: string;
   postalCode: string;
+  arenaCount: number;
   location: string;
   status: string;
   resultStatus: string;
@@ -89,6 +90,7 @@ interface EventDetail {
     scheduledDateValue: string;
     startTime: string;
     scheduleType: "fixed" | "tentative" | "follows_previous";
+    followsRopingName: string | null;
     scheduleNote: string | null;
     incentiveEnabled: boolean;
     incentiveRules: Array<{
@@ -150,6 +152,7 @@ async function getEvent(
         city: "",
         state: "",
         postalCode: "",
+        arenaCount: 2,
         location: roping.location,
         status: roping.status,
         resultStatus: roping.resultStatus ?? "unofficial",
@@ -186,6 +189,8 @@ async function getEvent(
             scheduledDateValue: "2026-09-27",
             startTime: index === 0 ? "09:00" : "",
             scheduleType: index === 2 ? "follows_previous" : "fixed",
+            followsRopingName:
+              index === 2 ? (demoDivisions[1]?.name ?? null) : null,
             scheduleNote: null,
             incentiveEnabled:
               roping.id === "fall-classic" &&
@@ -246,7 +251,7 @@ async function getEvent(
     supabase
       .from("ropings")
       .select(
-        "id, title, slug, starts_at, ends_at, venue_name, address, venue_city, venue_state, venue_postal_code, publication_state, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+        "id, title, slug, starts_at, ends_at, venue_name, address, venue_city, venue_state, venue_postal_code, arena_count, publication_state, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
       )
       .eq("id", ropingId)
       .eq("organization_id", organization.id)
@@ -322,7 +327,7 @@ async function getEvent(
         ? a.sort_order - b.sort_order
         : a.scheduled_date.localeCompare(b.scheduled_date),
     )
-    .map((division) => ({
+    .map((division, index, orderedDivisions) => ({
       id: division.id,
       name: division.name,
       runs: division.number_of_runs,
@@ -366,6 +371,16 @@ async function getEvent(
           }).format(new Date(division.starts_at))
         : "",
       scheduleType: division.schedule_type,
+      followsRopingName:
+        division.schedule_type === "follows_previous"
+          ? (orderedDivisions
+              .slice(0, index)
+              .findLast(
+                (previous) =>
+                  previous.scheduled_date === division.scheduled_date &&
+                  previous.arena_name === division.arena_name,
+              )?.name ?? null)
+          : null,
       scheduleNote: division.schedule_note,
       incentiveEnabled: division.incentive_enabled,
       incentiveRules: division.roping_incentive_rules.map((rule) => ({
@@ -412,6 +427,7 @@ async function getEvent(
       city: data.venue_city ?? "",
       state: data.venue_state ?? "",
       postalCode: data.venue_postal_code ?? "",
+      arenaCount: data.arena_count,
       location:
         [
           data.venue_name,
@@ -516,6 +532,7 @@ export default async function RopingDetailPage({
                     city: event.city,
                     state: event.state,
                     postalCode: event.postalCode,
+                    arenaCount: event.arenaCount,
                     startsAt: event.startsAtValue,
                     endsAt: event.endsAtValue,
                     entriesOpenAt: event.entriesOpenAtValue,
@@ -631,6 +648,12 @@ export default async function RopingDetailPage({
             templates={event.availableTemplates}
             classifications={event.availableClassifications}
             defaultDate={event.defaultScheduleDate}
+            arenaCount={event.arenaCount}
+            existingRopings={event.divisions.map((division) => ({
+              name: division.name,
+              scheduledDate: division.scheduledDateValue,
+              arenaName: division.arenaName,
+            }))}
             enabled={setupEditable && isSupabaseConfigured()}
           />
         </div>
@@ -686,7 +709,7 @@ export default async function RopingDetailPage({
                   </div>
                   <p className="mt-1 text-sm font-semibold text-[#66716b]">
                     {division.scheduleType === "follows_previous"
-                      ? `${division.scheduledDate} · Follows previous roping`
+                      ? `${division.scheduledDate} · Follows ${division.followsRopingName ?? "previous roping"}`
                       : `${division.startsAt ?? division.scheduledDate}${
                           division.scheduleType === "tentative"
                             ? " · Tentative"
@@ -735,6 +758,7 @@ export default async function RopingDetailPage({
                       scheduleType={division.scheduleType}
                       startTime={division.startTime}
                       scheduleNote={division.scheduleNote}
+                      followsRopingName={division.followsRopingName}
                       editable={roundsEditable && isSupabaseConfigured()}
                     />
                     <ClassOperationsDialog
@@ -742,6 +766,7 @@ export default async function RopingDetailPage({
                       divisionId={division.id}
                       className={division.name}
                       arenaName={division.arenaName}
+                      arenaCount={event.arenaCount}
                       status={division.eventDayStatus}
                       estimatedStart={division.estimatedStart}
                       note={division.eventDayNote}

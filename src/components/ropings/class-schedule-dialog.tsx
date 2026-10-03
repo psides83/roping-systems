@@ -17,6 +17,7 @@ export function ClassScheduleDialog({
   scheduleType,
   startTime,
   scheduleNote,
+  followsRopingName,
   editable,
 }: {
   ropingId: string;
@@ -26,6 +27,7 @@ export function ClassScheduleDialog({
   scheduleType: "fixed" | "tentative" | "follows_previous";
   startTime: string;
   scheduleNote: string | null;
+  followsRopingName: string | null;
   editable: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -104,7 +106,11 @@ export function ClassScheduleDialog({
                   >
                     <option value="fixed">Set time</option>
                     <option value="tentative">Tentative time</option>
-                    <option value="follows_previous">Follows previous</option>
+                    <option value="follows_previous">
+                      {followsRopingName
+                        ? `Follows ${followsRopingName}`
+                        : "Follows previous in this arena"}
+                    </option>
                   </select>
                 </label>
               </div>

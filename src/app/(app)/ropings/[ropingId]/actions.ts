@@ -42,6 +42,7 @@ const eventDetailsSchema = z.object({
   city: z.string().trim().transform(formatProperNoun),
   state: z.string().trim().max(40).transform(formatProperNoun),
   postalCode: z.string().trim().max(20),
+  arenaCount: z.coerce.number().int().min(1).max(20),
   startsAt: localDateTime,
   endsAt: z.union([z.literal(""), localDateTime]),
   entriesOpenAt: z.union([z.literal(""), localDateTime]),
@@ -93,6 +94,26 @@ export async function updateEventDetails(
     };
 
   const supabase = await requireManager();
+  const { data: arenaAssignments, error: arenaAssignmentsError } =
+    await supabase
+      .from("roping_divisions")
+      .select("arena_name")
+      .eq("roping_id", ropingId);
+  if (arenaAssignmentsError) return { message: arenaAssignmentsError.message };
+
+  const invalidArena = arenaAssignments?.find((assignment) => {
+    const arenaNumber = assignment.arena_name?.match(/^Arena (\d+)$/)?.[1];
+    return arenaNumber && Number(arenaNumber) > parsed.data.arenaCount;
+  });
+  if (invalidArena)
+    return {
+      errors: {
+        arenaCount: [
+          `Move ropings out of ${invalidArena.arena_name} before reducing the number of arenas.`,
+        ],
+      },
+    };
+
   const { error } = await supabase.rpc("update_event_details", {
     target_roping_id: ropingId,
     event_title: parsed.data.title,
@@ -121,6 +142,12 @@ export async function updateEventDetails(
           : error.message,
     };
 
+  const { error: arenaError } = await supabase.rpc("set_event_arena_count", {
+    target_roping_id: ropingId,
+    new_arena_count: parsed.data.arenaCount,
+  });
+  if (arenaError) return { message: arenaError.message };
+
   revalidatePath("/ropings");
   revalidatePath(`/ropings/${ropingId}`);
   revalidatePath(`/ropings/${ropingId}/entries`);
@@ -138,7 +165,7 @@ const addEventRopingSchema = z.object({
     .regex(/^\d{2}:\d{2}$/)
     .or(z.literal("")),
   scheduleNote: z.string().trim().max(120),
-  arenaName: z.string().trim().max(80).transform(formatProperNoun),
+  arenaName: z.string().trim().min(1).max(80).transform(formatProperNoun),
   roundCount: z.coerce.number().int().min(1).max(20),
   cattleDrawEnabled: z.string().optional(),
 });
@@ -156,6 +183,30 @@ export async function addRopingToEvent(
   if (parsed.data.scheduleType !== "follows_previous" && !parsed.data.startTime)
     return { message: "Set and tentative schedules require a start time." };
   const supabase = await requireManager();
+  const [{ data: event }, { data: previousRopings }] = await Promise.all([
+    supabase.from("ropings").select("arena_count").eq("id", ropingId).single(),
+    supabase
+      .from("roping_divisions")
+      .select("id")
+      .eq("roping_id", ropingId)
+      .eq("scheduled_date", parsed.data.scheduledDate)
+      .eq("arena_name", parsed.data.arenaName)
+      .limit(1),
+  ]);
+  const arenaNumber = parsed.data.arenaName.match(/^Arena (\d+)$/)?.[1];
+  if (
+    parsed.data.arenaName !== "First Available" &&
+    (!arenaNumber || Number(arenaNumber) > (event?.arena_count ?? 0))
+  )
+    return { message: "Choose an arena configured for this event." };
+  if (
+    parsed.data.scheduleType === "follows_previous" &&
+    !previousRopings?.length
+  )
+    return {
+      message:
+        "Choose an earlier roping in the same arena before using follows.",
+    };
   const { error } = await supabase.rpc("add_roping_to_event", {
     target_roping_id: ropingId,
     target_template_id: parsed.data.templateId,
@@ -349,7 +400,7 @@ export async function drawRoundCattle(
 }
 
 const eventDaySchema = z.object({
-  arenaName: z.string().trim().max(80).transform(formatProperNoun),
+  arenaName: z.string().trim().min(1).max(80).transform(formatProperNoun),
   eventDayStatus: z.enum([
     "scheduled",
     "delayed",
@@ -375,6 +426,33 @@ export async function updateClassEventDayStatus(
     return { message: "Check the arena, status, expected start, and note." };
 
   const supabase = await requireManager();
+  const { data: division } = await supabase
+    .from("roping_divisions")
+    .select(
+      "schedule_type, scheduled_date, sort_order, ropings!inner(arena_count)",
+    )
+    .eq("id", divisionId)
+    .single();
+  const event = division?.ropings as unknown as { arena_count: number } | null;
+  const arenaNumber = parsed.data.arenaName.match(/^Arena (\d+)$/)?.[1];
+  if (
+    parsed.data.arenaName !== "First Available" &&
+    (!arenaNumber || Number(arenaNumber) > (event?.arena_count ?? 0))
+  )
+    return { message: "Choose an arena configured for this event." };
+  if (division?.schedule_type === "follows_previous") {
+    const { count } = await supabase
+      .from("roping_divisions")
+      .select("id", { count: "exact", head: true })
+      .eq("roping_id", ropingId)
+      .eq("scheduled_date", division.scheduled_date)
+      .eq("arena_name", parsed.data.arenaName)
+      .lt("sort_order", division.sort_order);
+    if (!count)
+      return {
+        message: "A follows roping needs an earlier roping in the same arena.",
+      };
+  }
   const { error } = await supabase.rpc("update_class_event_day_status", {
     target_roping_division_id: divisionId,
     new_arena_name: parsed.data.arenaName,
@@ -412,6 +490,25 @@ export async function updateClassSchedule(
     return { message: "Set and tentative schedules require a time." };
 
   const supabase = await requireManager();
+  if (parsed.data.scheduleType === "follows_previous") {
+    const { data: division } = await supabase
+      .from("roping_divisions")
+      .select("arena_name, sort_order")
+      .eq("id", divisionId)
+      .single();
+    if (!division) return { message: "That roping is unavailable." };
+    const { count } = await supabase
+      .from("roping_divisions")
+      .select("id", { count: "exact", head: true })
+      .eq("roping_id", ropingId)
+      .eq("scheduled_date", parsed.data.scheduledDate)
+      .eq("arena_name", division.arena_name)
+      .lt("sort_order", division.sort_order);
+    if (!count)
+      return {
+        message: "A follows roping needs an earlier roping in the same arena.",
+      };
+  }
   const { error } = await supabase.rpc("save_class_schedule", {
     target_roping_division_id: divisionId,
     target_scheduled_date: parsed.data.scheduledDate,

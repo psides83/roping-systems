@@ -84,12 +84,14 @@ export function ScheduledClassFields({
   templates,
   classifications,
   eventStartDate,
+  arenaCount,
   initialOccurrences = [],
   error,
 }: {
   templates: EventTemplate[];
   classifications: IncentiveClassification[];
   eventStartDate: string;
+  arenaCount: number;
   initialOccurrences?: ScheduledOccurrenceDraft[];
   error?: string;
 }) {
@@ -205,7 +207,7 @@ export function ScheduledClassFields({
         scheduleType: "fixed",
         startTime: "",
         scheduleNote: "",
-        arenaName: "",
+        arenaName: "Arena 1",
         roundCount: allRounds,
         incentiveEnabled: template?.competitionFormat === "handicap",
         incentiveRules:
@@ -345,13 +347,40 @@ export function ScheduledClassFields({
           const canFollow = occurrences
             .slice(0, index)
             .some(
-              (previous) => previous.scheduledDate === occurrence.scheduledDate,
+              (previous) =>
+                previous.scheduledDate === occurrence.scheduledDate &&
+                previous.arenaName === occurrence.arenaName,
             );
+          const followedRoping = occurrences
+            .slice(0, index)
+            .findLast(
+              (previous) =>
+                previous.scheduledDate === occurrence.scheduledDate &&
+                previous.arenaName === occurrence.arenaName,
+            );
+          const followedTemplate = followedRoping
+            ? templates.find((item) => item.id === followedRoping.templateId)
+            : null;
+          const followedClassification = followedRoping
+            ? classifications.find(
+                (item) => item.id === followedRoping.classificationId,
+              )
+            : null;
+          const followedRopingName = followedRoping
+            ? followedTemplate?.competitionFormat === "handicap"
+              ? "Handicap"
+              : (followedClassification?.name ?? followedTemplate?.name)
+            : null;
+          const selectedArenaNumber =
+            occurrence.arenaName.match(/^Arena (\d+)$/)?.[1];
+          const arenaIsAvailable =
+            occurrence.arenaName === "First Available" ||
+            (selectedArenaNumber && Number(selectedArenaNumber) <= arenaCount);
           const collapsed = collapsedKeys.has(occurrence.key);
           const scheduleSummary = [
             occurrence.scheduledDate || "Date not set",
             occurrence.scheduleType === "follows_previous"
-              ? "Follows previous"
+              ? `Follows ${followedRopingName ?? "previous roping"}`
               : occurrence.startTime || "Time not set",
             occurrence.arenaName || null,
             `${occurrence.roundCount} ${occurrence.roundCount === 1 ? "round" : "rounds"}`,
@@ -490,7 +519,9 @@ export function ScheduledClassFields({
                       <option value="fixed">Set time</option>
                       <option value="tentative">Tentative time</option>
                       <option value="follows_previous" disabled={!canFollow}>
-                        Follows previous
+                        {followedRopingName
+                          ? `Follows ${followedRopingName}`
+                          : "Follows previous in this arena"}
                       </option>
                     </select>
                   </Field>
@@ -515,8 +546,8 @@ export function ScheduledClassFields({
                     </Field>
                   ) : (
                     <div className="flex items-end pb-2 text-xs font-semibold text-[#66716b]">
-                      <Clock3 size={14} className="mr-1.5" /> After roping{" "}
-                      {index}
+                      <Clock3 size={14} className="mr-1.5" /> Follows{" "}
+                      {followedRopingName ?? "previous roping"}
                     </div>
                   )}
                   <Field label="Main rounds">
@@ -549,18 +580,45 @@ export function ScheduledClassFields({
                   />
                 </Field>
 
-                <Field label="Arena (optional)">
-                  <input
+                <Field label="Arena">
+                  <select
                     value={occurrence.arenaName}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nextArena = event.target.value;
+                      const hasPreviousInArena = occurrences
+                        .slice(0, index)
+                        .some(
+                          (previous) =>
+                            previous.scheduledDate ===
+                              occurrence.scheduledDate &&
+                            previous.arenaName === nextArena,
+                        );
                       updateOccurrence(occurrence.key, {
-                        arenaName: event.target.value,
-                      })
-                    }
-                    maxLength={80}
+                        arenaName: nextArena,
+                        scheduleType:
+                          occurrence.scheduleType === "follows_previous" &&
+                          !hasPreviousInArena
+                            ? "fixed"
+                            : occurrence.scheduleType,
+                      });
+                    }}
                     className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
-                    placeholder="Arena 1"
-                  />
+                  >
+                    {!arenaIsAvailable ? (
+                      <option value={occurrence.arenaName} disabled>
+                        {occurrence.arenaName} · Reassign required
+                      </option>
+                    ) : null}
+                    {Array.from({ length: arenaCount }, (_, arenaIndex) => (
+                      <option
+                        key={arenaIndex + 1}
+                        value={`Arena ${arenaIndex + 1}`}
+                      >
+                        Arena {arenaIndex + 1}
+                      </option>
+                    ))}
+                    <option value="First Available">First Available</option>
+                  </select>
                 </Field>
 
                 <label className="flex cursor-pointer items-start gap-3 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-3">

@@ -39,6 +39,7 @@ export interface RopingListRecord {
   venue_city: string | null;
   venue_state: string | null;
   venue_postal_code: string | null;
+  arena_count: number;
   publication_state: "draft" | "published" | "unpublished";
   is_public: boolean;
   status: string;
@@ -127,6 +128,7 @@ export function buildDuplicableRopingSummary({
         city: event.venue_city ?? "",
         state: event.venue_state ?? "",
         postalCode: event.venue_postal_code ?? "",
+        arenaCount: event.arena_count,
         startsAt: toLocalDateTimeInput(event.starts_at, timeZone),
         endsAt: toLocalDateTimeInput(event.ends_at, timeZone),
         entriesOpenAt: toLocalDateTimeInput(event.entries_open_at, timeZone),
@@ -145,7 +147,7 @@ export function buildDuplicableRopingSummary({
             ? toLocalDateTimeInput(scheduled.starts_at, timeZone).slice(11)
             : "",
           scheduleNote: scheduled.schedule_note ?? "",
-          arenaName: scheduled.arena_name ?? "",
+          arenaName: scheduled.arena_name ?? "Arena 1",
           roundCount: scheduled.number_of_runs,
           incentiveEnabled: scheduled.incentive_enabled,
           incentiveRules: Object.fromEntries(

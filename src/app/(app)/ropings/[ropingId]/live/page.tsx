@@ -80,6 +80,7 @@ export default async function LiveRopingPage({
     return (
       <LiveWorkspace
         ropingId={ropingId}
+        arenaCount={2}
         title="Fall Classic"
         status="in_progress"
         resultStatus="unofficial"
@@ -106,7 +107,7 @@ export default async function LiveRopingPage({
   const { data: roping } = await supabase
     .from("ropings")
     .select(
-      "id, title, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, short_round_locked_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note)",
+      "id, title, status, result_status, arena_count, roping_divisions!roping_divisions_roping_id_fkey(id, name, scheduled_date, sort_order, number_of_runs, short_round_enabled, short_round_seeded_at, short_round_locked_at, timer_count, timer_resolution, competition_format, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note)",
     )
     .eq("id", ropingId)
     .eq("organization_id", organization.id)
@@ -337,6 +338,7 @@ export default async function LiveRopingPage({
   return (
     <LiveWorkspace
       ropingId={ropingId}
+      arenaCount={roping.arena_count}
       title={roping.title}
       status={roping.status}
       resultStatus={roping.result_status}
@@ -356,6 +358,7 @@ export default async function LiveRopingPage({
 
 function LiveWorkspace({
   ropingId,
+  arenaCount,
   title,
   status,
   resultStatus,
@@ -371,6 +374,7 @@ function LiveWorkspace({
   canEdit,
 }: {
   ropingId: string;
+  arenaCount: number;
   title: string;
   status: string;
   resultStatus: string;
@@ -428,6 +432,7 @@ function LiveWorkspace({
           <DatabaseLiveDesk
             key={`${selectedDivisionId}-${selectedRound}-${selectedDivision.shortRoundLocked}-${selectedDivision.eventDayStatus}-${selectedDivision.arenaName ?? ""}-${selectedDivision.estimatedStart}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
             ropingId={ropingId}
+            arenaCount={arenaCount}
             divisions={divisions}
             selectedDivisionId={selectedDivisionId}
             selectedRound={selectedRound}
