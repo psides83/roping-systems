@@ -19,7 +19,16 @@ export interface IncentiveClassification {
   disciplineId: string;
   divisionName: string;
   name: string;
+  rank: number;
 }
+
+export type MaleEligibilityPolicy =
+  | "producer_default"
+  | "none"
+  | "age"
+  | "classification"
+  | "age_and_classification"
+  | "age_or_classification";
 
 export interface EventTemplate {
   id: string;
@@ -50,6 +59,11 @@ export interface ScheduledOccurrenceDraft {
   incentiveEnabled: boolean;
   incentiveRules: Record<string, string>;
   cattleDrawEnabled: boolean;
+  maleEligibilityPolicy: MaleEligibilityPolicy;
+  maleYouthMaximumAge: string;
+  maleSeniorMinimumAge: string;
+  maleClassificationDisciplineId: string;
+  maleMinimumClassificationNumber: string;
 }
 
 interface ScheduledOccurrence extends ScheduledOccurrenceDraft {
@@ -142,6 +156,19 @@ export function ScheduledClassFields({
               ? true
               : occurrence.incentiveEnabled,
           cattleDrawEnabled: occurrence.cattleDrawEnabled,
+          maleEligibilityPolicy: occurrence.maleEligibilityPolicy,
+          maleYouthMaximumAge: occurrence.maleYouthMaximumAge
+            ? Number(occurrence.maleYouthMaximumAge)
+            : null,
+          maleSeniorMinimumAge: occurrence.maleSeniorMinimumAge
+            ? Number(occurrence.maleSeniorMinimumAge)
+            : null,
+          maleClassificationDisciplineId:
+            occurrence.maleClassificationDisciplineId || null,
+          maleMinimumClassificationNumber:
+            occurrence.maleMinimumClassificationNumber
+              ? Number(occurrence.maleMinimumClassificationNumber)
+              : null,
           incentiveRules: Object.entries(occurrence.incentiveRules).map(
             ([classificationId, seconds]) => ({
               classificationId,
@@ -190,6 +217,11 @@ export function ScheduledClassFields({
               )
             : {},
         cattleDrawEnabled: false,
+        maleEligibilityPolicy: "producer_default",
+        maleYouthMaximumAge: "",
+        maleSeniorMinimumAge: "",
+        maleClassificationDisciplineId: "",
+        maleMinimumClassificationNumber: "",
       },
     ]);
   }
@@ -578,14 +610,136 @@ export function ScheduledClassFields({
                 </div>
 
                 {template.competitionFormat === "handicap" ? (
-                  <div className="rounded-md border border-[#dce2de] bg-[#f7f9f8] p-3">
-                    <p className="text-sm font-bold">
-                      Handicap classifications
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-[#66716b]">
-                      Every contestant ropes together. Their current member
-                      classification determines the deduction below.
-                    </p>
+                  <div className="space-y-4 rounded-md border border-[#dce2de] bg-[#f7f9f8] p-3">
+                    <div>
+                      <p className="text-sm font-bold">
+                        Handicap classifications
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#66716b]">
+                        Every contestant ropes together. Their current member
+                        classification determines the deduction below.
+                      </p>
+                    </div>
+                    <div className="border-t border-[#dce2de] pt-4">
+                      <p className="text-sm font-bold">Male entry exceptions</p>
+                      <p className="mt-1 text-xs leading-5 text-[#66716b]">
+                        These rules apply only to male contestants in this
+                        roping. Breakaway A/B/C still controls the time
+                        handicap.
+                      </p>
+                      <select
+                        value={occurrence.maleEligibilityPolicy}
+                        onChange={(event) =>
+                          updateOccurrence(occurrence.key, {
+                            maleEligibilityPolicy: event.target
+                              .value as MaleEligibilityPolicy,
+                          })
+                        }
+                        className="mt-3 h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
+                      >
+                        <option value="producer_default">
+                          Use producer default
+                        </option>
+                        <option value="none">Women only</option>
+                        <option value="age">Allow by age</option>
+                        <option value="classification">
+                          Allow by classification number
+                        </option>
+                        <option value="age_and_classification">
+                          Require age and classification
+                        </option>
+                        <option value="age_or_classification">
+                          Allow age or classification
+                        </option>
+                      </select>
+                      {occurrence.maleEligibilityPolicy.includes("age") ? (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <Field label="Boys this age and under">
+                            <input
+                              type="number"
+                              min="0"
+                              max="120"
+                              value={occurrence.maleYouthMaximumAge}
+                              onChange={(event) =>
+                                updateOccurrence(occurrence.key, {
+                                  maleYouthMaximumAge: event.target.value,
+                                })
+                              }
+                              className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
+                              placeholder="13"
+                            />
+                          </Field>
+                          <Field label="Men this age and over">
+                            <input
+                              type="number"
+                              min="0"
+                              max="120"
+                              value={occurrence.maleSeniorMinimumAge}
+                              onChange={(event) =>
+                                updateOccurrence(occurrence.key, {
+                                  maleSeniorMinimumAge: event.target.value,
+                                })
+                              }
+                              className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
+                              placeholder="60"
+                            />
+                          </Field>
+                        </div>
+                      ) : null}
+                      {occurrence.maleEligibilityPolicy.includes(
+                        "classification",
+                      ) ? (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <Field label="Number classification from">
+                            <select
+                              value={occurrence.maleClassificationDisciplineId}
+                              onChange={(event) =>
+                                updateOccurrence(occurrence.key, {
+                                  maleClassificationDisciplineId:
+                                    event.target.value,
+                                })
+                              }
+                              className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
+                            >
+                              <option value="">Choose division</option>
+                              {Array.from(
+                                new Map(
+                                  classifications.map((item) => [
+                                    item.disciplineId,
+                                    item.divisionName,
+                                  ]),
+                                ).entries(),
+                              ).map(([id, name]) => (
+                                <option key={id} value={id}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Minimum classification number">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={occurrence.maleMinimumClassificationNumber}
+                              onChange={(event) =>
+                                updateOccurrence(occurrence.key, {
+                                  maleMinimumClassificationNumber:
+                                    event.target.value,
+                                })
+                              }
+                              className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"
+                              placeholder="12"
+                            />
+                          </Field>
+                          <p className="text-xs leading-5 text-[#66716b] sm:col-span-2">
+                            Example: 12 allows members classified #12 or higher,
+                            such as #13 and #15.
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ) : template.competitionFormat !== "four_d" ? (
                   <label className="flex cursor-pointer items-start gap-3">

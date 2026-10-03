@@ -17,6 +17,11 @@ interface ScheduledRopingRecord {
   incentive_enabled: boolean;
   short_round_enabled: boolean;
   short_round_tie_policy: "advance_all" | "fastest_last_round";
+  male_eligibility_policy: import("@/components/ropings/scheduled-class-fields").MaleEligibilityPolicy;
+  male_youth_maximum_age: number | null;
+  male_senior_minimum_age: number | null;
+  male_classification_discipline_id: string | null;
+  male_minimum_classification_number: number | null;
   roping_incentive_rules: Array<{
     classification_id: string;
     adjustment_seconds: number;
@@ -154,6 +159,15 @@ export function buildDuplicableRopingSummary({
             ]),
           ),
           cattleDrawEnabled: scheduled.cattle_draw_enabled,
+          maleEligibilityPolicy: scheduled.male_eligibility_policy,
+          maleYouthMaximumAge:
+            scheduled.male_youth_maximum_age?.toString() ?? "",
+          maleSeniorMinimumAge:
+            scheduled.male_senior_minimum_age?.toString() ?? "",
+          maleClassificationDisciplineId:
+            scheduled.male_classification_discipline_id ?? "",
+          maleMinimumClassificationNumber:
+            scheduled.male_minimum_classification_number?.toString() ?? "",
         })),
         shortRoundEnabled: shortRoundSource?.short_round_enabled ?? false,
         shortRoundTiePolicy:

@@ -56,6 +56,18 @@ const classOccurrenceSchema = z.object({
   incentiveEnabled: z.boolean(),
   incentiveRules: z.array(incentiveRuleSchema),
   cattleDrawEnabled: z.boolean(),
+  maleEligibilityPolicy: z.enum([
+    "producer_default",
+    "none",
+    "age",
+    "classification",
+    "age_and_classification",
+    "age_or_classification",
+  ]),
+  maleYouthMaximumAge: z.number().int().min(0).max(120).nullable(),
+  maleSeniorMinimumAge: z.number().int().min(0).max(120).nullable(),
+  maleClassificationDisciplineId: z.uuid().nullable(),
+  maleMinimumClassificationNumber: z.number().min(0).max(100).nullable(),
 });
 
 const shortRoundBracketSchema = z
@@ -103,6 +115,18 @@ function getClassOccurrences(formData: FormData) {
       )
         return null;
       if (occurrence.incentiveEnabled && !occurrence.incentiveRules.length)
+        return null;
+      const usesAge = occurrence.maleEligibilityPolicy.includes("age");
+      const usesClassification =
+        occurrence.maleEligibilityPolicy.includes("classification");
+      if (
+        (usesAge &&
+          occurrence.maleYouthMaximumAge === null &&
+          occurrence.maleSeniorMinimumAge === null) ||
+        (usesClassification &&
+          (!occurrence.maleClassificationDisciplineId ||
+            occurrence.maleMinimumClassificationNumber === null))
+      )
         return null;
     }
     return parsed.data;

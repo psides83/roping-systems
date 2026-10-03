@@ -47,18 +47,21 @@ async function getRopingData() {
           disciplineId: "preview-breakaway",
           divisionName: "Breakaway",
           name: "Open",
+          rank: 0,
         },
         {
           id: "00000000-0000-4000-8000-000000000102",
           disciplineId: "preview-breakaway",
           divisionName: "Breakaway",
           name: "11.5",
+          rank: 11.5,
         },
         {
           id: "00000000-0000-4000-8000-000000000103",
           disciplineId: "preview-breakaway",
           divisionName: "Breakaway",
           name: "10",
+          rank: 10,
         },
       ],
     };
@@ -75,7 +78,7 @@ async function getRopingData() {
     supabase
       .from("ropings")
       .select(
-        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, short_round_enabled, short_round_tie_policy, roping_incentive_rules(classification_id, adjustment_seconds), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order)), entries!entries_roping_id_fkey(id)",
+        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, short_round_enabled, short_round_tie_policy, male_eligibility_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_discipline_id, male_minimum_classification_number, roping_incentive_rules(classification_id, adjustment_seconds), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order)), entries!entries_roping_id_fkey(id)",
       )
       .eq("organization_id", organization.id)
       .order("starts_at", { ascending: false }),
@@ -155,6 +158,7 @@ async function getRopingData() {
     disciplineId: classification.discipline_id,
     divisionName: (classification.disciplines as unknown as { name: string })
       .name,
+    rank: Number(classification.rank),
   }));
   const activeTemplateIds = new Set(divisions.map((division) => division.id));
   const activeClassificationIds = new Set(
