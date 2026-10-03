@@ -12,11 +12,13 @@ export function ClassCattleDrawForm({
   divisionId,
   enabled,
   editable,
+  embedded = false,
 }: {
   ropingId: string;
   divisionId: string;
   enabled: boolean;
   editable: boolean;
+  embedded?: boolean;
 }) {
   const action = updateClassCattleDraw.bind(null, ropingId, divisionId);
   const [state, formAction, pending] = useActionState<
@@ -25,7 +27,10 @@ export function ClassCattleDrawForm({
   >(action, {});
 
   return (
-    <form action={formAction} className="mt-4 border-t border-[#e7ebe8] pt-4">
+    <form
+      action={formAction}
+      className={embedded ? "" : "mt-4 border-t border-[#e7ebe8] pt-4"}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <label className="flex cursor-pointer items-start gap-3">
           <input

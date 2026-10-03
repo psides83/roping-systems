@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   CalendarDays,
+  ChevronDown,
   CircleDollarSign,
   ClipboardList,
   ExternalLink,
@@ -616,38 +617,15 @@ export default async function RopingDetailPage({
           </div>
         </section>
       ) : null}
-      <section
-        id="setup"
-        className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
-      >
-        <div className="flex flex-col gap-4 border-b border-[#e7ebe8] px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
+      <section id="setup" className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-bold">Class setup</h2>
-            <p className="mt-1 text-xs text-[#758078]">
-              Main-round counts and short-round rules can vary by class.
+            <h2 className="text-lg font-bold">Scheduled ropings</h2>
+            <p className="mt-1 text-sm text-[#66716b]">
+              {event.divisions.length} roping
+              {event.divisions.length === 1 ? "" : "s"} in this event
             </p>
           </div>
-          <form action={roundAction} className="flex items-end gap-2">
-            <input type="hidden" name="divisionId" value="" />
-            <label className="text-xs font-semibold text-[#66716b]">
-              Main rounds for all
-              <input
-                name="roundCount"
-                type="number"
-                min="1"
-                max="20"
-                defaultValue="1"
-                disabled={!roundsEditable || !isSupabaseConfigured()}
-                className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
-              />
-            </label>
-            <button
-              disabled={!roundsEditable || !isSupabaseConfigured()}
-              className="h-9 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold disabled:opacity-50"
-            >
-              Apply to all
-            </button>
-          </form>
           <AddEventRopingDialog
             ropingId={event.id}
             templates={event.availableTemplates}
@@ -656,19 +634,57 @@ export default async function RopingDetailPage({
             enabled={setupEditable && isSupabaseConfigured()}
           />
         </div>
-        <div className="divide-y divide-[#e7ebe8]">
-          {event.divisions.map((division) => (
-            <div key={division.id} className="p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="font-bold">{division.name}</h3>
-                  <p className="mt-1 text-sm text-[#66716b]">
-                    {division.runs}{" "}
-                    {division.runs === 1 ? "main round" : "main rounds"}
-                    {division.shortRoundEnabled ? " + short round" : ""} ·{" "}
-                    {division.entries} entries
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-[#758078]">
+
+        <div className="flex flex-col gap-3 rounded-md border border-[#dfe4e1] bg-[#f7f8f7] p-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-bold">Set all main rounds</p>
+            <p className="mt-1 text-xs text-[#758078]">
+              Apply one round count to every roping in this event.
+            </p>
+          </div>
+          <form action={roundAction} className="flex items-end gap-2">
+            <input type="hidden" name="divisionId" value="" />
+            <label className="text-xs font-semibold text-[#66716b]">
+              Rounds
+              <input
+                name="roundCount"
+                type="number"
+                min="1"
+                max="20"
+                defaultValue="1"
+                disabled={!roundsEditable || !isSupabaseConfigured()}
+                className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] bg-white px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
+              />
+            </label>
+            <button
+              disabled={!roundsEditable || !isSupabaseConfigured()}
+              className="h-9 rounded-md border border-[#ccd4d0] bg-white px-3 text-xs font-semibold disabled:opacity-50"
+            >
+              Apply to all
+            </button>
+          </form>
+        </div>
+
+        <div className="space-y-3">
+          {event.divisions.map((division, index) => (
+            <details
+              key={division.id}
+              className="group overflow-hidden rounded-md border border-[#dfe4e1] bg-white open:shadow-sm"
+            >
+              <summary className="flex cursor-pointer list-none items-start gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden sm:items-center">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#f1f3f2] font-mono text-xs font-bold text-[#66716b]">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h3 className="font-bold">{division.name}</h3>
+                    {division.eventDayStatus !== "scheduled" ? (
+                      <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+                        {classEventDayStatusLabels[division.eventDayStatus]}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-[#66716b]">
                     {division.scheduleType === "follows_previous"
                       ? `${division.scheduledDate} · Follows previous roping`
                       : `${division.startsAt ?? division.scheduledDate}${
@@ -677,51 +693,193 @@ export default async function RopingDetailPage({
                             : ""
                         }`}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#758078]">
                     {division.arenaName ? (
-                      <span className="rounded-md bg-[#f1f3f2] px-2 py-1">
-                        {division.arenaName}
-                      </span>
+                      <span>{division.arenaName}</span>
                     ) : null}
-                    {division.eventDayStatus !== "scheduled" ? (
-                      <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">
-                        {classEventDayStatusLabels[division.eventDayStatus]}
-                      </span>
+                    <span>
+                      {division.runs} {division.runs === 1 ? "round" : "rounds"}
+                      {division.shortRoundEnabled ? " + short round" : ""}
+                    </span>
+                    <span>
+                      {division.entries}{" "}
+                      {division.entries === 1 ? "entry" : "entries"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown
+                  size={18}
+                  aria-hidden="true"
+                  className="mt-1 shrink-0 text-[#758078] transition-transform group-open:rotate-180 sm:mt-0"
+                />
+              </summary>
+
+              <div className="border-t border-[#e7ebe8]">
+                <div className="flex flex-col gap-3 bg-[#f7f8f7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase text-[#758078]">
+                      Schedule and event day
+                    </p>
+                    {division.eventDayNote || division.scheduleNote ? (
+                      <p className="mt-1 truncate text-xs text-[#66716b]">
+                        {division.eventDayNote ?? division.scheduleNote}
+                      </p>
                     ) : null}
                   </div>
-                  {division.eventDayNote ? (
-                    <p className="mt-2 text-xs font-semibold text-amber-800">
-                      {division.eventDayNote}
-                    </p>
-                  ) : null}
-                  {division.scheduleNote ? (
-                    <p className="mt-1 text-xs text-[#758078]">
-                      {division.scheduleNote}
-                    </p>
-                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    <ClassScheduleDialog
+                      ropingId={event.id}
+                      divisionId={division.id}
+                      name={division.name}
+                      scheduledDate={division.scheduledDateValue}
+                      scheduleType={division.scheduleType}
+                      startTime={division.startTime}
+                      scheduleNote={division.scheduleNote}
+                      editable={roundsEditable && isSupabaseConfigured()}
+                    />
+                    <ClassOperationsDialog
+                      ropingId={event.id}
+                      divisionId={division.id}
+                      className={division.name}
+                      arenaName={division.arenaName}
+                      status={division.eventDayStatus}
+                      estimatedStart={division.estimatedStart}
+                      note={division.eventDayNote}
+                      editable={operationsEditable && isSupabaseConfigured()}
+                      compact
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-end gap-2">
-                  <ClassScheduleDialog
-                    ropingId={event.id}
-                    divisionId={division.id}
-                    name={division.name}
-                    scheduledDate={division.scheduledDateValue}
-                    scheduleType={division.scheduleType}
-                    startTime={division.startTime}
-                    scheduleNote={division.scheduleNote}
-                    editable={roundsEditable && isSupabaseConfigured()}
-                  />
-                  <ClassOperationsDialog
-                    ropingId={event.id}
-                    divisionId={division.id}
-                    className={division.name}
-                    arenaName={division.arenaName}
-                    status={division.eventDayStatus}
-                    estimatedStart={division.estimatedStart}
-                    note={division.eventDayNote}
-                    editable={operationsEditable && isSupabaseConfigured()}
-                    compact
-                  />
+
+                <div className="px-4 py-5">
+                  <h4 className="text-sm font-bold">Roping format</h4>
+                  <div className="mt-3 grid gap-4 lg:grid-cols-2">
+                    <form action={roundAction} className="flex items-end gap-2">
+                      <input
+                        type="hidden"
+                        name="divisionId"
+                        value={division.id}
+                      />
+                      <label className="min-w-0 flex-1 text-xs font-semibold text-[#66716b]">
+                        Main rounds
+                        <input
+                          name="roundCount"
+                          type="number"
+                          min="1"
+                          max="20"
+                          defaultValue={division.runs}
+                          disabled={!roundsEditable || !isSupabaseConfigured()}
+                          className="mt-1 block h-10 w-full rounded-md border border-[#ccd4d0] px-3 font-mono text-sm disabled:bg-[#f1f3f2]"
+                        />
+                      </label>
+                      <button
+                        disabled={!roundsEditable || !isSupabaseConfigured()}
+                        className="h-10 rounded-md border border-[#d7ddda] px-4 text-xs font-semibold disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </form>
+                    <form
+                      action={spacingAction}
+                      className="flex items-end gap-2"
+                    >
+                      <input
+                        type="hidden"
+                        name="divisionId"
+                        value={division.id}
+                      />
+                      <label className="min-w-0 flex-1 text-xs font-semibold text-[#66716b]">
+                        Runs between repeat entries
+                        <input
+                          name="minimumRunsBetweenEntries"
+                          type="number"
+                          min="0"
+                          max="100"
+                          defaultValue={division.minimumRunsBetweenEntries}
+                          disabled={!roundsEditable || !isSupabaseConfigured()}
+                          className="mt-1 block h-10 w-full rounded-md border border-[#ccd4d0] px-3 font-mono text-sm disabled:bg-[#f1f3f2]"
+                        />
+                      </label>
+                      <button
+                        disabled={!roundsEditable || !isSupabaseConfigured()}
+                        className="h-10 rounded-md border border-[#d7ddda] px-4 text-xs font-semibold disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  </div>
+                  <p className="mt-3 text-xs text-[#758078]">
+                    Short round:{" "}
+                    {division.shortRoundEnabled ? "Included" : "Not included"}
+                  </p>
+                </div>
+
+                <div className="border-t border-[#e7ebe8] px-4 py-5">
+                  <h4 className="text-sm font-bold">Competition order</h4>
+                  <div className="mt-3 space-y-4">
+                    <ClassRoundOrderingForm
+                      ropingId={event.id}
+                      divisionId={division.id}
+                      roundCount={division.runs}
+                      secondRoundOrdering={division.secondRoundOrdering}
+                      laterRoundOrdering={division.laterRoundOrdering}
+                      editable={roundsEditable && isSupabaseConfigured()}
+                      embedded
+                    />
+                    <ClassCattleDrawForm
+                      ropingId={event.id}
+                      divisionId={division.id}
+                      enabled={division.cattleDrawEnabled}
+                      editable={roundsEditable && isSupabaseConfigured()}
+                      embedded
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-[#e7ebe8] px-4 py-5">
+                  <h4 className="text-sm font-bold">Entry fees</h4>
+                  {division.fees.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {division.fees.map((fee) => (
+                        <span
+                          key={fee.id}
+                          className="rounded-md bg-[#f1f3f2] px-3 py-2 text-xs font-medium"
+                        >
+                          {fee.title}: {formatCurrency(fee.amountCents)}
+                          {fee.included ? " included" : " separate"}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-[#758078]">
+                      No entry fees configured.
+                    </p>
+                  )}
+                </div>
+
+                {division.incentiveEnabled ? (
+                  <div className="border-t border-emerald-200 bg-emerald-50 px-4 py-5">
+                    <p className="flex items-center gap-2 text-sm font-bold text-emerald-950">
+                      <Gauge size={16} /> Incentive handicaps
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {division.incentiveRules.map((rule) => (
+                        <span
+                          key={rule.id}
+                          className="rounded-md bg-white px-2 py-1 text-xs font-semibold"
+                        >
+                          {rule.classification}:{" "}
+                          <span className="font-mono text-emerald-700">
+                            {formatFinalTimeAdjustment(rule.adjustmentSeconds)}{" "}
+                            sec
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex justify-end border-t border-[#e7ebe8] px-4 py-3">
                   <RemoveEventRopingDialog
                     ropingId={event.id}
                     divisionId={division.id}
@@ -734,106 +892,11 @@ export default async function RopingDetailPage({
                       ) &&
                       isSupabaseConfigured()
                     }
+                    showLabel
                   />
-                  <form action={roundAction} className="flex items-end gap-2">
-                    <input
-                      type="hidden"
-                      name="divisionId"
-                      value={division.id}
-                    />
-                    <label className="text-xs font-semibold text-[#66716b]">
-                      Main rounds
-                      <input
-                        name="roundCount"
-                        type="number"
-                        min="1"
-                        max="20"
-                        defaultValue={division.runs}
-                        disabled={!roundsEditable || !isSupabaseConfigured()}
-                        className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
-                      />
-                    </label>
-                    <button
-                      disabled={!roundsEditable || !isSupabaseConfigured()}
-                      className="h-9 rounded-md border border-[#d7ddda] px-3 text-xs font-semibold disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                  </form>
-                  <form action={spacingAction} className="flex items-end gap-2">
-                    <input
-                      type="hidden"
-                      name="divisionId"
-                      value={division.id}
-                    />
-                    <label className="text-xs font-semibold text-[#66716b]">
-                      Runs between repeat entries
-                      <input
-                        name="minimumRunsBetweenEntries"
-                        type="number"
-                        min="0"
-                        max="100"
-                        defaultValue={division.minimumRunsBetweenEntries}
-                        disabled={!roundsEditable || !isSupabaseConfigured()}
-                        className="mt-1 block h-9 w-20 rounded-md border border-[#ccd4d0] px-2 text-center font-mono text-sm disabled:bg-[#f1f3f2]"
-                      />
-                    </label>
-                    <button
-                      disabled={!roundsEditable || !isSupabaseConfigured()}
-                      className="h-9 rounded-md border border-[#d7ddda] px-3 text-xs font-semibold disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                  </form>
                 </div>
               </div>
-              <ClassRoundOrderingForm
-                ropingId={event.id}
-                divisionId={division.id}
-                roundCount={division.runs}
-                secondRoundOrdering={division.secondRoundOrdering}
-                laterRoundOrdering={division.laterRoundOrdering}
-                editable={roundsEditable && isSupabaseConfigured()}
-              />
-              <ClassCattleDrawForm
-                ropingId={event.id}
-                divisionId={division.id}
-                enabled={division.cattleDrawEnabled}
-                editable={roundsEditable && isSupabaseConfigured()}
-              />
-              <div className="mt-4 flex flex-wrap gap-2">
-                {division.fees.map((fee) => (
-                  <span
-                    key={fee.id}
-                    className="rounded-md bg-[#f1f3f2] px-3 py-2 text-xs font-medium"
-                  >
-                    {fee.title}: {formatCurrency(fee.amountCents)}
-                    {fee.included ? " included" : " separate"}
-                  </span>
-                ))}
-              </div>
-              {division.incentiveEnabled ? (
-                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3">
-                  <p className="flex items-center gap-2 text-sm font-bold text-emerald-950">
-                    <Gauge size={16} /> Incentive handicaps
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {division.incentiveRules.map((rule) => (
-                      <span
-                        key={rule.id}
-                        className="rounded-md bg-white px-2 py-1 text-xs font-semibold"
-                      >
-                        {rule.classification}:{" "}
-                        <span className="font-mono text-emerald-700">
-                          {formatFinalTimeAdjustment(rule.adjustmentSeconds)}{" "}
-                          sec
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            </details>
           ))}
         </div>
       </section>

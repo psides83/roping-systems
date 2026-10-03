@@ -14,6 +14,7 @@ export function ClassRoundOrderingForm({
   secondRoundOrdering,
   laterRoundOrdering,
   editable,
+  embedded = false,
 }: {
   ropingId: string;
   divisionId: string;
@@ -21,13 +22,14 @@ export function ClassRoundOrderingForm({
   secondRoundOrdering: RoundOrderMethod;
   laterRoundOrdering: RoundOrderMethod;
   editable: boolean;
+  embedded?: boolean;
 }) {
   if (roundCount < 2) return null;
 
   return (
     <form
       action={updateClassRoundOrdering.bind(null, ropingId)}
-      className="mt-4 grid gap-3 border-t border-[#e7ebe8] pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"
+      className={`${embedded ? "" : "mt-4 border-t border-[#e7ebe8] pt-4"} grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end`}
     >
       <input type="hidden" name="divisionId" value={divisionId} />
       <OrderSelect

@@ -243,12 +243,14 @@ export function RemoveEventRopingDialog({
   name,
   entryCount,
   enabled,
+  showLabel = false,
 }: {
   ropingId: string;
   divisionId: string;
   name: string;
   entryCount: number;
   enabled: boolean;
+  showLabel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const actionWithIds = removeRopingFromEvent.bind(null, ropingId, divisionId);
@@ -272,9 +274,10 @@ export function RemoveEventRopingDialog({
             : "A roping cannot be removed after it starts"
         }
         onClick={() => setOpen(true)}
-        className="grid h-9 w-9 place-items-center rounded-md border border-rose-200 text-rose-700 disabled:opacity-35"
+        className={`h-9 rounded-md border border-rose-200 text-rose-700 disabled:opacity-35 ${showLabel ? "flex items-center gap-2 px-3 text-xs font-semibold" : "grid w-9 place-items-center"}`}
       >
         <Trash2 size={15} />
+        {showLabel ? "Remove roping" : null}
       </button>
       {open ? (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-4">
