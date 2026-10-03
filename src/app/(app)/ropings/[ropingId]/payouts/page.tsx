@@ -12,6 +12,7 @@ type PayoutPlace = { place: number; percentage: number; amountCents: number };
 
 interface PayoutPlan {
   id: string;
+  ropingDivisionId: string;
   name: string;
   poolType: string;
   feeKind: string | null;
@@ -89,7 +90,7 @@ export default async function EventPayoutsPage({
     supabase
       .from("roping_payout_plans")
       .select(
-        "id, name, pool_type, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, roping_divisions!inner(name, scheduled_date, number_of_runs, short_round_enabled, competition_format), roping_fees(kind)",
+        "id, roping_division_id, name, pool_type, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, roping_divisions!inner(name, scheduled_date, number_of_runs, short_round_enabled, competition_format), roping_fees(kind)",
       )
       .eq("roping_id", ropingId)
       .eq("organization_id", organization.id)
@@ -152,6 +153,7 @@ export default async function EventPayoutsPage({
       const summary = rows[0] ?? { entry_count: 0, pool_cents: 0 };
       return {
         id: plan.id,
+        ropingDivisionId: plan.roping_division_id,
         name: plan.name,
         poolType: plan.pool_type,
         feeKind:
@@ -226,6 +228,15 @@ export default async function EventPayoutsPage({
     }),
   );
 
+  const payoutGroups = Array.from(
+    Map.groupBy(calculated, (plan) => plan.ropingDivisionId).values(),
+  ).map((group) =>
+    group.toSorted((first, second) => {
+      const poolOrder = (plan: PayoutPlan) =>
+        plan.poolType === "main" ? 0 : plan.feeKind === "insurance" ? 2 : 1;
+      return poolOrder(first) - poolOrder(second);
+    }),
+  );
   const initAction = initializePayoutPlans.bind(null, ropingId);
   return (
     <div className="space-y-6">
@@ -241,69 +252,46 @@ export default async function EventPayoutsPage({
         description="Live projections use paid entries, separately selected side pots and insurance, payout-contributing charges, and added money."
       />
       {calculated.length ? (
-        <section className="grid gap-4 lg:grid-cols-2">
-          {calculated.map((plan) => (
-            <article
-              key={plan.id}
-              className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
-            >
-              <header className="border-b border-[#e7ebe8] p-5">
-                <div className="flex items-start justify-between gap-4">
+        <section className="space-y-5">
+          {payoutGroups.map((group) => {
+            const primaryPlan = group[0];
+            const combinedPoolCents = group.reduce(
+              (total, plan) => total + plan.poolCents,
+              0,
+            );
+            return (
+              <article
+                key={primaryPlan.ropingDivisionId}
+                className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
+              >
+                <header className="flex flex-col gap-3 border-b border-[#dfe4e1] bg-[#f7f8f7] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
-                      {plan.poolType === "side_pot"
-                        ? plan.feeKind === "insurance"
-                          ? "Insurance pool"
-                          : "Side pot"
-                        : plan.division}
+                    <p className="text-[10px] font-bold uppercase text-[var(--brand-accent-strong)]">
+                      Scheduled roping
                     </p>
-                    <h2 className="mt-1 text-lg font-bold">{plan.name}</h2>
+                    <h2 className="mt-1 text-lg font-bold">
+                      {primaryPlan.division}
+                    </h2>
                   </div>
-                  <Banknote size={20} className="text-[#758078]" />
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                    <span>
+                      <strong>{group.length}</strong>{" "}
+                      {group.length === 1 ? "payout pool" : "payout pools"}
+                    </span>
+                    <span>
+                      <strong>{formatCurrency(combinedPoolCents)}</strong>{" "}
+                      combined
+                    </span>
+                  </div>
+                </header>
+                <div className="divide-y divide-[#dfe4e1]">
+                  {group.map((plan) => (
+                    <PayoutPlanSection key={plan.id} plan={plan} />
+                  ))}
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-md bg-[#f7f8f7] p-3">
-                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[#758078]">
-                      <Users size={13} /> Entries
-                    </p>
-                    <p className="mt-1 text-xl font-bold">{plan.entryCount}</p>
-                  </div>
-                  <div className="rounded-md bg-[#f7f8f7] p-3">
-                    <p className="text-[10px] font-bold uppercase text-[#758078]">
-                      Payout pool
-                    </p>
-                    <p className="mt-1 text-xl font-bold">
-                      {formatCurrency(plan.poolCents)}
-                    </p>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs font-semibold text-[#66716b]">
-                  {plan.competitionFormat === "four_d" &&
-                  plan.poolType === "main"
-                    ? `${plan.paybackPercent}% payback · full purse divided among the active Ds`
-                    : `${plan.paybackPercent}% payback · ${plan.goRoundsPercent}% across ${plan.numberOfRuns} ${plan.numberOfRuns === 1 ? "go" : "goes"} · ${plan.aggregatePercent}% aggregate${plan.shortRoundEnabled && plan.shortRoundPercent ? ` · ${plan.shortRoundPercent}% short round` : ""}`}
-                </p>
-              </header>
-              {plan.competitionFormat === "four_d" &&
-              plan.poolType === "main" ? (
-                plan.fourDBreakdown.length ? (
-                  <>
-                    <FourDPayoutBreakdown plan={plan} />
-                    {plan.results.length ? <PayoutResults plan={plan} /> : null}
-                  </>
-                ) : (
-                  <PayoutBracketEmpty />
-                )
-              ) : plan.placesByStage.go_round.length ? (
-                <>
-                  <PayoutBreakdown plan={plan} />
-                  {plan.results.length ? <PayoutResults plan={plan} /> : null}
-                </>
-              ) : (
-                <PayoutBracketEmpty />
-              )}
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </section>
       ) : (
         <section className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">
@@ -323,6 +311,69 @@ export default async function EventPayoutsPage({
         </section>
       )}
     </div>
+  );
+}
+
+function PayoutPlanSection({ plan }: { plan: PayoutPlan }) {
+  const poolLabel =
+    plan.poolType === "main"
+      ? "Main purse"
+      : plan.feeKind === "insurance"
+        ? "Insurance pot"
+        : "Side pot";
+
+  return (
+    <section>
+      <header className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
+              {poolLabel}
+            </p>
+            <h3 className="mt-1 text-base font-bold">{plan.name}</h3>
+          </div>
+          <Banknote size={20} className="text-[#758078]" />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[#758078]">
+              <Users size={13} /> Entries
+            </p>
+            <p className="mt-1 text-xl font-bold">{plan.entryCount}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase text-[#758078]">
+              Payout pool
+            </p>
+            <p className="mt-1 text-xl font-bold">
+              {formatCurrency(plan.poolCents)}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs font-semibold text-[#66716b]">
+          {plan.competitionFormat === "four_d" && plan.poolType === "main"
+            ? `${plan.paybackPercent}% payback · full purse divided among the active Ds`
+            : `${plan.paybackPercent}% payback · ${plan.goRoundsPercent}% across ${plan.numberOfRuns} ${plan.numberOfRuns === 1 ? "go" : "goes"} · ${plan.aggregatePercent}% aggregate${plan.shortRoundEnabled && plan.shortRoundPercent ? ` · ${plan.shortRoundPercent}% short round` : ""}`}
+        </p>
+      </header>
+      {plan.competitionFormat === "four_d" && plan.poolType === "main" ? (
+        plan.fourDBreakdown.length ? (
+          <>
+            <FourDPayoutBreakdown plan={plan} />
+            {plan.results.length ? <PayoutResults plan={plan} /> : null}
+          </>
+        ) : (
+          <PayoutBracketEmpty />
+        )
+      ) : plan.placesByStage.go_round.length ? (
+        <>
+          <PayoutBreakdown plan={plan} />
+          {plan.results.length ? <PayoutResults plan={plan} /> : null}
+        </>
+      ) : (
+        <PayoutBracketEmpty />
+      )}
+    </section>
   );
 }
 
