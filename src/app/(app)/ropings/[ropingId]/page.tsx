@@ -1,16 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  CalendarDays,
+  BadgeCheck,
   ChevronDown,
   CircleDollarSign,
   ClipboardList,
+  Clock3,
   ExternalLink,
   Gauge,
+  ListChecks,
   MapPin,
+  Radio,
   Settings2,
   Users,
+  WalletCards,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { ShortRoundTiePolicy } from "@/components/ropings/short-round-settings";
@@ -72,6 +77,12 @@ interface EventDetail {
     title: string;
     amountCents: number;
   }>;
+  pendingOnlineEntries: number;
+  unpaidEntries: number;
+  completedRuns: number;
+  totalRuns: number;
+  payoutTotalCents: number;
+  payoutCompletedCents: number;
   divisions: Array<{
     id: string;
     name: string;
@@ -85,6 +96,8 @@ interface EventDetail {
     estimatedStart: string;
     eventDayNote: string | null;
     entries: number;
+    currentRound: number;
+    remainingEntries: number;
     startsAt: string | null;
     scheduledDate: string;
     scheduledDateValue: string;
@@ -169,6 +182,12 @@ async function getEvent(
         eventFees: [
           { id: "preview-office", title: "Office charge", amountCents: 2000 },
         ],
+        pendingOnlineEntries: 4,
+        unpaidEntries: 7,
+        completedRuns: 84,
+        totalRuns: 126,
+        payoutTotalCents: 134000,
+        payoutCompletedCents: 90500,
         divisions: demoDivisions
           .slice(0, roping.divisions)
           .map((division, index) => ({
@@ -184,6 +203,8 @@ async function getEvent(
             estimatedStart: "",
             eventDayNote: null,
             entries: index === 0 ? roping.entries : 0,
+            currentRound: index === 0 ? 2 : 1,
+            remainingEntries: index === 0 ? 12 : 0,
             startsAt: null,
             scheduledDate: roping.date,
             scheduledDateValue: "2026-09-27",
@@ -247,6 +268,9 @@ async function getEvent(
     { data: eventFeeData, error: eventFeeError },
     { data: templateData, error: templateError },
     { data: classificationData, error: classificationError },
+    { data: entryData, error: entryError },
+    { count: pendingOnlineEntries, error: requestError },
+    { data: runData, error: runError },
   ] = await Promise.all([
     supabase
       .from("ropings")
@@ -274,6 +298,23 @@ async function getEvent(
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
+    supabase
+      .from("entries")
+      .select("id, roping_division_id, payment_status, competition_status")
+      .eq("roping_id", ropingId),
+    supabase
+      .from("online_entry_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("roping_id", ropingId)
+      .eq("organization_id", organization.id)
+      .eq("status", "pending"),
+    supabase
+      .from("runs")
+      .select(
+        "entry_id, roping_division_id, run_number, status, roping_divisions!inner(roping_id)",
+      )
+      .eq("roping_divisions.roping_id", ropingId)
+      .eq("organization_id", organization.id),
   ]);
   if (error || !data)
     return { event: null, organizationSlug: organization.slug };
@@ -281,6 +322,31 @@ async function getEvent(
     throw new Error(`Unable to load event charges: ${eventFeeError.message}`);
   if (templateError || classificationError)
     throw new Error("Unable to load the available roping setup.");
+  if (entryError || requestError || runError)
+    throw new Error("Unable to load the event dashboard status.");
+  const activeEntries = (entryData ?? []).filter(
+    (entry) => entry.competition_status === "active",
+  );
+  const runs = (runData ?? []) as Array<{
+    entry_id: string;
+    roping_division_id: string;
+    run_number: number;
+    status:
+      | "pending"
+      | "complete"
+      | "no_time"
+      | "scratch"
+      | "rerun"
+      | "disqualified"
+      | "turned_out";
+  }>;
+  const completedRunStatuses = new Set([
+    "complete",
+    "no_time",
+    "scratch",
+    "disqualified",
+    "turned_out",
+  ]);
   const divisions = (
     data.roping_divisions as unknown as Array<{
       id: string;
@@ -327,83 +393,153 @@ async function getEvent(
         ? a.sort_order - b.sort_order
         : a.scheduled_date.localeCompare(b.scheduled_date),
     )
-    .map((division, index, orderedDivisions) => ({
-      id: division.id,
-      name: division.name,
-      runs: division.number_of_runs,
-      minimumRunsBetweenEntries: division.minimum_runs_between_entries,
-      secondRoundOrdering: division.second_round_ordering,
-      laterRoundOrdering: division.later_round_ordering,
-      cattleDrawEnabled: division.cattle_draw_enabled,
-      arenaName: division.arena_name,
-      eventDayStatus: division.event_day_status,
-      estimatedStart: division.estimated_starts_at
-        ? toLocalDateTimeInput(
-            division.estimated_starts_at,
-            organization.timezone,
-          )
-        : "",
-      eventDayNote: division.event_day_note,
-      entries: division.entries.length,
-      startsAt: division.starts_at
-        ? new Intl.DateTimeFormat("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            timeZone: organization.timezone,
-          }).format(new Date(division.starts_at))
-        : null,
-      scheduledDate: new Intl.DateTimeFormat("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      }).format(new Date(`${division.scheduled_date}T12:00:00Z`)),
-      scheduledDateValue: division.scheduled_date,
-      startTime: division.starts_at
-        ? new Intl.DateTimeFormat("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hourCycle: "h23",
-            timeZone: organization.timezone,
-          }).format(new Date(division.starts_at))
-        : "",
-      scheduleType: division.schedule_type,
-      followsRopingName:
-        division.schedule_type === "follows_previous"
-          ? (orderedDivisions
-              .slice(0, index)
-              .findLast(
-                (previous) =>
-                  previous.scheduled_date === division.scheduled_date &&
-                  previous.arena_name === division.arena_name,
-              )?.name ?? null)
+    .map((division, index, orderedDivisions) => {
+      const divisionRuns = runs.filter(
+        (run) => run.roping_division_id === division.id,
+      );
+      const incompleteRuns = divisionRuns.filter(
+        (run) => !completedRunStatuses.has(run.status),
+      );
+      const currentRound =
+        incompleteRuns.length > 0
+          ? Math.min(...incompleteRuns.map((run) => run.run_number))
+          : Math.max(1, ...divisionRuns.map((run) => run.run_number));
+      const remainingEntries = new Set(
+        incompleteRuns
+          .filter((run) => run.run_number === currentRound)
+          .map((run) => run.entry_id),
+      ).size;
+
+      return {
+        id: division.id,
+        name: division.name,
+        runs: division.number_of_runs,
+        minimumRunsBetweenEntries: division.minimum_runs_between_entries,
+        secondRoundOrdering: division.second_round_ordering,
+        laterRoundOrdering: division.later_round_ordering,
+        cattleDrawEnabled: division.cattle_draw_enabled,
+        arenaName: division.arena_name,
+        eventDayStatus: division.event_day_status,
+        estimatedStart: division.estimated_starts_at
+          ? toLocalDateTimeInput(
+              division.estimated_starts_at,
+              organization.timezone,
+            )
+          : "",
+        eventDayNote: division.event_day_note,
+        entries: activeEntries.filter(
+          (entry) => entry.roping_division_id === division.id,
+        ).length,
+        currentRound,
+        remainingEntries,
+        startsAt: division.starts_at
+          ? new Intl.DateTimeFormat("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              timeZone: organization.timezone,
+            }).format(new Date(division.starts_at))
           : null,
-      scheduleNote: division.schedule_note,
-      incentiveEnabled: division.incentive_enabled,
-      incentiveRules: division.roping_incentive_rules.map((rule) => ({
-        id: rule.id,
-        classification: rule.classifications.name,
-        adjustmentSeconds: Number(rule.adjustment_seconds),
-      })),
-      shortRoundEnabled: division.short_round_enabled,
-      shortRoundTiePolicy: division.short_round_tie_policy,
-      shortRoundBrackets: division.roping_short_round_brackets
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((bracket) => ({
-          minimumEntries: bracket.minimum_entries,
-          maximumEntries: bracket.maximum_entries,
-          comebackCount: bracket.comeback_count,
+        scheduledDate: new Intl.DateTimeFormat("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        }).format(new Date(`${division.scheduled_date}T12:00:00Z`)),
+        scheduledDateValue: division.scheduled_date,
+        startTime: division.starts_at
+          ? new Intl.DateTimeFormat("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hourCycle: "h23",
+              timeZone: organization.timezone,
+            }).format(new Date(division.starts_at))
+          : "",
+        scheduleType: division.schedule_type,
+        followsRopingName:
+          division.schedule_type === "follows_previous"
+            ? (orderedDivisions
+                .slice(0, index)
+                .findLast(
+                  (previous) =>
+                    previous.scheduled_date === division.scheduled_date &&
+                    previous.arena_name === division.arena_name,
+                )?.name ?? null)
+            : null,
+        scheduleNote: division.schedule_note,
+        incentiveEnabled: division.incentive_enabled,
+        incentiveRules: division.roping_incentive_rules.map((rule) => ({
+          id: rule.id,
+          classification: rule.classifications.name,
+          adjustmentSeconds: Number(rule.adjustment_seconds),
         })),
-      fees: division.roping_fees.map((fee) => ({
-        id: fee.id,
-        title: fee.title,
-        amountCents: fee.amount_cents,
-        included: fee.included_in_entry_price,
-      })),
-    }));
+        shortRoundEnabled: division.short_round_enabled,
+        shortRoundTiePolicy: division.short_round_tie_policy,
+        shortRoundBrackets: division.roping_short_round_brackets
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((bracket) => ({
+            minimumEntries: bracket.minimum_entries,
+            maximumEntries: bracket.maximum_entries,
+            comebackCount: bracket.comeback_count,
+          })),
+        fees: division.roping_fees.map((fee) => ({
+          id: fee.id,
+          title: fee.title,
+          amountCents: fee.amount_cents,
+          included: fee.included_in_entry_price,
+        })),
+      };
+    });
+
+  let payoutTotalCents = 0;
+  let payoutCompletedCents = 0;
+  if (data.status === "completed") {
+    const [{ data: payoutPlans, error: payoutPlanError }, payoutPayments] =
+      await Promise.all([
+        supabase
+          .from("roping_payout_plans")
+          .select("id, pool_type, roping_divisions!inner(competition_format)")
+          .eq("roping_id", ropingId)
+          .eq("organization_id", organization.id),
+        supabase
+          .from("payout_disbursements")
+          .select("amount_cents")
+          .eq("roping_id", ropingId)
+          .eq("organization_id", organization.id),
+      ]);
+    if (payoutPlanError || payoutPayments.error)
+      throw new Error("Unable to load the event payout status.");
+
+    const payoutResults = await Promise.all(
+      (payoutPlans ?? []).map((plan) => {
+        const division = plan.roping_divisions as unknown as {
+          competition_format: "standard" | "handicap" | "four_d";
+        };
+        return supabase.rpc(
+          division.competition_format === "four_d" && plan.pool_type === "main"
+            ? "calculate_four_d_payout_results"
+            : "calculate_roping_payout_results",
+          { target_plan_id: plan.id },
+        );
+      }),
+    );
+    for (const result of payoutResults) {
+      if (result.error)
+        throw new Error("Unable to calculate the event payout status.");
+      payoutTotalCents += (
+        (result.data ?? []) as Array<{ payout_cents: number | string }>
+      ).reduce(
+        (total, award) => total + Number(award.payout_cents),
+        0,
+      );
+    }
+    payoutCompletedCents = (payoutPayments.data ?? []).reduce(
+      (total, payment) => total + payment.amount_cents,
+      0,
+    );
+  }
   return {
     organizationSlug: organization.slug,
     event: {
@@ -476,6 +612,15 @@ async function getEvent(
         title: fee.title,
         amountCents: fee.amount_cents,
       })),
+      pendingOnlineEntries: pendingOnlineEntries ?? 0,
+      unpaidEntries: activeEntries.filter(
+        (entry) => entry.payment_status === "unpaid",
+      ).length,
+      completedRuns: runs.filter((run) => completedRunStatuses.has(run.status))
+        .length,
+      totalRuns: runs.length,
+      payoutTotalCents,
+      payoutCompletedCents,
       divisions,
     },
   };
@@ -491,11 +636,6 @@ export default async function RopingDetailPage({
     (sum, division) => sum + division.entries,
     0,
   );
-  const totalFees =
-    event.divisions
-      .flatMap((division) => division.fees)
-      .reduce((sum, fee) => sum + fee.amountCents, 0) +
-    event.eventFees.reduce((sum, fee) => sum + fee.amountCents, 0);
   const setupEditable =
     event.canManage &&
     !["in_progress", "completed", "cancelled"].includes(event.status);
@@ -504,6 +644,32 @@ export default async function RopingDetailPage({
     event.canManage && !["completed", "cancelled"].includes(event.status);
   const roundAction = updateRopingRounds.bind(null, event.id);
   const spacingAction = updateClassEntrySpacing.bind(null, event.id);
+  const activeRoping =
+    event.divisions.find(
+      (division) => division.eventDayStatus === "in_progress",
+    ) ??
+    event.divisions.find((division) => division.eventDayStatus === "holding") ??
+    null;
+  const activeRopingIndex = activeRoping
+    ? event.divisions.findIndex((division) => division.id === activeRoping.id)
+    : -1;
+  const nextRoping =
+    event.divisions
+      .slice(activeRopingIndex + 1)
+      .find(
+        (division) =>
+          !["completed", "in_progress"].includes(division.eventDayStatus),
+      ) ?? null;
+  const firstScheduledRoping = event.divisions.find(
+    (division) => division.eventDayStatus !== "completed",
+  );
+  const dashboardMetrics = getDashboardMetrics({
+    event,
+    totalEntries,
+    activeRoping,
+    nextRoping,
+    firstScheduledRoping,
+  });
 
   return (
     <div className="space-y-6">
@@ -598,22 +764,9 @@ export default async function RopingDetailPage({
         </span>
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          icon={CalendarDays}
-          label="Event date"
-          value={event.startsAt.split(" at ")[0]}
-        />
-        <Metric icon={Users} label="Entries" value={String(totalEntries)} />
-        <Metric
-          icon={ClipboardList}
-          label="Classes"
-          value={String(event.divisions.length)}
-        />
-        <Metric
-          icon={CircleDollarSign}
-          label="Configured fees"
-          value={formatCurrency(totalFees)}
-        />
+        {dashboardMetrics.map((metric) => (
+          <Metric key={metric.label} {...metric} />
+        ))}
       </section>
       {event.eventFees.length ? (
         <section className="rounded-md border border-[#dfe4e1] bg-white p-5">
@@ -955,14 +1108,138 @@ export default async function RopingDetailPage({
   );
 }
 
+type EventRoping = EventDetail["divisions"][number];
+
+function ropingScheduleLabel(roping: EventRoping | null | undefined) {
+  if (!roping) return "Not scheduled";
+  if (roping.scheduleType === "follows_previous") {
+    return `Follows ${roping.followsRopingName ?? "previous roping"}`;
+  }
+  return roping.startsAt ?? roping.scheduledDate;
+}
+
+function getDashboardMetrics({
+  event,
+  totalEntries,
+  activeRoping,
+  nextRoping,
+  firstScheduledRoping,
+}: {
+  event: EventDetail;
+  totalEntries: number;
+  activeRoping: EventRoping | null;
+  nextRoping: EventRoping | null;
+  firstScheduledRoping: EventRoping | undefined;
+}): Array<{
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail?: string;
+}> {
+  if (event.status === "completed") {
+    const payoutRemaining = Math.max(
+      event.payoutTotalCents - event.payoutCompletedCents,
+      0,
+    );
+    return [
+      {
+        icon: CircleDollarSign,
+        label: "Payouts due",
+        value: formatCurrency(event.payoutTotalCents),
+        detail: "Total awarded",
+      },
+      {
+        icon: BadgeCheck,
+        label: "Payouts completed",
+        value: formatCurrency(event.payoutCompletedCents),
+        detail: "Marked paid",
+      },
+      {
+        icon: ListChecks,
+        label: "Results",
+        value: event.resultStatus === "official" ? "Official" : "Unofficial",
+        detail: `${event.completedRuns} runs recorded`,
+      },
+      {
+        icon: WalletCards,
+        label: "Payouts remaining",
+        value: formatCurrency(payoutRemaining),
+        detail: payoutRemaining === 0 ? "All payouts complete" : "Still to pay",
+      },
+    ];
+  }
+
+  if (event.status === "in_progress") {
+    return [
+      {
+        icon: Radio,
+        label: "Current roping",
+        value: activeRoping?.name ?? "Not selected",
+        detail: activeRoping ? `Round ${activeRoping.currentRound}` : undefined,
+      },
+      {
+        icon: Clock3,
+        label: "Next roping",
+        value: nextRoping?.name ?? "None remaining",
+        detail: nextRoping ? ropingScheduleLabel(nextRoping) : undefined,
+      },
+      {
+        icon: Users,
+        label: "Remaining entries",
+        value: String(activeRoping?.remainingEntries ?? 0),
+        detail: activeRoping ? "In the current round" : "No active roping",
+      },
+      {
+        icon: ListChecks,
+        label: "Runs completed",
+        value: `${event.completedRuns} of ${event.totalRuns}`,
+        detail: `${Math.max(event.totalRuns - event.completedRuns, 0)} runs remaining`,
+      },
+    ];
+  }
+
+  return [
+    {
+      icon: Users,
+      label: "Entries",
+      value: String(totalEntries),
+      detail: `${event.divisions.length} scheduled ropings`,
+    },
+    {
+      icon: CircleDollarSign,
+      label: "Unpaid entries",
+      value: String(event.unpaidEntries),
+      detail:
+        event.unpaidEntries === 0 ? "Entry balances are clear" : "Need payment",
+    },
+    {
+      icon: Clock3,
+      label: "Next scheduled start",
+      value: ropingScheduleLabel(firstScheduledRoping),
+      detail: firstScheduledRoping?.name,
+    },
+    {
+      icon: ClipboardList,
+      label: "Pending entries",
+      value: String(event.pendingOnlineEntries),
+      detail:
+        event.pendingOnlineEntries === 0
+          ? "Online requests are clear"
+          : "Awaiting review",
+    },
+  ];
+}
+
 function Metric({
   icon: Icon,
   label,
   value,
+  detail,
 }: {
-  icon: typeof CalendarDays;
+  icon: LucideIcon;
   label: string;
   value: string;
+  detail?: string;
 }) {
   return (
     <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
@@ -971,6 +1248,11 @@ function Metric({
         <p className="text-xs font-semibold">{label}</p>
       </div>
       <p className="mt-2 text-xl font-bold">{value}</p>
+      {detail ? (
+        <p className="mt-1 truncate text-xs font-medium text-[#758078]">
+          {detail}
+        </p>
+      ) : null}
     </div>
   );
 }

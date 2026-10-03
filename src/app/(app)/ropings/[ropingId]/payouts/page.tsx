@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, Users } from "lucide-react";
-import { initializePayoutPlans } from "./actions";
+import { ArrowLeft, Banknote, Check, RotateCcw, Users } from "lucide-react";
+import { initializePayoutPlans, setPayoutPaid } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { getActiveOrganization } from "@/lib/organizations";
 import { createClient } from "@/lib/supabase/server";
@@ -43,6 +43,8 @@ interface PayoutPlan {
     performanceSeconds: number;
     payoutCents: number;
     dNumber: number | null;
+    awardKey: string;
+    paid: boolean;
   }>;
 }
 
@@ -80,7 +82,11 @@ export default async function EventPayoutsPage({
   const organization = await getActiveOrganization();
   if (!organization) notFound();
   const supabase = await createClient();
-  const [{ data: roping }, { data: plans, error }] = await Promise.all([
+  const [
+    { data: roping },
+    { data: plans, error },
+    { data: disbursements, error: disbursementError },
+  ] = await Promise.all([
     supabase
       .from("ropings")
       .select("id, title")
@@ -95,9 +101,23 @@ export default async function EventPayoutsPage({
       .eq("roping_id", ropingId)
       .eq("organization_id", organization.id)
       .order("created_at"),
+    supabase
+      .from("payout_disbursements")
+      .select("payout_plan_id, award_key")
+      .eq("roping_id", ropingId)
+      .eq("organization_id", organization.id),
   ]);
   if (!roping) notFound();
   if (error) throw new Error(`Unable to load payout plans: ${error.message}`);
+  if (disbursementError)
+    throw new Error(
+      `Unable to load completed payouts: ${disbursementError.message}`,
+    );
+  const paidAwards = new Set(
+    (disbursements ?? []).map(
+      (payment) => `${payment.payout_plan_id}:${payment.award_key}`,
+    ),
+  );
 
   const calculated = await Promise.all(
     (plans ?? []).map(async (plan): Promise<PayoutPlan> => {
@@ -199,7 +219,7 @@ export default async function EventPayoutsPage({
           percentage: Number(row.place_percentage_basis_points) / 100,
           amountCents: Number(row.payout_cents),
         })),
-        results: isFourD
+        results: (isFourD
           ? ((resultCalculation.data ?? []) as FourDPayoutResultRow[]).map(
               (result) => ({
                 entryId: result.entry_id,
@@ -223,7 +243,15 @@ export default async function EventPayoutsPage({
                 payoutCents: Number(result.payout_cents),
                 dNumber: null,
               }),
-            ),
+            )
+        ).map((result) => {
+          const awardKey = payoutAwardKey(result);
+          return {
+            ...result,
+            awardKey,
+            paid: paidAwards.has(`${plan.id}:${awardKey}`),
+          };
+        }),
       };
     }),
   );
@@ -286,7 +314,12 @@ export default async function EventPayoutsPage({
                 </header>
                 <div className="divide-y divide-[#dfe4e1]">
                   {group.map((plan) => (
-                    <PayoutPlanSection key={plan.id} plan={plan} />
+                    <PayoutPlanSection
+                      key={plan.id}
+                      plan={plan}
+                      ropingId={ropingId}
+                      canManage={organization.role !== "viewer"}
+                    />
                   ))}
                 </div>
               </article>
@@ -314,7 +347,15 @@ export default async function EventPayoutsPage({
   );
 }
 
-function PayoutPlanSection({ plan }: { plan: PayoutPlan }) {
+function PayoutPlanSection({
+  plan,
+  ropingId,
+  canManage,
+}: {
+  plan: PayoutPlan;
+  ropingId: string;
+  canManage: boolean;
+}) {
   const poolLabel =
     plan.poolType === "main"
       ? "Main purse"
@@ -360,7 +401,13 @@ function PayoutPlanSection({ plan }: { plan: PayoutPlan }) {
         plan.fourDBreakdown.length ? (
           <>
             <FourDPayoutBreakdown plan={plan} />
-            {plan.results.length ? <PayoutResults plan={plan} /> : null}
+            {plan.results.length ? (
+              <PayoutResults
+                plan={plan}
+                ropingId={ropingId}
+                canManage={canManage}
+              />
+            ) : null}
           </>
         ) : (
           <PayoutBracketEmpty />
@@ -368,7 +415,13 @@ function PayoutPlanSection({ plan }: { plan: PayoutPlan }) {
       ) : plan.placesByStage.go_round.length ? (
         <>
           <PayoutBreakdown plan={plan} />
-          {plan.results.length ? <PayoutResults plan={plan} /> : null}
+          {plan.results.length ? (
+            <PayoutResults
+              plan={plan}
+              ropingId={ropingId}
+              canManage={canManage}
+            />
+          ) : null}
         </>
       ) : (
         <PayoutBracketEmpty />
@@ -398,7 +451,29 @@ function allocatePlaces(poolCents: number, places: PayoutPlace[]) {
   return amounts;
 }
 
-function PayoutResults({ plan }: { plan: PayoutPlan }) {
+function payoutAwardKey(result: {
+  entryId: string;
+  sectionType: string;
+  roundNumber: number | null;
+  dNumber: number | null;
+}) {
+  return [
+    result.sectionType,
+    result.roundNumber ?? 0,
+    result.dNumber ?? 0,
+    result.entryId,
+  ].join(":");
+}
+
+function PayoutResults({
+  plan,
+  ropingId,
+  canManage,
+}: {
+  plan: PayoutPlan;
+  ropingId: string;
+  canManage: boolean;
+}) {
   const sections = Map.groupBy(plan.results, (result) =>
     result.dNumber
       ? `${result.dNumber}D`
@@ -427,7 +502,7 @@ function PayoutResults({ plan }: { plan: PayoutPlan }) {
               {results.map((result) => (
                 <div
                   key={`${section}-${result.entryId}`}
-                  className="grid grid-cols-[28px_1fr_auto] items-center gap-2 px-3 py-2.5 text-sm"
+                  className="grid grid-cols-[28px_1fr_auto_auto] items-center gap-2 px-3 py-2.5 text-sm"
                 >
                   <span className="font-bold">{result.place}</span>
                   <span className="min-w-0">
@@ -441,6 +516,54 @@ function PayoutResults({ plan }: { plan: PayoutPlan }) {
                   <span className="font-bold">
                     {formatCurrency(result.payoutCents)}
                   </span>
+                  {canManage ? (
+                    <form
+                      action={setPayoutPaid.bind(
+                        null,
+                        ropingId,
+                        {
+                          planId: plan.id,
+                          entryId: result.entryId,
+                          awardKey: result.awardKey,
+                          sectionType: result.sectionType,
+                          roundNumber: result.roundNumber,
+                          dNumber: result.dNumber,
+                          place: result.place,
+                          contestantName: result.contestantName,
+                          amountCents: result.payoutCents,
+                        },
+                        !result.paid,
+                      )}
+                    >
+                      <button
+                        className={`grid h-8 w-8 place-items-center rounded-md border ${
+                          result.paid
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-[#d7ddda] bg-white text-[#66716b]"
+                        }`}
+                        aria-label={
+                          result.paid
+                            ? "Mark payout unpaid"
+                            : "Mark payout paid"
+                        }
+                        title={
+                          result.paid
+                            ? "Mark payout unpaid"
+                            : "Mark payout paid"
+                        }
+                      >
+                        {result.paid ? (
+                          <RotateCcw size={14} />
+                        ) : (
+                          <Check size={15} />
+                        )}
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="w-8 text-center text-xs font-semibold text-emerald-700">
+                      {result.paid ? "Paid" : ""}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

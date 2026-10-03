@@ -17,6 +17,7 @@ const entityLabels: Record<string, string> = {
   payout_schedules: "Payout schedule",
   payout_schedule_brackets: "Payout bracket",
   payout_schedule_places: "Payout place",
+  payout_disbursements: "Payout payment",
   ropings: "Roping",
   roping_divisions: "Event class",
   roping_incentive_rules: "Incentive handicap rule",
