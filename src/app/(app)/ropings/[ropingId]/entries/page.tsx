@@ -58,6 +58,8 @@ export default async function EventEntriesPage({
             memberNumber: "RR-1042",
             paymentStatus: "unpaid",
             totalCents: 11500,
+            checkedIn: false,
+            checkedInAt: null,
             entries: [
               {
                 id: "jace-1",
@@ -129,6 +131,8 @@ export default async function EventEntriesPage({
             memberNumber: "RR-1088",
             paymentStatus: "paid_cash",
             totalCents: 3500,
+            checkedIn: true,
+            checkedInAt: "8:42 AM",
             entries: [
               {
                 id: "mara-1",
@@ -183,6 +187,7 @@ export default async function EventEntriesPage({
     { data: requestData, error: requestError },
     { data: transferData, error: transferError },
     { data: withdrawalData, error: withdrawalError },
+    { data: checkInData, error: checkInError },
   ] = await Promise.all([
     supabase
       .from("ropings")
@@ -230,6 +235,10 @@ export default async function EventEntriesPage({
       .select("entry_id, reason, financial_action, withdrawn_at")
       .eq("roping_id", ropingId)
       .is("reinstated_at", null),
+    supabase
+      .from("event_contestant_check_ins")
+      .select("person_id, checked_in_at, checked_in_by")
+      .eq("roping_id", ropingId),
   ]);
   if (!roping) notFound();
   const loadError =
@@ -237,7 +246,8 @@ export default async function EventEntriesPage({
     chargeError ??
     requestError ??
     transferError ??
-    withdrawalError;
+    withdrawalError ??
+    checkInError;
   if (loadError)
     throw new Error(`Unable to load event entries: ${loadError.message}`);
 
@@ -333,6 +343,9 @@ export default async function EventEntriesPage({
       withdrawal,
     ]),
   );
+  const checkInByPerson = new Map(
+    (checkInData ?? []).map((checkIn) => [checkIn.person_id, checkIn]),
+  );
 
   const contestantsByPerson = new Map<string, LedgerContestant>();
   for (const entry of entryData ?? []) {
@@ -346,6 +359,7 @@ export default async function EventEntriesPage({
       scheduled_date: string;
     };
     const latestTransfer = latestTransferByEntry.get(entry.id);
+    const checkIn = checkInByPerson.get(entry.person_id);
     const contestant: LedgerContestant = contestantsByPerson.get(
       entry.person_id,
     ) ?? {
@@ -354,6 +368,14 @@ export default async function EventEntriesPage({
       memberNumber: memberNumbers.get(entry.person_id) ?? null,
       paymentStatus: entry.payment_status as PaymentStatus,
       totalCents: 0,
+      checkedIn: Boolean(checkIn),
+      checkedInAt: checkIn
+        ? new Intl.DateTimeFormat("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: organization.timezone,
+          }).format(new Date(checkIn.checked_in_at))
+        : null,
       entries: [],
       charges: chargesByPerson.get(entry.person_id) ?? [],
     };
@@ -508,6 +530,9 @@ function EntriesWorkspace({
       contestant.paymentStatus === "unpaid" ||
       contestant.paymentStatus === "mixed",
   ).length;
+  const checkedInContestants = contestants.filter(
+    (contestant) => contestant.checkedIn,
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -539,7 +564,7 @@ function EntriesWorkspace({
         <Metric
           label="Contestants"
           value={String(contestants.length)}
-          detail={`${unpaidContestants} need payment attention`}
+          detail={`${checkedInContestants} checked in · ${unpaidContestants} need payment attention`}
           icon={Users}
         />
         <Metric

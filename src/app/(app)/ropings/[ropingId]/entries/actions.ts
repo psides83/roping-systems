@@ -39,6 +39,11 @@ export interface EntryWithdrawalFormState {
   errors?: Record<string, string[]>;
 }
 
+export interface CheckInFormState {
+  success?: boolean;
+  message?: string;
+}
+
 const eligibilityOverrideFields = {
   eligibilityOverride: z.string().optional(),
   eligibilityOverrideReason: z.string().trim().max(300),
@@ -458,5 +463,34 @@ export async function changeEntryWithdrawal(
       parsed.data.action === "withdraw"
         ? "Entry withdrawn."
         : "Entry reinstated.",
+  };
+}
+
+export async function updateContestantCheckIn(
+  ropingId: string,
+  personId: string,
+  _state: CheckInFormState,
+  formData: FormData,
+): Promise<CheckInFormState> {
+  if (!z.uuid().safeParse(personId).success)
+    return { message: "This contestant is unavailable." };
+  const checkedIn = formData.get("checkedIn") === "true";
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const { error } = await context.supabase.rpc(
+    "set_event_contestant_check_in",
+    {
+      target_roping_id: ropingId,
+      target_person_id: personId,
+      is_checked_in: checkedIn,
+    },
+  );
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  return {
+    success: true,
+    message: checkedIn ? "Contestant checked in." : "Check-in undone.",
   };
 }

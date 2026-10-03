@@ -16,6 +16,7 @@ import {
 } from "@/components/ropings/entry-options-dialog";
 import { ChargeWaiverDialog } from "@/components/ropings/charge-waiver-dialog";
 import { EntryWithdrawalDialog } from "@/components/ropings/entry-withdrawal-dialog";
+import { ContestantCheckInButton } from "@/components/ropings/contestant-check-in-button";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 
@@ -28,6 +29,8 @@ export interface LedgerContestant {
   memberNumber: string | null;
   paymentStatus: PaymentSummary;
   totalCents: number;
+  checkedIn: boolean;
+  checkedInAt: string | null;
   entries: Array<{
     id: string;
     divisionId: string;
@@ -82,11 +85,16 @@ export function EntryLedger({
 }) {
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [checkInFilter, setCheckInFilter] = useState("all");
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return contestants.filter((contestant) => {
       const matchesPayment =
         paymentFilter === "all" || contestant.paymentStatus === paymentFilter;
+      const matchesCheckIn =
+        checkInFilter === "all" ||
+        (checkInFilter === "checked_in" && contestant.checkedIn) ||
+        (checkInFilter === "not_checked_in" && !contestant.checkedIn);
       const matchesSearch =
         !query ||
         contestant.name.toLowerCase().includes(query) ||
@@ -94,9 +102,9 @@ export function EntryLedger({
         contestant.entries.some((entry) =>
           entry.division.toLowerCase().includes(query),
         );
-      return matchesPayment && matchesSearch;
+      return matchesPayment && matchesCheckIn && matchesSearch;
     });
-  }, [contestants, paymentFilter, search]);
+  }, [checkInFilter, contestants, paymentFilter, search]);
 
   return (
     <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
@@ -110,7 +118,7 @@ export function EntryLedger({
             placeholder="Search contestant, member number, or class"
           />
         </label>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <label className="text-xs font-semibold text-[#66716b]">
             Payment
             <select
@@ -126,18 +134,31 @@ export function EntryLedger({
               <option value="mixed">Mixed</option>
             </select>
           </label>
+          <label className="text-xs font-semibold text-[#66716b]">
+            Arrival
+            <select
+              value={checkInFilter}
+              onChange={(event) => setCheckInFilter(event.target.value)}
+              className="ml-2 h-10 rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
+            >
+              <option value="all">Everyone</option>
+              <option value="checked_in">Checked in</option>
+              <option value="not_checked_in">Not checked in</option>
+            </select>
+          </label>
           <span className="text-xs font-semibold text-[#758078]">
             {filtered.length} of {contestants.length}
           </span>
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] text-left">
+        <table className="w-full min-w-[1120px] text-left">
           <thead className="bg-[#f7f8f7] text-[11px] font-bold uppercase text-[#758078]">
             <tr>
               <th className="px-5 py-3">Contestant</th>
               <th className="px-5 py-3">Entries</th>
               <th className="px-5 py-3">Classes</th>
+              <th className="px-5 py-3">Arrival</th>
               <th className="px-5 py-3">Payment</th>
               <th className="px-5 py-3 text-right">Total</th>
               <th className="px-5 py-3 text-right">Update</th>
@@ -156,7 +177,7 @@ export function EntryLedger({
             {!filtered.length ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-5 py-12 text-center text-sm text-[#758078]"
                 >
                   {contestants.length
@@ -183,6 +204,9 @@ function ContestantRow({
   divisions: TransferDivision[];
   canEdit: boolean;
 }) {
+  const hasActiveEntries = contestant.entries.some(
+    (entry) => entry.competitionStatus === "active",
+  );
   return (
     <tr className="align-top">
       <td className="px-5 py-4">
@@ -263,6 +287,16 @@ function ContestantRow({
             </div>
           ))}
         </div>
+      </td>
+      <td className="px-5 py-4">
+        <ContestantCheckInButton
+          ropingId={ropingId}
+          personId={contestant.personId}
+          contestantName={contestant.name}
+          checkedIn={contestant.checkedIn}
+          checkedInAt={contestant.checkedInAt}
+          enabled={canEdit && (hasActiveEntries || contestant.checkedIn)}
+        />
       </td>
       <td className="px-5 py-4">
         <span
