@@ -18,6 +18,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { formatPhoneNumber } from "@/lib/utils";
 import type { MembershipStatus } from "@/types/domain";
 
 interface DisciplineData {
@@ -213,7 +214,7 @@ async function getMemberDetail(
     memberNumber: membership.member_number,
     status: membership.status as MembershipStatus,
     email: person.email ?? "-",
-    phone: person.phone ?? "-",
+    phone: formatPhoneNumber(person.phone) || "-",
     joinedOn: membership.joined_on,
     expiresOn: membership.expires_on,
     notes: membership.notes ?? "",

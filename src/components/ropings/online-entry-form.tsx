@@ -7,6 +7,7 @@ import {
   type OnlineEntryFormState,
 } from "@/app/public/[organizationSlug]/[ropingSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
@@ -358,12 +359,16 @@ function Field({
   return (
     <label className="block text-sm font-semibold">
       {label}
-      <input
-        name={name}
-        type={type}
-        required={required}
-        className={inputClass}
-      />
+      {type === "tel" ? (
+        <PhoneInput name={name} required={required} className={inputClass} />
+      ) : (
+        <input
+          name={name}
+          type={type}
+          required={required}
+          className={inputClass}
+        />
+      )}
       {error ? (
         <span className="mt-1 block text-xs text-rose-700">{error}</span>
       ) : null}

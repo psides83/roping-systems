@@ -17,7 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatPhoneNumber } from "@/lib/utils";
 
 type PaymentStatus = "unpaid" | "paid_cash" | "comped" | "refunded";
 
@@ -520,7 +520,7 @@ export default async function EventEntriesPage({
     id: request.id,
     name: `${request.first_name} ${request.last_name}`,
     email: request.email,
-    phone: request.phone,
+    phone: formatPhoneNumber(request.phone) || null,
     birthDate: request.birth_date,
     competitionGender: request.competition_gender,
     memberNumber: request.member_number,

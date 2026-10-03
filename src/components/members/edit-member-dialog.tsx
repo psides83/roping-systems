@@ -6,6 +6,7 @@ import {
   updateMember,
   type MemberProfileFormState,
 } from "@/app/(app)/members/[membershipId]/actions";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 interface DisciplineOption {
   id: string;
@@ -331,13 +332,22 @@ function Field({
   return (
     <label className="block text-sm font-semibold">
       {label}
-      <input
-        name={name}
-        type={type}
-        defaultValue={value}
-        required={required}
-        className={inputClass}
-      />
+      {type === "tel" ? (
+        <PhoneInput
+          name={name}
+          defaultValue={value}
+          required={required}
+          className={inputClass}
+        />
+      ) : (
+        <input
+          name={name}
+          type={type}
+          defaultValue={value}
+          required={required}
+          className={inputClass}
+        />
+      )}
     </label>
   );
 }

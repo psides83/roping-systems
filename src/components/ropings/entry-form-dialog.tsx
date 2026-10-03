@@ -8,6 +8,7 @@ import {
   type EntryFormState,
 } from "@/app/(app)/ropings/[ropingId]/entries/actions";
 import { cn, formatCurrency } from "@/lib/utils";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
@@ -158,7 +159,7 @@ export function EntryFormDialog({
                   </label>
                   <label className="block text-sm font-semibold">
                     Phone
-                    <input name="phone" type="tel" className={inputClass} />
+                    <PhoneInput className={inputClass} />
                   </label>
                   <label className="block text-sm font-semibold">
                     Birth date

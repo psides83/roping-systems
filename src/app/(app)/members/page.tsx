@@ -7,6 +7,7 @@ import { AddMemberDialog } from "@/components/members/add-member-dialog";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getActiveOrganization } from "@/lib/organizations";
 import { createClient } from "@/lib/supabase/server";
+import { formatPhoneNumber } from "@/lib/utils";
 import type { MemberSummary, MembershipStatus } from "@/types/domain";
 
 interface DisciplineOption {
@@ -91,7 +92,7 @@ async function getMemberPageData(): Promise<{
       memberNumber: membership.member_number,
       name: `${person.first_name} ${person.last_name}`.trim(),
       email: person.email ?? "-",
-      phone: person.phone ?? "-",
+      phone: formatPhoneNumber(person.phone) || "-",
       classification: classifications[0]?.name ?? "Unclassified",
       classifications,
       status: membership.status as MembershipStatus,

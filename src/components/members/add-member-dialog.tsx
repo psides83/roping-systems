@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { LoaderCircle, Plus, X } from "lucide-react";
 import { addMember, type MemberFormState } from "@/app/(app)/members/actions";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const initialState: MemberFormState = {};
 
@@ -230,12 +231,19 @@ function FormField({
   return (
     <label className="block text-sm font-semibold">
       {label}
-      <input
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3 outline-none focus:border-[var(--brand-accent)]"
-      />
+      {type === "tel" ? (
+        <PhoneInput
+          name={name}
+          className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3 outline-none focus:border-[var(--brand-accent)]"
+        />
+      ) : (
+        <input
+          name={name}
+          type={type}
+          placeholder={placeholder}
+          className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3 outline-none focus:border-[var(--brand-accent)]"
+        />
+      )}
       {error ? (
         <span className="mt-1.5 block text-xs font-medium text-rose-700">
           {error}
