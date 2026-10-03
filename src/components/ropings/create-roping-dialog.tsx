@@ -19,11 +19,6 @@ import {
   type IncentiveClassification,
   type ScheduledOccurrenceDraft,
 } from "@/components/ropings/scheduled-class-fields";
-import {
-  ShortRoundFields,
-  type ShortRoundBracket,
-  type ShortRoundTiePolicy,
-} from "@/components/ropings/short-round-settings";
 
 const initialState: RopingFormState = {};
 const inputClass =
@@ -61,9 +56,6 @@ export interface RopingDraft {
   eventFeeTitle: string;
   eventFeeAmount: string;
   occurrences: ScheduledOccurrenceDraft[];
-  shortRoundEnabled: boolean;
-  shortRoundBrackets: ShortRoundBracket[];
-  shortRoundTiePolicy: ShortRoundTiePolicy;
 }
 
 export function CreateRopingDialog({
@@ -327,17 +319,6 @@ export function CreateRopingDialog({
                 <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                   Create at least one roping template before scheduling a
                   roping.
-                </p>
-              ) : null}
-
-              <ShortRoundFields
-                defaultEnabled={initialValues?.shortRoundEnabled}
-                defaultBrackets={initialValues?.shortRoundBrackets}
-                defaultTiePolicy={initialValues?.shortRoundTiePolicy}
-              />
-              {state.errors?.shortRoundBrackets ? (
-                <p className="text-xs text-rose-700">
-                  {state.errors.shortRoundBrackets[0]}
                 </p>
               ) : null}
 

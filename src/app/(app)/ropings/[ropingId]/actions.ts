@@ -55,16 +55,6 @@ const eventDetailsSchema = z.object({
   publicationState: z.enum(["draft", "published", "unpublished"]),
 });
 
-const shortRoundBracketSchema = z
-  .array(
-    z.object({
-      minimumEntries: z.number().int().min(1),
-      maximumEntries: z.number().int().min(1).nullable(),
-      comebackCount: z.number().int().min(1),
-    }),
-  )
-  .min(1);
-
 async function requireManager() {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
@@ -489,49 +479,6 @@ export async function saveDrawOrder(
   return {
     success: true,
     message: `${data} ${data === 1 ? "run" : "runs"} reordered.`,
-  };
-}
-
-export async function saveShortRoundSettings(
-  ropingId: string,
-  divisionId: string,
-  _state: LiveRunState,
-  formData: FormData,
-): Promise<LiveRunState> {
-  const enabled = formData.get("shortRoundEnabled") === "on";
-  const tiePolicy = z
-    .enum(["advance_all", "fastest_last_round"])
-    .safeParse(formData.get("shortRoundTiePolicy"));
-  let brackets: z.infer<typeof shortRoundBracketSchema> = [];
-  try {
-    const parsed = shortRoundBracketSchema.safeParse(
-      JSON.parse(String(formData.get("shortRoundBrackets") ?? "[]")),
-    );
-    if (enabled && !parsed.success)
-      return { message: "Add at least one valid comeback entry range." };
-    if (parsed.success) brackets = parsed.data;
-  } catch {
-    return { message: "The comeback schedule is invalid." };
-  }
-
-  const supabase = await requireManager();
-  if (!tiePolicy.success) return { message: "Choose how cutoff ties advance." };
-
-  const { error } = await supabase.rpc(
-    "save_short_round_settings_with_tie_policy",
-    {
-      target_roping_division_id: divisionId,
-      short_round_is_enabled: enabled,
-      short_round_brackets: enabled ? brackets : [],
-      tie_policy: tiePolicy.data,
-    },
-  );
-  if (error) return { message: error.message };
-  revalidatePath(`/ropings/${ropingId}`);
-  revalidatePath(`/ropings/${ropingId}/live`);
-  return {
-    success: true,
-    message: enabled ? "Short round settings saved." : "Short round disabled.",
   };
 }
 

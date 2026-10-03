@@ -78,7 +78,7 @@ async function getRopingData() {
     supabase
       .from("ropings")
       .select(
-        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, venue_city, venue_state, venue_postal_code, publication_state, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, short_round_enabled, short_round_tie_policy, male_eligibility_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_discipline_id, male_minimum_classification_number, roping_incentive_rules(classification_id, adjustment_seconds), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order)), entries!entries_roping_id_fkey(id)",
+        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, venue_city, venue_state, venue_postal_code, publication_state, is_public, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id, source_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, cattle_draw_enabled, arena_name, incentive_enabled, male_eligibility_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_discipline_id, male_minimum_classification_number, roping_incentive_rules(classification_id, adjustment_seconds)), entries!entries_roping_id_fkey(id)",
       )
       .eq("organization_id", organization.id)
       .order("starts_at", { ascending: false }),

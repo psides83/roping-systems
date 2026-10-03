@@ -12,10 +12,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
-import {
-  ShortRoundSettingsForm,
-  type ShortRoundTiePolicy,
-} from "@/components/ropings/short-round-settings";
+import type { ShortRoundTiePolicy } from "@/components/ropings/short-round-settings";
 import { ClassScheduleDialog } from "@/components/ropings/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/ropings/class-round-ordering-form";
 import { ClassCattleDrawForm } from "@/components/ropings/class-cattle-draw-form";
@@ -836,14 +833,6 @@ export default async function RopingDetailPage({
                   </div>
                 </div>
               ) : null}
-              <ShortRoundSettingsForm
-                ropingId={event.id}
-                divisionId={division.id}
-                enabled={division.shortRoundEnabled}
-                brackets={division.shortRoundBrackets}
-                tiePolicy={division.shortRoundTiePolicy}
-                editable={roundsEditable && isSupabaseConfigured()}
-              />
             </div>
           ))}
         </div>

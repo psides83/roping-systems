@@ -1,11 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { LoaderCircle, Plus, Trash2, Trophy } from "lucide-react";
-import {
-  saveShortRoundSettings,
-  type LiveRunState,
-} from "@/app/(app)/ropings/[ropingId]/actions";
+import { useState } from "react";
+import { Plus, Trash2, Trophy } from "lucide-react";
 
 export interface ShortRoundBracket {
   minimumEntries: number;
@@ -204,59 +200,5 @@ export function ShortRoundFields({
         />
       ) : null}
     </section>
-  );
-}
-
-export function ShortRoundSettingsForm({
-  ropingId,
-  divisionId,
-  enabled,
-  brackets,
-  tiePolicy,
-  editable,
-}: {
-  ropingId: string;
-  divisionId: string;
-  enabled: boolean;
-  brackets: ShortRoundBracket[];
-  tiePolicy: ShortRoundTiePolicy;
-  editable: boolean;
-}) {
-  const action = saveShortRoundSettings.bind(null, ropingId, divisionId);
-  const [state, formAction, pending] = useActionState<LiveRunState, FormData>(
-    action,
-    {},
-  );
-
-  return (
-    <form action={formAction} className="mt-4 space-y-3">
-      <ShortRoundFields
-        defaultEnabled={enabled}
-        defaultBrackets={brackets}
-        defaultTiePolicy={tiePolicy}
-        disabled={!editable}
-      />
-      {state.message ? (
-        <p
-          className={`text-xs ${state.success ? "text-emerald-700" : "text-rose-700"}`}
-          aria-live="polite"
-        >
-          {state.message}
-        </p>
-      ) : null}
-      {editable ? (
-        <div className="flex justify-end">
-          <button
-            disabled={pending}
-            className="flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold disabled:opacity-50"
-          >
-            {pending ? (
-              <LoaderCircle size={14} className="animate-spin" />
-            ) : null}
-            Save short round
-          </button>
-        </div>
-      ) : null}
-    </form>
   );
 }

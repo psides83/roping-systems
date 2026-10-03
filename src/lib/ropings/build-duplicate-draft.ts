@@ -15,8 +15,6 @@ interface ScheduledRopingRecord {
   cattle_draw_enabled: boolean;
   arena_name: string | null;
   incentive_enabled: boolean;
-  short_round_enabled: boolean;
-  short_round_tie_policy: "advance_all" | "fastest_last_round";
   male_eligibility_policy: import("@/components/ropings/scheduled-class-fields").MaleEligibilityPolicy;
   male_youth_maximum_age: number | null;
   male_senior_minimum_age: number | null;
@@ -25,12 +23,6 @@ interface ScheduledRopingRecord {
   roping_incentive_rules: Array<{
     classification_id: string;
     adjustment_seconds: number;
-  }>;
-  roping_short_round_brackets: Array<{
-    minimum_entries: number;
-    maximum_entries: number | null;
-    comeback_count: number;
-    sort_order: number;
   }>;
 }
 
@@ -124,9 +116,6 @@ export function buildDuplicableRopingSummary({
           (scheduled.classification_id &&
             activeClassificationIds.has(scheduled.classification_id))),
     );
-  const shortRoundSource =
-    scheduledRopings.find((scheduled) => scheduled.short_round_enabled) ??
-    scheduledRopings[0];
   const eventFee = eventFees.find((fee) => fee.roping_id === event.id);
   const duplicationDraft: RopingDraft | undefined = canDuplicate
     ? {
@@ -176,18 +165,6 @@ export function buildDuplicableRopingSummary({
           maleMinimumClassificationNumber:
             scheduled.male_minimum_classification_number?.toString() ?? "",
         })),
-        shortRoundEnabled: shortRoundSource?.short_round_enabled ?? false,
-        shortRoundTiePolicy:
-          shortRoundSource?.short_round_tie_policy ?? "advance_all",
-        shortRoundBrackets: (
-          shortRoundSource?.roping_short_round_brackets ?? []
-        )
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((bracket) => ({
-            minimumEntries: bracket.minimum_entries,
-            maximumEntries: bracket.maximum_entries,
-            comebackCount: bracket.comeback_count,
-          })),
       }
     : undefined;
 

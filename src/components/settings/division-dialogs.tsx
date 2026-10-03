@@ -19,6 +19,7 @@ import {
   type SettingsFormState,
 } from "@/app/(app)/settings/divisions/actions";
 import { DeleteRecordButton } from "@/components/settings/delete-record-button";
+import { ShortRoundFields } from "@/components/ropings/short-round-settings";
 import type {
   CompetitionFormat,
   DivisionTemplateSummary,
@@ -420,6 +421,14 @@ function EventTemplateDialog({
                   </select>
                 </label>
               </div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold">Final-round format</p>
+              <ShortRoundFields
+                defaultEnabled={template?.shortRoundEnabled}
+                defaultBrackets={template?.shortRoundBrackets}
+                defaultTiePolicy={template?.shortRoundTiePolicy}
+              />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">

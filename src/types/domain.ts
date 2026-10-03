@@ -83,5 +83,12 @@ export interface DivisionTemplateSummary {
   secondRoundOrdering?: RoundOrderMethod;
   laterRoundOrdering?: RoundOrderMethod;
   handicapRules?: Record<string, number>;
+  shortRoundEnabled?: boolean;
+  shortRoundTiePolicy?: "advance_all" | "fastest_last_round";
+  shortRoundBrackets?: Array<{
+    minimumEntries: number;
+    maximumEntries: number | null;
+    comebackCount: number;
+  }>;
   fees: FeeTemplateSummary[];
 }

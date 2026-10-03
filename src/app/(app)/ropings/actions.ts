@@ -78,26 +78,6 @@ const classOccurrenceSchema = z.object({
   maleMinimumClassificationNumber: z.number().min(0).max(100).nullable(),
 });
 
-const shortRoundBracketSchema = z
-  .array(
-    z.object({
-      minimumEntries: z.number().int().min(1),
-      maximumEntries: z.number().int().min(1).nullable(),
-      comebackCount: z.number().int().min(1),
-    }),
-  )
-  .min(1);
-
-function getShortRoundBrackets(formData: FormData) {
-  try {
-    return shortRoundBracketSchema.safeParse(
-      JSON.parse(String(formData.get("shortRoundBrackets") ?? "[]")),
-    );
-  } catch {
-    return shortRoundBracketSchema.safeParse([]);
-  }
-}
-
 function getClassOccurrences(formData: FormData) {
   try {
     const parsed = z
@@ -198,23 +178,6 @@ export async function createRoping(
       },
     };
 
-  const shortRoundEnabled = formData.get("shortRoundEnabled") === "on";
-  const shortRoundTiePolicy = z
-    .enum(["advance_all", "fastest_last_round"])
-    .safeParse(formData.get("shortRoundTiePolicy"));
-  const shortRoundBrackets = getShortRoundBrackets(formData);
-  if (
-    shortRoundEnabled &&
-    (!shortRoundBrackets.success || !shortRoundTiePolicy.success)
-  )
-    return {
-      errors: {
-        shortRoundBrackets: [
-          "Add at least one valid entry range and comeback count.",
-        ],
-      },
-    };
-
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer")
     return { message: "You do not have permission to create events." };
@@ -237,13 +200,9 @@ export async function createRoping(
       event_entries_close_at_local: parsed.data.entriesCloseAt || null,
       event_publication_state: parsed.data.publicationState,
       event_class_occurrences: classOccurrences,
-      event_short_round_enabled: shortRoundEnabled,
-      event_short_round_brackets: shortRoundBrackets.success
-        ? shortRoundBrackets.data
-        : [],
-      event_short_round_tie_policy: shortRoundTiePolicy.success
-        ? shortRoundTiePolicy.data
-        : "advance_all",
+      event_short_round_enabled: false,
+      event_short_round_brackets: [],
+      event_short_round_tie_policy: "advance_all",
       event_fee_title: parsed.data.eventFeeTitle,
       event_fee_amount_cents: parsed.data.eventFeeAmount
         ? Math.round(Number(parsed.data.eventFeeAmount) * 100)

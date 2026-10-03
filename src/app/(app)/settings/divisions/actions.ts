@@ -43,6 +43,9 @@ const divisionSchema = z.object({
   payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   isActive: z.string().optional(),
   handicapRules: z.string(),
+  shortRoundEnabled: z.string().optional(),
+  shortRoundTiePolicy: z.enum(["advance_all", "fastest_last_round"]),
+  shortRoundBrackets: z.string(),
 });
 
 const handicapRulesSchema = z.array(
@@ -57,6 +60,49 @@ function parseHandicapRules(value: string) {
     return handicapRulesSchema.safeParse(JSON.parse(value));
   } catch {
     return handicapRulesSchema.safeParse(null);
+  }
+}
+
+const shortRoundBracketsSchema = z
+  .array(
+    z.object({
+      minimumEntries: z.number().int().min(1),
+      maximumEntries: z.number().int().min(1).nullable(),
+      comebackCount: z.number().int().min(1),
+    }),
+  )
+  .min(1)
+  .superRefine((brackets, context) => {
+    for (const [index, bracket] of brackets.entries()) {
+      if (
+        bracket.maximumEntries !== null &&
+        bracket.maximumEntries < bracket.minimumEntries
+      )
+        context.addIssue({
+          code: "custom",
+          message: "A maximum entry count cannot be below its minimum.",
+          path: [index, "maximumEntries"],
+        });
+      for (const other of brackets.slice(index + 1)) {
+        const firstMaximum = bracket.maximumEntries ?? Number.MAX_SAFE_INTEGER;
+        const secondMaximum = other.maximumEntries ?? Number.MAX_SAFE_INTEGER;
+        if (
+          bracket.minimumEntries <= secondMaximum &&
+          other.minimumEntries <= firstMaximum
+        )
+          context.addIssue({
+            code: "custom",
+            message: "Short-round entry ranges cannot overlap.",
+          });
+      }
+    }
+  });
+
+function parseShortRoundBrackets(value: string) {
+  try {
+    return shortRoundBracketsSchema.safeParse(JSON.parse(value));
+  } catch {
+    return shortRoundBracketsSchema.safeParse(null);
   }
 }
 
@@ -146,6 +192,12 @@ export async function createDivision(
     );
     if (handicapError) return { message: handicapError };
   }
+  const shortRoundEnabled = parsed.data.shortRoundEnabled === "on";
+  const shortRoundBrackets = parseShortRoundBrackets(
+    parsed.data.shortRoundBrackets,
+  );
+  if (!shortRoundBrackets.success)
+    return { message: "Add at least one valid short-round entry range." };
   const { error } = await context.supabase.from("division_templates").insert({
     organization_id: context.organization.id,
     name: parsed.data.name,
@@ -167,6 +219,9 @@ export async function createDivision(
     later_round_ordering: parsed.data.laterRoundOrdering,
     four_d_settings: null,
     payout_schedule_id: parsed.data.payoutScheduleId || null,
+    short_round_enabled: shortRoundEnabled,
+    short_round_tie_policy: parsed.data.shortRoundTiePolicy,
+    short_round_brackets: shortRoundBrackets.data,
     is_active: parsed.data.isActive === "on",
   });
   if (error)
@@ -248,6 +303,12 @@ export async function updateDivision(
     );
     if (handicapError) return { message: handicapError };
   }
+  const shortRoundEnabled = parsed.data.shortRoundEnabled === "on";
+  const shortRoundBrackets = parseShortRoundBrackets(
+    parsed.data.shortRoundBrackets,
+  );
+  if (!shortRoundBrackets.success)
+    return { message: "Add at least one valid short-round entry range." };
   const { error } = await context.supabase
     .from("division_templates")
     .update({
@@ -270,6 +331,9 @@ export async function updateDivision(
       later_round_ordering: parsed.data.laterRoundOrdering,
       four_d_settings: null,
       payout_schedule_id: parsed.data.payoutScheduleId || null,
+      short_round_enabled: shortRoundEnabled,
+      short_round_tie_policy: parsed.data.shortRoundTiePolicy,
+      short_round_brackets: shortRoundBrackets.data,
       is_active: parsed.data.isActive === "on",
     })
     .eq("id", parsed.data.divisionId)

@@ -89,7 +89,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("division_templates")
       .select(
-        "id, name, description, discipline_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, discipline_id, maximum_entries_per_person, minimum_runs_between_entries, allow_guests, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, disciplines(name), fee_templates!fee_templates_division_template_id_fkey(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("organization_id", organization.id)
       .order("sort_order")
@@ -168,6 +168,15 @@ async function getDivisionData(): Promise<{
       secondRoundOrdering: division.second_round_ordering as RoundOrderMethod,
       laterRoundOrdering: division.later_round_ordering as RoundOrderMethod,
       payoutScheduleId: division.payout_schedule_id,
+      shortRoundEnabled: division.short_round_enabled,
+      shortRoundTiePolicy: division.short_round_tie_policy as
+        | "advance_all"
+        | "fastest_last_round",
+      shortRoundBrackets: division.short_round_brackets as Array<{
+        minimumEntries: number;
+        maximumEntries: number | null;
+        comebackCount: number;
+      }>,
       fees: (
         division.fee_templates as unknown as Array<{
           id: string;
@@ -292,6 +301,11 @@ export default async function DivisionSettingsPage() {
                   </span>
                   <span>
                     R3+: {roundOrderLabels[division.laterRoundOrdering!]}
+                  </span>
+                  <span>
+                    {division.shortRoundEnabled
+                      ? `Short round · ${division.shortRoundBrackets?.length ?? 0} comeback ${division.shortRoundBrackets?.length === 1 ? "range" : "ranges"}`
+                      : "No short round"}
                   </span>
                 </div>
               </div>
