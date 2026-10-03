@@ -255,10 +255,9 @@ export default async function EventEntriesPage({
     supabase
       .from("event_payments")
       .select(
-        "id, person_id, amount_cents, note, received_by_label, received_at",
+        "id, person_id, amount_cents, note, received_by_label, received_at, voided_at, void_reason, voided_by_label",
       )
       .eq("roping_id", ropingId)
-      .is("voided_at", null)
       .order("received_at", { ascending: false }),
   ]);
   if (!roping) notFound();
@@ -382,6 +381,16 @@ export default async function EventEntriesPage({
         timeStyle: "short",
         timeZone: organization.timezone,
       }).format(new Date(payment.received_at)),
+      voided: Boolean(payment.voided_at),
+      voidReason: payment.void_reason,
+      voidedBy: payment.voided_by_label,
+      voidedAt: payment.voided_at
+        ? new Intl.DateTimeFormat("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+            timeZone: organization.timezone,
+          }).format(new Date(payment.voided_at))
+        : null,
     });
     paymentsByPerson.set(payment.person_id, payments);
   }
@@ -481,11 +490,11 @@ export default async function EventEntriesPage({
         0,
       );
       const recordedPaymentCents = contestant.payments.reduce(
-        (sum, payment) => sum + payment.amountCents,
+        (sum, payment) => sum + (payment.voided ? 0 : payment.amountCents),
         0,
       );
       const legacyPaid =
-        !contestant.payments.length &&
+        !contestant.payments.some((payment) => !payment.voided) &&
         payableEntryIds.size > 0 &&
         contestant.entries
           .filter((entry) => payableEntryIds.has(entry.id))

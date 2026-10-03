@@ -30,6 +30,7 @@ const entityLabels: Record<string, string> = {
   roping_rounds: "Roping round",
   short_round_field_changes: "Short round finalist change",
   online_entry_requests: "Online entry request",
+  event_payments: "Cash payment",
 };
 
 const ignoredFields = new Set(["updated_at", "created_at"]);

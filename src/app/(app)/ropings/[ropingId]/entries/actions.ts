@@ -162,6 +162,10 @@ const cashPaymentSchema = z.object({
   note: z.string().trim().max(240, "Keep the note under 240 characters."),
 });
 
+const voidPaymentSchema = z.object({
+  reason: z.string().trim().min(5, "Enter a brief correction reason.").max(240),
+});
+
 async function requireManager() {
   const organization = await getActiveOrganization();
   if (!organization || organization.role === "viewer") return null;
@@ -538,4 +542,33 @@ export async function recordCashPayment(
   revalidatePath(`/ropings/${ropingId}/entries`);
   revalidatePath(`/ropings/${ropingId}/payouts`);
   return { success: true, message: "Cash payment recorded." };
+}
+
+export async function voidCashPayment(
+  ropingId: string,
+  paymentId: string,
+  _state: CashPaymentFormState,
+  formData: FormData,
+): Promise<CashPaymentFormState> {
+  if (!z.uuid().safeParse(paymentId).success)
+    return { message: "This payment is unavailable." };
+  const parsed = voidPaymentSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success)
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+      message: parsed.error.issues[0]?.message,
+    };
+  const context = await requireManager();
+  if (!context) return { message: "Manager access is required." };
+
+  const { error } = await context.supabase.rpc("void_event_cash_payment", {
+    target_payment_id: paymentId,
+    correction_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+
+  revalidatePath(`/ropings/${ropingId}/entries`);
+  revalidatePath(`/ropings/${ropingId}/payouts`);
+  revalidatePath(`/ropings/${ropingId}/entries/payments/${paymentId}/receipt`);
+  return { success: true, message: "Payment voided and balance updated." };
 }

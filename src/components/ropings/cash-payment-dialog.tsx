@@ -1,9 +1,18 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { Banknote, History, LoaderCircle, X } from "lucide-react";
+import Link from "next/link";
+import {
+  Banknote,
+  History,
+  LoaderCircle,
+  Printer,
+  RotateCcw,
+  X,
+} from "lucide-react";
 import {
   recordCashPayment,
+  voidCashPayment,
   type CashPaymentFormState,
 } from "@/app/(app)/ropings/[ropingId]/entries/actions";
 import { formatCurrency } from "@/lib/utils";
@@ -14,6 +23,10 @@ export interface CashPaymentRecord {
   note: string | null;
   receivedBy: string;
   receivedAt: string;
+  voided: boolean;
+  voidReason: string | null;
+  voidedBy: string | null;
+  voidedAt: string | null;
 }
 
 export function CashPaymentDialog({
@@ -165,7 +178,10 @@ export function CashPaymentDialog({
                   <h3 className="text-sm font-bold">Payment history</h3>
                   <div className="mt-2 divide-y divide-[#e7ebe8] rounded-md border border-[#e1e6e3]">
                     {payments.map((payment) => (
-                      <div key={payment.id} className="p-3 text-sm">
+                      <div
+                        key={payment.id}
+                        className={`p-3 text-sm ${payment.voided ? "bg-[#f7f8f7] text-[#758078]" : ""}`}
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="font-semibold">
@@ -180,9 +196,32 @@ export function CashPaymentDialog({
                               </p>
                             ) : null}
                           </div>
-                          <span className="font-bold">
+                          <span
+                            className={`font-bold ${payment.voided ? "line-through" : ""}`}
+                          >
                             {formatCurrency(payment.amountCents)}
                           </span>
+                        </div>
+                        {payment.voided ? (
+                          <p className="mt-2 rounded-md bg-white px-2 py-1.5 text-xs">
+                            Voided by {payment.voidedBy} on {payment.voidedAt}:{" "}
+                            {payment.voidReason}
+                          </p>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link
+                            href={`/ropings/${ropingId}/entries/payments/${payment.id}/receipt`}
+                            target="_blank"
+                            className="flex h-8 items-center gap-1.5 rounded-md border border-[#ccd4d0] bg-white px-2.5 text-xs font-semibold text-[#46524b]"
+                          >
+                            <Printer size={13} /> Receipt
+                          </Link>
+                          {!payment.voided && enabled ? (
+                            <VoidPaymentForm
+                              ropingId={ropingId}
+                              paymentId={payment.id}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     ))}
@@ -194,5 +233,69 @@ export function CashPaymentDialog({
         </div>
       ) : null}
     </>
+  );
+}
+
+function VoidPaymentForm({
+  ropingId,
+  paymentId,
+}: {
+  ropingId: string;
+  paymentId: string;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const boundAction = voidCashPayment.bind(null, ropingId, paymentId);
+  const [state, action, pending] = useActionState<
+    CashPaymentFormState,
+    FormData
+  >(boundAction, {});
+
+  if (!confirming)
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2.5 text-xs font-semibold text-rose-700"
+      >
+        <RotateCcw size={13} /> Void payment
+      </button>
+    );
+
+  return (
+    <form
+      action={action}
+      className="w-full rounded-md border border-rose-200 bg-rose-50 p-3"
+    >
+      <label className="text-xs font-bold text-rose-900">
+        Correction reason
+        <input
+          name="reason"
+          required
+          minLength={5}
+          maxLength={240}
+          autoFocus
+          className="mt-2 h-9 w-full rounded-md border border-rose-200 bg-white px-2 text-sm text-[#17201c]"
+          placeholder="Payment entered twice"
+        />
+      </label>
+      {state.message ? (
+        <p className="mt-2 text-xs text-rose-800">{state.message}</p>
+      ) : null}
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setConfirming(false)}
+          className="h-8 px-2 text-xs font-semibold"
+        >
+          Cancel
+        </button>
+        <button
+          disabled={pending}
+          className="h-8 rounded-md bg-rose-700 px-3 text-xs font-bold text-white disabled:opacity-50"
+        >
+          {pending ? "Voiding..." : "Confirm void"}
+        </button>
+      </div>
+    </form>
   );
 }
