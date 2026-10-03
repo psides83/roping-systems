@@ -311,7 +311,7 @@ async function getEvent(
     supabase
       .from("runs")
       .select(
-        "entry_id, roping_division_id, run_number, status, roping_divisions!inner(roping_id)",
+        "entry_id, roping_division_id, run_number, status, roping_divisions!runs_roping_division_id_fkey!inner(roping_id)",
       )
       .eq("roping_divisions.roping_id", ropingId)
       .eq("organization_id", organization.id),
