@@ -6,6 +6,7 @@ import {
   Bell,
   CalendarDays,
   ChevronDown,
+  ClipboardSignature,
   CircleDollarSign,
   Gauge,
   History,
@@ -24,6 +25,11 @@ import { getBrandStyle } from "@/lib/branding";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Gauge },
   { name: "Members", href: "/members", icon: Users },
+  {
+    name: "Membership form",
+    href: "/settings/membership-form",
+    icon: ClipboardSignature,
+  },
   { name: "Ropings", href: "/ropings", icon: CalendarDays },
   { name: "Live event", href: "/ropings/current", icon: CircleDollarSign },
   {
@@ -107,7 +113,7 @@ export function AppShell({
         </div>
         <div className="relative mx-3 mt-4 rounded-md border border-white/10 bg-white/[0.06] p-3">
           <p className="text-[10px] font-bold uppercase brand-muted">
-            Organization
+            Producer
           </p>
           <button
             onClick={() => setOrganizationMenuOpen((value) => !value)}
@@ -126,7 +132,7 @@ export function AppShell({
             <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-md border border-[#dfe4e1] bg-white py-1 text-[#17201c] shadow-xl">
               {demo ? (
                 <p className="px-3 py-2 text-xs text-[#66716b]">
-                  Organization switching becomes available after Supabase is
+                  Producer switching becomes available after Supabase is
                   connected.
                 </p>
               ) : (
@@ -157,7 +163,7 @@ export function AppShell({
                 href="/onboarding?new=1"
                 className="block border-t border-[#e7ebe8] px-3 py-2 text-xs font-semibold text-[var(--brand-accent-strong)]"
               >
-                Create another organization
+                Create another producer
               </Link>
             </div>
           ) : null}
@@ -205,7 +211,7 @@ export function AppShell({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{userLabel}</p>
               <p className="text-xs brand-muted">
-                {demo ? "Preview mode" : "Organization account"}
+                {demo ? "Preview mode" : "Producer account"}
               </p>
             </div>
           </div>

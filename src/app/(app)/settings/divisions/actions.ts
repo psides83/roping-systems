@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface SettingsFormState {
   success?: boolean;
@@ -13,7 +14,11 @@ export interface SettingsFormState {
 }
 
 const divisionSchema = z.object({
-  name: z.string().trim().min(1, "Template name is required."),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Template name is required.")
+    .transform(formatProperNoun),
   description: z.string().trim(),
   disciplineId: z.uuid(),
   maximumEntries: z.union([
@@ -59,7 +64,11 @@ const updateDivisionSchema = divisionSchema.extend({ divisionId: z.uuid() });
 
 const feeSchema = z.object({
   divisionId: z.uuid(),
-  title: z.string().trim().min(1, "Fee title is required."),
+  title: z
+    .string()
+    .trim()
+    .min(1, "Fee title is required.")
+    .transform(formatProperNoun),
   amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
   scope: z.enum(["entry", "contestant_division", "contestant_event"]),
   kind: z.enum(["standard", "insurance", "side_pot", "other"]),

@@ -50,11 +50,14 @@ export interface RopingDraft {
   slug: string;
   venueName: string;
   address: string;
+  city: string;
+  state: string;
+  postalCode: string;
   startsAt: string;
   endsAt: string;
   entriesOpenAt: string;
   entriesCloseAt: string;
-  isPublic: boolean;
+  publicationState: "draft" | "published" | "unpublished";
   eventFeeTitle: string;
   eventFeeAmount: string;
   occurrences: ScheduledOccurrenceDraft[];
@@ -191,24 +194,6 @@ export function CreateRopingDialog({
                     />
                   </label>
                   <label className="block text-sm font-semibold">
-                    Venue
-                    <input
-                      name="venueName"
-                      defaultValue={initialValues?.venueName}
-                      className={inputClass}
-                      placeholder="Red River Arena"
-                    />
-                  </label>
-                  <label className="block text-sm font-semibold">
-                    Address
-                    <input
-                      name="address"
-                      defaultValue={initialValues?.address}
-                      className={inputClass}
-                      placeholder="Wichita Falls, TX"
-                    />
-                  </label>
-                  <label className="block text-sm font-semibold">
                     Event starts
                     <input
                       name="startsAt"
@@ -273,6 +258,60 @@ export function CreateRopingDialog({
                       className={inputClass}
                     />
                   </label>
+                </div>
+              </section>
+
+              <section className="rounded-md border border-[#dfe4e1] p-4">
+                <h3 className="text-sm font-bold">Event location</h3>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <label className="block text-sm font-semibold sm:col-span-2">
+                    Venue
+                    <input
+                      name="venueName"
+                      defaultValue={initialValues?.venueName}
+                      className={inputClass}
+                      placeholder="Circle T Arena"
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold sm:col-span-2">
+                    Street address
+                    <input
+                      name="address"
+                      defaultValue={initialValues?.address}
+                      className={inputClass}
+                      placeholder="4007 W Highway 36"
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    City
+                    <input
+                      name="city"
+                      defaultValue={initialValues?.city}
+                      className={inputClass}
+                      placeholder="Hamilton"
+                    />
+                  </label>
+                  <div className="grid grid-cols-[1fr_110px] gap-3">
+                    <label className="block text-sm font-semibold">
+                      State
+                      <input
+                        name="state"
+                        defaultValue={initialValues?.state}
+                        className={inputClass}
+                        placeholder="TX"
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold">
+                      ZIP
+                      <input
+                        name="postalCode"
+                        defaultValue={initialValues?.postalCode}
+                        className={inputClass}
+                        inputMode="numeric"
+                        placeholder="76531"
+                      />
+                    </label>
+                  </div>
                 </div>
               </section>
 
@@ -351,14 +390,17 @@ export function CreateRopingDialog({
                 ) : null}
               </section>
 
-              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                <input
-                  name="isPublic"
-                  type="checkbox"
-                  defaultChecked={initialValues?.isPublic ?? true}
-                  className="h-4 w-4 accent-[var(--brand-accent)]"
-                />
-                Publish this event on the organization schedule
+              <label className="block text-sm font-semibold">
+                Publication state
+                <select
+                  name="publicationState"
+                  defaultValue={initialValues?.publicationState ?? "draft"}
+                  className={inputClass}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="unpublished">Unpublished</option>
+                </select>
               </label>
 
               {state.message ? (

@@ -186,6 +186,7 @@ async function getPublicData(organizationSlug: string) {
         },
       ] as PublicResult[],
       fourDResults: [] as PublicFourDResult[],
+      membershipFormPublished: false,
     };
   }
 
@@ -196,10 +197,19 @@ async function getPublicData(organizationSlug: string) {
     .eq("slug", organizationSlug)
     .single();
   if (!organization) return null;
+  const { data: membershipForm, error: membershipFormError } = await supabase
+    .from("public_membership_forms")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (membershipFormError)
+    throw new Error(
+      `Unable to load membership information: ${membershipFormError.message}`,
+    );
   const { data: schedule, error: scheduleError } = await supabase
     .from("public_roping_schedule")
     .select(
-      "id, title, slug, venue_name, address, starts_at, entries_open_at, entries_close_at, status, result_status",
+      "id, title, slug, venue_name, address, venue_city, venue_state, venue_postal_code, starts_at, entries_open_at, entries_close_at, status, result_status",
     )
     .eq("organization_id", organization.id)
     .order("starts_at", { ascending: false });
@@ -292,7 +302,13 @@ async function getPublicData(organizationSlug: string) {
     slug: event.slug,
     startsAt: event.starts_at,
     venue: event.venue_name ?? "Location pending",
-    address: event.address ?? "",
+    address: [
+      event.address,
+      event.venue_city,
+      [event.venue_state, event.venue_postal_code].filter(Boolean).join(" "),
+    ]
+      .filter(Boolean)
+      .join(", "),
     status: event.status,
     resultStatus: event.result_status,
     entriesOpenAt: event.entries_open_at,
@@ -328,6 +344,7 @@ async function getPublicData(organizationSlug: string) {
     events,
     results,
     fourDResults,
+    membershipFormPublished: Boolean(membershipForm),
   };
 }
 
@@ -420,6 +437,14 @@ export default async function OrganizationPublicPage({
             <a href="#results" className="brand-hover">
               Results
             </a>
+            {data.membershipFormPublished ? (
+              <Link
+                href={`/public/${organizationSlug}/membership`}
+                className="brand-hover"
+              >
+                Membership
+              </Link>
+            ) : null}
           </nav>
         </div>
       </header>

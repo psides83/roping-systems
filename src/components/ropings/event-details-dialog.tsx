@@ -13,11 +13,14 @@ export interface EditableEventDetails {
   slug: string;
   venueName: string;
   address: string;
+  city: string;
+  state: string;
+  postalCode: string;
   startsAt: string;
   endsAt: string;
   entriesOpenAt: string;
   entriesCloseAt: string;
-  isPublic: boolean;
+  publicationState: "draft" | "published" | "unpublished";
   eventFee: {
     id: string;
     title: string;
@@ -126,22 +129,6 @@ export function EventDetailsDialog({
                     required
                   />
                 </Field>
-                <Field label="Venue">
-                  <input
-                    name="venueName"
-                    defaultValue={event.venueName}
-                    className={inputClass}
-                    placeholder="Red River Arena"
-                  />
-                </Field>
-                <Field label="Address">
-                  <input
-                    name="address"
-                    defaultValue={event.address}
-                    className={inputClass}
-                    placeholder="Wichita Falls, TX"
-                  />
-                </Field>
                 <Field label="Event starts">
                   <input
                     name="startsAt"
@@ -208,6 +195,55 @@ export function EventDetailsDialog({
               </div>
 
               <section className="rounded-md border border-[#dfe4e1] p-4">
+                <h3 className="text-sm font-bold">Event location</h3>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <Field label="Venue">
+                    <input
+                      name="venueName"
+                      defaultValue={event.venueName}
+                      className={inputClass}
+                      placeholder="Circle T Arena"
+                    />
+                  </Field>
+                  <Field label="Street address">
+                    <input
+                      name="address"
+                      defaultValue={event.address}
+                      className={inputClass}
+                      placeholder="4007 W Highway 36"
+                    />
+                  </Field>
+                  <Field label="City">
+                    <input
+                      name="city"
+                      defaultValue={event.city}
+                      className={inputClass}
+                      placeholder="Hamilton"
+                    />
+                  </Field>
+                  <div className="grid grid-cols-[1fr_110px] gap-3">
+                    <Field label="State">
+                      <input
+                        name="state"
+                        defaultValue={event.state}
+                        className={inputClass}
+                        placeholder="TX"
+                      />
+                    </Field>
+                    <Field label="ZIP">
+                      <input
+                        name="postalCode"
+                        defaultValue={event.postalCode}
+                        className={inputClass}
+                        inputMode="numeric"
+                        placeholder="76531"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-md border border-[#dfe4e1] p-4">
                 <h3 className="text-sm font-bold">
                   Once-per-contestant event charge
                 </h3>
@@ -244,14 +280,17 @@ export function EventDetailsDialog({
                 </div>
               </section>
 
-              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                <input
-                  name="isPublic"
-                  type="checkbox"
-                  defaultChecked={event.isPublic}
-                  className="h-4 w-4 accent-[var(--brand-accent)]"
-                />
-                Publish this event on the producer schedule
+              <label className="block text-sm font-semibold">
+                Publication state
+                <select
+                  name="publicationState"
+                  defaultValue={event.publicationState}
+                  className={inputClass}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="unpublished">Unpublished</option>
+                </select>
               </label>
 
               {state.message ? (

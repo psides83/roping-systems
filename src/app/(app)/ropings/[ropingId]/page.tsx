@@ -52,10 +52,14 @@ interface EventDetail {
   endsAtValue: string;
   venueName: string;
   address: string;
+  city: string;
+  state: string;
+  postalCode: string;
   location: string;
   status: string;
   resultStatus: string;
   isPublic: boolean;
+  publicationState: "draft" | "published" | "unpublished";
   entriesOpenAt: string | null;
   entriesCloseAt: string | null;
   entriesOpenAtValue: string;
@@ -145,10 +149,14 @@ async function getEvent(
         endsAtValue: "2026-09-27T18:00",
         venueName: roping.location,
         address: "",
+        city: "",
+        state: "",
+        postalCode: "",
         location: roping.location,
         status: roping.status,
         resultStatus: roping.resultStatus ?? "unofficial",
         isPublic: true,
+        publicationState: "published",
         entriesOpenAt: null,
         entriesCloseAt: null,
         entriesOpenAtValue: "",
@@ -240,7 +248,7 @@ async function getEvent(
     supabase
       .from("ropings")
       .select(
-        "id, title, slug, starts_at, ends_at, venue_name, address, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
+        "id, title, slug, starts_at, ends_at, venue_name, address, venue_city, venue_state, venue_postal_code, publication_state, status, result_status, is_public, entries_open_at, entries_close_at, roping_divisions!roping_divisions_roping_id_fkey(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, number_of_runs, minimum_runs_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries!entries_roping_division_id_fkey(id), roping_incentive_rules(id, adjustment_seconds, classifications!inner(name)), roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), roping_fees!roping_fees_roping_division_id_fkey(id, title, amount_cents, included_in_entry_price))",
       )
       .eq("id", ropingId)
       .eq("organization_id", organization.id)
@@ -403,12 +411,21 @@ async function getEvent(
         : "",
       venueName: data.venue_name ?? "",
       address: data.address ?? "",
+      city: data.venue_city ?? "",
+      state: data.venue_state ?? "",
+      postalCode: data.venue_postal_code ?? "",
       location:
-        [data.venue_name, data.address].filter(Boolean).join(", ") ||
-        "Location pending",
+        [
+          data.venue_name,
+          data.venue_city,
+          [data.venue_state, data.venue_postal_code].filter(Boolean).join(" "),
+        ]
+          .filter(Boolean)
+          .join(", ") || "Location pending",
       status: data.status,
       resultStatus: data.result_status,
       isPublic: data.is_public,
+      publicationState: data.publication_state,
       entriesOpenAt: data.entries_open_at,
       entriesCloseAt: data.entries_close_at,
       entriesOpenAtValue: data.entries_open_at
@@ -498,11 +515,14 @@ export default async function RopingDetailPage({
                     slug: event.slug,
                     venueName: event.venueName,
                     address: event.address,
+                    city: event.city,
+                    state: event.state,
+                    postalCode: event.postalCode,
                     startsAt: event.startsAtValue,
                     endsAt: event.endsAtValue,
                     entriesOpenAt: event.entriesOpenAtValue,
                     entriesCloseAt: event.entriesCloseAtValue,
-                    isPublic: event.isPublic,
+                    publicationState: event.publicationState,
                     eventFee: event.eventFees[0]
                       ? {
                           id: event.eventFees[0].id,
@@ -555,7 +575,11 @@ export default async function RopingDetailPage({
         <span
           className={`text-xs font-semibold ${event.isPublic ? "text-emerald-700" : "text-[#758078]"}`}
         >
-          {event.isPublic ? "Published" : "Private"}
+          {event.publicationState === "published"
+            ? "Published"
+            : event.publicationState === "draft"
+              ? "Draft"
+              : "Unpublished"}
         </span>
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface MemberClassificationFormState {
   success?: boolean;
@@ -43,8 +44,16 @@ const genderSchema = z.object({
 
 const profileSchema = z.object({
   membershipId: z.uuid(),
-  firstName: z.string().trim().min(1, "First name is required."),
-  lastName: z.string().trim().min(1, "Last name is required."),
+  firstName: z
+    .string()
+    .trim()
+    .min(1, "First name is required.")
+    .transform(formatProperNoun),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, "Last name is required.")
+    .transform(formatProperNoun),
   email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
   phone: z.string().trim(),
   birthDate: z.union([z.literal(""), z.iso.date()]),

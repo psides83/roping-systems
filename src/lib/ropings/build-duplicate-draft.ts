@@ -44,6 +44,10 @@ export interface RopingListRecord {
   entries_close_at: string | null;
   venue_name: string | null;
   address: string | null;
+  venue_city: string | null;
+  venue_state: string | null;
+  venue_postal_code: string | null;
+  publication_state: "draft" | "published" | "unpublished";
   is_public: boolean;
   status: string;
   result_status: string;
@@ -131,11 +135,14 @@ export function buildDuplicableRopingSummary({
         slug: nextCopySlug(event.slug, existingSlugs),
         venueName: event.venue_name ?? "",
         address: event.address ?? "",
+        city: event.venue_city ?? "",
+        state: event.venue_state ?? "",
+        postalCode: event.venue_postal_code ?? "",
         startsAt: toLocalDateTimeInput(event.starts_at, timeZone),
         endsAt: toLocalDateTimeInput(event.ends_at, timeZone),
         entriesOpenAt: toLocalDateTimeInput(event.entries_open_at, timeZone),
         entriesCloseAt: toLocalDateTimeInput(event.entries_close_at, timeZone),
-        isPublic: event.is_public,
+        publicationState: "draft",
         eventFeeTitle: eventFee?.title ?? "",
         eventFeeAmount: eventFee
           ? (eventFee.amount_cents / 100).toFixed(2)
@@ -189,12 +196,14 @@ export function buildDuplicableRopingSummary({
     title: event.title,
     date: dateFormatter.format(new Date(event.starts_at)),
     location:
-      [event.venue_name, event.address].filter(Boolean).join(", ") ||
-      "Location pending",
+      [event.venue_name, event.venue_city, event.venue_state]
+        .filter(Boolean)
+        .join(", ") || "Location pending",
     divisions: scheduledRopings.length,
     entries: event.entries.length,
     status: event.status as RopingStatus,
     resultStatus: event.result_status as ResultStatus,
+    publicationState: event.publication_state,
     duplicationDraft,
   };
 }

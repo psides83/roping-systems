@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveOrganization } from "@/lib/organizations";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface LiveRunState {
   success?: boolean;
@@ -24,7 +25,11 @@ const localDateTime = z
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Choose a valid date and time.");
 
 const eventDetailsSchema = z.object({
-  title: z.string().trim().min(2, "Event title is required."),
+  title: z
+    .string()
+    .trim()
+    .min(2, "Event title is required.")
+    .transform(formatProperNoun),
   slug: z
     .string()
     .trim()
@@ -32,19 +37,22 @@ const eventDetailsSchema = z.object({
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Use lowercase letters, numbers, and hyphens only.",
     ),
-  venueName: z.string().trim(),
-  address: z.string().trim(),
+  venueName: z.string().trim().transform(formatProperNoun),
+  address: z.string().trim().transform(formatProperNoun),
+  city: z.string().trim().transform(formatProperNoun),
+  state: z.string().trim().max(40).transform(formatProperNoun),
+  postalCode: z.string().trim().max(20),
   startsAt: localDateTime,
   endsAt: z.union([z.literal(""), localDateTime]),
   entriesOpenAt: z.union([z.literal(""), localDateTime]),
   entriesCloseAt: z.union([z.literal(""), localDateTime]),
   eventFeeId: z.union([z.literal(""), z.uuid()]),
-  eventFeeTitle: z.string().trim(),
+  eventFeeTitle: z.string().trim().transform(formatProperNoun),
   eventFeeAmount: z.union([
     z.literal(""),
     z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
   ]),
-  isPublic: z.string().optional(),
+  publicationState: z.enum(["draft", "published", "unpublished"]),
 });
 
 const shortRoundBracketSchema = z
@@ -101,11 +109,14 @@ export async function updateEventDetails(
     event_slug: parsed.data.slug,
     event_venue_name: parsed.data.venueName,
     event_address: parsed.data.address,
+    event_city: parsed.data.city,
+    event_state: parsed.data.state,
+    event_postal_code: parsed.data.postalCode,
     event_starts_at_local: parsed.data.startsAt,
     event_ends_at_local: parsed.data.endsAt || null,
     event_entries_open_at_local: parsed.data.entriesOpenAt || null,
     event_entries_close_at_local: parsed.data.entriesCloseAt || null,
-    event_is_public: parsed.data.isPublic === "on",
+    event_publication_state: parsed.data.publicationState,
     event_fee_id: parsed.data.eventFeeId || null,
     event_fee_title: parsed.data.eventFeeTitle,
     event_fee_amount_cents: parsed.data.eventFeeAmount
@@ -137,7 +148,7 @@ const addEventRopingSchema = z.object({
     .regex(/^\d{2}:\d{2}$/)
     .or(z.literal("")),
   scheduleNote: z.string().trim().max(120),
-  arenaName: z.string().trim().max(80),
+  arenaName: z.string().trim().max(80).transform(formatProperNoun),
   roundCount: z.coerce.number().int().min(1).max(20),
   cattleDrawEnabled: z.string().optional(),
 });
@@ -348,7 +359,7 @@ export async function drawRoundCattle(
 }
 
 const eventDaySchema = z.object({
-  arenaName: z.string().trim().max(80),
+  arenaName: z.string().trim().max(80).transform(formatProperNoun),
   eventDayStatus: z.enum([
     "scheduled",
     "delayed",

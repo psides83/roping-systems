@@ -31,12 +31,12 @@ async function getDashboardData(): Promise<DashboardData> {
     supabase.from("ropings").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).in("status", ["scheduled", "entries_open", "entries_closed", "in_progress"]),
     supabase.from("entries").select("id", { count: "exact", head: true }).eq("organization_id", organization.id),
     supabase.from("entries").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).eq("payment_status", "unpaid"),
-    supabase.from("ropings").select("id, title, starts_at, venue_name, address, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id), entries!entries_roping_id_fkey(id)").eq("organization_id", organization.id).order("starts_at", { ascending: false }).limit(3),
+    supabase.from("ropings").select("id, title, starts_at, venue_name, venue_city, venue_state, status, result_status, roping_divisions!roping_divisions_roping_id_fkey(id), entries!entries_roping_id_fkey(id)").eq("organization_id", organization.id).order("starts_at", { ascending: false }).limit(3),
     supabase.from("ropings").select("id, title").eq("organization_id", organization.id).eq("status", "in_progress").limit(1).maybeSingle(),
   ]);
   if (scheduleResult.error) throw new Error(`Unable to load dashboard: ${scheduleResult.error.message}`);
   const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: organization.timezone });
-  const schedule: RopingSummary[] = scheduleResult.data.map((event) => ({ id: event.id, title: event.title, date: dateFormatter.format(new Date(event.starts_at)), location: [event.venue_name, event.address].filter(Boolean).join(", ") || "Location pending", divisions: (event.roping_divisions as unknown as unknown[]).length, entries: (event.entries as unknown as unknown[]).length, status: event.status as RopingStatus, resultStatus: event.result_status }));
+  const schedule: RopingSummary[] = scheduleResult.data.map((event) => ({ id: event.id, title: event.title, date: dateFormatter.format(new Date(event.starts_at)), location: [event.venue_name, event.venue_city, event.venue_state].filter(Boolean).join(", ") || "Location pending", divisions: (event.roping_divisions as unknown as unknown[]).length, entries: (event.entries as unknown as unknown[]).length, status: event.status as RopingStatus, resultStatus: event.result_status }));
   let liveEvent: DashboardData["liveEvent"] = null;
   if (liveResult.data) {
     const { data: division } = await supabase.from("roping_divisions").select("id, name").eq("roping_id", liveResult.data.id).order("sort_order").limit(1).maybeSingle();

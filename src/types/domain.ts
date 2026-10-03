@@ -51,6 +51,7 @@ export interface RopingSummary {
   entries: number;
   status: RopingStatus;
   resultStatus?: ResultStatus;
+  publicationState?: "draft" | "published" | "unpublished";
 }
 
 export interface FeeTemplateSummary {

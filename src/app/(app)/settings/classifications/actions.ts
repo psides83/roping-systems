@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface ClassificationFormState {
   success?: boolean;
@@ -21,7 +22,11 @@ const optionalAgeSchema = z
 
 const disciplineSchema = z
   .object({
-    name: z.string().trim().min(1, "Division name is required."),
+    name: z
+      .string()
+      .trim()
+      .min(1, "Division name is required.")
+      .transform(formatProperNoun),
     description: z.string().trim(),
     genderPolicy: z.enum(["open", "women_only"]),
     maleYouthMaximumAge: optionalAgeSchema,
@@ -49,7 +54,11 @@ const updateDisciplineSchema = disciplineSchema.extend({
 const classificationSchema = z
   .object({
     disciplineId: z.uuid(),
-    name: z.string().trim().min(1, "Classification name is required."),
+    name: z
+      .string()
+      .trim()
+      .min(1, "Classification name is required.")
+      .transform(formatProperNoun),
     description: z.string().trim(),
     rank: z.coerce
       .number()

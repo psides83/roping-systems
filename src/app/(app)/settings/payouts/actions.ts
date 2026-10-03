@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getActiveOrganization } from "@/lib/organizations";
 import { createClient } from "@/lib/supabase/server";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface PayoutFormState {
   success?: boolean;
@@ -23,7 +24,11 @@ const bracketSchema = z.object({
 });
 const formSchema = z.object({
   scheduleId: z.union([z.literal(""), z.uuid()]),
-  name: z.string().trim().min(1, "Schedule name is required."),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Schedule name is required.")
+    .transform(formatProperNoun),
   description: z.string().trim(),
   addedMoney: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
   paybackPercent: z.coerce.number().positive().max(100),

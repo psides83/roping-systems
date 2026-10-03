@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getActiveOrganization } from "@/lib/organizations";
 import { createClient } from "@/lib/supabase/server";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface EntryFormState {
   success?: boolean;
@@ -82,8 +83,16 @@ const existingEntrySchema = z
 const guestEntrySchema = z
   .object({
     divisionId: z.uuid(),
-    firstName: z.string().trim().min(1, "First name is required."),
-    lastName: z.string().trim().min(1, "Last name is required."),
+    firstName: z
+      .string()
+      .trim()
+      .min(1, "First name is required.")
+      .transform(formatProperNoun),
+    lastName: z
+      .string()
+      .trim()
+      .min(1, "Last name is required.")
+      .transform(formatProperNoun),
     email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
     phone: z.string().trim(),
     birthDate: z.union([z.literal(""), z.iso.date()]),

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveOrganization } from "@/lib/organizations";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { formatProperNoun } from "@/lib/utils";
 
 export interface RopingFormState {
   success?: boolean;
@@ -17,7 +18,11 @@ const localDateTime = z
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Choose a valid date and time.");
 
 const ropingSchema = z.object({
-  title: z.string().trim().min(2, "Event title is required."),
+  title: z
+    .string()
+    .trim()
+    .min(2, "Event title is required.")
+    .transform(formatProperNoun),
   slug: z
     .string()
     .trim()
@@ -25,14 +30,17 @@ const ropingSchema = z.object({
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Use lowercase letters, numbers, and hyphens only.",
     ),
-  venueName: z.string().trim(),
-  address: z.string().trim(),
+  venueName: z.string().trim().transform(formatProperNoun),
+  address: z.string().trim().transform(formatProperNoun),
+  city: z.string().trim().transform(formatProperNoun),
+  state: z.string().trim().max(40).transform(formatProperNoun),
+  postalCode: z.string().trim().max(20),
   startsAt: localDateTime,
   endsAt: z.union([z.literal(""), localDateTime]),
   entriesOpenAt: z.union([z.literal(""), localDateTime]),
   entriesCloseAt: z.union([z.literal(""), localDateTime]),
-  isPublic: z.string().optional(),
-  eventFeeTitle: z.string().trim(),
+  publicationState: z.enum(["draft", "published", "unpublished"]),
+  eventFeeTitle: z.string().trim().transform(formatProperNoun),
   eventFeeAmount: z.union([
     z.literal(""),
     z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
@@ -129,7 +137,10 @@ function getClassOccurrences(formData: FormData) {
       )
         return null;
     }
-    return parsed.data;
+    return parsed.data.map((occurrence) => ({
+      ...occurrence,
+      arenaName: formatProperNoun(occurrence.arenaName),
+    }));
   } catch {
     return null;
   }
@@ -217,11 +228,14 @@ export async function createRoping(
       event_slug: parsed.data.slug,
       event_venue_name: parsed.data.venueName,
       event_address: parsed.data.address,
+      event_city: parsed.data.city,
+      event_state: parsed.data.state,
+      event_postal_code: parsed.data.postalCode,
       event_starts_at_local: parsed.data.startsAt,
       event_ends_at_local: parsed.data.endsAt || null,
       event_entries_open_at_local: parsed.data.entriesOpenAt || null,
       event_entries_close_at_local: parsed.data.entriesCloseAt || null,
-      event_is_public: parsed.data.isPublic === "on",
+      event_publication_state: parsed.data.publicationState,
       event_class_occurrences: classOccurrences,
       event_short_round_enabled: shortRoundEnabled,
       event_short_round_brackets: shortRoundBrackets.success

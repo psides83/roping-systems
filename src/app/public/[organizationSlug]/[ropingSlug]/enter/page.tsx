@@ -14,7 +14,11 @@ export default async function PublicOnlineEntryPage({
   if (!isSupabaseConfigured()) notFound();
 
   const supabase = await createClient();
-  const [{ data: rows, error }, { data: optionalFees, error: feeError }] =
+  const [
+    { data: rows, error },
+    { data: optionalFees, error: feeError },
+    { data: location, error: locationError },
+  ] =
     await Promise.all([
       supabase
         .from("public_event_entry_options")
@@ -29,11 +33,19 @@ export default async function PublicOnlineEntryPage({
         .select("division_id, fee_id, title, amount_cents, kind, scope")
         .eq("organization_slug", organizationSlug)
         .eq("roping_slug", ropingSlug),
+      supabase
+        .from("public_roping_schedule")
+        .select("venue_name, address, venue_city, venue_state, venue_postal_code")
+        .eq("organization_slug", organizationSlug)
+        .eq("slug", ropingSlug)
+        .single(),
     ]);
 
   if (error) throw new Error(`Unable to load online entries: ${error.message}`);
   if (feeError)
     throw new Error(`Unable to load entry options: ${feeError.message}`);
+  if (locationError)
+    throw new Error(`Unable to load event location: ${locationError.message}`);
   if (!rows?.length) notFound();
 
   const event = rows[0];
@@ -133,8 +145,16 @@ export default async function PublicOnlineEntryPage({
             </span>
             <span className="flex items-center gap-2">
               <MapPin size={16} />{" "}
-              {[event.venue_name, event.address].filter(Boolean).join(", ") ||
-                "Location pending"}
+              {[
+                location.venue_name,
+                location.address,
+                location.venue_city,
+                [location.venue_state, location.venue_postal_code]
+                  .filter(Boolean)
+                  .join(" "),
+              ]
+                .filter(Boolean)
+                .join(", ") || "Location pending"}
             </span>
             {closingDate ? (
               <span className="flex items-center gap-2">
