@@ -21,6 +21,7 @@ export interface AddRopingClassification {
   id: string;
   name: string;
   disciplineId: string;
+  standaloneEnabled: boolean;
 }
 
 export function AddEventRopingDialog({
@@ -53,7 +54,8 @@ export function AddEventRopingDialog({
   const [arenaName, setArenaName] = useState("Arena 1");
   const template = templates.find((item) => item.id === templateId);
   const eligible = classifications.filter(
-    (item) => item.disciplineId === template?.disciplineId,
+    (item) =>
+      item.disciplineId === template?.disciplineId && item.standaloneEnabled,
   );
   const actionWithId = addRopingToEvent.bind(null, ropingId);
   const [state, action, pending] = useActionState<

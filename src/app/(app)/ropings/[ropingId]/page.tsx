@@ -297,7 +297,7 @@ async function getEvent(
       .order("sort_order"),
     supabase
       .from("classifications")
-      .select("id, name, discipline_id")
+      .select("id, name, discipline_id, standalone_enabled")
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
@@ -611,6 +611,7 @@ async function getEvent(
           id: classification.id,
           name: classification.name,
           disciplineId: classification.discipline_id,
+          standaloneEnabled: classification.standalone_enabled,
         }),
       ),
       eventFees: (eventFeeData ?? []).map((fee) => ({

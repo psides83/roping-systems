@@ -52,6 +52,7 @@ export interface ClassificationOption {
   id: string;
   disciplineId: string;
   name: string;
+  handicapAdjustmentSeconds: number | null;
 }
 
 interface PayoutOption {
@@ -134,9 +135,9 @@ function EventTemplateDialog({
   const [competitionFormat, setCompetitionFormat] = useState<CompetitionFormat>(
     template?.competitionFormat ?? "standard",
   );
-  const [handicapRules, setHandicapRules] = useState<Record<string, number>>(
-    template?.handicapRules ?? {},
-  );
+  const [handicapClassificationIds, setHandicapClassificationIds] = useState<
+    Set<string>
+  >(() => new Set(Object.keys(template?.handicapRules ?? {})));
   const [state, action, pending] = useActionState(
     template ? updateDivision : createDivision,
     initialState,
@@ -149,7 +150,9 @@ function EventTemplateDialog({
   );
   const isEditing = Boolean(template);
   const handicapClassifications = classifications.filter(
-    (classification) => classification.disciplineId === disciplineId,
+    (classification) =>
+      classification.disciplineId === disciplineId &&
+      classification.handicapAdjustmentSeconds !== null,
   );
   useEffect(() => {
     if (!state.success) return;
@@ -190,10 +193,14 @@ function EventTemplateDialog({
               type="hidden"
               name="handicapRules"
               value={JSON.stringify(
-                handicapClassifications.map((classification) => ({
-                  classificationId: classification.id,
-                  adjustmentSeconds: handicapRules[classification.id] ?? 0,
-                })),
+                handicapClassifications
+                  .filter((classification) =>
+                    handicapClassificationIds.has(classification.id),
+                  )
+                  .map((classification) => ({
+                    classificationId: classification.id,
+                    adjustmentSeconds: classification.handicapAdjustmentSeconds,
+                  })),
               )}
             />
             {template ? (
@@ -255,10 +262,11 @@ function EventTemplateDialog({
             </label>
             {competitionFormat === "handicap" ? (
               <div className="rounded-md border border-[#dfe4e1] bg-[#fafbfa] p-4">
-                <p className="text-sm font-bold">Default handicap deductions</p>
+                <p className="text-sm font-bold">Eligible classifications</p>
                 <p className="mt-1 text-xs leading-5 text-[#66716b]">
-                  These defaults are copied into each event and can be changed
-                  there without altering the template.
+                  Select the member classifications that can enter this Handicap
+                  roping. Time adjustments are managed on the classification
+                  records.
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {handicapClassifications.map((classification) => (
@@ -266,34 +274,40 @@ function EventTemplateDialog({
                       key={classification.id}
                       className="flex items-center gap-3 rounded-md border border-[#e1e6e3] bg-white px-3 py-2"
                     >
+                      <input
+                        type="checkbox"
+                        checked={handicapClassificationIds.has(
+                          classification.id,
+                        )}
+                        onChange={(event) =>
+                          setHandicapClassificationIds((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked)
+                              next.add(classification.id);
+                            else next.delete(classification.id);
+                            return next;
+                          })
+                        }
+                        className="h-4 w-4 accent-[var(--brand-accent)]"
+                      />
                       <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                         {classification.name}
                       </span>
-                      <span className="flex w-28 items-center rounded-md border border-[#ccd4d0] px-2">
-                        <input
-                          type="number"
-                          min="0"
-                          max="60"
-                          step="0.001"
-                          value={handicapRules[classification.id] ?? 0}
-                          onChange={(event) =>
-                            setHandicapRules((current) => ({
-                              ...current,
-                              [classification.id]: Number(event.target.value),
-                            }))
-                          }
-                          aria-label={`${classification.name} default seconds deducted`}
-                          className="h-9 min-w-0 flex-1 bg-transparent text-right font-mono text-sm outline-none"
-                        />
-                        <span className="ml-1 text-xs text-[#758078]">sec</span>
+                      <span className="font-mono text-xs text-[#66716b]">
+                        {classification.handicapAdjustmentSeconds !== null &&
+                        classification.handicapAdjustmentSeconds >= 0
+                          ? "+"
+                          : ""}
+                        {classification.handicapAdjustmentSeconds?.toFixed(3)}{" "}
+                        sec
                       </span>
                     </label>
                   ))}
                 </div>
                 {!handicapClassifications.length ? (
                   <p className="mt-3 text-xs font-semibold text-amber-800">
-                    Add member classifications such as Open, A, B, and C to this
-                    division first.
+                    Add a Handicap time adjustment to member classifications
+                    such as Open, A, B, and C first.
                   </p>
                 ) : null}
               </div>

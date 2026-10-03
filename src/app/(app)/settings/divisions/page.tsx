@@ -110,7 +110,7 @@ async function getDivisionData(): Promise<{
       .order("sort_order"),
     supabase
       .from("classifications")
-      .select("id, name, discipline_id")
+      .select("id, name, discipline_id, handicap_adjustment_seconds")
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
@@ -142,6 +142,10 @@ async function getDivisionData(): Promise<{
       id: classification.id,
       name: classification.name,
       disciplineId: classification.discipline_id,
+      handicapAdjustmentSeconds:
+        classification.handicap_adjustment_seconds === null
+          ? null
+          : -Number(classification.handicap_adjustment_seconds),
     })),
     divisions: data.map((division) => ({
       id: division.id,

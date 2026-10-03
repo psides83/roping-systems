@@ -38,6 +38,16 @@ const optionalClassificationNumberSchema = z
   ])
   .transform((value) => (value === "" ? null : value));
 
+const optionalHandicapAdjustmentSchema = z
+  .union([
+    z.literal(""),
+    z.coerce
+      .number()
+      .min(-60, "The adjustment cannot subtract more than 60 seconds.")
+      .max(60, "The adjustment cannot add more than 60 seconds."),
+  ])
+  .transform((value) => (value === "" ? null : value));
+
 const disciplineSchema = z
   .object({
     name: z
@@ -102,6 +112,8 @@ const classificationSchema = z
     eligibilityType: z.enum(["skill", "open", "age"]),
     minimumAge: optionalAgeSchema,
     maximumAge: optionalAgeSchema,
+    ropingUse: z.enum(["standalone", "handicap", "both"]),
+    handicapAdjustmentSeconds: optionalHandicapAdjustmentSchema,
   })
   .superRefine((data, context) => {
     if (
@@ -126,6 +138,15 @@ const classificationSchema = z
         message: "Maximum age must be at least the minimum age.",
       });
     }
+    if (
+      data.ropingUse !== "standalone" &&
+      data.handicapAdjustmentSeconds === null
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["handicapAdjustmentSeconds"],
+        message: "Enter the final time adjustment for this classification.",
+      });
   });
 
 const updateClassificationSchema = classificationSchema.extend({
@@ -245,6 +266,11 @@ export async function createClassification(
       parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
     maximum_age:
       parsed.data.eligibilityType === "age" ? parsed.data.maximumAge : null,
+    standalone_enabled: parsed.data.ropingUse !== "handicap",
+    handicap_adjustment_seconds:
+      parsed.data.ropingUse === "standalone"
+        ? null
+        : -parsed.data.handicapAdjustmentSeconds!,
   });
   if (error)
     return {
@@ -255,6 +281,8 @@ export async function createClassification(
     };
 
   revalidatePath("/settings/classifications");
+  revalidatePath("/settings/divisions");
+  revalidatePath("/ropings");
   return { success: true, message: "Classification created." };
 }
 
@@ -350,6 +378,11 @@ export async function updateClassification(
         parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
       maximum_age:
         parsed.data.eligibilityType === "age" ? parsed.data.maximumAge : null,
+      standalone_enabled: parsed.data.ropingUse !== "handicap",
+      handicap_adjustment_seconds:
+        parsed.data.ropingUse === "standalone"
+          ? null
+          : -parsed.data.handicapAdjustmentSeconds!,
       is_active: parsed.data.isActive === "on",
     })
     .eq("id", parsed.data.classificationId)
@@ -364,6 +397,7 @@ export async function updateClassification(
     };
   revalidatePath("/settings/classifications");
   revalidatePath("/settings/divisions");
+  revalidatePath("/ropings");
   return { success: true, message: "Classification updated." };
 }
 

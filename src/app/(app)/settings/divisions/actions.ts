@@ -143,18 +143,35 @@ async function validateHandicapRuleRelationships(
 ) {
   const classificationIds = rules.map((rule) => rule.classificationId);
   if (new Set(classificationIds).size !== classificationIds.length)
-    return "Each member classification may appear only once.";
+    return { error: "Each member classification may appear only once." };
 
   const { data, error } = await context.supabase
     .from("classifications")
-    .select("id")
+    .select("id, handicap_adjustment_seconds")
     .eq("organization_id", context.organization.id)
     .eq("discipline_id", disciplineId)
     .eq("is_active", true)
     .in("id", classificationIds);
-  if (error || data.length !== classificationIds.length)
-    return "One or more handicap classifications are unavailable.";
-  return null;
+  if (
+    error ||
+    data.length !== classificationIds.length ||
+    data.some(
+      (classification) => classification.handicap_adjustment_seconds === null,
+    )
+  )
+    return { error: "One or more handicap classifications are unavailable." };
+  const adjustments = new Map(
+    data.map((classification) => [
+      classification.id,
+      Number(classification.handicap_adjustment_seconds),
+    ]),
+  );
+  return {
+    rules: classificationIds.map((classificationId) => ({
+      classificationId,
+      adjustmentSeconds: adjustments.get(classificationId)!,
+    })),
+  };
 }
 
 export async function createDivision(
@@ -186,13 +203,15 @@ export async function createDivision(
       message:
         "Add at least one member classification for this handicap template.",
     };
+  let resolvedHandicapRules: z.infer<typeof handicapRulesSchema> = [];
   if (parsed.data.competitionFormat === "handicap" && handicapRules.success) {
-    const handicapError = await validateHandicapRuleRelationships(
+    const handicapResult = await validateHandicapRuleRelationships(
       context,
       parsed.data.disciplineId,
       handicapRules.data,
     );
-    if (handicapError) return { message: handicapError };
+    if (handicapResult.error) return { message: handicapResult.error };
+    resolvedHandicapRules = handicapResult.rules ?? [];
   }
   const shortRoundEnabled = parsed.data.shortRoundEnabled === "on";
   const shortRoundBrackets = parseShortRoundBrackets(
@@ -216,9 +235,7 @@ export async function createDivision(
     timer_resolution: parsed.data.timerResolution,
     competition_format: parsed.data.competitionFormat,
     handicap_rules:
-      parsed.data.competitionFormat === "handicap" && handicapRules.success
-        ? handicapRules.data
-        : [],
+      parsed.data.competitionFormat === "handicap" ? resolvedHandicapRules : [],
     second_round_ordering: parsed.data.secondRoundOrdering,
     later_round_ordering: parsed.data.laterRoundOrdering,
     four_d_settings: null,
@@ -299,13 +316,15 @@ export async function updateDivision(
       message:
         "Add at least one member classification for this handicap template.",
     };
+  let resolvedHandicapRules: z.infer<typeof handicapRulesSchema> = [];
   if (parsed.data.competitionFormat === "handicap" && handicapRules.success) {
-    const handicapError = await validateHandicapRuleRelationships(
+    const handicapResult = await validateHandicapRuleRelationships(
       context,
       parsed.data.disciplineId,
       handicapRules.data,
     );
-    if (handicapError) return { message: handicapError };
+    if (handicapResult.error) return { message: handicapResult.error };
+    resolvedHandicapRules = handicapResult.rules ?? [];
   }
   const shortRoundEnabled = parsed.data.shortRoundEnabled === "on";
   const shortRoundBrackets = parseShortRoundBrackets(
@@ -330,8 +349,8 @@ export async function updateDivision(
       timer_resolution: parsed.data.timerResolution,
       competition_format: parsed.data.competitionFormat,
       handicap_rules:
-        parsed.data.competitionFormat === "handicap" && handicapRules.success
-          ? handicapRules.data
+        parsed.data.competitionFormat === "handicap"
+          ? resolvedHandicapRules
           : [],
       second_round_ordering: parsed.data.secondRoundOrdering,
       later_round_ordering: parsed.data.laterRoundOrdering,

@@ -150,7 +150,7 @@ export function buildDuplicableRopingSummary({
           incentiveRules: Object.fromEntries(
             scheduled.roping_incentive_rules.map((rule) => [
               rule.classification_id,
-              String(Number(rule.adjustment_seconds)),
+              String(-Number(rule.adjustment_seconds)),
             ]),
           ),
           maleEligibilityPolicy: scheduled.male_eligibility_policy,

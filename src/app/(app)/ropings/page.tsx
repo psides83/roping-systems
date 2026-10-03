@@ -50,6 +50,8 @@ async function getRopingData() {
           divisionName: "Breakaway",
           name: "Open",
           rank: 0,
+          standaloneEnabled: true,
+          handicapAdjustmentSeconds: 0,
         },
         {
           id: "00000000-0000-4000-8000-000000000102",
@@ -57,6 +59,8 @@ async function getRopingData() {
           divisionName: "Breakaway",
           name: "11.5",
           rank: 11.5,
+          standaloneEnabled: true,
+          handicapAdjustmentSeconds: null,
         },
         {
           id: "00000000-0000-4000-8000-000000000103",
@@ -64,6 +68,8 @@ async function getRopingData() {
           divisionName: "Breakaway",
           name: "10",
           rank: 10,
+          standaloneEnabled: true,
+          handicapAdjustmentSeconds: null,
         },
       ],
     };
@@ -95,7 +101,7 @@ async function getRopingData() {
     supabase
       .from("classifications")
       .select(
-        "id, name, rank, discipline_id, disciplines!inner(name, sort_order)",
+        "id, name, rank, discipline_id, standalone_enabled, handicap_adjustment_seconds, disciplines!inner(name, sort_order)",
       )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
@@ -124,6 +130,14 @@ async function getRopingData() {
     year: "numeric",
     timeZone: organization.timezone,
   });
+  const handicapAdjustments = new Map(
+    classificationData.map((classification) => [
+      classification.id,
+      classification.handicap_adjustment_seconds === null
+        ? null
+        : Number(classification.handicap_adjustment_seconds),
+    ]),
+  );
   const divisions = divisionData.map((division) => ({
     id: division.id,
     name: division.name,
@@ -135,9 +149,13 @@ async function getRopingData() {
       (
         (division.handicap_rules ?? []) as Array<{
           classificationId: string;
-          adjustmentSeconds: number;
         }>
-      ).map((rule) => [rule.classificationId, Number(rule.adjustmentSeconds)]),
+      )
+        .filter((rule) => handicapAdjustments.get(rule.classificationId) != null)
+        .map((rule) => [
+          rule.classificationId,
+          handicapAdjustments.get(rule.classificationId)!,
+        ]),
     ),
     divisionName:
       (division.disciplines as unknown as { name: string } | null)?.name ??
@@ -163,10 +181,17 @@ async function getRopingData() {
     divisionName: (classification.disciplines as unknown as { name: string })
       .name,
     rank: Number(classification.rank),
+    standaloneEnabled: classification.standalone_enabled,
+    handicapAdjustmentSeconds:
+      classification.handicap_adjustment_seconds === null
+        ? null
+        : Number(classification.handicap_adjustment_seconds),
   }));
   const activeTemplateIds = new Set(divisions.map((division) => division.id));
   const activeClassificationIds = new Set(
-    incentiveClassifications.map((classification) => classification.id),
+    incentiveClassifications
+      .filter((classification) => classification.standaloneEnabled)
+      .map((classification) => classification.id),
   );
   const existingSlugs = new Set(eventData.map((event) => event.slug));
   const ropings = eventData.map((event) =>

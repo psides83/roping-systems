@@ -50,7 +50,7 @@ const ropingSchema = z.object({
 
 const incentiveRuleSchema = z.object({
   classificationId: z.uuid(),
-  adjustmentSeconds: z.number().min(0).max(60),
+  adjustmentSeconds: z.number().min(-60).max(60),
 });
 
 const classOccurrenceSchema = z.object({
@@ -199,7 +199,9 @@ export async function createRoping(
   const { data: templateSettings, error: templateSettingsError } =
     await supabase
       .from("division_templates")
-      .select("id, number_of_runs, cattle_draw_enabled")
+      .select(
+        "id, number_of_runs, cattle_draw_enabled, competition_format, handicap_rules",
+      )
       .eq("organization_id", organization.id)
       .eq("is_active", true)
       .in("id", templateIds);
@@ -212,14 +214,103 @@ export async function createRoping(
   const settingsByTemplate = new Map(
     templateSettings.map((template) => [template.id, template]),
   );
+  const standaloneClassificationIds = [
+    ...new Set(
+      classOccurrences
+        .filter(
+          (occurrence) =>
+            settingsByTemplate.get(occurrence.templateId)
+              ?.competition_format !== "handicap",
+        )
+        .map((occurrence) => occurrence.classificationId)
+        .filter(Boolean),
+    ),
+  ];
+  const { data: standaloneClassifications, error: standaloneError } =
+    standaloneClassificationIds.length
+      ? await supabase
+          .from("classifications")
+          .select("id")
+          .eq("organization_id", organization.id)
+          .eq("is_active", true)
+          .eq("standalone_enabled", true)
+          .in("id", standaloneClassificationIds)
+      : { data: [], error: null };
+  if (standaloneError) return { message: standaloneError.message };
+  if (standaloneClassifications.length !== standaloneClassificationIds.length)
+    return {
+      message:
+        "One or more selected classifications cannot have a standalone roping.",
+    };
+  const handicapClassificationIds = [
+    ...new Set(
+      templateSettings.flatMap((template) =>
+        template.competition_format === "handicap"
+          ? (
+              (template.handicap_rules ?? []) as Array<{
+                classificationId: string;
+              }>
+            ).map((rule) => rule.classificationId)
+          : [],
+      ),
+    ),
+  ];
+  const { data: handicapClassifications, error: handicapError } =
+    handicapClassificationIds.length
+      ? await supabase
+          .from("classifications")
+          .select("id, handicap_adjustment_seconds")
+          .eq("organization_id", organization.id)
+          .eq("is_active", true)
+          .in("id", handicapClassificationIds)
+      : { data: [], error: null };
+  if (handicapError) return { message: handicapError.message };
+  const handicapAdjustments = new Map(
+    handicapClassifications.map((classification) => [
+      classification.id,
+      classification.handicap_adjustment_seconds === null
+        ? null
+        : Number(classification.handicap_adjustment_seconds),
+    ]),
+  );
   const configuredOccurrences = classOccurrences.map((occurrence) => {
     const template = settingsByTemplate.get(occurrence.templateId)!;
+    const selectedHandicapIds = (
+      (template.handicap_rules ?? []) as Array<{ classificationId: string }>
+    ).map((rule) => rule.classificationId);
     return {
       ...occurrence,
       roundCount: template.number_of_runs,
       cattleDrawEnabled: template.cattle_draw_enabled,
+      incentiveEnabled:
+        template.competition_format === "handicap"
+          ? true
+          : occurrence.incentiveEnabled,
+      incentiveRules:
+        template.competition_format === "handicap"
+          ? selectedHandicapIds.map((classificationId) => ({
+              classificationId,
+              adjustmentSeconds: handicapAdjustments.get(classificationId)!,
+            }))
+          : occurrence.incentiveRules.map((rule) => ({
+              ...rule,
+              adjustmentSeconds: -rule.adjustmentSeconds,
+            })),
     };
   });
+  if (
+    configuredOccurrences.some((occurrence) =>
+      occurrence.incentiveRules.some(
+        (rule) =>
+          rule.adjustmentSeconds === null ||
+          rule.adjustmentSeconds === undefined,
+      ),
+    )
+  )
+    return {
+      message:
+        "One or more Handicap classifications no longer have a time adjustment.",
+    };
 
   const { data: newRopingId, error } = await supabase.rpc(
     "create_roping_with_short_round_policy",

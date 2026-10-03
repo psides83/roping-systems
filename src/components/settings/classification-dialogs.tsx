@@ -20,6 +20,8 @@ const inputClass =
 const classificationNumberHelp =
   "Use the contestant skill number, such as 11.5, 11, or 10. Open, youth, senior, and other age-based classes use 0.";
 
+type ClassificationUse = "standalone" | "handicap" | "both";
+
 function ClassificationNumberLabel() {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -218,6 +220,74 @@ function EligibilityFields({
           <input type="hidden" name="minimumAge" value="" />
           <input type="hidden" name="maximumAge" value="" />
         </>
+      )}
+    </div>
+  );
+}
+
+function ClassificationUseFields({
+  value,
+  setValue,
+  adjustmentSeconds,
+  error,
+}: {
+  value: ClassificationUse;
+  setValue: (value: ClassificationUse) => void;
+  adjustmentSeconds?: number | null;
+  error?: string;
+}) {
+  const usesHandicap = value !== "standalone";
+  return (
+    <div className="space-y-4 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
+      <label className="block text-sm font-semibold">
+        Roping use
+        <select
+          name="ropingUse"
+          value={value}
+          onChange={(event) =>
+            setValue(event.target.value as ClassificationUse)
+          }
+          className={inputClass}
+        >
+          <option value="standalone">Standalone</option>
+          <option value="handicap">Handicap Time Offset</option>
+          <option value="both">Standalone and Handicap</option>
+        </select>
+      </label>
+      <p className="text-xs leading-5 text-[#66716b]">
+        {value === "standalone"
+          ? "This classification can have its own roping and is not used in Handicap ropings."
+          : value === "handicap"
+            ? "This is a member classification used only to calculate time in Handicap ropings."
+            : "This classification can have its own roping and can also be used in Handicap ropings."}
+      </p>
+      {usesHandicap ? (
+        <label className="block text-sm font-semibold">
+          Final time adjustment
+          <span className="relative mt-2 flex h-11 items-center rounded-md border border-[#ccd4d0] bg-white px-3 focus-within:border-[var(--brand-accent)]">
+            <input
+              name="handicapAdjustmentSeconds"
+              type="number"
+              min="-60"
+              max="60"
+              step="0.001"
+              defaultValue={adjustmentSeconds ?? 0}
+              className="min-w-0 flex-1 bg-transparent font-mono outline-none"
+              required
+            />
+            <span className="text-xs text-[#758078]">seconds</span>
+          </span>
+          <span className="mt-1 block text-xs font-normal text-[#66716b]">
+            Use a negative value to subtract time or a positive value to add
+            time. For example, -1.500 gives a 1.5-second advantage. Use 0 for
+            no adjustment.
+          </span>
+          {error ? (
+            <span className="mt-1 block text-xs text-rose-700">{error}</span>
+          ) : null}
+        </label>
+      ) : (
+        <input type="hidden" name="handicapAdjustmentSeconds" value="" />
       )}
     </div>
   );
@@ -471,6 +541,8 @@ export function CreateClassificationDialog({
   const [eligibilityType, setEligibilityType] = useState<
     "skill" | "open" | "age"
   >("skill");
+  const [classificationUse, setClassificationUse] =
+    useState<ClassificationUse>("standalone");
   const [state, action, pending] = useActionState(
     createClassification,
     initialState,
@@ -523,6 +595,11 @@ export function CreateClassificationDialog({
               type={eligibilityType}
               setType={setEligibilityType}
               errors={state.errors}
+            />
+            <ClassificationUseFields
+              value={classificationUse}
+              setValue={setClassificationUse}
+              error={state.errors?.handicapAdjustmentSeconds?.[0]}
             />
             <label className="block text-sm font-semibold">
               Description
@@ -695,6 +772,8 @@ export function EditClassificationDialog({
     eligibilityType: "skill" | "open" | "age";
     minimumAge: number | null;
     maximumAge: number | null;
+    standaloneEnabled: boolean;
+    handicapAdjustmentSeconds: number | null;
     isActive: boolean;
   };
   enabled: boolean;
@@ -702,6 +781,13 @@ export function EditClassificationDialog({
   const [open, setOpen] = useState(false);
   const [eligibilityType, setEligibilityType] = useState(
     classification.eligibilityType,
+  );
+  const [classificationUse, setClassificationUse] = useState<ClassificationUse>(
+    classification.standaloneEnabled
+      ? classification.handicapAdjustmentSeconds !== null
+        ? "both"
+        : "standalone"
+      : "handicap",
   );
   const [state, action, pending] = useActionState(
     updateClassification,
@@ -757,6 +843,12 @@ export function EditClassificationDialog({
               maximumAge={classification.maximumAge}
               errors={state.errors}
             />
+            <ClassificationUseFields
+              value={classificationUse}
+              setValue={setClassificationUse}
+              adjustmentSeconds={classification.handicapAdjustmentSeconds}
+              error={state.errors?.handicapAdjustmentSeconds?.[0]}
+            />
             <label className="block text-sm font-semibold">
               Description
               <textarea
@@ -772,7 +864,7 @@ export function EditClassificationDialog({
                 defaultChecked={classification.isActive}
                 className="h-4 w-4 accent-[var(--brand-accent)]"
               />{" "}
-              Available for member classifications and scheduled ropings
+              Available for members and roping eligibility
             </label>
             <FormMessage state={state} />
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">

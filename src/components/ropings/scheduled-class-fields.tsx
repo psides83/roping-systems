@@ -19,6 +19,8 @@ export interface IncentiveClassification {
   divisionName: string;
   name: string;
   rank: number;
+  standaloneEnabled: boolean;
+  handicapAdjustmentSeconds: number | null;
 }
 
 export type MaleEligibilityPolicy =
@@ -130,7 +132,10 @@ export function ScheduledClassFields({
   );
   const selectedTemplateHasClassifications = classifications.some(
     (classification) =>
-      classification.disciplineId === selectedTemplate?.disciplineId,
+      classification.disciplineId === selectedTemplate?.disciplineId &&
+      (selectedTemplate?.competitionFormat === "handicap"
+        ? selectedTemplate.handicapRules[classification.id] !== undefined
+        : classification.standaloneEnabled),
   );
 
   const serialized = useMemo(
@@ -181,15 +186,17 @@ export function ScheduledClassFields({
   function addOccurrence() {
     if (!selectedTemplateId) return;
     const template = templates.find((item) => item.id === selectedTemplateId);
-    const defaultClassification = classifications.find(
-      (classification) =>
-        classification.disciplineId === template?.disciplineId,
-    );
-    if (!template || !defaultClassification) return;
-    const occurrenceKey = newKey();
+    if (!template) return;
     const templateClassifications = classifications.filter(
-      (classification) => classification.disciplineId === template.disciplineId,
+      (classification) =>
+        classification.disciplineId === template.disciplineId &&
+        (template.competitionFormat === "handicap"
+          ? template.handicapRules[classification.id] !== undefined
+          : classification.standaloneEnabled),
     );
+    const defaultClassification = templateClassifications[0];
+    if (!defaultClassification) return;
+    const occurrenceKey = newKey();
     setOccurrences((current) => [
       ...current,
       {
@@ -300,7 +307,9 @@ export function ScheduledClassFields({
           if (!template) return null;
           const eligible = classifications.filter(
             (classification) =>
-              classification.disciplineId === template.disciplineId,
+              classification.disciplineId === template.disciplineId &&
+              (template.competitionFormat === "handicap" ||
+                classification.standaloneEnabled),
           );
           const selectedClassification =
             template.competitionFormat === "handicap"
@@ -616,7 +625,7 @@ export function ScheduledClassFields({
                       </p>
                       <p className="mt-1 text-xs leading-5 text-[#66716b]">
                         Every contestant ropes together. Their current member
-                        classification determines the deduction below.
+                        classification determines their final time adjustment.
                       </p>
                     </div>
                     <div className="border-t border-[#dce2de] pt-4">
@@ -786,7 +795,7 @@ export function ScheduledClassFields({
                         <span className="flex w-28 items-center rounded-md border border-[#ccd4d0] bg-white px-2">
                           <input
                             type="number"
-                            min="0"
+                            min="-60"
                             max="60"
                             step="0.001"
                             value={
@@ -802,7 +811,7 @@ export function ScheduledClassFields({
                             }
                             className="h-9 min-w-0 flex-1 bg-transparent text-right font-mono text-sm outline-none"
                             placeholder="0.000"
-                            aria-label={`${classification.name} seconds deducted`}
+                            aria-label={`${classification.name} final time adjustment`}
                           />
                           <span className="ml-1 text-xs text-[#758078]">
                             sec
@@ -817,9 +826,9 @@ export function ScheduledClassFields({
                       </p>
                     ) : null}
                     <p className="sm:col-span-2 text-xs leading-5 text-[#66716b]">
-                      Enter the number of seconds deducted from the
-                      contestant&apos;s final time. Use 0 when a classification,
-                      such as Open, receives no deduction.
+                      Use a negative value to subtract time or a positive value
+                      to add time. Use 0 when a classification, such as Open,
+                      receives no adjustment.
                     </p>
                   </div>
                 ) : null}

@@ -30,6 +30,8 @@ interface DisciplineSummary {
     eligibilityType: "skill" | "open" | "age";
     minimumAge: number | null;
     maximumAge: number | null;
+    standaloneEnabled: boolean;
+    handicapAdjustmentSeconds: number | null;
     isActive: boolean;
   }>;
 }
@@ -70,6 +72,8 @@ async function getClassificationData() {
               eligibilityType: "open",
               minimumAge: null,
               maximumAge: null,
+              standaloneEnabled: true,
+              handicapAdjustmentSeconds: null,
               isActive: true,
             },
             {
@@ -80,6 +84,8 @@ async function getClassificationData() {
               eligibilityType: "skill",
               minimumAge: null,
               maximumAge: null,
+              standaloneEnabled: true,
+              handicapAdjustmentSeconds: null,
               isActive: true,
             },
             {
@@ -90,6 +96,8 @@ async function getClassificationData() {
               eligibilityType: "skill",
               minimumAge: null,
               maximumAge: null,
+              standaloneEnabled: true,
+              handicapAdjustmentSeconds: null,
               isActive: true,
             },
             {
@@ -100,6 +108,8 @@ async function getClassificationData() {
               eligibilityType: "skill",
               minimumAge: null,
               maximumAge: null,
+              standaloneEnabled: true,
+              handicapAdjustmentSeconds: null,
               isActive: true,
             },
             {
@@ -110,6 +120,8 @@ async function getClassificationData() {
               eligibilityType: "age",
               minimumAge: 40,
               maximumAge: null,
+              standaloneEnabled: true,
+              handicapAdjustmentSeconds: null,
               isActive: true,
             },
           ],
@@ -130,7 +142,7 @@ async function getClassificationData() {
       supabase
         .from("disciplines")
         .select(
-          "id, name, description, watch_threshold, is_active, gender_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_discipline_id, male_minimum_classification_number, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, is_active)",
+          "id, name, description, watch_threshold, is_active, gender_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_discipline_id, male_minimum_classification_number, classifications(id, name, description, rank, eligibility_type, minimum_age, maximum_age, standalone_enabled, handicap_adjustment_seconds, is_active)",
         )
         .eq("organization_id", organization.id)
         .order("sort_order")
@@ -193,6 +205,8 @@ async function getClassificationData() {
           eligibility_type: "skill" | "open" | "age";
           minimum_age: number | null;
           maximum_age: number | null;
+          standalone_enabled: boolean;
+          handicap_adjustment_seconds: number | null;
           is_active: boolean;
         }>
       )
@@ -204,6 +218,11 @@ async function getClassificationData() {
           eligibilityType: classification.eligibility_type,
           minimumAge: classification.minimum_age,
           maximumAge: classification.maximum_age,
+          standaloneEnabled: classification.standalone_enabled,
+          handicapAdjustmentSeconds:
+            classification.handicap_adjustment_seconds === null
+              ? null
+              : -Number(classification.handicap_adjustment_seconds),
           isActive: classification.is_active,
         }))
         .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name)),
@@ -224,7 +243,7 @@ export default async function ClassificationSettingsPage() {
       <PageHeader
         eyebrow="Organization setup"
         title="Divisions & classifications"
-        description="Create divisions such as Calf roping or Breakaway, then define each division’s skill, open, and age-limited classifications."
+        description="Define member classifications and choose whether each supports standalone ropings, Handicap time adjustments, or both."
         actions={
           <CreateDisciplineDialog
             classificationDivisions={classificationDivisions}
@@ -339,12 +358,13 @@ export default async function ClassificationSettingsPage() {
               </div>
             </header>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left">
+              <table className="w-full min-w-[900px] text-left">
                 <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
                   <tr>
                     <th className="px-5 py-3">Classification</th>
                     <th className="px-5 py-3">Description</th>
                     <th className="px-5 py-3">Eligibility</th>
+                    <th className="px-5 py-3">Roping use</th>
                     <th className="px-5 py-3">
                       <span className="inline-flex items-center gap-1.5">
                         Classification number
@@ -392,6 +412,24 @@ export default async function ClassificationSettingsPage() {
                                 : `${classification.maximumAge} and under`
                             : "Skill level"}
                       </td>
+                      <td className="px-5 py-3 text-xs font-semibold text-[#66716b]">
+                        {classification.standaloneEnabled
+                          ? classification.handicapAdjustmentSeconds !== null
+                            ? "Standalone and Handicap"
+                            : "Standalone"
+                          : "Handicap Time Offset"}
+                        {classification.handicapAdjustmentSeconds !== null ? (
+                          <span className="mt-1 block font-mono font-normal text-[#758078]">
+                            {classification.handicapAdjustmentSeconds >= 0
+                              ? "+"
+                              : ""}
+                            {classification.handicapAdjustmentSeconds.toFixed(
+                              3,
+                            )}{" "}
+                            sec
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="px-5 py-3 font-mono text-xs text-[#66716b]">
                         {classification.eligibilityType === "skill"
                           ? classification.rank
@@ -412,7 +450,7 @@ export default async function ClassificationSettingsPage() {
                   {!discipline.classifications.length ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-5 py-7 text-center text-sm text-[#758078]"
                       >
                         Add this division&apos;s first classification.
