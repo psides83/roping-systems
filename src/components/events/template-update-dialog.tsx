@@ -53,7 +53,16 @@ export function TemplateUpdateDialog({ eventId, review, canManage }: { eventId: 
           <div className="min-h-0 space-y-5 overflow-y-auto p-5">
             {review.changes.map((change) => <section key={change.section}>
               <h3 className="mb-2 text-sm font-bold">{reviewLabel(change.section)}</h3>
-              <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-xs">
+              <div className="divide-y divide-[#e7ebe8] sm:hidden">
+                {templateReviewRows(change).map((row) => <div key={row.label} className="py-3">
+                  <p className="text-xs font-semibold">{row.label}</p>
+                  <dl className="mt-2 grid grid-cols-2 gap-3 text-xs">
+                    <div><dt className="text-[#66716b]">Current roping</dt><dd className="mt-1 break-words">{row.current}</dd></div>
+                    <div><dt className="text-[#66716b]">Updated template</dt><dd className="mt-1 font-semibold break-words">{row.template}</dd></div>
+                  </dl>
+                </div>)}
+              </div>
+              <div className="hidden overflow-x-auto sm:block"><table className="w-full min-w-[420px] text-left text-xs">
                 <thead className="border-b border-[#dfe4e1] text-[#66716b]"><tr><th className="w-2/5 py-2 pr-3">Setting</th><th className="w-[30%] p-2">Current roping</th><th className="w-[30%] p-2">Updated template</th></tr></thead>
                 <tbody className="divide-y divide-[#e7ebe8]">{templateReviewRows(change).map((row) => <tr key={row.label}><th className="py-3 pr-3 font-medium break-words">{row.label}</th><td className="p-2 align-top break-words">{row.current}</td><td className="p-2 align-top font-semibold break-words">{row.template}</td></tr>)}</tbody>
               </table></div>
