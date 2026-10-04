@@ -72,6 +72,7 @@ export function CreateRopingDialog({
 }) {
   const isDuplicate = Boolean(initialValues);
   const [open, setOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [slug, setSlug] = useState(initialValues?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(false);
@@ -86,6 +87,19 @@ export function CreateRopingDialog({
   const [arenaCount, setArenaCount] = useState(initialValues?.arenaCount ?? 1);
   const [state, action, pending] = useActionState(createRoping, initialState);
 
+  function openForm() {
+    setTitle(initialValues?.title ?? "");
+    setSlug(initialValues?.slug ?? "");
+    setSlugEdited(false);
+    setStartsAt(initialValues?.startsAt ?? "");
+    setEndsAt(initialValues?.endsAt ?? "");
+    setEntriesOpenAt(initialValues?.entriesOpenAt ?? "");
+    setEntriesCloseAt(initialValues?.entriesCloseAt ?? "");
+    setArenaCount(initialValues?.arenaCount ?? 1);
+    setFormKey((current) => current + 1);
+    setOpen(true);
+  }
+
   useEffect(() => {
     if (!state.success) return;
     const timeoutId = window.setTimeout(() => setOpen(false), 0);
@@ -96,7 +110,7 @@ export function CreateRopingDialog({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openForm}
         className={
           isDuplicate
             ? "flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-sm font-semibold hover:bg-[#f7f8f7]"
@@ -104,7 +118,7 @@ export function CreateRopingDialog({
         }
       >
         {isDuplicate ? <Copy size={16} /> : <Plus size={17} />}
-        {isDuplicate ? "Duplicate" : "Create roping"}
+        {isDuplicate ? "Duplicate event" : "Create event"}
       </button>
       {open ? (
         <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
@@ -144,7 +158,7 @@ export function CreateRopingDialog({
               </button>
             </header>
 
-            <form action={action} className="space-y-6 p-5">
+            <form key={formKey} action={action} className="space-y-6 p-5">
               {isDuplicate ? (
                 <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
                   The event setup is copied for review. Entries, payments,
