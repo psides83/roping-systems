@@ -8,11 +8,13 @@ export function CollapsibleCard({
   actions,
   children,
   defaultOpen = false,
+  label = "schedule",
 }: {
   summary: React.ReactNode;
   actions?: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  label?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const contentId = useId();
@@ -28,8 +30,8 @@ export function CollapsibleCard({
             onClick={() => setOpen((current) => !current)}
             aria-expanded={open}
             aria-controls={contentId}
-            aria-label={open ? "Collapse schedule" : "Expand schedule"}
-            title={open ? "Collapse schedule" : "Expand schedule"}
+            aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
+            title={`${open ? "Collapse" : "Expand"} ${label}`}
             className="grid h-9 w-9 place-items-center rounded-md border border-[#d7ddda] text-[#66716b] hover:bg-[#f7f8f7]"
           >
             <ChevronDown

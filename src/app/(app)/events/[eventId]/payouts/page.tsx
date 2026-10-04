@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Banknote, Check, RotateCcw, Users } from "lucide-react";
 import { initializePayoutPlans, setPayoutPaid } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
@@ -288,11 +289,12 @@ export default async function EventPayoutsPage({
               0,
             );
             return (
-              <article
+              <CollapsibleCard
                 key={primaryPlan.ropingDivisionId}
-                className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
-              >
-                <header className="flex flex-col gap-3 border-b border-[#dfe4e1] bg-[#f7f8f7] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                defaultOpen={false}
+                label={`${primaryPlan.division} payouts`}
+                summary={
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase text-[var(--brand-accent-strong)]">
                       Scheduled roping
@@ -311,7 +313,9 @@ export default async function EventPayoutsPage({
                       combined
                     </span>
                   </div>
-                </header>
+                </div>
+                }
+              >
                 <div className="divide-y divide-[#dfe4e1]">
                   {group.map((plan) => (
                     <PayoutPlanSection
@@ -322,7 +326,7 @@ export default async function EventPayoutsPage({
                     />
                   ))}
                 </div>
-              </article>
+              </CollapsibleCard>
             );
           })}
         </section>
