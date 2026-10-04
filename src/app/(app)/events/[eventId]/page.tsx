@@ -45,10 +45,13 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
+import { TemplateUpdateDialog } from "@/components/events/template-update-dialog";
+import type { TemplateReview } from "@/lib/events/template-review";
 import type { RoundOrderMethod } from "@/types/domain";
 import { updateClassEntrySpacing } from "./actions";
 
 interface EventDetail {
+  templateReviews?: TemplateReview[];
   id: string;
   title: string;
   slug: string;
@@ -328,6 +331,8 @@ async function getEvent(
     throw new Error("Unable to load the available roping setup.");
   if (entryError || requestError || runError)
     throw new Error("Unable to load the event dashboard status.");
+  const { data: templateReviews, error: reviewError } = await supabase.rpc("get_event_template_reviews", { target_event_id: eventId });
+  if (reviewError) throw new Error(`Unable to review template updates: ${reviewError.message}`);
   const activeEntries = (entryData ?? []).filter(
     (entry) => entry.competition_status === "active",
   );
@@ -544,6 +549,7 @@ async function getEvent(
   return {
     producerSlug: producer.slug,
     event: {
+      templateReviews: (templateReviews ?? []) as TemplateReview[],
       id: data.id,
       title: data.title,
       slug: data.slug,
@@ -872,6 +878,9 @@ export default async function RopingDetailPage({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <h3 className="font-bold">{division.name}</h3>
+                    {event.templateReviews?.filter((review) => review.ropingId === division.id).map((review) => (
+                      <TemplateUpdateDialog key={review.token} eventId={event.id} review={review} canManage={event.canManage} />
+                    ))}
                     {division.eventDayStatus !== "scheduled" ? (
                       <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
                         {classEventDayStatusLabels[division.eventDayStatus]}

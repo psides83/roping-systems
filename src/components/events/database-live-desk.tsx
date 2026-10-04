@@ -24,7 +24,7 @@ import {
   type LiveRunState,
 } from "@/app/(app)/events/[eventId]/actions";
 import { cn } from "@/lib/utils";
-import { formatFinalTimeAdjustment } from "@/lib/scoring";
+import { calculateFinalRunTime, resolveTimerReadings, formatFinalTimeAdjustment } from "@/lib/scoring";
 import {
   isResolvedRunStatus,
   runStatusAbbreviations,
@@ -115,6 +115,7 @@ export function DatabaseLiveDesk({
   const [orderedRuns, setOrderedRuns] = useState(runs);
   const [search, setSearch] = useState("");
   const drawAction = generateDraw.bind(null, eventId);
+  const [drawState, drawFormAction, drawPending] = useActionState<DrawOrderState, FormData>(drawAction, {});
   const orderAction = saveDrawOrder.bind(null, eventId);
   const [orderState, orderFormAction, orderPending] = useActionState<
     DrawOrderState,
@@ -192,6 +193,23 @@ export function DatabaseLiveDesk({
   }
 
   return (
+    <div className="space-y-5">
+      <dl className="grid grid-cols-2 gap-4 border-y border-[#dfe4e1] py-4 sm:grid-cols-4">
+        {[
+          ["Runs resolved", `${completeCount} of ${orderedRuns.length}`],
+          ["Remaining", String(pendingRuns.length)],
+          ["Reruns required", String(rerunCount)],
+          ["Round", `${selectedRound} of ${totalRounds}`],
+        ].map(([label, value]) => (
+          <div key={label}><dt className="text-xs font-semibold text-[#66716b]">{label}</dt><dd className="mt-1 text-xl font-bold">{value}</dd></div>
+        ))}
+      </dl>
+      {roundLocked && selectedRound < totalRounds ? (
+        <Link href={`/events/${eventId}/live?division=${selectedDivisionId}&round=${selectedRound + 1}`}
+          className="inline-flex items-center gap-2 text-sm font-semibold">
+          {selectedRound === selectedDivision?.numberOfRuns ? "Go to short round" : `Go to round ${selectedRound + 1}`} <SkipForward size={16} />
+        </Link>
+      ) : null}
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="order-2 overflow-hidden rounded-md border border-[#dfe4e1] bg-white xl:order-1">
         <div className="flex flex-col gap-4 border-b border-[#e7ebe8] p-4 sm:flex-row sm:items-end sm:justify-between">
@@ -369,7 +387,7 @@ export function DatabaseLiveDesk({
               {orderedRuns.length &&
               !isShortRound &&
               (!drawReady || selectedOrderMethod !== "custom") ? (
-                <form action={drawAction}>
+                <form action={drawFormAction}>
                   <input
                     type="hidden"
                     name="divisionId"
@@ -377,10 +395,10 @@ export function DatabaseLiveDesk({
                   />
                   <input type="hidden" name="runNumber" value={selectedRound} />
                   <button
-                    disabled={!canManageDraw}
+                    disabled={!canManageDraw || drawPending}
                     className="flex h-8 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-xs font-semibold disabled:opacity-50"
                   >
-                    <ListOrdered size={14} />
+                    {drawPending ? <LoaderCircle size={14} className="animate-spin" /> : <ListOrdered size={14} />}
                     {selectedOrderMethod === "custom"
                       ? "Build starting order"
                       : drawReady
@@ -391,6 +409,7 @@ export function DatabaseLiveDesk({
               ) : null}
             </div>
           </div>
+          {drawState.message ? <p aria-live="polite" className={`mt-2 text-xs ${drawState.success ? "text-emerald-700" : "text-rose-700"}`}>{drawState.message}</p> : null}
           {orderState.message ? (
             <p
               className={`mt-2 text-xs ${orderState.success ? "text-emerald-700" : "text-rose-700"}`}
@@ -557,13 +576,9 @@ export function DatabaseLiveDesk({
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-sm font-bold">
                       {run.status === "complete" && run.rawTime !== null
-                        ? Math.max(
-                            (run.carryTime ?? 0) +
-                              run.rawTime +
-                              run.penalty -
-                              run.incentiveAdjustment,
-                            0,
-                          ).toFixed(3)
+                        ? ((run.carryTime ?? 0) + calculateFinalRunTime(
+                            run.rawTime, run.penalty, run.incentiveAdjustment,
+                          )).toFixed(3)
                         : runStatusAbbreviations[run.status]}
                     </td>
                   </tr>
@@ -699,6 +714,7 @@ export function DatabaseLiveDesk({
         </div>
       </aside>
     </div>
+    </div>
   );
 }
 
@@ -783,25 +799,18 @@ function RunEntryForm({
   );
   const [penalty, setPenalty] = useState("0");
   const resolved = useMemo(() => {
-    const values = times.map(Number);
-    if (times.some((value) => !value) || values.some(Number.isNaN)) return null;
-    if (timerResolution === "best") return Math.min(...values);
-    if (timerResolution === "longest") return Math.max(...values);
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+    return resolveTimerReadings(times, timerResolution);
   }, [times, timerResolution]);
   const adjustedRunTime =
     resolved === null
       ? "--.---"
-      : Math.max(
-          resolved + Number(penalty) - run.incentiveAdjustment,
-          0,
-        ).toFixed(3);
+      : calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment).toFixed(3);
   const aggregateTotal =
     resolved === null || run.carryTime === null
       ? "--.---"
       : (
           run.carryTime +
-          Math.max(resolved + Number(penalty) - run.incentiveAdjustment, 0)
+          calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment)
         ).toFixed(3);
   const methodLabel =
     timerResolution === "best"
@@ -850,6 +859,8 @@ function RunEntryForm({
               </span>
               <input
                 name="timerReading"
+                aria-label={`Timer ${index + 1}`}
+                autoFocus={index === 0 && canEdit}
                 inputMode="decimal"
                 value={time}
                 onChange={(event) =>
@@ -892,7 +903,7 @@ function RunEntryForm({
       <div className="mt-5 flex items-center justify-between border-y border-[#e7ebe8] py-4">
         <span>
           <span className="block text-sm font-semibold text-[#66716b]">
-            {isShortRound ? "Projected aggregate" : "Official time"}
+            {isShortRound ? "Projected aggregate" : "Final run time"}
           </span>
           {isShortRound && run.carryTime !== null ? (
             <span className="mt-1 block text-[10px] font-semibold text-[#758078]">

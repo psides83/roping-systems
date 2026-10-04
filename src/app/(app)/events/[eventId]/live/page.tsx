@@ -1,4 +1,5 @@
-import { LockKeyhole } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { notFound } from "next/navigation";
 import {
   DatabaseLiveDesk,
@@ -397,6 +398,12 @@ function LiveWorkspace({
 
   return (
     <div className="space-y-6">
+      <nav aria-label="Event navigation" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
+        <Link href="/events/current" className="flex items-center gap-2"><ArrowLeft size={16} /> Event desks</Link>
+        <Link href={`/events/${eventId}`}>Manage event</Link>
+        <Link href={`/events/${eventId}/entries`}>Entries</Link>
+        <Link href={`/events/${eventId}/payouts`}>Payouts</Link>
+      </nav>
       <PageHeader
         eyebrow={`Event desk · ${status.replaceAll("_", " ")} · ${resultStatus}`}
         title={title}
@@ -430,7 +437,7 @@ function LiveWorkspace({
             <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
           ) : null}
           <DatabaseLiveDesk
-            key={`${selectedDivisionId}-${selectedRound}-${selectedDivision.shortRoundLocked}-${selectedDivision.eventDayStatus}-${selectedDivision.arenaName ?? ""}-${selectedDivision.estimatedStart}-${runs.map((run) => `${run.id}:${run.drawPosition}:${run.status}:${run.cattleTag ?? ""}`).join("|")}`}
+            key={JSON.stringify([selectedDivisionId, selectedRound, selectedDivision, roundLocked, status, runs])}
             eventId={eventId}
             arenaCount={arenaCount}
             divisions={divisions}

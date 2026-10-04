@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import {
   addRopingToEvent,
@@ -49,6 +49,7 @@ export function AddEventRopingDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [classificationId, setClassificationId] = useState("");
   const [scheduleType, setScheduleType] = useState("fixed");
   const [scheduledDate, setScheduledDate] = useState(defaultDate);
   const [arenaName, setArenaName] = useState("Arena 1");
@@ -67,7 +68,9 @@ export function AddEventRopingDialog({
     const timeoutId = window.setTimeout(() => setOpen(false), 0);
     return () => window.clearTimeout(timeoutId);
   }, [state.success]);
-  const firstClassification = useMemo(() => eligible[0]?.id ?? "", [eligible]);
+  const selectedClassification = eligible.some((item) => item.id === classificationId)
+    ? classificationId
+    : eligible[0]?.id ?? "";
   const followedRoping = existingRopings.findLast(
     (item) =>
       item.scheduledDate === scheduledDate && item.arenaName === arenaName,
@@ -119,7 +122,10 @@ export function AddEventRopingDialog({
                 <select
                   name="templateId"
                   value={templateId}
-                  onChange={(event) => setTemplateId(event.target.value)}
+                  onChange={(event) => {
+                    setTemplateId(event.target.value);
+                    setClassificationId("");
+                  }}
                   className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
                 >
                   {templates.map((item) => (
@@ -137,10 +143,12 @@ export function AddEventRopingDialog({
                   <select
                     key={templateId}
                     name="classificationId"
-                    defaultValue={firstClassification}
+                    value={selectedClassification}
+                    onChange={(event) => setClassificationId(event.target.value)}
                     className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
                     required
                   >
+                    {!eligible.length ? <option value="">No eligible classifications</option> : null}
                     {eligible.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}

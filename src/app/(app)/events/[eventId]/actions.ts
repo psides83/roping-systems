@@ -572,18 +572,19 @@ export async function startRoping(eventId: string) {
   revalidatePath(`/events/${eventId}/live`);
 }
 
-export async function generateDraw(eventId: string, formData: FormData) {
+export async function generateDraw(eventId: string, _state: DrawOrderState, formData: FormData): Promise<DrawOrderState> {
   const parsed = z
     .object({ divisionId: z.uuid(), runNumber: z.coerce.number().int().min(1) })
     .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) throw new Error("Choose a valid class and round.");
+  if (!parsed.success) return { message: "Choose a valid roping and round." };
   const supabase = await requireManager();
   const { error } = await supabase.rpc("generate_division_draw", {
     target_roping_division_id: parsed.data.divisionId,
     target_run_number: parsed.data.runNumber,
   });
-  if (error) throw new Error(error.message);
+  if (error) return { message: error.message };
   revalidatePath(`/events/${eventId}/live`);
+  return { success: true, message: "Draw built." };
 }
 
 export async function saveDrawOrder(
