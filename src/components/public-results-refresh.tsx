@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export function PublicResultsRefresh() {
+export function PublicResultsRefresh({ live = true }: { live?: boolean }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export function PublicResultsRefresh() {
       if (document.visibilityState === "visible") router.refresh();
     };
     // Public visitors may not receive row-level realtime notifications.
-    const refreshInterval = window.setInterval(refreshVisiblePage, 5000);
+    const refreshInterval = window.setInterval(refreshVisiblePage, live ? 5000 : 60000);
     document.addEventListener("visibilitychange", refreshVisiblePage);
     const channel = supabase
       .channel("public-live-results")
@@ -39,7 +39,7 @@ export function PublicResultsRefresh() {
       document.removeEventListener("visibilitychange", refreshVisiblePage);
       void supabase.removeChannel(channel);
     };
-  }, [router]);
+  }, [router, live]);
 
   return null;
 }

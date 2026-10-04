@@ -24,6 +24,7 @@ import type { ShortRoundTiePolicy } from "@/components/events/short-round-settin
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
+import { EventPublicationControl } from "@/components/events/event-publication-control";
 import { EventRopingOrderControls } from "@/components/events/event-roping-order-controls";
 import {
   ClassOperationsDialog,
@@ -717,11 +718,14 @@ export default async function RopingDetailPage({
         actions={
           <>
             <Link
-              href={`/public/${producerSlug}`}
+              href={event.publicationState === "published"
+                ? `/public/${producerSlug}?event=${encodeURIComponent(event.slug)}#results`
+                : `/public/${producerSlug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="grid h-10 w-10 place-items-center rounded-md border border-[#d7ddda] bg-white"
               aria-label="View public page (opens in a new tab)"
+              title={event.publicationState === "published" ? "View this event's public results" : "View producer page; publish this event to display its results"}
             >
               <ExternalLink size={17} />
             </Link>
@@ -792,15 +796,7 @@ export default async function RopingDetailPage({
         <span className="text-xs font-semibold text-[#758078]">
           Results: {event.resultStatus}
         </span>
-        <span
-          className={`text-xs font-semibold ${event.isPublic ? "text-emerald-700" : "text-[#758078]"}`}
-        >
-          {event.publicationState === "published"
-            ? "Published"
-            : event.publicationState === "draft"
-              ? "Draft"
-              : "Unpublished"}
-        </span>
+        <EventPublicationControl key={event.publicationState} eventId={event.id} publicationState={event.publicationState} enabled={event.canManage && isSupabaseConfigured()} />
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {dashboardMetrics.map((metric) => (

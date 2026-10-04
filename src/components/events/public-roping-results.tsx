@@ -7,10 +7,11 @@ import {
   type PublicResult, type PublicRoundResult,
 } from "@/lib/events/public-standings";
 
-export function PublicRopingResults({ results, runs, shortRoundEnabled = false }: {
+export function PublicRopingResults({ results, runs, shortRoundEnabled = false, contestantQuery = "" }: {
   results: PublicResult[];
   runs: PublicRoundResult[];
   shortRoundEnabled?: boolean;
+  contestantQuery?: string;
 }) {
   const [selected, setSelected] = useState("average");
   const id = useId();
@@ -22,7 +23,8 @@ export function PublicRopingResults({ results, runs, shortRoundEnabled = false }
     ...(shortRoundEnabled ? [{ value: String(roping.mainRoundCount + 1), label: "Short Round" }] : []),
     { value: "average", label: "Average" },
   ];
-  const rows = selected === "average" ? averageStandings(results) : roundStandings(runs, Number(selected));
+  const standings = selected === "average" ? averageStandings(results) : roundStandings(runs, Number(selected));
+  const rows = standings.filter((row) => row.name.toLowerCase().includes(contestantQuery.toLowerCase().trim()));
 
   return (
     <div className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
@@ -79,7 +81,7 @@ export function PublicRopingResults({ results, runs, shortRoundEnabled = false }
               ))}
             </tbody>
           </table>
-        ) : <p className="px-5 py-8 text-center text-sm text-[#66716b]">No results recorded for this round yet.</p>}
+        ) : <p className="px-5 py-8 text-center text-sm text-[#66716b]">{contestantQuery ? "No matching contestants in these results." : "No results recorded for this round yet."}</p>}
       </div>
     </div>
   );

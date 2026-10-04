@@ -49,10 +49,12 @@ export function FourDStandings({
   rows,
   resultStatus,
   title = "Live 4D standings",
+  contestantQuery = "",
 }: {
   rows: FourDResultRow[];
   resultStatus: string;
   title?: string;
+  contestantQuery?: string;
 }) {
   const activeDivisions = rows[0]?.activeDivisions ?? 0;
 
@@ -65,7 +67,7 @@ export function FourDStandings({
             D windows recalculate from the current fastest completed final time.
           </p>
         </div>
-        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold capitalize text-amber-800">
+        <span className={`rounded px-2.5 py-1 text-xs font-bold capitalize ${resultStatus === "official" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
           {resultStatus}
         </span>
       </header>
@@ -74,7 +76,7 @@ export function FourDStandings({
           {Array.from({ length: activeDivisions }, (_, index) => index + 1).map(
             (dNumber) => {
               const divisionRows = rows.filter(
-                (row) => row.dNumber === dNumber,
+                (row) => row.dNumber === dNumber && row.contestantName.toLowerCase().includes(contestantQuery.toLowerCase().trim()),
               );
               const settings = rows.find((row) => row.dNumber === dNumber);
               const fallback = rows[0];
@@ -105,8 +107,8 @@ export function FourDStandings({
                           <span className="font-mono text-xs text-[#758078]">
                             {row.placeNumber}
                           </span>
-                          <span className="min-w-0 truncate font-semibold">
-                            {row.contestantName}
+                          <span className="min-w-0 break-words font-semibold">
+                            {row.contestantName} <span className="font-normal text-[#758078]">#{row.entryNumber}</span>
                           </span>
                           <span className="font-mono font-bold">
                             {row.finalTimeSeconds.toFixed(2)}
@@ -116,7 +118,7 @@ export function FourDStandings({
                     </div>
                   ) : (
                     <p className="py-3 text-sm text-[#8a938e]">
-                      No completed times in this D.
+                      {contestantQuery ? "No matching contestants in this D." : "No completed times in this D."}
                     </p>
                   )}
                   {settings ? (
