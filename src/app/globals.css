@@ -36,7 +36,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 button,
@@ -83,6 +84,35 @@ select.w-full {
   width: fit-content;
   min-width: min(100%, 10rem);
   max-width: min(100%, 22rem);
+}
+/* Lucide ChevronDown, with room between the label, icon, and trailing edge. */
+select:not([multiple]):not([size]),
+select[size="1"]:not([multiple]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2366716b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+  text-overflow: ellipsis;
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+input:not([type="hidden"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]),
+  select[size="1"]:not([multiple]) {
+    appearance: auto;
+    background-image: none;
+    padding-right: 0.75rem;
+  }
 }
 ::selection {
   background: #f1c1b3;
