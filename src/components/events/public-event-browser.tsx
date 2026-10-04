@@ -16,13 +16,13 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug }: {
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   const filtered = events.filter((event) => (
-    mode === "past" ? event.status === "completed" : event.status !== "completed" && event.status !== "cancelled"
+    mode === "past" ? event.status === "completed" : event.status === "in_progress"
   ) && `${event.title} ${event.venue} ${event.address} ${publicEventDate(event.startsAt)}`.toLowerCase().includes(search.toLowerCase().trim()));
 
   return (
     <aside aria-label="Browse event results" className="min-w-0 lg:sticky lg:top-6">
       <div className="grid grid-cols-2 border-b border-[#d7ddda]">
-        {[{ value: "live", label: "Live & upcoming" }, { value: "past", label: "Past results" }].map((tab) => (
+        {[{ value: "live", label: "Live results" }, { value: "past", label: "Past results" }].map((tab) => (
           <button key={tab.value} type="button" aria-pressed={mode === tab.value} onClick={() => { setMode(tab.value); setShowAll(false); setExpanded(true); }}
             className={`min-h-11 border-b-2 px-2 text-xs font-semibold ${mode === tab.value ? "border-[var(--brand-primary)] text-[var(--brand-primary)]" : "border-transparent text-[#66716b]"}`}>{tab.label}</button>
         ))}
@@ -50,7 +50,7 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug }: {
           </li>
         ))}
       </ul>
-      {!filtered.length ? <p className="py-5 text-sm text-[#758078]">{search ? "No matching events." : mode === "past" ? "No completed events have been published yet." : "No live or upcoming events."}</p> : null}
+      {!filtered.length ? <p className="py-5 text-sm text-[#758078]">{search ? "No matching events." : mode === "past" ? "No completed events have been published yet." : "No events are live right now."}</p> : null}
       {filtered.length > 5 ? <button type="button" onClick={() => setShowAll(!showAll)} className="mt-2 flex min-h-10 items-center gap-2 text-xs font-semibold"><ChevronDown size={14} className={showAll ? "rotate-180" : ""} />{showAll ? "Show fewer" : `Show all ${filtered.length} events`}</button> : null}
       </div>
     </aside>

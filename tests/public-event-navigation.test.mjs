@@ -17,9 +17,9 @@ test("past results remain selectable while another event is live", () => {
 test("unknown or unpublished event links never fall back to another event", () => {
   assert.equal(selectPublicEvent(events, "private-event"), null);
 });
-test("default selection falls back to latest completed then upcoming", () => {
+test("default selection falls back to completed results, never upcoming events", () => {
   assert.equal(selectPublicEvent(events.filter((event) => event.status !== "in_progress")).slug, "last-weekend");
-  assert.equal(selectPublicEvent([events[0]]).slug, "next-weekend");
+  assert.equal(selectPublicEvent([events[0]]), null);
   assert.equal(selectPublicEvent([]), null);
 });
 test("archive links encode event names and keep results anchor", () => {

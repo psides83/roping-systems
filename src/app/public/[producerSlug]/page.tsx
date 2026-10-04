@@ -51,7 +51,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
           <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
             <PublicEventBrowser key={selectedEvent?.id} events={data.events} selectedSlug={selectedEvent?.slug} producerSlug={producerSlug} />
             <div className="min-w-0 space-y-5">
-              {selectedEvent ? (
+              {selectedEvent && ["in_progress", "completed"].includes(selectedEvent.status) ? (
                 <>
                   <header className="border-b border-[#d7ddda] pb-5">
                     <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
@@ -79,7 +79,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
                     runs={data.roundResults} moneyResults={data.moneyResults} shortRoundRopingIds={data.shortRoundRopingIds}
                     initialRopingId={typeof query.roping === "string" ? query.roping : undefined} />
                 </>
-              ) : <p className="py-10 text-sm text-[#66716b]">No events have been published yet.</p>}
+              ) : <p className="py-10 text-sm text-[#66716b]">No results are available yet. <a href="#schedule" className="font-semibold text-[var(--brand-accent-strong)]">View upcoming events</a></p>}
             </div>
           </div>
         </section>

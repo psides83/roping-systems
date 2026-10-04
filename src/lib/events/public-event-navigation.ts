@@ -5,7 +5,7 @@ export function selectPublicEvent<T extends { slug: string; status: string }>(
   if (requestedSlug) return events.find((event) => event.slug === requestedSlug) ?? null;
   return events.find((event) => event.status === "in_progress")
     ?? events.find((event) => event.status === "completed")
-    ?? events[0] ?? null;
+    ?? null;
 }
 
 export function publicEventHref(producerSlug: string, eventSlug: string) {
