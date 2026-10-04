@@ -6,6 +6,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
+import { handicapRulesSchema, parseHandicapRules } from "@/lib/handicap-rules";
 
 export interface SettingsFormState {
   success?: boolean;
@@ -49,21 +50,6 @@ const divisionSchema = z.object({
   shortRoundTiePolicy: z.enum(["advance_all", "fastest_last_round"]),
   shortRoundBrackets: z.string(),
 });
-
-const handicapRulesSchema = z.array(
-  z.object({
-    classificationId: z.uuid(),
-    adjustmentSeconds: z.coerce.number().min(0).max(60),
-  }),
-);
-
-function parseHandicapRules(value: string) {
-  try {
-    return handicapRulesSchema.safeParse(JSON.parse(value));
-  } catch {
-    return handicapRulesSchema.safeParse(null);
-  }
-}
 
 const shortRoundBracketsSchema = z
   .array(
@@ -195,6 +181,8 @@ export async function createDivision(
   );
   if (relationshipError) return { message: relationshipError };
   const handicapRules = parseHandicapRules(parsed.data.handicapRules);
+  if (parsed.data.competitionFormat === "handicap" && !handicapRules.success)
+    return { message: "The selected handicap classifications contain an invalid time adjustment. Adjustments must be between -60 and +60 seconds." };
   if (
     parsed.data.competitionFormat === "handicap" &&
     (!handicapRules.success || !handicapRules.data.length)
@@ -308,6 +296,8 @@ export async function updateDivision(
   );
   if (relationshipError) return { message: relationshipError };
   const handicapRules = parseHandicapRules(parsed.data.handicapRules);
+  if (parsed.data.competitionFormat === "handicap" && !handicapRules.success)
+    return { message: "The selected handicap classifications contain an invalid time adjustment. Adjustments must be between -60 and +60 seconds." };
   if (
     parsed.data.competitionFormat === "handicap" &&
     (!handicapRules.success || !handicapRules.data.length)
