@@ -24,6 +24,7 @@ import type { ShortRoundTiePolicy } from "@/components/events/short-round-settin
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
+import { EventRopingOrderControls } from "@/components/events/event-roping-order-controls";
 import {
   ClassOperationsDialog,
   classEventDayStatusLabels,
@@ -852,6 +853,22 @@ export default async function RopingDetailPage({
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#f1f3f2] font-mono text-xs font-bold text-[#66716b]">
                   {index + 1}
                 </span>
+                <EventRopingOrderControls
+                  eventId={event.id}
+                  ropingId={division.id}
+                  ropingName={division.name}
+                  canMoveUp={
+                    index > 0 &&
+                    event.divisions[index - 1].scheduledDateValue ===
+                      division.scheduledDateValue
+                  }
+                  canMoveDown={
+                    index < event.divisions.length - 1 &&
+                    event.divisions[index + 1].scheduledDateValue ===
+                      division.scheduledDateValue
+                  }
+                  enabled={setupEditable && isSupabaseConfigured()}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <h3 className="font-bold">{division.name}</h3>

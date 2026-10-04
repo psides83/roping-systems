@@ -271,6 +271,69 @@ export async function removeRopingFromEvent(
   };
 }
 
+const moveEventRopingSchema = z.object({
+  eventId: z.uuid(),
+  ropingId: z.uuid(),
+  direction: z.enum(["up", "down"]),
+});
+
+export async function moveEventRoping(
+  eventId: string,
+  ropingId: string,
+  direction: "up" | "down",
+): Promise<EventScheduleFormState> {
+  const parsed = moveEventRopingSchema.safeParse({
+    eventId,
+    ropingId,
+    direction,
+  });
+  if (!parsed.success) return { message: "Choose a valid roping to move." };
+
+  const supabase = await requireManager();
+  const { data, error } = await supabase
+    .from("event_ropings")
+    .select("id, scheduled_date, sort_order, created_at")
+    .eq("event_id", parsed.data.eventId)
+    .order("scheduled_date")
+    .order("sort_order")
+    .order("created_at");
+  if (error) return { message: error.message };
+
+  const orderedRopings = data ?? [];
+  const currentIndex = orderedRopings.findIndex(
+    (roping) => roping.id === parsed.data.ropingId,
+  );
+  if (currentIndex < 0) return { message: "That roping is unavailable." };
+
+  const adjacentIndex =
+    currentIndex + (parsed.data.direction === "up" ? -1 : 1);
+  const adjacentRoping = orderedRopings[adjacentIndex];
+  if (
+    !adjacentRoping ||
+    adjacentRoping.scheduled_date !== orderedRopings[currentIndex].scheduled_date
+  )
+    return { message: "Ropings can only be reordered within the same day." };
+
+  [orderedRopings[currentIndex], orderedRopings[adjacentIndex]] = [
+    orderedRopings[adjacentIndex],
+    orderedRopings[currentIndex],
+  ];
+  const { error: reorderError } = await supabase.rpc(
+    "reorder_event_ropings",
+    {
+      target_event_id: parsed.data.eventId,
+      ordered_event_roping_ids: orderedRopings.map((roping) => roping.id),
+    },
+  );
+  if (reorderError) return { message: reorderError.message };
+
+  revalidatePath(`/events/${parsed.data.eventId}`);
+  revalidatePath(`/events/${parsed.data.eventId}/entries`);
+  revalidatePath(`/events/${parsed.data.eventId}/live`);
+  revalidatePath("/public");
+  return { success: true, message: "Roping order updated." };
+}
+
 const entrySpacingSchema = z.object({
   divisionId: z.uuid(),
   minimumRunsBetweenEntries: z.coerce.number().int().min(0).max(100),
