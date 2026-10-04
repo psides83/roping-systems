@@ -20,7 +20,8 @@ import { events as demoRopings } from "@/data/demo";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getBrandStyle } from "@/lib/branding";
-import { formatFinalTimeAdjustment } from "@/lib/scoring";
+import { PublicRopingResults } from "@/components/events/public-roping-results";
+import type { PublicResult, PublicRoundResult } from "@/lib/events/public-standings";
 
 interface PublicEvent {
   id: string;
@@ -48,20 +49,6 @@ interface PublicEvent {
   }>;
 }
 
-interface PublicResult {
-  resultId: string;
-  divisionId: string;
-  divisionName: string;
-  resultStatus: string;
-  name: string;
-  entryNumber: number;
-  totalTime: number | null;
-  incentiveAdjustment: number;
-  status: string;
-  roundsCompleted: number;
-  mainRoundCount: number;
-  shortRoundQualifier: boolean;
-}
 
 interface PublicFourDResult extends FourDResultRow {
   divisionId: string;
@@ -69,15 +56,6 @@ interface PublicFourDResult extends FourDResultRow {
   resultStatus: string;
 }
 
-function getAggregatePlace(results: PublicResult[], result: PublicResult) {
-  const hasShortRound = results.some((row) => row.shortRoundQualifier);
-  const placed = results.filter(
-    (row) =>
-      row.status === "complete" && (!hasShortRound || row.shortRoundQualifier),
-  );
-  const index = placed.findIndex((row) => row.resultId === result.resultId);
-  return index < 0 ? null : index + 1;
-}
 
 async function getPublicData(producerSlug: string) {
   if (!isSupabaseConfigured()) {
@@ -189,6 +167,8 @@ async function getPublicData(producerSlug: string) {
         },
       ] as PublicResult[],
       fourDResults: [] as PublicFourDResult[],
+      roundResults: [] as PublicRoundResult[],
+      shortRoundRopingIds: [] as string[],
       membershipFormPublished: false,
     };
   }
@@ -237,16 +217,32 @@ async function getPublicData(producerSlug: string) {
     schedule.find((event) => event.status === "completed");
   let results: PublicResult[] = [];
   const fourDResults: PublicFourDResult[] = [];
+  let roundResults: PublicRoundResult[] = [];
+  let shortRoundRopingIds: string[] = [];
   if (liveEvent) {
     const { data: formatRows, error: formatError } = await supabase
       .from("public_competition_formats")
-      .select("event_roping_id, event_roping_name, competition_format")
+      .select("event_roping_id, event_roping_name, competition_format, short_round_enabled")
       .eq("producer_slug", producerSlug)
       .eq("event_id", liveEvent.id);
     if (formatError)
       throw new Error(
         `Unable to load competition formats: ${formatError.message}`,
       );
+    shortRoundRopingIds = (formatRows ?? []).filter((row) => row.short_round_enabled).map((row) => row.event_roping_id);
+    const { data: runRows, error: runError } = await supabase
+      .from("public_event_live_results")
+      .select("run_id, event_roping_id, first_name, last_name, entry_number, round_number, total_time_seconds, status, handicap_time_credit_seconds")
+      .eq("producer_slug", producerSlug)
+      .eq("event_slug", liveEvent.slug);
+    if (runError) throw new Error(`Unable to load round results: ${runError.message}`);
+    roundResults = (runRows ?? []).map((row) => ({
+      id: row.run_id, divisionId: row.event_roping_id,
+      name: `${row.first_name} ${row.last_name}`.trim(), entryNumber: row.entry_number,
+      round: row.round_number, status: row.status,
+      totalTime: row.total_time_seconds === null ? null : Number(row.total_time_seconds),
+      incentiveAdjustment: Number(row.handicap_time_credit_seconds),
+    }));
     const fourDDivisions = (formatRows ?? []).filter(
       (row) => row.competition_format === "four_d",
     );
@@ -273,7 +269,7 @@ async function getPublicData(producerSlug: string) {
     const { data: resultRows, error: resultError } = await supabase
       .from("public_aggregate_results")
       .select(
-        "result_id, event_roping_id, event_roping_name, result_status, first_name, last_name, entry_number, aggregate_time_seconds, handicap_time_credit_seconds, status, main_rounds_completed, main_round_count, is_short_round_qualifier",
+        "result_id, event_roping_id, event_roping_name, result_status, first_name, last_name, entry_number, aggregate_time_seconds, handicap_time_credit_seconds, status, main_rounds_completed, main_round_count, is_short_round_qualifier, short_round_status",
       )
       .eq("producer_slug", producerSlug)
       .eq("event_slug", liveEvent.slug)
@@ -297,6 +293,7 @@ async function getPublicData(producerSlug: string) {
       roundsCompleted: row.main_rounds_completed,
       mainRoundCount: row.main_round_count,
       shortRoundQualifier: row.is_short_round_qualifier,
+      shortRoundStatus: row.short_round_status,
     }));
   }
   const events: PublicEvent[] = schedule.map((event) => {
@@ -360,6 +357,8 @@ async function getPublicData(producerSlug: string) {
     events,
     results,
     fourDResults,
+    roundResults,
+    shortRoundRopingIds,
     membershipFormPublished: Boolean(membershipForm),
   };
 }
@@ -537,74 +536,12 @@ export default async function ProducerPublicPage({
               />
             ))}
             {Array.from(groupedResults.values()).map((results) => (
-              <div
+              <PublicRopingResults
                 key={results[0].divisionId}
-                className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
-              >
-                <div className="border-b border-[#e7ebe8] px-4 py-4 sm:px-5">
-                  <h3 className="font-bold">{results[0].divisionName}</h3>
-                  <p className="mt-1 text-xs font-semibold text-[#758078]">
-                    {results[0].resultStatus === "official"
-                      ? "Official"
-                      : "Unofficial"}
-                  </p>
-                </div>
-                <table className="w-full table-fixed text-left sm:table-auto">
-                  <thead className="bg-[#f0f2f1] text-[10px] font-bold uppercase text-[#66716b] sm:text-[11px]">
-                    <tr>
-                      <th className="w-14 px-3 py-3 sm:w-20 sm:px-5">Place</th>
-                      <th className="px-2 py-3 sm:px-5">Contestant</th>
-                      <th className="w-14 px-2 py-3 sm:w-auto sm:px-5">
-                        Entry
-                      </th>
-                      <th className="w-16 px-3 py-3 text-right sm:w-auto sm:px-5">
-                        Aggregate
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e7ebe8]">
-                    {results.map((result) => (
-                      <tr key={result.resultId}>
-                        <td className="px-3 py-4 sm:px-5">
-                          <span
-                            className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${getAggregatePlace(results, result) === 1 ? "bg-[#e0a458] text-[#38220c]" : "bg-[#eef1ef] text-[#526058]"}`}
-                          >
-                            {getAggregatePlace(results, result) ?? "-"}
-                          </span>
-                        </td>
-                        <td className="px-2 py-4 text-sm font-semibold leading-5 sm:px-5">
-                          {result.name}
-                          {result.incentiveAdjustment ? (
-                            <span className="mt-1 block text-[10px] font-bold text-emerald-700">
-                              {formatFinalTimeAdjustment(
-                                result.incentiveAdjustment,
-                              )}{" "}
-                              sec handicap
-                            </span>
-                          ) : null}
-                          <span className="mt-1 block text-[10px] font-semibold text-[#758078]">
-                            {result.roundsCompleted}/{result.mainRoundCount}{" "}
-                            main rounds
-                            {result.shortRoundQualifier
-                              ? " · Short round qualifier"
-                              : ""}
-                          </span>
-                        </td>
-                        <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5">
-                          #{result.entryNumber}
-                        </td>
-                        <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">
-                          {result.totalTime !== null
-                            ? result.totalTime.toFixed(2)
-                            : result.status === "no_time"
-                              ? "NT"
-                              : result.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                results={results}
+                runs={data.roundResults.filter((run) => run.divisionId === results[0].divisionId)}
+                shortRoundEnabled={data.shortRoundRopingIds.includes(results[0].divisionId)}
+              />
             ))}
           </div>
         </section>
