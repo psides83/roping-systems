@@ -101,9 +101,9 @@ async function getRopingData() {
     supabase
       .from("classifications")
       .select(
-        "id, name, classification_number:rank, division_id:discipline_id, standalone_enabled, handicap_time_credit_seconds:handicap_adjustment_seconds, divisions!inner(name, sort_order)",
+        "id, name, classification_number:rank, division_id, standalone_enabled, handicap_time_credit_seconds:handicap_adjustment_seconds, divisions!inner(name, sort_order)",
       )
-      .eq("organization_id", producer.id)
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
     supabase

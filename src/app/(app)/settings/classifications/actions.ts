@@ -256,8 +256,8 @@ export async function createClassification(
     return { message: "That division is not available in this producer." };
 
   const { error } = await context.supabase.from("classifications").insert({
-    organization_id: context.producer.id,
-    discipline_id: discipline.id,
+    producer_id: context.producer.id,
+    division_id: discipline.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
     rank:
@@ -392,8 +392,8 @@ export async function updateClassification(
       is_active: parsed.data.isActive === "on",
     })
     .eq("id", parsed.data.classificationId)
-    .eq("discipline_id", discipline.id)
-    .eq("organization_id", context.producer.id);
+    .eq("division_id", discipline.id)
+    .eq("producer_id", context.producer.id);
   if (error)
     return {
       message:
@@ -453,7 +453,7 @@ export async function deleteClassification(
     .from("classifications")
     .delete()
     .eq("id", parsed.data)
-    .eq("organization_id", context.producer.id)
+    .eq("producer_id", context.producer.id)
     .select("id")
     .maybeSingle();
   if (error) return { message: deletionMessage(error, "classification") };

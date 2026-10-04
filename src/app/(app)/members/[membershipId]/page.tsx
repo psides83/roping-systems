@@ -179,7 +179,7 @@ async function getMemberDetail(
     supabase
       .from("membership_forms")
       .select("standard_fields, custom_sections")
-      .eq("organization_id", producer.id)
+      .eq("producer_id", producer.id)
       .maybeSingle(),
   ]);
   const loadError =

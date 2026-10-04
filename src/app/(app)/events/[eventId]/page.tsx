@@ -298,8 +298,8 @@ async function getEvent(
       .order("sort_order"),
     supabase
       .from("classifications")
-      .select("id, name, division_id:discipline_id, standalone_enabled")
-      .eq("organization_id", producer.id)
+      .select("id, name, division_id, standalone_enabled")
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
     supabase
@@ -510,8 +510,8 @@ async function getEvent(
         supabase
           .from("payout_disbursements")
           .select("amount_cents")
-          .eq("roping_id", eventId)
-          .eq("organization_id", producer.id),
+          .eq("event_id", eventId)
+          .eq("producer_id", producer.id),
       ]);
     if (payoutPlanError || payoutPayments.error)
       throw new Error("Unable to load the event payout status.");

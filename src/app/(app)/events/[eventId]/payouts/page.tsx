@@ -104,8 +104,8 @@ export default async function EventPayoutsPage({
     supabase
       .from("payout_disbursements")
       .select("payout_plan_id, award_key")
-      .eq("roping_id", eventId)
-      .eq("organization_id", producer.id),
+      .eq("event_id", eventId)
+      .eq("producer_id", producer.id),
   ]);
   if (!roping) notFound();
   if (error) throw new Error(`Unable to load payout plans: ${error.message}`);

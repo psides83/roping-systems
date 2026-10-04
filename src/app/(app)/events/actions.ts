@@ -231,7 +231,7 @@ export async function createRoping(
       ? await supabase
           .from("classifications")
           .select("id")
-          .eq("organization_id", producer.id)
+          .eq("producer_id", producer.id)
           .eq("is_active", true)
           .eq("standalone_enabled", true)
           .in("id", standaloneClassificationIds)
@@ -260,7 +260,7 @@ export async function createRoping(
       ? await supabase
           .from("classifications")
           .select("id, handicap_time_credit_seconds:handicap_adjustment_seconds")
-          .eq("organization_id", producer.id)
+          .eq("producer_id", producer.id)
           .eq("is_active", true)
           .in("id", handicapClassificationIds)
       : { data: [], error: null };

@@ -65,14 +65,14 @@ async function getMembershipFormData() {
       .select(
         "title, introduction, publication_state, standard_fields, custom_sections, release_text, require_signature",
       )
-      .eq("organization_id", producer.id)
+      .eq("producer_id", producer.id)
       .maybeSingle(),
     supabase
       .from("membership_applications")
       .select(
         "id, applicant_name, applicant_email, responses, form_snapshot, release_accepted, signature_name, status, review_note, submitted_at",
       )
-      .eq("organization_id", producer.id)
+      .eq("producer_id", producer.id)
       .order("submitted_at", { ascending: false }),
   ]);
 

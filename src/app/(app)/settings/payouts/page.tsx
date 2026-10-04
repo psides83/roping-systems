@@ -68,7 +68,7 @@ async function getPayoutData() {
         .select(
           "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, short_round_enabled, competition_format, four_d_settings, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
         )
-        .eq("organization_id", producer.id)
+        .eq("producer_id", producer.id)
         .eq("is_active", true)
         .order("created_at"),
       supabase

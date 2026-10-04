@@ -18,10 +18,10 @@ export default async function PaymentReceiptPage({
   const { data: payment } = await supabase
     .from("event_payments")
     .select(
-      "id, event_id:roping_id, roper_id:person_id, amount_cents, payment_method, note, received_by_label, received_at, voided_at, void_reason, voided_by_label",
+      "id, event_id, roper_id, amount_cents, payment_method, note, received_by_label, received_at, voided_at, void_reason, voided_by_label",
     )
     .eq("id", paymentId)
-    .eq("roping_id", eventId)
+    .eq("event_id", eventId)
     .eq("producer_id", producer.id)
     .single();
   if (!payment) notFound();

@@ -99,7 +99,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("payout_schedules")
       .select("id, name, competition_format")
-      .eq("organization_id", producer.id)
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("name"),
     supabase
@@ -110,8 +110,8 @@ async function getDivisionData(): Promise<{
       .order("sort_order"),
     supabase
       .from("classifications")
-      .select("id, name, division_id:discipline_id, handicap_time_credit_seconds:handicap_adjustment_seconds")
-      .eq("organization_id", producer.id)
+      .select("id, name, division_id, handicap_time_credit_seconds:handicap_adjustment_seconds")
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
   ]);

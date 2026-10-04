@@ -226,9 +226,9 @@ export default async function EventEntriesPage({
     supabase
       .from("entry_charges")
       .select(
-        "id, roper_id:person_id, entry_id, event_fee_id:roping_fee_id, title, amount_cents, waived_at, waiver_reason",
+        "id, roper_id, entry_id, event_fee_id, title, amount_cents, waived_at, waiver_reason",
       )
-      .eq("roping_id", eventId)
+      .eq("event_id", eventId)
       .order("created_at"),
     supabase
       .from("online_entry_submissions")
@@ -246,7 +246,7 @@ export default async function EventEntriesPage({
     supabase
       .from("entry_withdrawals")
       .select("entry_id, reason, financial_action, withdrawn_at")
-      .eq("roping_id", eventId)
+      .eq("event_id", eventId)
       .is("reinstated_at", null),
     supabase
       .from("event_check_ins")
@@ -255,9 +255,9 @@ export default async function EventEntriesPage({
     supabase
       .from("event_payments")
       .select(
-        "id, roper_id:person_id, amount_cents, note, received_by_label, received_at, voided_at, void_reason, voided_by_label",
+        "id, roper_id, amount_cents, note, received_by_label, received_at, voided_at, void_reason, voided_by_label",
       )
-      .eq("roping_id", eventId)
+      .eq("event_id", eventId)
       .order("received_at", { ascending: false }),
   ]);
   if (!roping) notFound();

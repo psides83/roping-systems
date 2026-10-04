@@ -218,7 +218,7 @@ export async function assignDivisionPayout(formData: FormData) {
       .from("payout_schedules")
       .select("id, competition_format")
       .eq("id", parsed.data.scheduleId)
-      .eq("organization_id", producer.id)
+      .eq("producer_id", producer.id)
       .single();
     if (!schedule) return;
     const requiredFormat =
@@ -246,7 +246,7 @@ export async function deletePayoutSchedule(
     .from("payout_schedules")
     .delete()
     .eq("id", parsed.data)
-    .eq("organization_id", producer.id)
+    .eq("producer_id", producer.id)
     .select("id")
     .maybeSingle();
   if (error) return { message: error.message };

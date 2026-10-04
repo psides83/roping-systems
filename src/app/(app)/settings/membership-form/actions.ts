@@ -96,7 +96,7 @@ export async function saveMembershipForm(
   if (!context) return { message: "Manager access is required." };
   const { error } = await context.supabase.from("membership_forms").upsert(
     {
-      organization_id: context.producer.id,
+      producer_id: context.producer.id,
       title: parsed.data.title,
       introduction: parsed.data.introduction || null,
       publication_state: parsed.data.publicationState,
@@ -108,7 +108,7 @@ export async function saveMembershipForm(
       release_text: parsed.data.releaseText || null,
       require_signature: parsed.data.requireSignature === "on",
     },
-    { onConflict: "organization_id" },
+    { onConflict: "producer_id" },
   );
   if (error) return { message: error.message };
 
@@ -139,7 +139,7 @@ export async function reviewMembershipApplication(formData: FormData) {
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", parsed.data.applicationId)
-    .eq("organization_id", context.producer.id);
+    .eq("producer_id", context.producer.id);
   if (error) throw new Error(error.message);
   revalidatePath("/settings/membership-form");
 }

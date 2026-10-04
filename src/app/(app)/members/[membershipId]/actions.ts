@@ -108,7 +108,7 @@ async function parseMemberProfileFields(
   const { data: form, error } = await context.supabase
     .from("membership_forms")
     .select("standard_fields, custom_sections")
-    .eq("organization_id", context.producer.id)
+    .eq("producer_id", context.producer.id)
     .maybeSingle();
   if (error) return { message: error.message };
   if (!form) return { values: {} as Record<string, string | boolean> };

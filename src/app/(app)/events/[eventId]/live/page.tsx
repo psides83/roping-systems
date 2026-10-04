@@ -227,7 +227,7 @@ export default async function LiveRopingPage({
       const { data: cattleData, error: cattleError } = await supabase
         .from("event_cattle")
         .select("tag_number")
-        .eq("roping_id", eventId)
+        .eq("event_id", eventId)
         .eq("is_active", true)
         .order("tag_number");
       if (cattleError)

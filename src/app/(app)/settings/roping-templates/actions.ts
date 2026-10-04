@@ -148,8 +148,8 @@ async function validateHandicapRuleRelationships(
   const { data, error } = await context.supabase
     .from("classifications")
     .select("id, handicap_time_credit_seconds:handicap_adjustment_seconds")
-    .eq("organization_id", context.producer.id)
-    .eq("discipline_id", disciplineId)
+    .eq("producer_id", context.producer.id)
+    .eq("division_id", disciplineId)
     .eq("is_active", true)
     .in("id", classificationIds);
   if (
@@ -275,7 +275,7 @@ async function validateTemplateRelationships(
       .from("payout_schedules")
       .select("id, competition_format")
       .eq("id", payoutScheduleId)
-      .eq("organization_id", context.producer.id)
+      .eq("producer_id", context.producer.id)
       .single();
     if (!schedule)
       return "That payout schedule is not available in this producer.";
@@ -405,7 +405,7 @@ export async function createFee(
       .from("payout_schedules")
       .select("id")
       .eq("id", parsed.data.payoutScheduleId)
-      .eq("organization_id", context.producer.id)
+      .eq("producer_id", context.producer.id)
       .single();
     if (!schedule)
       return {
@@ -458,7 +458,7 @@ export async function updateFee(
       .from("payout_schedules")
       .select("id")
       .eq("id", parsed.data.payoutScheduleId)
-      .eq("organization_id", context.producer.id)
+      .eq("producer_id", context.producer.id)
       .single();
     if (!schedule)
       return {
