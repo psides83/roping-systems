@@ -103,6 +103,14 @@ begin
     failed:=true;
   end;
   if not failed then raise exception 'Paid entry fees were overwritten'; end if;
+  update public.roping_template_fees set amount_cents=amount_cents-100,
+    contributes_to_payout=not contributes_to_payout where id=required_fee_source;
+  review:=public.get_event_template_reviews(event_uuid)->0;
+  perform public.confirm_event_roping_template_update(producer_uuid,event_uuid,roping_uuid,review->>'token',false,true);
+  if (select payment_status from public.roping_entries where id=entry_uuid)<>'paid_cash' then
+    raise exception 'A purse-only correction changed the paid entry status'; end if;
+  if public.get_event_template_reviews(event_uuid)<>'[]'::jsonb then
+    raise exception 'Purse-only corrections should be allowed for paid entries'; end if;
   update public.roping_templates set main_round_count=main_round_count+1 where id=template_uuid;
   review:=public.get_event_template_reviews(event_uuid)->0;
   if review->>'blockedReason' not like 'Format or eligibility%' then raise exception 'Structural changes with entries were not blocked'; end if;
