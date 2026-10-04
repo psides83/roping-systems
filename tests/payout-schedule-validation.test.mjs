@@ -14,6 +14,11 @@ test("complete standard schedule covers all entry counts", () => {
 test("missing average coverage is incomplete", () => {
   assert.match(payoutScheduleIssues({ ...schedule, bracketsByStage: { ...schedule.bracketsByStage, aggregate: [{ ...bracket, maximumEntries: 30 }] } }).join(" "), /Average.*no maximum/);
 });
+test("unfinished allocation and zero paid places stay incomplete", () => {
+  assert.match(payoutScheduleIssues({ ...schedule, goRoundsPercent: 20 }).join(" "), /allocations must total/);
+  assert.match(payoutScheduleIssues({ ...schedule, bracketsByStage: { ...schedule.bracketsByStage, aggregate: [{ ...bracket, percentages: [100, 0] }] } }).join(" "), /every paid place/);
+  assert.match(payoutScheduleIssues({ ...schedule, shortRoundEnabled: true }).join(" "), /allocate a purse/);
+});
 test("gaps, overlaps and percentage totals are rejected", () => {
   for (const minimumEntries of [10, 12]) {
     assert.match(payoutScheduleIssues({ ...schedule, bracketsByStage: { ...schedule.bracketsByStage, go_round: [{ ...bracket, maximumEntries: 10 }, { ...bracket, minimumEntries }] } }).join(" "), /gaps or overlaps/);

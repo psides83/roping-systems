@@ -33,6 +33,8 @@ export function payoutScheduleIssues(schedule: Schedule): string[] {
   };
   if (Math.round(Object.values(allocations).reduce((sum, n) => sum + n, 0) * 100) !== 10000)
     issues.push("Purse allocations must total 100%.");
+  if (schedule.shortRoundEnabled && schedule.shortRoundPercent <= 0)
+    issues.push("Short round: allocate a purse before using this schedule.");
   for (const stage of Object.keys(allocations) as Stage[]) {
     if (allocations[stage] <= 0) continue;
     const label = stage === "aggregate" ? "Average" : stage === "go_round" ? "Go-rounds" : "Short round";

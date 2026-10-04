@@ -274,6 +274,7 @@ export function PayoutScheduleDialog({
                 {competitionFormat === "four_d" ? (
                   <FourDSettingsFields
                     initialSettings={schedule?.fourDSettings}
+                    allowIncomplete
                   />
                 ) : (
                   <input type="hidden" name="fourDSettings" value="" />
@@ -494,7 +495,7 @@ export function PayoutScheduleDialog({
                             <input
                               aria-label={`Place ${placeIndex + 1} percentage`}
                               type="number"
-                              min="0.01"
+                              min="0"
                               max="100"
                               step="0.01"
                               value={percentage}

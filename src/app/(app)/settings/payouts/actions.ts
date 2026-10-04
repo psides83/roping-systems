@@ -15,13 +15,13 @@ export interface PayoutFormState {
 
 const placeSchema = z.object({
   place: z.number().int().positive(),
-  percentageBasisPoints: z.number().int().positive().max(10000),
+  percentageBasisPoints: z.number().int().min(0).max(10000),
 });
 const bracketSchema = z.object({
   stageType: z.enum(["go_round", "aggregate", "short_round"]),
   minimumEntries: z.number().int().positive(),
   maximumEntries: z.number().int().positive().nullable(),
-  places: z.array(placeSchema).min(1),
+  places: z.array(placeSchema),
 });
 const formSchema = z.object({
   scheduleId: z.union([z.literal(""), z.uuid()]),
@@ -62,7 +62,7 @@ const fourDBracketSchema = z.object({
 
 const fourDSettingsSchema = z.object({
   splitSeconds: z.number().positive().max(60),
-  brackets: z.array(fourDBracketSchema).min(1),
+  brackets: z.array(fourDBracketSchema),
 });
 
 export async function savePayoutSchedule(
@@ -86,7 +86,6 @@ export async function savePayoutSchedule(
   try {
     brackets = z
       .array(bracketSchema)
-      .min(1)
       .parse(JSON.parse(parsed.data.bracketsJson));
   } catch {
     return { message: "Check the entry ranges and payout percentages." };
@@ -97,25 +96,6 @@ export async function savePayoutSchedule(
       bracket.maximumEntries < bracket.minimumEntries
     )
       return { message: "A maximum entry count cannot be below its minimum." };
-    if (
-      bracket.places.reduce(
-        (sum, place) => sum + place.percentageBasisPoints,
-        0,
-      ) !== 10000
-    )
-      return {
-        message:
-          "Each bracket must distribute exactly 100% of its payout pool.",
-      };
-  }
-  const requiredStages = shortRoundEnabled
-    ? (["go_round", "aggregate", "short_round"] as const)
-    : (["go_round", "aggregate"] as const);
-  for (const stageType of requiredStages) {
-    if (!brackets.some((bracket) => bracket.stageType === stageType))
-      return {
-        message: `Add an entry bracket for ${stageType.replaceAll("_", " ")}.`,
-      };
   }
   if (
     !shortRoundEnabled &&
@@ -123,19 +103,6 @@ export async function savePayoutSchedule(
   )
     return {
       message: "Enable short-round payouts before adding its schedule.",
-    };
-  if (shortRoundEnabled && parsed.data.shortRoundPercent <= 0)
-    return { message: "Enter a short-round purse allocation greater than 0%." };
-  if (
-    parsed.data.goRoundsPercent +
-      parsed.data.aggregatePercent +
-      (shortRoundEnabled ? parsed.data.shortRoundPercent : 0) !==
-    100
-  )
-    return {
-      message: shortRoundEnabled
-        ? "Go-round, aggregate, and short-round allocations must total 100%."
-        : "Go-round and aggregate allocations must total 100%.",
     };
 
   const issues = payoutScheduleIssues({
@@ -148,7 +115,6 @@ export async function savePayoutSchedule(
       ]),
     ) as unknown as Parameters<typeof payoutScheduleIssues>[0]["bracketsByStage"],
   });
-  if (issues.length) return { message: issues.join(" ") };
 
   const producer = await getActiveProducer();
   if (!producer || producer.role === "viewer")
@@ -171,7 +137,7 @@ export async function savePayoutSchedule(
         message: `Reassign the payout schedule for ${incompatibleTemplate.name} before changing this schedule's format.`,
       };
   }
-  const { error } = await supabase.rpc("save_payout_schedule_v2", {
+  const { error } = await supabase.rpc("save_payout_schedule_draft", {
     target_organization_id: producer.id,
     target_schedule_id: parsed.data.scheduleId || null,
     schedule_name: parsed.data.name,
@@ -201,7 +167,7 @@ export async function savePayoutSchedule(
     };
   revalidatePath("/settings/payouts");
   revalidatePath("/settings/roping-templates");
-  return { success: true, message: "Payout schedule saved." };
+  return { success: true, message: issues.length ? "Draft saved. Complete the schedule before using it in a roping." : "Payout schedule saved." };
 }
 
 const assignmentSchema = z.object({

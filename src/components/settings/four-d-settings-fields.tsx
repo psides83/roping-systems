@@ -28,8 +28,10 @@ function replaceAt<T>(values: readonly T[], index: number, value: T) {
 
 export function FourDSettingsFields({
   initialSettings,
+  allowIncomplete = false,
 }: {
   initialSettings?: FourDSettings | null;
+  allowIncomplete?: boolean;
 }) {
   const [settings, setSettings] = useState<FourDSettings>(
     initialSettings ?? defaultSettings,
@@ -219,7 +221,7 @@ export function FourDSettingsFields({
                 <input
                   className={`${inputClass} disabled:bg-[#eef1ef]`}
                   type="number"
-                  min="1"
+                  min={allowIncomplete ? "0" : "1"}
                   max="100"
                   disabled={!active}
                   value={bracket.placesByDivision[divisionIndex]}
