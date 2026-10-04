@@ -718,8 +718,10 @@ export default async function RopingDetailPage({
           <>
             <Link
               href={`/public/${producerSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="grid h-10 w-10 place-items-center rounded-md border border-[#d7ddda] bg-white"
-              aria-label="View public page"
+              aria-label="View public page (opens in a new tab)"
             >
               <ExternalLink size={17} />
             </Link>
