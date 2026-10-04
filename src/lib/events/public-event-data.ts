@@ -92,6 +92,8 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
         logoUrl: null as string | null,
         brandPrimary: "#17251F",
         brandAccent: "#BB3E24",
+        seasonStartMonth: 1,
+        timezone: "America/Chicago",
       },
       events,
       results: [
@@ -163,7 +165,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   const supabase = await createClient();
   const { data: producer } = await supabase
     .from("public_producer_pages")
-    .select("id, public_name, slug, logo_path, brand_primary, brand_accent")
+    .select("id, public_name, slug, logo_path, brand_primary, brand_accent, season_start_month, timezone")
     .eq("slug", producerSlug)
     .single();
   if (!producer) return null;
@@ -359,6 +361,8 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       logoUrl,
       brandPrimary: producer.brand_primary,
       brandAccent: producer.brand_accent,
+      seasonStartMonth: producer.season_start_month,
+      timezone: producer.timezone,
     },
     events,
     results,

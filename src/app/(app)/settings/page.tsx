@@ -8,25 +8,25 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 interface SettingsData {
-  producer: { name: string; publicName: string; email: string; phone: string; timezone: string; allowGuestEntries: boolean; logoUrl: string | null; brandPrimary: string; brandAccent: string };
+  producer: { name: string; publicName: string; email: string; phone: string; timezone: string; seasonStartMonth: number; allowGuestEntries: boolean; logoUrl: string | null; brandPrimary: string; brandAccent: string };
   role: string;
   team: Array<{ id: string; email: string; role: string; joinedAt: string }>;
   audit: Array<{ id: string; entity: string; action: string; createdAt: string }>;
 }
 
 async function getSettingsData(): Promise<SettingsData> {
-  if (!isSupabaseConfigured()) return { producer: { name: "Red River Calf Ropers", publicName: "", email: "office@example.com", phone: "(940) 555-0100", timezone: "America/Chicago", allowGuestEntries: true, logoUrl: null, brandPrimary: "#17251F", brandAccent: "#BB3E24" }, role: "owner", team: [{ id: "preview-owner", email: "payton@example.com", role: "owner", joinedAt: "Preview" }, { id: "preview-operator", email: "secretary@example.com", role: "operator", joinedAt: "Preview" }], audit: [] };
+  if (!isSupabaseConfigured()) return { producer: { name: "Red River Calf Ropers", publicName: "", email: "office@example.com", phone: "(940) 555-0100", timezone: "America/Chicago", seasonStartMonth: 1, allowGuestEntries: true, logoUrl: null, brandPrimary: "#17251F", brandAccent: "#BB3E24" }, role: "owner", team: [{ id: "preview-owner", email: "payton@example.com", role: "owner", joinedAt: "Preview" }, { id: "preview-operator", email: "secretary@example.com", role: "operator", joinedAt: "Preview" }], audit: [] };
   const active = await getActiveProducer();
   if (!active) throw new Error("No active producer was found.");
   const supabase = await createClient();
   const [{ data: producer, error }, { data: team }, { data: audit }] = await Promise.all([
-    supabase.from("producers").select("name, public_name, email, phone, timezone, allow_non_member_entries, logo_path, brand_primary, brand_accent").eq("id", active.id).single(),
+    supabase.from("producers").select("name, public_name, email, phone, timezone, season_start_month, allow_non_member_entries, logo_path, brand_primary, brand_accent").eq("id", active.id).single(),
     supabase.from("producer_staff_directory").select("user_id, email, role, created_at").eq("producer_id", active.id).order("created_at"),
     supabase.from("producer_audit_log").select("id, entity_type, action, created_at").eq("producer_id", active.id).order("created_at", { ascending: false }).limit(8),
   ]);
   if (error || !producer) throw new Error(`Unable to load settings: ${error?.message ?? "Not found"}`);
   const logoUrl = producer.logo_path ? supabase.storage.from("organization-logos").getPublicUrl(producer.logo_path).data.publicUrl : null;
-  return { producer: { name: producer.name, publicName: producer.public_name ?? "", email: producer.email ?? "", phone: producer.phone ?? "", timezone: producer.timezone, allowGuestEntries: producer.allow_non_member_entries, logoUrl, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent }, role: active.role, team: (team ?? []).map((member) => ({ id: member.user_id, email: member.email ?? "No email", role: member.role, joinedAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(member.created_at)) })), audit: (audit ?? []).map((item) => ({ id: String(item.id), entity: item.entity_type, action: item.action, createdAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at)) })) };
+  return { producer: { name: producer.name, publicName: producer.public_name ?? "", email: producer.email ?? "", phone: producer.phone ?? "", timezone: producer.timezone, seasonStartMonth: producer.season_start_month, allowGuestEntries: producer.allow_non_member_entries, logoUrl, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent }, role: active.role, team: (team ?? []).map((member) => ({ id: member.user_id, email: member.email ?? "No email", role: member.role, joinedAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(member.created_at)) })), audit: (audit ?? []).map((item) => ({ id: String(item.id), entity: item.entity_type, action: item.action, createdAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at)) })) };
 }
 
 export default async function SettingsPage() {

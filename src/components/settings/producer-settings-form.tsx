@@ -7,6 +7,7 @@ import {
   type ProducerSettingsState,
 } from "@/app/(app)/settings/actions";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { seasonMonths } from "@/lib/seasons";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)] disabled:bg-[#f3f4f3]";
@@ -21,6 +22,7 @@ export function ProducerSettingsForm({
     email: string;
     phone: string;
     timezone: string;
+    seasonStartMonth: number;
     allowGuestEntries: boolean;
   };
   canEdit: boolean;
@@ -86,6 +88,14 @@ export function ProducerSettingsForm({
           </select>
         </label>
       </div>
+      <label className="block text-sm font-semibold">
+        Season starts in
+        <select name="seasonStartMonth" defaultValue={producer.seasonStartMonth} disabled={!canEdit} className={inputClass}>
+          {seasonMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+        </select>
+        {state.errors?.seasonStartMonth ? <span className="mt-2 block text-xs text-rose-700">{state.errors.seasonStartMonth[0]}</span> : null}
+        <span className="mt-2 block text-xs font-normal text-[#758078]">Seasons run from the first day of this month through the end of the preceding month next year.</span>
+      </label>
       <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
         <input
           name="allowGuestEntries"
