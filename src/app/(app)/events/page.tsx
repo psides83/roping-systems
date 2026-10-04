@@ -225,7 +225,7 @@ export default async function RopingsPage() {
           />
         }
       />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex w-fit rounded-md border border-[#d7ddda] bg-white p-1">
           <button className="flex h-8 items-center gap-2 rounded bg-[#eef1ef] px-3 text-xs font-semibold">
             <List size={15} /> List

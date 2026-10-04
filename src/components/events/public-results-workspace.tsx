@@ -41,6 +41,7 @@ export function PublicResultsWorkspace({ ropings, results, fourDResults, runs, m
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
       <label className="block w-fit max-w-full text-xs font-semibold">
         Roping
         <select value={selectedId ?? ""} onChange={(event) => {
@@ -55,10 +56,14 @@ export function PublicResultsWorkspace({ ropings, results, fourDResults, runs, m
           {options.map((option) => <option key={option.id} value={option.id}>{option.competitionFormat === "four_d" ? "4D · " : ""}{option.name}{option.scheduledDate ? ` · ${publicEventDate(option.scheduledDate)}` : ""}{option.arenaName ? ` · ${option.arenaName}` : ""}{option.eventDayStatus === "completed" ? " · Completed" : option.eventDayStatus === "in_progress" ? " · Live" : ""}</option>)}
         </select>
       </label>
-      {standardRows.length || fourDRows.length ? <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-3 text-[#758078]" />
-        <input type="search" aria-label="Find a contestant" placeholder="Find a contestant" value={contestantQuery} onChange={(event) => setContestantQuery(event.target.value)} className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white pl-9 pr-3 text-sm" />
-      </div> : null}
+      {standardRows.length || fourDRows.length ? <label className="block max-w-full text-xs font-semibold">
+        Contestant
+        <div className="relative mt-1">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#758078]" />
+          <input type="search" aria-label="Find a contestant" placeholder="Find a contestant" value={contestantQuery} onChange={(event) => setContestantQuery(event.target.value)} className="h-9 w-60 max-w-full rounded-md border border-[#ccd4d0] bg-white pl-9 pr-3 text-sm" />
+        </div>
+      </label> : null}
+      </div>
       <div className="inline-flex rounded-md border border-[#ccd4d0] p-1" role="group" aria-label="Results view">
         {[{ value: "money", label: "Money winners" }, { value: "full", label: "Full results" }].map((option) => <button key={option.value} type="button" aria-pressed={view === option.value} onClick={() => setView(option.value)} className={`min-h-9 rounded px-3 text-sm font-semibold ${view === option.value ? "brand-primary-fill text-white" : "text-[#66716b]"}`}>{option.label}</button>)}
       </div>

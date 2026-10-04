@@ -180,8 +180,8 @@ export default async function MembersPage() {
         </div>
       </div>
       <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
-        <div className="flex flex-col gap-3 border-b border-[#e7ebe8] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex h-10 max-w-md flex-1 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] p-4">
+          <label className="flex h-10 w-80 max-w-full items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
             <Search size={17} />
             <input
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#99a19d]"

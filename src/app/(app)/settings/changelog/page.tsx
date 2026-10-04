@@ -168,8 +168,8 @@ export default async function ChangelogPage({
         title="Producer changelog"
         description="Review data entry and configuration changes, including who made each change and exactly what was modified."
       />
-      <form className="flex flex-col gap-3 rounded-md border border-[#dfe4e1] bg-white p-4 sm:flex-row sm:items-end">
-        <label className="block flex-1 text-xs font-bold uppercase text-[#66716b]">
+      <form className="flex flex-wrap items-end gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
+        <label className="block max-w-full text-xs font-bold uppercase text-[#66716b]">
           Record type
           <select
             name="entity"
@@ -184,7 +184,7 @@ export default async function ChangelogPage({
             ))}
           </select>
         </label>
-        <label className="block flex-1 text-xs font-bold uppercase text-[#66716b]">
+        <label className="block max-w-full text-xs font-bold uppercase text-[#66716b]">
           Action
           <select
             name="action"

@@ -212,7 +212,7 @@ export function DatabaseLiveDesk({
       ) : null}
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="order-2 overflow-hidden rounded-md border border-[#dfe4e1] bg-white xl:order-1">
-        <div className="flex flex-col gap-4 border-b border-[#e7ebe8] p-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#e7ebe8] p-4">
           <div>
             <h2 className="font-bold">{selectedDivision?.name}</h2>
             <p className="mt-1 text-xs text-[#758078]">

@@ -116,8 +116,8 @@ export function EntryLedger({
 
   return (
     <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
-      <div className="flex flex-col gap-3 border-b border-[#e7ebe8] p-4 sm:flex-row sm:items-center sm:justify-between">
-        <label className="flex h-10 max-w-md flex-1 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] p-4">
+        <label className="flex h-10 w-80 max-w-full items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
           <Search size={17} />
           <input
             value={search}
@@ -127,12 +127,12 @@ export function EntryLedger({
           />
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-xs font-semibold text-[#66716b]">
+          <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#66716b]">
             Payment
             <select
               value={paymentFilter}
               onChange={(event) => setPaymentFilter(event.target.value)}
-              className="ml-2 h-10 rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
+              className="h-10 max-w-full rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
             >
               <option value="all">All statuses</option>
               <option value="unpaid">Unpaid</option>
@@ -142,12 +142,12 @@ export function EntryLedger({
               <option value="mixed">Mixed</option>
             </select>
           </label>
-          <label className="text-xs font-semibold text-[#66716b]">
+          <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#66716b]">
             Arrival
             <select
               value={checkInFilter}
               onChange={(event) => setCheckInFilter(event.target.value)}
-              className="ml-2 h-10 rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
+              className="h-10 max-w-full rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
             >
               <option value="all">Everyone</option>
               <option value="checked_in">Checked in</option>
