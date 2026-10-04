@@ -132,7 +132,7 @@ export function LandingPage() {
           <div className="grid gap-6 border-l-0 border-[#d8ded9] lg:grid-cols-2 lg:border-l lg:pl-10">
             <p className="text-base leading-7 text-[#59645e]">
               Roping Systems follows the way producers actually work: an event
-              can contain many separate ropings, each with its own class,
+              can contain many separate events, each with its own class,
               rounds, fees, options, eligibility rules, and payout structure.
             </p>
             <p className="text-base leading-7 text-[#59645e]">

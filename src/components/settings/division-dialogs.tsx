@@ -17,9 +17,9 @@ import {
   updateDivision,
   updateFee,
   type SettingsFormState,
-} from "@/app/(app)/settings/divisions/actions";
+} from "@/app/(app)/settings/roping-templates/actions";
 import { DeleteRecordButton } from "@/components/settings/delete-record-button";
-import { ShortRoundFields } from "@/components/ropings/short-round-settings";
+import { ShortRoundFields } from "@/components/events/short-round-settings";
 import type {
   CompetitionFormat,
   DivisionTemplateSummary,
@@ -482,13 +482,13 @@ function EventTemplateDialog({
                   defaultChecked={template?.isActive ?? true}
                   className="h-4 w-4 accent-[var(--brand-accent)]"
                 />{" "}
-                Active for new ropings
+                Active for new events
               </label>
             </div>
             <FormMessage state={state} />
             {!configured ? (
               <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                Connect Supabase to save organization settings.
+                Connect Supabase to save producer settings.
               </p>
             ) : null}
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
@@ -811,7 +811,7 @@ function FeeDialog({
                   <DeleteRecordButton
                     recordType="fee"
                     recordName={fee.title}
-                    warning="This removes the fee or option from this template. Existing ropings keep the fee that was copied when they were created."
+                    warning="This removes the fee or option from this template. Existing events keep the fee that was copied when they were created."
                     disabled={!configured}
                     onDelete={() => deleteFee(fee.id)}
                     onDeleted={() => setOpen(false)}

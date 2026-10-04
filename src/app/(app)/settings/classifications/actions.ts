@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
@@ -101,7 +101,7 @@ const classificationSchema = z
       .min(1, "Classification name is required.")
       .transform(formatProperNoun),
     description: z.string().trim(),
-    rank: z.coerce
+    classificationNumber: z.coerce
       .number()
       .min(0, "Classification number cannot be negative.")
       .max(100)
@@ -157,9 +157,9 @@ const idSchema = z.uuid();
 
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer") return null;
-  return { organization, supabase: await createClient() };
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer") return null;
+  return { producer, supabase: await createClient() };
 }
 
 async function classificationDisciplineIsAvailable(
@@ -168,10 +168,10 @@ async function classificationDisciplineIsAvailable(
 ) {
   if (!disciplineId) return true;
   const { data } = await context.supabase
-    .from("disciplines")
+    .from("divisions")
     .select("id")
     .eq("id", disciplineId)
-    .eq("organization_id", context.organization.id)
+    .eq("producer_id", context.producer.id)
     .single();
   return Boolean(data);
 }
@@ -199,11 +199,11 @@ export async function createDiscipline(
       },
     };
 
-  const { error } = await context.supabase.from("disciplines").insert({
-    organization_id: context.organization.id,
+  const { error } = await context.supabase.from("divisions").insert({
+    producer_id: context.producer.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
-    watch_threshold: null,
+    review_after_event_count: null,
     gender_policy: parsed.data.genderPolicy,
     male_youth_maximum_age:
       parsed.data.genderPolicy === "women_only"
@@ -213,7 +213,7 @@ export async function createDiscipline(
       parsed.data.genderPolicy === "women_only"
         ? parsed.data.maleSeniorMinimumAge
         : null,
-    male_classification_discipline_id:
+    male_classification_division_id:
       parsed.data.genderPolicy === "women_only"
         ? parsed.data.maleClassificationDisciplineId
         : null,
@@ -247,20 +247,23 @@ export async function createClassification(
     };
 
   const { data: discipline } = await context.supabase
-    .from("disciplines")
+    .from("divisions")
     .select("id")
     .eq("id", parsed.data.disciplineId)
-    .eq("organization_id", context.organization.id)
+    .eq("producer_id", context.producer.id)
     .single();
   if (!discipline)
-    return { message: "That division is not available in this organization." };
+    return { message: "That division is not available in this producer." };
 
   const { error } = await context.supabase.from("classifications").insert({
-    organization_id: context.organization.id,
+    organization_id: context.producer.id,
     discipline_id: discipline.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
-    rank: parsed.data.eligibilityType === "skill" ? parsed.data.rank : 0,
+    rank:
+      parsed.data.eligibilityType === "skill"
+        ? parsed.data.classificationNumber
+        : 0,
     eligibility_type: parsed.data.eligibilityType,
     minimum_age:
       parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
@@ -281,8 +284,8 @@ export async function createClassification(
     };
 
   revalidatePath("/settings/classifications");
-  revalidatePath("/settings/divisions");
-  revalidatePath("/ropings");
+  revalidatePath("/settings/roping-templates");
+  revalidatePath("/events");
   return { success: true, message: "Classification created." };
 }
 
@@ -310,7 +313,7 @@ export async function updateDiscipline(
     };
 
   const { error } = await context.supabase
-    .from("disciplines")
+    .from("divisions")
     .update({
       name: parsed.data.name,
       description: parsed.data.description || null,
@@ -324,7 +327,7 @@ export async function updateDiscipline(
         parsed.data.genderPolicy === "women_only"
           ? parsed.data.maleSeniorMinimumAge
           : null,
-      male_classification_discipline_id:
+      male_classification_division_id:
         parsed.data.genderPolicy === "women_only"
           ? parsed.data.maleClassificationDisciplineId
           : null,
@@ -334,7 +337,7 @@ export async function updateDiscipline(
           : null,
     })
     .eq("id", parsed.data.disciplineId)
-    .eq("organization_id", context.organization.id);
+    .eq("producer_id", context.producer.id);
   if (error)
     return {
       message:
@@ -343,7 +346,7 @@ export async function updateDiscipline(
           : error.message,
     };
   revalidatePath("/settings/classifications");
-  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/roping-templates");
   return { success: true, message: "Division updated." };
 }
 
@@ -360,19 +363,22 @@ export async function updateClassification(
     return { message: "Sign in with manager access to edit classifications." };
 
   const { data: discipline } = await context.supabase
-    .from("disciplines")
+    .from("divisions")
     .select("id")
     .eq("id", parsed.data.disciplineId)
-    .eq("organization_id", context.organization.id)
+    .eq("producer_id", context.producer.id)
     .single();
   if (!discipline)
-    return { message: "That division is not available in this organization." };
+    return { message: "That division is not available in this producer." };
   const { error } = await context.supabase
     .from("classifications")
     .update({
       name: parsed.data.name,
       description: parsed.data.description || null,
-      rank: parsed.data.eligibilityType === "skill" ? parsed.data.rank : 0,
+      rank:
+        parsed.data.eligibilityType === "skill"
+          ? parsed.data.classificationNumber
+          : 0,
       eligibility_type: parsed.data.eligibilityType,
       minimum_age:
         parsed.data.eligibilityType === "age" ? parsed.data.minimumAge : null,
@@ -387,7 +393,7 @@ export async function updateClassification(
     })
     .eq("id", parsed.data.classificationId)
     .eq("discipline_id", discipline.id)
-    .eq("organization_id", context.organization.id);
+    .eq("organization_id", context.producer.id);
   if (error)
     return {
       message:
@@ -396,8 +402,8 @@ export async function updateClassification(
           : error.message,
     };
   revalidatePath("/settings/classifications");
-  revalidatePath("/settings/divisions");
-  revalidatePath("/ropings");
+  revalidatePath("/settings/roping-templates");
+  revalidatePath("/events");
   return { success: true, message: "Classification updated." };
 }
 
@@ -420,16 +426,16 @@ export async function deleteDiscipline(
   if (!context)
     return { message: "Sign in with manager access to delete divisions." };
   const { data, error } = await context.supabase
-    .from("disciplines")
+    .from("divisions")
     .delete()
     .eq("id", parsed.data)
-    .eq("organization_id", context.organization.id)
+    .eq("producer_id", context.producer.id)
     .select("id")
     .maybeSingle();
   if (error) return { message: deletionMessage(error, "division") };
   if (!data) return { message: "That division is no longer available." };
   revalidatePath("/settings/classifications");
-  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/roping-templates");
   return { success: true, message: "Division deleted." };
 }
 
@@ -447,12 +453,12 @@ export async function deleteClassification(
     .from("classifications")
     .delete()
     .eq("id", parsed.data)
-    .eq("organization_id", context.organization.id)
+    .eq("organization_id", context.producer.id)
     .select("id")
     .maybeSingle();
   if (error) return { message: deletionMessage(error, "classification") };
   if (!data) return { message: "That classification is no longer available." };
   revalidatePath("/settings/classifications");
-  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/roping-templates");
   return { success: true, message: "Classification deleted." };
 }

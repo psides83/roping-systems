@@ -11,7 +11,7 @@ import {
   type CustomMembershipSection,
   type SelectedMembershipField,
 } from "@/lib/membership-forms";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,11 +45,11 @@ interface MembershipApplication {
 }
 
 async function getMembershipFormData() {
-  const organization = await getActiveOrganization();
-  if (!organization || !isSupabaseConfigured()) {
+  const producer = await getActiveProducer();
+  if (!producer || !isSupabaseConfigured()) {
     return {
-      organization,
-      role: organization?.role ?? "viewer",
+      producer,
+      role: producer?.role ?? "viewer",
       form: null,
       applications: [] as MembershipApplication[],
     };
@@ -65,14 +65,14 @@ async function getMembershipFormData() {
       .select(
         "title, introduction, publication_state, standard_fields, custom_sections, release_text, require_signature",
       )
-      .eq("organization_id", organization.id)
+      .eq("organization_id", producer.id)
       .maybeSingle(),
     supabase
       .from("membership_applications")
       .select(
         "id, applicant_name, applicant_email, responses, form_snapshot, release_accepted, signature_name, status, review_note, submitted_at",
       )
-      .eq("organization_id", organization.id)
+      .eq("organization_id", producer.id)
       .order("submitted_at", { ascending: false }),
   ]);
 
@@ -83,8 +83,8 @@ async function getMembershipFormData() {
   }
 
   return {
-    organization,
-    role: organization.role,
+    producer,
+    role: producer.role,
     form,
     applications: (applications ?? []) as MembershipApplication[],
   };
@@ -108,7 +108,7 @@ function responseLabel(application: MembershipApplication, key: string) {
 
 export default async function MembershipFormSettingsPage() {
   const data = await getMembershipFormData();
-  const enabled = Boolean(data.organization && data.role !== "viewer");
+  const enabled = Boolean(data.producer && data.role !== "viewer");
   const initial: MembershipFormDraft = {
     title: data.form?.title ?? "Membership Application",
     introduction: data.form?.introduction ?? "",
@@ -133,9 +133,9 @@ export default async function MembershipFormSettingsPage() {
         title="Membership form"
         description="Build the online application your members complete, including producer-specific questions and release language."
         actions={
-          data.organization && initial.publicationState === "published" ? (
+          data.producer && initial.publicationState === "published" ? (
             <Link
-              href={`/public/${data.organization.slug}/membership`}
+              href={`/public/${data.producer.slug}/membership`}
               target="_blank"
               className="flex h-10 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-4 text-sm font-semibold"
             >

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 
@@ -137,15 +137,15 @@ export async function savePayoutSchedule(
         : "Go-round and aggregate allocations must total 100%.",
     };
 
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer")
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer")
     return { message: "Manager access is required." };
   const supabase = await createClient();
   if (parsed.data.scheduleId) {
     const { data: assignedTemplates, error: assignmentError } = await supabase
-      .from("division_templates")
+      .from("roping_templates")
       .select("name, competition_format")
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .eq("payout_schedule_id", parsed.data.scheduleId);
     if (assignmentError) return { message: assignmentError.message };
     const incompatibleTemplate = assignedTemplates?.find(
@@ -159,7 +159,7 @@ export async function savePayoutSchedule(
       };
   }
   const { error } = await supabase.rpc("save_payout_schedule_v2", {
-    target_organization_id: organization.id,
+    target_organization_id: producer.id,
     target_schedule_id: parsed.data.scheduleId || null,
     schedule_name: parsed.data.name,
     schedule_description: parsed.data.description,
@@ -187,7 +187,7 @@ export async function savePayoutSchedule(
           : error.message,
     };
   revalidatePath("/settings/payouts");
-  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/roping-templates");
   return { success: true, message: "Payout schedule saved." };
 }
 
@@ -199,14 +199,14 @@ const assignmentSchema = z.object({
 export async function assignDivisionPayout(formData: FormData) {
   const parsed = assignmentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer") return;
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer") return;
   const supabase = await createClient();
   const { data: template } = await supabase
-    .from("division_templates")
+    .from("roping_templates")
     .select("id, competition_format")
     .eq("id", parsed.data.divisionId)
-    .eq("organization_id", organization.id)
+    .eq("producer_id", producer.id)
     .single();
   if (
     !template ||
@@ -218,7 +218,7 @@ export async function assignDivisionPayout(formData: FormData) {
       .from("payout_schedules")
       .select("id, competition_format")
       .eq("id", parsed.data.scheduleId)
-      .eq("organization_id", organization.id)
+      .eq("organization_id", producer.id)
       .single();
     if (!schedule) return;
     const requiredFormat =
@@ -226,10 +226,10 @@ export async function assignDivisionPayout(formData: FormData) {
     if (schedule.competition_format !== requiredFormat) return;
   }
   await supabase
-    .from("division_templates")
+    .from("roping_templates")
     .update({ payout_schedule_id: parsed.data.scheduleId || null })
     .eq("id", parsed.data.divisionId)
-    .eq("organization_id", organization.id);
+    .eq("producer_id", producer.id);
   revalidatePath("/settings/payouts");
 }
 
@@ -238,20 +238,20 @@ export async function deletePayoutSchedule(
 ): Promise<PayoutFormState> {
   const parsed = z.uuid().safeParse(scheduleId);
   if (!parsed.success) return { message: "Choose a valid payout schedule." };
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer")
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer")
     return { message: "Manager access is required." };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payout_schedules")
     .delete()
     .eq("id", parsed.data)
-    .eq("organization_id", organization.id)
+    .eq("organization_id", producer.id)
     .select("id")
     .maybeSingle();
   if (error) return { message: error.message };
   if (!data) return { message: "That payout schedule is no longer available." };
   revalidatePath("/settings/payouts");
-  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/roping-templates");
   return { success: true, message: "Payout schedule deleted." };
 }

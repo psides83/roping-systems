@@ -9,7 +9,7 @@ const tabs = [
   {
     id: "templates",
     label: "Roping templates",
-    href: "/settings/divisions",
+    href: "/settings/roping-templates",
   },
   { id: "payouts", label: "Payouts", href: "/settings/payouts" },
   { id: "timing", label: "Timing rules", href: "/settings/timing" },

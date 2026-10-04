@@ -13,12 +13,12 @@ export function PublicResultsRefresh() {
       .channel("public-live-results")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "runs" },
+        { event: "*", schema: "public", table: "competition_runs" },
         () => router.refresh(),
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "roping_divisions" },
+        { event: "UPDATE", schema: "public", table: "event_ropings" },
         () => router.refresh(),
       )
       .subscribe();

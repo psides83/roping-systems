@@ -59,7 +59,7 @@ function ClassificationNumberField({
       <ClassificationNumberLabel />
       {usesNumber ? (
         <input
-          name="rank"
+          name="classificationNumber"
           type="number"
           min="0"
           max="100"
@@ -70,7 +70,7 @@ function ClassificationNumberField({
         />
       ) : (
         <>
-          <input type="hidden" name="rank" value="0" />
+          <input type="hidden" name="classificationNumber" value="0" />
           <input
             type="number"
             value="0"
@@ -256,10 +256,10 @@ function ClassificationUseFields({
       </label>
       <p className="text-xs leading-5 text-[#66716b]">
         {value === "standalone"
-          ? "This classification can have its own roping and is not used in Handicap ropings."
+          ? "This classification can have its own roping and is not used in Handicap events."
           : value === "handicap"
-            ? "This is a member classification used only to calculate time in Handicap ropings."
-            : "This classification can have its own roping and can also be used in Handicap ropings."}
+            ? "This is a member classification used only to calculate time in Handicap events."
+            : "This classification can have its own roping and can also be used in Handicap events."}
       </p>
       {usesHandicap ? (
         <label className="block text-sm font-semibold">
@@ -588,7 +588,7 @@ export function CreateClassificationDialog({
               </label>
               <ClassificationNumberField
                 eligibilityType={eligibilityType}
-                error={state.errors?.rank?.[0]}
+                error={state.errors?.classificationNumber?.[0]}
               />
             </div>
             <EligibilityFields
@@ -720,7 +720,7 @@ export function EditDisciplineDialog({
                 defaultChecked={discipline.isActive}
                 className="h-4 w-4 accent-[var(--brand-accent)]"
               />{" "}
-              Available for member classifications and scheduled ropings
+              Available for member classifications and scheduled events
             </label>
             <FormMessage state={state} />
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
@@ -768,7 +768,7 @@ export function EditClassificationDialog({
     id: string;
     name: string;
     description: string;
-    rank: number;
+    classificationNumber: number;
     eligibilityType: "skill" | "open" | "age";
     minimumAge: number | null;
     maximumAge: number | null;
@@ -832,8 +832,8 @@ export function EditClassificationDialog({
               </label>
               <ClassificationNumberField
                 eligibilityType={eligibilityType}
-                defaultRank={classification.rank}
-                error={state.errors?.rank?.[0]}
+                defaultRank={classification.classificationNumber}
+                error={state.errors?.classificationNumber?.[0]}
               />
             </div>
             <EligibilityFields

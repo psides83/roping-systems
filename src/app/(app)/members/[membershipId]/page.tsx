@@ -21,7 +21,7 @@ import {
   type MemberProfileSection,
   type SelectedMembershipField,
 } from "@/lib/membership-forms";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatPhoneNumber } from "@/lib/utils";
@@ -30,7 +30,7 @@ import type { MembershipStatus } from "@/types/domain";
 interface DisciplineData {
   id: string;
   name: string;
-  classifications: Array<{ id: string; name: string; rank: number }>;
+  classifications: Array<{ id: string; name: string; classificationNumber: number }>;
 }
 
 interface MemberDetail {
@@ -49,7 +49,7 @@ interface MemberDetail {
   competitionGender: "female" | "male" | null;
   profileFields: Record<string, string | boolean>;
   profileSections: MemberProfileSection[];
-  disciplines: DisciplineData[];
+  divisions: DisciplineData[];
   history: Array<{
     id: string;
     disciplineId: string;
@@ -102,14 +102,14 @@ async function getMemberDetail(
       profileFields: {},
       profileSections: [],
       canEdit: false,
-      disciplines: [
+      divisions: [
         {
           id: "calf-roping",
           name: "Calf roping",
           classifications: [
-            { id: "open", name: "Open", rank: 0 },
-            { id: "115", name: "11.5", rank: 11.5 },
-            { id: "11", name: "11", rank: 11 },
+            { id: "open", name: "Open", classificationNumber: 0 },
+            { id: "115", name: "11.5", classificationNumber: 11.5 },
+            { id: "11", name: "11", classificationNumber: 11 },
           ],
         },
       ],
@@ -130,16 +130,16 @@ async function getMemberDetail(
     };
   }
 
-  const organization = await getActiveOrganization();
-  if (!organization) return null;
+  const producer = await getActiveProducer();
+  if (!producer) return null;
   const supabase = await createClient();
   const { data: membership, error } = await supabase
-    .from("organization_memberships")
+    .from("memberships")
     .select(
-      "id, member_number, status, joined_on, expires_on, notes, profile_fields, people!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
+      "id, member_number, status, joined_on, expires_on, notes, profile_fields, ropers!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
     )
     .eq("id", membershipId)
-    .eq("organization_id", organization.id)
+    .eq("producer_id", producer.id)
     .single();
   if (error || !membership) return null;
 
@@ -150,36 +150,36 @@ async function getMemberDetail(
     { data: membershipForm, error: membershipFormError },
   ] = await Promise.all([
     supabase
-      .from("disciplines")
+      .from("divisions")
       .select(
-        "id, name, classifications(id, name, rank, eligibility_type, is_active)",
+        "id, name, classifications(id, name, classification_number:rank, eligibility_type, is_active)",
       )
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("sort_order")
       .order("created_at"),
     supabase
-      .from("member_classifications")
+      .from("membership_classification_history")
       .select(
-        "id, discipline_id, classification_id, effective_on, ended_on, reason, ended_reason, disciplines!inner(name), classifications!inner(name)",
+        "id, division_id, classification_id, effective_on, ended_on, reason, ended_reason, divisions!inner(name), classifications!inner(name)",
       )
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .eq("membership_id", membershipId)
       .order("effective_on", { ascending: false })
       .order("created_at", { ascending: false }),
     supabase
-      .from("classification_reviews")
+      .from("membership_classification_reviews")
       .select(
-        "id, discipline_id, proposed_classification_id, reason, review_on, disciplines!inner(name)",
+        "id, division_id, proposed_classification_id, reason, review_on, divisions!inner(name)",
       )
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .eq("membership_id", membershipId)
       .eq("status", "open")
       .order("review_on"),
     supabase
       .from("membership_forms")
       .select("standard_fields, custom_sections")
-      .eq("organization_id", organization.id)
+      .eq("organization_id", producer.id)
       .maybeSingle(),
   ]);
   const loadError =
@@ -189,7 +189,7 @@ async function getMemberDetail(
       `Unable to load member classification details: ${loadError.message}`,
     );
 
-  const disciplines: DisciplineData[] = (disciplineRows ?? []).map(
+  const divisions: DisciplineData[] = (disciplineRows ?? []).map(
     (discipline) => ({
       id: discipline.id,
       name: discipline.name,
@@ -197,24 +197,32 @@ async function getMemberDetail(
         discipline.classifications as unknown as Array<{
           id: string;
           name: string;
-          rank: number;
+          classification_number: number;
           eligibility_type: "skill" | "open" | "age";
           is_active: boolean;
         }>
       )
         .filter((item) => item.is_active && item.eligibility_type === "skill")
-        .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
-        .map(({ id, name, rank }) => ({ id, name, rank })),
+        .sort(
+          (a, b) =>
+            b.classification_number - a.classification_number ||
+            a.name.localeCompare(b.name),
+        )
+        .map(({ id, name, classification_number }) => ({
+          id,
+          name,
+          classificationNumber: classification_number,
+        })),
     }),
   );
   const classificationNames = new Map(
-    disciplines.flatMap((discipline) =>
+    divisions.flatMap((discipline) =>
       discipline.classifications.map(
         (classification) => [classification.id, classification.name] as const,
       ),
     ),
   );
-  const person = membership.people as unknown as {
+  const person = membership.ropers as unknown as {
     first_name: string;
     last_name: string;
     email: string | null;
@@ -247,13 +255,13 @@ async function getMemberDetail(
           membershipForm.custom_sections as unknown as CustomMembershipSection[],
         )
       : [],
-    canEdit: organization.role !== "viewer",
-    disciplines,
+    canEdit: producer.role !== "viewer",
+    divisions,
     history: (historyRows ?? []).map((row) => ({
       id: row.id,
-      disciplineId: row.discipline_id,
+      disciplineId: row.division_id,
       classificationId: row.classification_id,
-      discipline: (row.disciplines as unknown as { name: string }).name,
+      discipline: (row.divisions as unknown as { name: string }).name,
       classification: (row.classifications as unknown as { name: string }).name,
       effectiveOn: row.effective_on,
       endedOn: row.ended_on,
@@ -262,8 +270,8 @@ async function getMemberDetail(
     })),
     reviews: (reviewRows ?? []).map((row) => ({
       id: row.id,
-      disciplineId: row.discipline_id,
-      discipline: (row.disciplines as unknown as { name: string }).name,
+      disciplineId: row.division_id,
+      discipline: (row.divisions as unknown as { name: string }).name,
       reason: row.reason,
       reviewOn: row.review_on,
       proposedClassification: row.proposed_classification_id
@@ -279,7 +287,7 @@ export default async function MemberDetailPage({
   const { membershipId } = await params;
   const member = await getMemberDetail(membershipId);
   if (!member) notFound();
-  const options = member.disciplines.map((discipline) => ({
+  const options = member.divisions.map((discipline) => ({
     id: discipline.id,
     name: discipline.name,
     classifications: discipline.classifications.map(({ id, name }) => ({
@@ -344,14 +352,14 @@ export default async function MemberDetailPage({
                 notes: member.notes,
                 profileFields: member.profileFields,
               }}
-              disciplines={options}
+              divisions={options}
               currentClassifications={currentClassifications}
               profileSections={member.profileSections}
               enabled={member.canEdit}
             />
             <AssignClassificationDialog
               membershipId={member.id}
-              disciplines={options}
+              divisions={options}
               enabled={member.canEdit}
             />
           </div>
@@ -453,7 +461,7 @@ export default async function MemberDetailPage({
                 </form>
                 <AssignClassificationDialog
                   membershipId={member.id}
-                  disciplines={options}
+                  divisions={options}
                   enabled={member.canEdit}
                   reviewId={review.id}
                   defaultDisciplineId={review.disciplineId}
@@ -472,7 +480,7 @@ export default async function MemberDetailPage({
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {member.disciplines.map((discipline) => {
+          {member.divisions.map((discipline) => {
             const current = currentByDiscipline.get(discipline.id);
             return (
               <article

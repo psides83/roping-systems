@@ -5,7 +5,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { members as demoMembers } from "@/data/demo";
 import { AddMemberDialog } from "@/components/members/add-member-dialog";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatPhoneNumber } from "@/lib/utils";
 import type { MemberSummary, MembershipStatus } from "@/types/domain";
@@ -18,13 +18,13 @@ interface DisciplineOption {
 
 async function getMemberPageData(): Promise<{
   members: MemberSummary[];
-  disciplines: DisciplineOption[];
+  divisions: DisciplineOption[];
   canEdit: boolean;
 }> {
   if (!isSupabaseConfigured())
-    return { members: demoMembers, disciplines: [], canEdit: false };
-  const organization = await getActiveOrganization();
-  if (!organization) return { members: [], disciplines: [], canEdit: false };
+    return { members: demoMembers, divisions: [], canEdit: false };
+  const producer = await getActiveProducer();
+  if (!producer) return { members: [], divisions: [], canEdit: false };
   const supabase = await createClient();
   const [
     { data, error },
@@ -32,25 +32,25 @@ async function getMemberPageData(): Promise<{
     { data: disciplineRows, error: disciplineError },
   ] = await Promise.all([
     supabase
-      .from("organization_memberships")
+      .from("memberships")
       .select(
-        "id, member_number, status, joined_on, people!inner(first_name, last_name, email, phone)",
+        "id, member_number, status, joined_on, ropers!inner(first_name, last_name, email, phone)",
       )
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .order("created_at", { ascending: false }),
     supabase
-      .from("member_classifications")
+      .from("membership_classification_history")
       .select(
-        "membership_id, classifications!inner(name), disciplines!inner(name)",
+        "membership_id, classifications!inner(name), divisions!inner(name)",
       )
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .is("ended_on", null),
     supabase
-      .from("disciplines")
+      .from("divisions")
       .select(
-        "id, name, classifications(id, name, rank, eligibility_type, is_active)",
+        "id, name, classifications(id, name, classification_number:rank, eligibility_type, is_active)",
       )
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("sort_order")
       .order("created_at"),
@@ -73,14 +73,14 @@ async function getMemberPageData(): Promise<{
     const classification = assignment.classifications as unknown as {
       name: string;
     };
-    const discipline = assignment.disciplines as unknown as { name: string };
+    const discipline = assignment.divisions as unknown as { name: string };
     const current = classificationsByMember.get(assignment.membership_id) ?? [];
     current.push({ discipline: discipline.name, name: classification.name });
     classificationsByMember.set(assignment.membership_id, current);
   }
 
   const members = data.map((membership) => {
-    const person = membership.people as unknown as {
+    const person = membership.ropers as unknown as {
       first_name: string;
       last_name: string;
       email: string | null;
@@ -105,18 +105,22 @@ async function getMemberPageData(): Promise<{
         : "-",
     };
   });
-  const disciplines = (disciplineRows ?? []).flatMap((discipline) => {
+  const divisions = (disciplineRows ?? []).flatMap((discipline) => {
     const classifications = (
       discipline.classifications as unknown as Array<{
         id: string;
         name: string;
-        rank: number;
+        classification_number: number;
         eligibility_type: "skill" | "open" | "age";
         is_active: boolean;
       }>
     )
       .filter((item) => item.is_active && item.eligibility_type === "skill")
-      .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
+      .sort(
+        (a, b) =>
+          b.classification_number - a.classification_number ||
+          a.name.localeCompare(b.name),
+      )
       .map(({ id, name }) => ({ id, name }));
     return classifications.length
       ? [{ id: discipline.id, name: discipline.name, classifications }]
@@ -124,14 +128,14 @@ async function getMemberPageData(): Promise<{
   });
   return {
     members,
-    disciplines,
-    canEdit: organization.role !== "viewer",
+    divisions,
+    canEdit: producer.role !== "viewer",
   };
 }
 
 export default async function MembersPage() {
   const configured = isSupabaseConfigured();
-  const { members, disciplines, canEdit } = await getMemberPageData();
+  const { members, divisions, canEdit } = await getMemberPageData();
   const activeCount = members.filter(
     (member) => member.status === "active",
   ).length;
@@ -149,7 +153,7 @@ export default async function MembersPage() {
         actions={
           <AddMemberDialog
             configured={configured && canEdit}
-            disciplines={disciplines}
+            divisions={divisions}
           />
         }
       />

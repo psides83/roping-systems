@@ -8,7 +8,7 @@ export const members: MemberSummary[] = [
   { id: "5", memberNumber: "RR-1181", name: "Wyatt James", email: "wyatt@example.com", phone: "(325) 555-0122", classification: "10", status: "active", joinedAt: "Nov 9, 2025" },
 ];
 
-export const ropings: RopingSummary[] = [
+export const events: RopingSummary[] = [
   { id: "fall-classic", title: "Fall Classic", date: "Sep 27, 2026", location: "Red River Arena, Wichita Falls", divisions: 3, entries: 86, status: "in_progress", resultStatus: "unofficial" },
   { id: "october-series", title: "October Series Roping", date: "Oct 11, 2026", location: "Circle T Arena, Hamilton", divisions: 4, entries: 42, status: "entries_open" },
   { id: "turkey-run", title: "Turkey Run", date: "Nov 14, 2026", location: "Red River Arena, Wichita Falls", divisions: 3, entries: 0, status: "scheduled" },

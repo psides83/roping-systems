@@ -7,7 +7,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
@@ -53,8 +53,8 @@ async function getPayoutData() {
         },
       ],
     };
-  const organization = await getActiveOrganization();
-  if (!organization)
+  const producer = await getActiveProducer();
+  if (!producer)
     return {
       role: "viewer",
       schedules: [] as EditablePayoutSchedule[],
@@ -68,13 +68,13 @@ async function getPayoutData() {
         .select(
           "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, short_round_enabled, competition_format, four_d_settings, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
         )
-        .eq("organization_id", organization.id)
+        .eq("organization_id", producer.id)
         .eq("is_active", true)
         .order("created_at"),
       supabase
-        .from("division_templates")
+        .from("roping_templates")
         .select("id, name, payout_schedule_id, competition_format")
-        .eq("organization_id", organization.id)
+        .eq("producer_id", producer.id)
         .eq("is_active", true)
         .order("sort_order"),
     ]);
@@ -83,7 +83,7 @@ async function getPayoutData() {
       `Unable to load payout settings: ${error?.message ?? divisionError?.message}`,
     );
   return {
-    role: organization.role,
+    role: producer.role,
     schedules: (data ?? []).map((schedule) => ({
       id: schedule.id,
       name: schedule.name,
@@ -140,9 +140,9 @@ export default async function PayoutSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Organization setup"
+        eyebrow="Producer setup"
         title="Payout structures"
-        description="Define how entry counts determine paid places and how each purse is split. Schedules are copied into new ropings to preserve history."
+        description="Define how entry counts determine paid places and how each purse is split. Schedules are copied into new events to preserve history."
         actions={<PayoutScheduleDialog enabled={enabled} />}
       />
       <RopingSetupTabs active="payouts" />
@@ -299,7 +299,7 @@ export default async function PayoutSettingsPage() {
           <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">
             <p className="font-semibold">Create the first payout schedule</p>
             <p className="mt-2 text-sm text-[#758078]">
-              Start with the organization&apos;s most common places-paid table.
+              Start with the producer&apos;s most common places-paid table.
             </p>
           </div>
         ) : null}

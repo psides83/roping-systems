@@ -19,7 +19,7 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/auth/actions";
-import { switchOrganization } from "@/app/actions/organizations";
+import { switchProducer } from "@/app/actions/producers";
 import { getBrandStyle } from "@/lib/branding";
 
 const navigation = [
@@ -30,8 +30,8 @@ const navigation = [
     href: "/settings/membership-form",
     icon: ClipboardSignature,
   },
-  { name: "Ropings", href: "/ropings", icon: CalendarDays },
-  { name: "Live event", href: "/ropings/current", icon: CircleDollarSign },
+  { name: "Ropings", href: "/events", icon: CalendarDays },
+  { name: "Live event", href: "/events/current", icon: CircleDollarSign },
   {
     name: "Roping setup",
     href: "/settings/classifications",
@@ -42,18 +42,18 @@ const navigation = [
 
 export function AppShell({
   children,
-  organizationName = "Red River Calf Ropers",
-  organizations = [],
-  activeOrganizationId,
+  producerName = "Red River Calf Ropers",
+  producers = [],
+  activeProducerId,
   userLabel = "Payton B.",
   brandPrimary,
   brandAccent,
   demo = false,
 }: {
   children: React.ReactNode;
-  organizationName?: string;
-  organizations?: Array<{ id: string; name: string }>;
-  activeOrganizationId?: string;
+  producerName?: string;
+  producers?: Array<{ id: string; name: string }>;
+  activeProducerId?: string;
   userLabel?: string;
   brandPrimary?: string;
   brandAccent?: string;
@@ -61,7 +61,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [organizationMenuOpen, setOrganizationMenuOpen] = useState(false);
+  const [producerMenuOpen, setProducerMenuOpen] = useState(false);
   const currentNavigationHref = navigation
     .filter(
       (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
@@ -115,19 +115,19 @@ export function AppShell({
             Producer
           </p>
           <button
-            onClick={() => setOrganizationMenuOpen((value) => !value)}
+            onClick={() => setProducerMenuOpen((value) => !value)}
             className="mt-1 flex w-full items-center justify-between text-left text-sm font-semibold"
           >
-            {organizationName}{" "}
+            {producerName}{" "}
             <ChevronDown
               size={15}
               className={cn(
                 "brand-muted transition",
-                organizationMenuOpen && "rotate-180",
+                producerMenuOpen && "rotate-180",
               )}
             />
           </button>
-          {organizationMenuOpen ? (
+          {producerMenuOpen ? (
             <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-md border border-[#dfe4e1] bg-white py-1 text-[#17201c] shadow-xl">
               {demo ? (
                 <p className="px-3 py-2 text-xs text-[#66716b]">
@@ -135,23 +135,23 @@ export function AppShell({
                   connected.
                 </p>
               ) : (
-                organizations.map((organization) => (
-                  <form action={switchOrganization} key={organization.id}>
+                producers.map((producer) => (
+                  <form action={switchProducer} key={producer.id}>
                     <input
                       type="hidden"
-                      name="organizationId"
-                      value={organization.id}
+                      name="producerId"
+                      value={producer.id}
                     />
                     <input type="hidden" name="returnTo" value={pathname} />
                     <button
                       className={cn(
                         "flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold hover:bg-[#f2f4f3]",
-                        organization.id === activeOrganizationId &&
+                        producer.id === activeProducerId &&
                           "text-[var(--brand-accent-strong)]",
                       )}
                     >
-                      {organization.name}
-                      {organization.id === activeOrganizationId ? (
+                      {producer.name}
+                      {producer.id === activeProducerId ? (
                         <span>Active</span>
                       ) : null}
                     </button>
@@ -173,7 +173,7 @@ export function AppShell({
               item.name === "Roping setup"
                 ? [
                     "/settings/classifications",
-                    "/settings/divisions",
+                    "/settings/roping-templates",
                     "/settings/payouts",
                     "/settings/timing",
                   ].some((href) => pathname === href)
@@ -236,7 +236,7 @@ export function AppShell({
             </button>
             <div>
               <p className="text-sm font-semibold text-[#17201c]">
-                {organizationName}
+                {producerName}
               </p>
               <p className="hidden text-xs text-[#758078] sm:block">
                 {demo ? "Preview data" : "2026 season"}
@@ -245,7 +245,7 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/ropings/current"
+              href="/events/current"
               className="hidden h-9 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white hover:bg-[var(--brand-accent-strong)] sm:flex"
             >
               <span className="h-2 w-2 rounded-full bg-white" /> Live event

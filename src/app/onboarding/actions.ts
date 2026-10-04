@@ -6,16 +6,16 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 
-export interface OrganizationState {
+export interface ProducerState {
   message?: string;
   errors?: Record<string, string[]>;
 }
 
-const organizationSchema = z.object({
+const producerSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, "Enter the organization name.")
+    .min(2, "Enter the producer name.")
     .transform(formatProperNoun),
   slug: z
     .string()
@@ -27,11 +27,11 @@ const organizationSchema = z.object({
     ),
 });
 
-export async function createOrganization(
-  _state: OrganizationState,
+export async function createProducer(
+  _state: ProducerState,
   formData: FormData,
-): Promise<OrganizationState> {
-  const parsed = organizationSchema.safeParse(Object.fromEntries(formData));
+): Promise<ProducerState> {
+  const parsed = producerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 
   const supabase = await createClient();
@@ -52,7 +52,7 @@ export async function createOrganization(
           : error.message,
     };
   const cookieStore = await cookies();
-  cookieStore.set("active_organization_id", data as string, {
+  cookieStore.set("active_producer_id", data as string, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

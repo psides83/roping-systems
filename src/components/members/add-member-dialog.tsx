@@ -15,10 +15,10 @@ interface DisciplineOption {
 
 export function AddMemberDialog({
   configured,
-  disciplines,
+  divisions,
 }: {
   configured: boolean;
-  disciplines: DisciplineOption[];
+  divisions: DisciplineOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(addMember, initialState);
@@ -55,11 +55,11 @@ export function AddMemberDialog({
             <div className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
               <div>
                 <h2 id="add-member-title" className="text-lg font-bold">
-                  Add organization member
+                  Add producer member
                 </h2>
                 <p className="mt-1 text-sm text-[#66716b]">
                   Contact details belong to the roper; the member number belongs
-                  to this organization.
+                  to this producer.
                 </p>
               </div>
               <button
@@ -140,7 +140,7 @@ export function AddMemberDialog({
                   </select>
                 </label>
               </div>
-              {disciplines.length ? (
+              {divisions.length ? (
                 <fieldset className="rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
                   <legend className="px-1 text-sm font-bold">
                     Starting classifications
@@ -150,7 +150,7 @@ export function AddMemberDialog({
                     These can be changed later from the member profile.
                   </p>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {disciplines.map((discipline) => (
+                    {divisions.map((discipline) => (
                       <label
                         key={discipline.id}
                         className="block text-sm font-semibold"

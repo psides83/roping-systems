@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
@@ -50,13 +50,13 @@ export async function addMember(
   if (classificationIds.some((value) => !z.uuid().safeParse(value).success))
     return { message: "Choose valid starting classifications." };
 
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer")
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer")
     return { message: "You do not have permission to add members." };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_organization_member_v2", {
-    target_organization_id: organization.id,
+    target_organization_id: producer.id,
     member_first_name: parsed.data.firstName,
     member_last_name: parsed.data.lastName,
     member_email: parsed.data.email,
@@ -72,7 +72,7 @@ export async function addMember(
     if (error.code === "23505")
       return {
         message:
-          "That person or member number already belongs to this organization.",
+          "That person or member number already belongs to this producer.",
       };
     return { message: error.message };
   }

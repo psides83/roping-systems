@@ -2,22 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 
-export interface OrganizationSettingsState {
+export interface ProducerSettingsState {
   success?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
 }
 
-export interface OrganizationLogoState {
+export interface ProducerLogoState {
   success?: boolean;
   message?: string;
 }
 
-export interface OrganizationBrandingState {
+export interface ProducerBrandingState {
   success?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
@@ -46,7 +46,7 @@ const settingsSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, "Organization name is required.")
+    .min(2, "Producer name is required.")
     .transform(formatProperNoun),
   publicName: z.string().trim().transform(formatProperNoun),
   email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
@@ -61,39 +61,39 @@ const settingsSchema = z.object({
   allowGuestEntries: z.string().optional(),
 });
 
-export async function updateOrganizationSettings(
-  _state: OrganizationSettingsState,
+export async function updateProducerSettings(
+  _state: ProducerSettingsState,
   formData: FormData,
-): Promise<OrganizationSettingsState> {
+): Promise<ProducerSettingsState> {
   const parsed = settingsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
-  const organization = await getActiveOrganization();
-  if (!organization || !["owner", "admin"].includes(organization.role))
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role))
     return { message: "Owner or administrator access is required." };
   const supabase = await createClient();
   const { error } = await supabase
-    .from("organizations")
+    .from("producers")
     .update({
       name: parsed.data.name,
       public_name: parsed.data.publicName || null,
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
       timezone: parsed.data.timezone,
-      allow_guest_entries: parsed.data.allowGuestEntries === "on",
+      allow_non_member_entries: parsed.data.allowGuestEntries === "on",
     })
-    .eq("id", organization.id);
+    .eq("id", producer.id);
   if (error) return { message: error.message };
   revalidatePath("/settings");
   revalidatePath("/dashboard");
-  return { success: true, message: "Organization settings saved." };
+  return { success: true, message: "Producer settings saved." };
 }
 
-export async function uploadOrganizationLogo(
-  _state: OrganizationLogoState,
+export async function uploadProducerLogo(
+  _state: ProducerLogoState,
   formData: FormData,
-): Promise<OrganizationLogoState> {
-  const organization = await getActiveOrganization();
-  if (!organization || !["owner", "admin"].includes(organization.role))
+): Promise<ProducerLogoState> {
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role))
     return { message: "Owner or administrator access is required." };
 
   const logo = formData.get("logo");
@@ -106,20 +106,20 @@ export async function uploadOrganizationLogo(
 
   const supabase = await createClient();
   const { data: current } = await supabase
-    .from("organizations")
+    .from("producers")
     .select("logo_path")
-    .eq("id", organization.id)
+    .eq("id", producer.id)
     .single();
-  const path = `${organization.id}/logo-${crypto.randomUUID()}.${extension}`;
+  const path = `${producer.id}/logo-${crypto.randomUUID()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from(logoBucket)
     .upload(path, logo, { cacheControl: "3600", contentType: logo.type });
   if (uploadError) return { message: uploadError.message };
 
   const { error: updateError } = await supabase
-    .from("organizations")
+    .from("producers")
     .update({ logo_path: path })
-    .eq("id", organization.id);
+    .eq("id", producer.id);
   if (updateError) {
     await supabase.storage.from(logoBucket).remove([path]);
     return { message: updateError.message };
@@ -128,61 +128,61 @@ export async function uploadOrganizationLogo(
   if (current?.logo_path && current.logo_path !== path)
     await supabase.storage.from(logoBucket).remove([current.logo_path]);
   revalidatePath("/settings");
-  revalidatePath(`/public/${organization.slug}`);
-  return { success: true, message: "Organization logo updated." };
+  revalidatePath(`/public/${producer.slug}`);
+  return { success: true, message: "Producer logo updated." };
 }
 
-export async function removeOrganizationLogo(
-  _state: OrganizationLogoState,
+export async function removeProducerLogo(
+  _state: ProducerLogoState,
   _formData: FormData,
-): Promise<OrganizationLogoState> {
+): Promise<ProducerLogoState> {
   void _state;
   void _formData;
-  const organization = await getActiveOrganization();
-  if (!organization || !["owner", "admin"].includes(organization.role))
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role))
     return { message: "Owner or administrator access is required." };
 
   const supabase = await createClient();
   const { data: current, error: readError } = await supabase
-    .from("organizations")
+    .from("producers")
     .select("logo_path")
-    .eq("id", organization.id)
+    .eq("id", producer.id)
     .single();
   if (readError) return { message: readError.message };
   if (!current.logo_path)
     return { success: true, message: "No logo is currently uploaded." };
 
   const { error: updateError } = await supabase
-    .from("organizations")
+    .from("producers")
     .update({ logo_path: null })
-    .eq("id", organization.id);
+    .eq("id", producer.id);
   if (updateError) return { message: updateError.message };
   await supabase.storage.from(logoBucket).remove([current.logo_path]);
   revalidatePath("/settings");
-  revalidatePath(`/public/${organization.slug}`);
-  return { success: true, message: "Organization logo removed." };
+  revalidatePath(`/public/${producer.slug}`);
+  return { success: true, message: "Producer logo removed." };
 }
 
-export async function updateOrganizationBranding(
-  _state: OrganizationBrandingState,
+export async function updateProducerBranding(
+  _state: ProducerBrandingState,
   formData: FormData,
-): Promise<OrganizationBrandingState> {
+): Promise<ProducerBrandingState> {
   const parsed = brandingSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
-  const organization = await getActiveOrganization();
-  if (!organization || !["owner", "admin"].includes(organization.role))
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role))
     return { message: "Owner or administrator access is required." };
 
   const supabase = await createClient();
   const { error } = await supabase
-    .from("organizations")
+    .from("producers")
     .update({
       brand_primary: parsed.data.primary.toUpperCase(),
       brand_accent: parsed.data.accent.toUpperCase(),
     })
-    .eq("id", organization.id);
+    .eq("id", producer.id);
   if (error) return { message: error.message };
   revalidatePath("/", "layout");
-  revalidatePath(`/public/${organization.slug}`);
-  return { success: true, message: "Organization colors updated." };
+  revalidatePath(`/public/${producer.slug}`);
+  return { success: true, message: "Producer colors updated." };
 }

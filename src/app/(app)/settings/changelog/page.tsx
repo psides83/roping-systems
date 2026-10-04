@@ -1,36 +1,36 @@
 import { History, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 
 const entityLabels: Record<string, string> = {
-  organizations: "Organization settings",
-  organization_users: "Team access",
-  organization_memberships: "Membership",
-  division_templates: "Roping template",
-  fee_templates: "Fee template",
-  disciplines: "Division",
+  producers: "Producer settings",
+  producer_staff: "Team access",
+  memberships: "Membership",
+  roping_templates: "Roping template",
+  roping_template_fees: "Fee template",
+  divisions: "Division",
   classifications: "Classification",
-  member_classifications: "Member classification",
-  classification_watch_events: "Classification watch",
-  classification_reviews: "Classification review",
+  membership_classification_history: "Member classification",
+  classification_review_events: "Classification review event",
+  membership_classification_reviews: "Classification review",
   payout_schedules: "Payout schedule",
   payout_schedule_brackets: "Payout bracket",
   payout_schedule_places: "Payout place",
   payout_disbursements: "Payout payment",
-  ropings: "Roping",
-  roping_divisions: "Event class",
-  roping_incentive_rules: "Incentive handicap rule",
-  roping_fees: "Roping fee or option",
-  entries: "Entry",
-  entry_transfers: "Entry transfer",
+  events: "Event",
+  event_ropings: "Roping",
+  event_roping_handicap_adjustments: "Handicap adjustment",
+  event_fees: "Event fee or option",
+  roping_entries: "Entry",
+  entry_roping_transfers: "Entry transfer",
   entry_charges: "Entry charge",
-  runs: "Run result",
+  competition_runs: "Run result",
   run_timer_readings: "Timer reading",
   run_rerun_history: "Rerun schedule",
-  roping_rounds: "Roping round",
+  event_roping_rounds: "Roping round",
   short_round_field_changes: "Short round finalist change",
-  online_entry_requests: "Online entry request",
+  online_entry_submissions: "Online entry submission",
   event_payments: "Cash payment",
   event_roping_removals: "Removed event roping",
 };
@@ -50,7 +50,7 @@ function describeChanges(
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ) {
-  if (entityType === "entry_transfers" && action === "insert") {
+  if (entityType === "entry_roping_transfers" && action === "insert") {
     return [
       { field: "Reason", before: "", after: formatValue(after?.reason) },
       {
@@ -94,7 +94,7 @@ function describeChanges(
     ];
   }
   if (
-    entityType === "entries" &&
+    entityType === "roping_entries" &&
     action === "insert" &&
     after?.eligibility_overridden === true
   ) {
@@ -142,17 +142,17 @@ export default async function ChangelogPage({
   searchParams,
 }: PageProps<"/settings/changelog">) {
   const filters = await searchParams;
-  const organization = await getActiveOrganization();
-  if (!organization) return null;
+  const producer = await getActiveProducer();
+  if (!producer) return null;
   const entityFilter = typeof filters.entity === "string" ? filters.entity : "";
   const actionFilter = typeof filters.action === "string" ? filters.action : "";
   const supabase = await createClient();
   let query = supabase
-    .from("organization_audit_history")
+    .from("producer_audit_history")
     .select(
       "id, actor_label, entity_type, entity_id, action, before_data, after_data, created_at",
     )
-    .eq("organization_id", organization.id)
+    .eq("producer_id", producer.id)
     .order("created_at", { ascending: false })
     .limit(100);
   if (entityFilter) query = query.eq("entity_type", entityFilter);
@@ -165,7 +165,7 @@ export default async function ChangelogPage({
     <div className="space-y-6">
       <PageHeader
         eyebrow="Accountability"
-        title="Organization changelog"
+        title="Producer changelog"
         description="Review data entry and configuration changes, including who made each change and exactly what was modified."
       />
       <form className="flex flex-col gap-3 rounded-md border border-[#dfe4e1] bg-white p-4 sm:flex-row sm:items-end">
@@ -242,7 +242,7 @@ export default async function ChangelogPage({
                         {new Intl.DateTimeFormat("en-US", {
                           dateStyle: "medium",
                           timeStyle: "short",
-                          timeZone: organization.timezone,
+                          timeZone: producer.timezone,
                         }).format(new Date(item.created_at))}
                       </time>
                       {item.entity_id ? (
@@ -287,7 +287,7 @@ export default async function ChangelogPage({
             <div className="p-12 text-center">
               <p className="font-semibold">No changes match these filters</p>
               <p className="mt-2 text-sm text-[#758078]">
-                New organization activity will appear here automatically.
+                New producer activity will appear here automatically.
               </p>
             </div>
           ) : null}

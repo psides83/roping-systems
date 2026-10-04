@@ -1,4 +1,4 @@
-export type OrganizationRole = "owner" | "admin" | "operator" | "viewer";
+export type ProducerRole = "owner" | "admin" | "operator" | "viewer";
 export type MembershipStatus = "active" | "pending" | "expired" | "inactive";
 export type RopingStatus =
   | "draft"

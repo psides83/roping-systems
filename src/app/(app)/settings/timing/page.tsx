@@ -2,15 +2,15 @@ import { Clock3 } from "lucide-react";
 import { updateDivisionTiming } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function TimingSettingsPage() {
   const configured = isSupabaseConfigured();
-  const organization = await getActiveOrganization();
+  const producer = await getActiveProducer();
   const canEdit =
-    configured && Boolean(organization && organization.role !== "viewer");
+    configured && Boolean(producer && producer.role !== "viewer");
   let divisions: Array<{
     id: string;
     name: string;
@@ -19,12 +19,12 @@ export default async function TimingSettingsPage() {
   }> = [
     { id: "open", name: "Open", timer_count: 2, timer_resolution: "average" },
   ];
-  if (configured && organization) {
+  if (configured && producer) {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("division_templates")
+      .from("roping_templates")
       .select("id, name, timer_count, timer_resolution")
-      .eq("organization_id", organization.id)
+      .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("sort_order");
     if (error)
@@ -48,7 +48,7 @@ export default async function TimingSettingsPage() {
           <div>
             <h2 className="font-bold">Roping template timing defaults</h2>
             <p className="mt-1 text-xs text-[#758078]">
-              Copied into new ropings so historical timing rules stay unchanged
+              Copied into new events so historical timing rules stay unchanged
             </p>
           </div>
         </header>

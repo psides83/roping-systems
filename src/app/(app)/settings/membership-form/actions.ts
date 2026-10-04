@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 import { standardMembershipFields } from "@/lib/membership-forms";
@@ -52,9 +52,9 @@ const membershipFormSchema = z.object({
 });
 
 async function requireManager() {
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer") return null;
-  return { organization, supabase: await createClient() };
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer") return null;
+  return { producer, supabase: await createClient() };
 }
 
 export async function saveMembershipForm(
@@ -96,7 +96,7 @@ export async function saveMembershipForm(
   if (!context) return { message: "Manager access is required." };
   const { error } = await context.supabase.from("membership_forms").upsert(
     {
-      organization_id: context.organization.id,
+      organization_id: context.producer.id,
       title: parsed.data.title,
       introduction: parsed.data.introduction || null,
       publication_state: parsed.data.publicationState,
@@ -113,7 +113,7 @@ export async function saveMembershipForm(
   if (error) return { message: error.message };
 
   revalidatePath("/settings/membership-form");
-  revalidatePath(`/public/${context.organization.slug}/membership`);
+  revalidatePath(`/public/${context.producer.slug}/membership`);
   return { success: true, message: "Membership form saved." };
 }
 
@@ -139,7 +139,7 @@ export async function reviewMembershipApplication(formData: FormData) {
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", parsed.data.applicationId)
-    .eq("organization_id", context.organization.id);
+    .eq("organization_id", context.producer.id);
   if (error) throw new Error(error.message);
   revalidatePath("/settings/membership-form");
 }

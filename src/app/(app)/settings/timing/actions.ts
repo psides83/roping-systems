@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 
 const timingSchema = z.object({
@@ -14,17 +14,17 @@ const timingSchema = z.object({
 export async function updateDivisionTiming(formData: FormData) {
   const parsed = timingSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer") return;
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer") return;
   const supabase = await createClient();
   await supabase
-    .from("division_templates")
+    .from("roping_templates")
     .update({
       timer_count: parsed.data.timerCount,
       timer_resolution: parsed.data.timerResolution,
     })
     .eq("id", parsed.data.divisionId)
-    .eq("organization_id", organization.id);
+    .eq("producer_id", producer.id);
   revalidatePath("/settings/timing");
-  revalidatePath("/settings/divisions");
+  revalidatePath("/settings/roping-templates");
 }

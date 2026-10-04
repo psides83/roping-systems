@@ -5,7 +5,7 @@ import { CheckCircle2, LoaderCircle } from "lucide-react";
 import {
   submitMembershipApplication,
   type MembershipApplicationState,
-} from "@/app/public/[organizationSlug]/membership/actions";
+} from "@/app/public/[producerSlug]/membership/actions";
 import {
   getStandardMembershipField,
   type CustomMembershipField,

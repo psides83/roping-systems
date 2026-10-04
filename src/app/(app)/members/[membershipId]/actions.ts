@@ -8,7 +8,7 @@ import {
   type MemberProfileField,
   type SelectedMembershipField,
 } from "@/lib/membership-forms";
-import { getActiveOrganization } from "@/lib/organizations";
+import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatPhoneNumber, formatProperNoun } from "@/lib/utils";
@@ -83,9 +83,9 @@ const classificationChangesSchema = z.array(
 
 async function getManagerContext() {
   if (!isSupabaseConfigured()) return null;
-  const organization = await getActiveOrganization();
-  if (!organization || organization.role === "viewer") return null;
-  return { organization, supabase: await createClient() };
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer") return null;
+  return { producer, supabase: await createClient() };
 }
 
 const properNounProfileFields = new Set(["city", "state", "completer_name"]);
@@ -108,7 +108,7 @@ async function parseMemberProfileFields(
   const { data: form, error } = await context.supabase
     .from("membership_forms")
     .select("standard_fields, custom_sections")
-    .eq("organization_id", context.organization.id)
+    .eq("organization_id", context.producer.id)
     .maybeSingle();
   if (error) return { message: error.message };
   if (!form) return { values: {} as Record<string, string | boolean> };
@@ -177,7 +177,7 @@ export async function updateMember(
   const { error } = await context.supabase.rpc(
     "update_organization_member_v2",
     {
-      target_organization_id: context.organization.id,
+      target_organization_id: context.producer.id,
       target_membership_id: parsed.data.membershipId,
       member_first_name: parsed.data.firstName,
       member_last_name: parsed.data.lastName,
@@ -221,7 +221,7 @@ export async function assignMemberClassification(
     return { message: "Manager access is required to change classifications." };
 
   const { error } = await context.supabase.rpc("set_member_classification", {
-    target_organization_id: context.organization.id,
+    target_organization_id: context.producer.id,
     target_membership_id: parsed.data.membershipId,
     target_classification_id: parsed.data.classificationId,
     new_effective_on: parsed.data.effectiveOn,
@@ -244,7 +244,7 @@ export async function dismissClassificationReview(formData: FormData) {
   const userId =
     (await context.supabase.auth.getClaims()).data?.claims?.sub ?? null;
   await context.supabase
-    .from("classification_reviews")
+    .from("membership_classification_reviews")
     .update({
       status: "dismissed",
       resolved_by: userId,
@@ -252,7 +252,7 @@ export async function dismissClassificationReview(formData: FormData) {
     })
     .eq("id", parsed.data.reviewId)
     .eq("membership_id", parsed.data.membershipId)
-    .eq("organization_id", context.organization.id)
+    .eq("producer_id", context.producer.id)
     .eq("status", "open");
   revalidatePath(`/members/${parsed.data.membershipId}`);
   revalidatePath("/settings/classifications");
@@ -265,7 +265,7 @@ export async function updateMemberBirthDate(formData: FormData) {
   if (!context) return;
 
   const { error } = await context.supabase.rpc("update_member_birth_date", {
-    target_organization_id: context.organization.id,
+    target_organization_id: context.producer.id,
     target_membership_id: parsed.data.membershipId,
     new_birth_date: parsed.data.birthDate || null,
   });
@@ -282,7 +282,7 @@ export async function updateMemberCompetitionGender(formData: FormData) {
   const { error } = await context.supabase.rpc(
     "update_member_competition_gender",
     {
-      target_organization_id: context.organization.id,
+      target_organization_id: context.producer.id,
       target_membership_id: parsed.data.membershipId,
       new_competition_gender: parsed.data.competitionGender,
     },

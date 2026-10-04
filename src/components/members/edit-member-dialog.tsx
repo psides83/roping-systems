@@ -48,13 +48,13 @@ function today() {
 
 export function EditMemberDialog({
   member,
-  disciplines,
+  divisions,
   currentClassifications,
   profileSections,
   enabled,
 }: {
   member: EditableMember;
-  disciplines: DisciplineOption[];
+  divisions: DisciplineOption[];
   currentClassifications: Record<string, string>;
   profileSections: MemberProfileSection[];
   enabled: boolean;
@@ -67,14 +67,14 @@ export function EditMemberDialog({
   const classificationChanges = useMemo(
     () =>
       JSON.stringify(
-        disciplines.map((discipline) => ({
+        divisions.map((discipline) => ({
           disciplineId: discipline.id,
           classificationId: classifications[discipline.id] ?? "",
         })),
       ),
-    [classifications, disciplines],
+    [classifications, divisions],
   );
-  const hasClassificationChanges = disciplines.some(
+  const hasClassificationChanges = divisions.some(
     (discipline) =>
       (classifications[discipline.id] ?? "") !==
       (currentClassifications[discipline.id] ?? ""),
@@ -265,7 +265,7 @@ export function EditMemberDialog({
                   preserves it in classification history.
                 </p>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  {disciplines.map((discipline) => (
+                  {divisions.map((discipline) => (
                     <label
                       key={discipline.id}
                       className="block text-sm font-semibold"

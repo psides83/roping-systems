@@ -77,14 +77,14 @@ function FormMessage({ state }: { state: MemberClassificationFormState }) {
 
 export function AssignClassificationDialog({
   membershipId,
-  disciplines,
+  divisions,
   enabled,
   reviewId = "",
   defaultDisciplineId,
   compact = false,
 }: {
   membershipId: string;
-  disciplines: DisciplineOption[];
+  divisions: DisciplineOption[];
   enabled: boolean;
   reviewId?: string;
   defaultDisciplineId?: string;
@@ -92,7 +92,7 @@ export function AssignClassificationDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [disciplineId, setDisciplineId] = useState(
-    defaultDisciplineId ?? disciplines[0]?.id ?? "",
+    defaultDisciplineId ?? divisions[0]?.id ?? "",
   );
   const [state, action, pending] = useActionState(
     assignMemberClassification,
@@ -103,14 +103,14 @@ export function AssignClassificationDialog({
     const timeoutId = window.setTimeout(() => setOpen(false), 0);
     return () => window.clearTimeout(timeoutId);
   }, [state]);
-  const selected = disciplines.find(
+  const selected = divisions.find(
     (discipline) => discipline.id === disciplineId,
   );
 
   return (
     <>
       <button
-        disabled={!enabled || !disciplines.length}
+        disabled={!enabled || !divisions.length}
         onClick={() => setOpen(true)}
         className={
           compact
@@ -139,7 +139,7 @@ export function AssignClassificationDialog({
                   onChange={(event) => setDisciplineId(event.target.value)}
                   className={inputClass}
                 >
-                  {disciplines.map((discipline) => (
+                  {divisions.map((discipline) => (
                     <option key={discipline.id} value={discipline.id}>
                       {discipline.name}
                     </option>
