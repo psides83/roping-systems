@@ -76,7 +76,7 @@ export function PublicRopingResults({ results, runs, shortRoundEnabled = false, 
                     {row.progress ? <span className="mt-1 block text-[10px] font-semibold text-[#758078]">{row.progress}</span> : null}
                   </td>
                   <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5">#{row.entryNumber}</td>
-                  <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" ? "SCR" : row.status === "rerun" ? "Rerun" : "-"}</td>
+                  <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" || row.status === "turned_out" ? "TO" : row.status === "rerun" ? "Rerun" : "-"}</td>
                 </tr>
               ))}
             </tbody>

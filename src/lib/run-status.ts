@@ -12,8 +12,8 @@ export const runStatusLabels: Record<RunStatus, string> = {
   complete: "Qualified time",
   no_time: "No time",
   disqualified: "Disqualified",
-  scratch: "Scratched",
-  turned_out: "Turned out",
+  scratch: "Turn out",
+  turned_out: "Turn out",
   rerun: "Rerun required",
 };
 
@@ -22,7 +22,7 @@ export const runStatusAbbreviations: Record<RunStatus, string> = {
   complete: "",
   no_time: "NT",
   disqualified: "DQ",
-  scratch: "SCR",
+  scratch: "TO",
   turned_out: "TO",
   rerun: "RERUN",
 };

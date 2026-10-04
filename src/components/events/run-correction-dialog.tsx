@@ -21,7 +21,6 @@ const correctionOutcomes: RunStatus[] = [
   "complete",
   "no_time",
   "disqualified",
-  "scratch",
   "turned_out",
   "rerun",
 ];
@@ -38,7 +37,9 @@ export function RunCorrectionDialog({
   canEdit: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<RunStatus>(run.status);
+  const [status, setStatus] = useState<RunStatus>(
+    run.status === "scratch" ? "turned_out" : run.status,
+  );
   const [penalty, setPenalty] = useState(String(run.penalty));
   const action = correctRun.bind(null, eventId);
   const [state, formAction, pending] = useActionState<LiveRunState, FormData>(

@@ -963,25 +963,17 @@ function RunEntryForm({
         </button>
         <button
           name="status"
-          value="scratch"
+          value="turned_out"
           disabled={!canEdit || pending}
           className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
-          <SkipForward size={15} /> Scratch
-        </button>
-        <button
-          name="status"
-          value="turned_out"
-          disabled={!canEdit || pending}
-          className="flex h-10 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
-        >
-          Turned out
+          <SkipForward size={15} /> Turn out
         </button>
         <button
           name="status"
           value="rerun"
           disabled={!canEdit || pending}
-          className="col-span-2 flex h-10 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
+          className="flex h-10 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
         >
           Rerun required
         </button>
