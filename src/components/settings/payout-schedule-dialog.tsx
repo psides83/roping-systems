@@ -230,7 +230,7 @@ export function PayoutScheduleDialog({
                 </label>
                 <label className="block text-sm font-semibold">
                   Default added money
-                  <div className="relative">
+                  <div className="relative w-full max-w-36">
                     <span className="absolute left-3 top-[19px] text-sm text-[#758078]">
                       $
                     </span>

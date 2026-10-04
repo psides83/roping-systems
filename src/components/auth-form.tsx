@@ -16,7 +16,7 @@ export function AuthForm({ mode, configured }: { mode: "login" | "signup"; confi
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="mt-7 space-y-4">
+    <form action={formAction} className="mt-7 w-full max-w-[22rem] space-y-4">
       {mode === "signup" ? <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold">First name<input name="firstName" autoComplete="given-name" className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]" required /></label><label className="block text-sm font-semibold">Last name<input name="lastName" autoComplete="family-name" className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]" required /></label><div className="sm:col-span-1"><FieldError messages={state.errors?.firstName} /></div><div className="sm:col-span-1"><FieldError messages={state.errors?.lastName} /></div></div> : null}
       <label className="block text-sm font-semibold">Email address<input name="email" type="email" autoComplete="email" className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]" placeholder="you@example.com" required /></label>
       <FieldError messages={state.errors?.email} />

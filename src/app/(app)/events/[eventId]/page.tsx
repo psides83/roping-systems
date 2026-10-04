@@ -25,6 +25,7 @@ import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
 import { EventPublicationControl } from "@/components/events/event-publication-control";
+import { EventOfficialResultsControl } from "@/components/events/event-official-results-control";
 import { EventRopingOrderControls } from "@/components/events/event-roping-order-controls";
 import {
   ClassOperationsDialog,
@@ -797,6 +798,7 @@ export default async function RopingDetailPage({
           Results: {event.resultStatus}
         </span>
         <EventPublicationControl key={event.publicationState} eventId={event.id} publicationState={event.publicationState} enabled={event.canManage && isSupabaseConfigured()} />
+        <EventOfficialResultsControl eventId={event.id} status={event.status} resultStatus={event.resultStatus} enabled={event.canManage && isSupabaseConfigured()} />
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {dashboardMetrics.map((metric) => (

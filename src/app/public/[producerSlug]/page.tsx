@@ -76,7 +76,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
                     ) : null}
                   </header>
                   <PublicResultsWorkspace key={selectedEvent.id} eventSlug={selectedEvent.slug} ropings={selectedEvent.scheduledRopings} results={data.results} fourDResults={data.fourDResults}
-                    runs={data.roundResults} shortRoundRopingIds={data.shortRoundRopingIds}
+                    runs={data.roundResults} moneyResults={data.moneyResults} shortRoundRopingIds={data.shortRoundRopingIds}
                     initialRopingId={typeof query.roping === "string" ? query.roping : undefined} />
                 </>
               ) : <p className="py-10 text-sm text-[#66716b]">No events have been published yet.</p>}

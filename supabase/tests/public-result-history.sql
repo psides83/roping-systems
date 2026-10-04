@@ -5,10 +5,11 @@ declare
   fixture uuid;
   roping_count integer;
 begin
-  select id into strict fixture from public.events where slug = 'test-suite-v1-weekend-2' and publication_state = 'unpublished';
+  select id into strict fixture from public.events where slug = 'test-suite-v1-weekend-2';
+  update public.events set publication_state = 'unpublished', is_public = false where id = fixture;
   if exists(select 1 from public.public_event_schedule where id = fixture) then raise exception 'Unpublished event leaked into public schedule'; end if;
   insert into public_history_checks values ('PASS: unpublished completed event stays private');
-  update public.events set publication_state = 'published' where id = fixture;
+  update public.events set publication_state = 'published', is_public = true where id = fixture;
   if not exists(select 1 from public.public_event_schedule where id = fixture and status = 'completed') then raise exception 'Published completed event is missing'; end if;
   select count(distinct event_roping_id) into roping_count from public.public_aggregate_results where event_slug = 'test-suite-v1-weekend-2';
   if roping_count < 4 then raise exception 'Completed results missing across roping formats'; end if;

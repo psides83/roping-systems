@@ -2,20 +2,23 @@
 
 import { useId, useState } from "react";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
+import type { PublicMoneyResult } from "@/lib/events/public-money-results";
 import {
   averageStandings, roundStandings,
   type PublicResult, type PublicRoundResult,
 } from "@/lib/events/public-standings";
 
-export function PublicRopingResults({ results, runs, shortRoundEnabled = false, contestantQuery = "" }: {
+export function PublicRopingResults({ results, runs, awards = [], shortRoundEnabled = false, contestantQuery = "" }: {
   results: PublicResult[];
   runs: PublicRoundResult[];
+  awards?: PublicMoneyResult[];
   shortRoundEnabled?: boolean;
   contestantQuery?: string;
 }) {
   const [selected, setSelected] = useState("average");
   const id = useId();
   const roping = results[0];
+  if (!roping) return null;
   const tabs = [
     ...Array.from({ length: roping.mainRoundCount }, (_, index) => ({
       value: String(index + 1), label: `Round ${index + 1}`,
@@ -34,7 +37,13 @@ export function PublicRopingResults({ results, runs, shortRoundEnabled = false, 
           {roping.resultStatus === "official" ? "Official" : "Unofficial"}
         </span>
       </div>
-      <div role="tablist" aria-label={`${roping.divisionName} results`} className="flex overflow-x-auto border-b border-[#e7ebe8]">
+      <label className="block border-b border-[#e7ebe8] p-3 sm:hidden">
+        <span className="sr-only">Results round</span>
+        <select value={selected} onChange={(event) => setSelected(event.target.value)} className="h-9 w-auto min-w-[140px] max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">
+          {tabs.map((tab) => <option key={tab.value} value={tab.value}>{tab.label}</option>)}
+        </select>
+      </label>
+      <div role="tablist" aria-label={`${roping.divisionName} results`} className="hidden overflow-x-auto border-b border-[#e7ebe8] sm:flex">
         {tabs.map((tab, index) => (
           <button key={tab.value} type="button" role="tab" id={`${id}-tab-${tab.value}`}
             aria-selected={selected === tab.value} aria-controls={`${id}-panel`}
@@ -55,15 +64,16 @@ export function PublicRopingResults({ results, runs, shortRoundEnabled = false, 
           >{tab.label}</button>
         ))}
       </div>
-      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${selected}`} tabIndex={0}>
+      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${selected}`} tabIndex={0} className="overflow-x-auto">
         {rows.length ? (
-          <table className="w-full table-fixed text-left sm:table-auto">
+          <table className="w-full min-w-[520px] text-left">
             <thead className="bg-[#f0f2f1] text-[10px] font-bold uppercase text-[#66716b] sm:text-[11px]">
               <tr>
                 <th scope="col" className="w-14 px-3 py-3 sm:w-20 sm:px-5">Place</th>
                 <th scope="col" className="px-2 py-3 sm:px-5">Contestant</th>
                 <th scope="col" className="w-14 px-2 py-3 sm:w-auto sm:px-5">Entry</th>
                 <th scope="col" className="w-20 px-3 py-3 text-right sm:w-auto sm:px-5">{selected === "average" ? "Aggregate" : "Time"}</th>
+                <th scope="col" className="w-24 px-2 py-3 text-right sm:w-auto">Winnings</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e7ebe8]">
@@ -77,6 +87,11 @@ export function PublicRopingResults({ results, runs, shortRoundEnabled = false, 
                   </td>
                   <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5">#{row.entryNumber}</td>
                   <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" || row.status === "turned_out" ? "TO" : row.status === "rerun" ? "Rerun" : "-"}</td>
+                  <td className="px-2 py-4 text-right text-xs">
+                    {awards.filter((award) => award.entryId === row.entryId && (selected === "average" ? award.sectionType === "aggregate" : award.roundNumber === Number(selected))).map((award) => <span className="mb-1 block" key={award.planId}>
+                      <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong><span className="block text-[10px] text-[#66716b]">{award.poolType === "main" ? "Main" : award.poolName}</span>
+                    </span>)}
+                  </td>
                 </tr>
               ))}
             </tbody>

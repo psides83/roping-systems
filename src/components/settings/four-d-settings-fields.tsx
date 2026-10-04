@@ -194,7 +194,7 @@ export function FourDSettingsFields({
                 className="grid grid-cols-[48px_1fr_1fr] items-center gap-2"
               >
                 <span className="text-sm font-bold">{divisionIndex + 1}D</span>
-                <div className="relative">
+                <div className="relative w-full max-w-36">
                   <input
                     className={`${inputClass} pr-8 disabled:bg-[#eef1ef]`}
                     type="number"

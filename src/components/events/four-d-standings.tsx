@@ -1,3 +1,5 @@
+import type { PublicMoneyResult } from "@/lib/events/public-money-results";
+
 export interface FourDResultRow {
   dNumber: number;
   dLabel: string;
@@ -50,11 +52,13 @@ export function FourDStandings({
   resultStatus,
   title = "Live 4D standings",
   contestantQuery = "",
+  awards,
 }: {
   rows: FourDResultRow[];
   resultStatus: string;
   title?: string;
   contestantQuery?: string;
+  awards?: PublicMoneyResult[];
 }) {
   const activeDivisions = rows[0]?.activeDivisions ?? 0;
 
@@ -113,6 +117,9 @@ export function FourDStandings({
                           <span className="font-mono font-bold">
                             {row.finalTimeSeconds.toFixed(2)}
                           </span>
+                          {awards ? <div className="col-start-2 col-span-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#66716b]">
+                            {awards.filter((award) => award.entryId === row.entryId).map((award) => <span key={`${award.planId}:${award.sectionType}:${award.roundNumber}`}>{award.poolType === "main" ? "Main" : award.poolName}: <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong></span>)}
+                          </div> : null}
                         </div>
                       ))}
                     </div>

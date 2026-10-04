@@ -43,6 +43,47 @@ button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Field widths follow their expected content, not the width of the panel. */
+input.w-full:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="color"]):not([type="range"]) {
+  display: block;
+  width: min(100%, var(--field-width, 22rem));
+}
+input[type="number"],
+input[inputmode="decimal"],
+input[inputmode="numeric"] {
+  --field-width: 9rem;
+}
+input[type="date"] {
+  --field-width: 12rem;
+}
+input[type="time"] {
+  --field-width: 10rem;
+}
+input[type="datetime-local"] {
+  --field-width: 18rem;
+}
+input[type="tel"] {
+  --field-width: 14rem;
+}
+input[type="search"] {
+  --field-width: 20rem;
+}
+input[name="firstName"],
+input[name="lastName"],
+input[name="city"],
+input[name="venueCity"] {
+  --field-width: 16rem;
+}
+input[name="memberNumber"] {
+  --field-width: 12rem;
+}
+select.w-full {
+  display: block;
+  width: fit-content;
+  min-width: min(100%, 10rem);
+  max-width: min(100%, 22rem);
+}
 ::selection {
   background: #f1c1b3;
   color: #43160d;
