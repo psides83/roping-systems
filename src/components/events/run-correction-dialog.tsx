@@ -128,10 +128,13 @@ export function RunCorrectionDialog({
                         </span>
                         <input
                           name="timerReading"
+                          type="number"
+                          min="0"
+                          step="0.01"
                           inputMode="decimal"
                           defaultValue={run.timerReadings[index] ?? ""}
                           className="h-11 min-w-0 flex-1 bg-transparent text-right font-mono outline-none"
-                          placeholder="0.000"
+                          placeholder="0.00"
                           required
                         />
                       </label>
@@ -143,7 +146,7 @@ export function RunCorrectionDialog({
                       type="number"
                       min="0"
                       max="999"
-                      step="0.001"
+                      step="0.01"
                       value={penalty}
                       onChange={(event) => setPenalty(event.target.value)}
                       className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3 font-mono"

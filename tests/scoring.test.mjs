@@ -16,8 +16,15 @@ test("incomplete, negative, and nonfinite readings cannot be saved", () => {
 test("penalties and signed handicap adjustments", () => {
   assert.equal(calculateFinalRunTime(10, 5, 2), 13);
   assert.equal(calculateFinalRunTime(10, 0, -2), 12);
-  assert.equal(formatFinalTimeAdjustment(2), "-2.000");
-  assert.equal(formatFinalTimeAdjustment(-2), "+2.000");
+  assert.equal(formatFinalTimeAdjustment(2), "-2.00");
+  assert.equal(formatFinalTimeAdjustment(-2), "+2.00");
+});
+test("timer averages round to hundredths before scoring", () => {
+  assert.equal(resolveTimerReadings(["10", "10", "10.01"], "average"), 10);
+  assert.equal(resolveTimerReadings(["10", "10", "10.02"], "average"), 10.01);
+  assert.equal(resolveTimerReadings(["10", "10.01"], "average"), 10.01);
+  assert.equal(resolveTimerReadings(["1.00", "1.01"], "average"), 1.01);
+  assert.equal(calculateFinalRunTime(10.01, 0.1, 0), 10.11);
 });
 test("short-round credit never reduces the carried main-round aggregate", () => {
   assert.equal(20 + calculateFinalRunTime(1, 0, 3), 20);

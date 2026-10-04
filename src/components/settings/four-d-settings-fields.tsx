@@ -78,9 +78,9 @@ export function FourDSettingsFields({
           <input
             className={`${inputClass} mt-1`}
             type="number"
-            min="0.001"
+            min="0.01"
             max="60"
-            step="0.001"
+            step="0.01"
             value={settings.splitSeconds}
             onChange={(event) =>
               setSettings((current) => ({

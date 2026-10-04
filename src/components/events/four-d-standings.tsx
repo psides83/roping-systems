@@ -91,8 +91,8 @@ export function FourDStandings({
                     <h3 className="font-bold">{dNumber}D</h3>
                     <span className="text-xs text-[#758078]">
                       {settings
-                        ? `${settings.dStartSeconds.toFixed(3)}${settings.dEndSeconds === null ? "+" : ` to < ${settings.dEndSeconds.toFixed(3)}`}`
-                        : `Starts at ${start.toFixed(3)}`}
+                        ? `${settings.dStartSeconds.toFixed(2)}${settings.dEndSeconds === null ? "+" : ` to < ${settings.dEndSeconds.toFixed(2)}`}`
+                        : `Starts at ${start.toFixed(2)}`}
                     </span>
                   </div>
                   {divisionRows.length ? (
@@ -109,7 +109,7 @@ export function FourDStandings({
                             {row.contestantName}
                           </span>
                           <span className="font-mono font-bold">
-                            {row.finalTimeSeconds.toFixed(3)}
+                            {row.finalTimeSeconds.toFixed(2)}
                           </span>
                         </div>
                       ))}

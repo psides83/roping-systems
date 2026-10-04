@@ -510,7 +510,7 @@ function PayoutResults({
                       {result.contestantName}
                     </span>
                     <span className="text-xs text-[#758078]">
-                      {result.performanceSeconds.toFixed(3)} sec
+                      {result.performanceSeconds.toFixed(2)} sec
                     </span>
                   </span>
                   <span className="font-bold">

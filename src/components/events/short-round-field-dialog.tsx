@@ -260,7 +260,7 @@ function FieldList({
                 {row.name}
               </span>
               <span className="font-mono text-[10px] text-[#758078]">
-                {row.aggregateTime.toFixed(3)} aggregate
+                {row.aggregateTime.toFixed(2)} aggregate
               </span>
             </span>
             <button

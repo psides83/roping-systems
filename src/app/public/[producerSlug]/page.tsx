@@ -595,7 +595,7 @@ export default async function ProducerPublicPage({
                         </td>
                         <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">
                           {result.totalTime !== null
-                            ? result.totalTime.toFixed(3)
+                            ? result.totalTime.toFixed(2)
                             : result.status === "no_time"
                               ? "NT"
                               : result.status}

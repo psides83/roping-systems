@@ -797,7 +797,7 @@ export function ScheduledClassFields({
                             type="number"
                             min="-60"
                             max="60"
-                            step="0.001"
+                            step="0.01"
                             value={
                               occurrence.incentiveRules[classification.id] ?? ""
                             }
@@ -810,7 +810,7 @@ export function ScheduledClassFields({
                               })
                             }
                             className="h-9 min-w-0 flex-1 bg-transparent text-right font-mono text-sm outline-none"
-                            placeholder="0.000"
+                            placeholder="0.00"
                             aria-label={`${classification.name} final time adjustment`}
                           />
                           <span className="ml-1 text-xs text-[#758078]">

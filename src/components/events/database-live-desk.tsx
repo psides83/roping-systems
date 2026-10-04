@@ -558,12 +558,12 @@ export function DatabaseLiveDesk({
                     ) : null}
                     {isShortRound ? (
                       <td className="px-5 py-4 text-right font-mono text-sm font-semibold">
-                        {run.carryTime?.toFixed(3) ?? "-"}
+                        {run.carryTime?.toFixed(2) ?? "-"}
                       </td>
                     ) : null}
                     <td className="px-5 py-4 text-right font-mono text-sm font-semibold">
                       {run.status === "complete"
-                        ? run.rawTime?.toFixed(3)
+                        ? run.rawTime?.toFixed(2)
                         : runStatusAbbreviations[run.status]}
                     </td>
                     <td className="px-5 py-4 text-right font-mono text-sm">
@@ -578,7 +578,7 @@ export function DatabaseLiveDesk({
                       {run.status === "complete" && run.rawTime !== null
                         ? ((run.carryTime ?? 0) + calculateFinalRunTime(
                             run.rawTime, run.penalty, run.incentiveAdjustment,
-                          )).toFixed(3)
+                          )).toFixed(2)
                         : runStatusAbbreviations[run.status]}
                     </td>
                   </tr>
@@ -804,14 +804,14 @@ function RunEntryForm({
   const adjustedRunTime =
     resolved === null
       ? "--.---"
-      : calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment).toFixed(3);
+      : calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment).toFixed(2);
   const aggregateTotal =
     resolved === null || run.carryTime === null
       ? "--.---"
       : (
           run.carryTime +
           calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment)
-        ).toFixed(3);
+        ).toFixed(2);
   const methodLabel =
     timerResolution === "best"
       ? "Fastest reading"
@@ -859,6 +859,9 @@ function RunEntryForm({
               </span>
               <input
                 name="timerReading"
+                type="number"
+                min="0"
+                step="0.01"
                 aria-label={`Timer ${index + 1}`}
                 autoFocus={index === 0 && canEdit}
                 inputMode="decimal"
@@ -872,7 +875,7 @@ function RunEntryForm({
                 }
                 disabled={!canEdit}
                 className="h-14 min-w-0 flex-1 bg-transparent font-mono text-2xl font-bold outline-none placeholder:text-[#c9cecb] disabled:opacity-60"
-                placeholder="0.000"
+                placeholder="0.00"
               />
               <span className="text-xs font-semibold text-[#758078]">sec</span>
             </label>
@@ -907,7 +910,7 @@ function RunEntryForm({
           </span>
           {isShortRound && run.carryTime !== null ? (
             <span className="mt-1 block text-[10px] font-semibold text-[#758078]">
-              {run.carryTime.toFixed(3)} carry + {adjustedRunTime} run
+              {run.carryTime.toFixed(2)} carry + {adjustedRunTime} run
             </span>
           ) : null}
           {run.incentiveAdjustment ? (

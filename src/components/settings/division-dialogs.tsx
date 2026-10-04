@@ -298,7 +298,7 @@ function EventTemplateDialog({
                         classification.handicapAdjustmentSeconds >= 0
                           ? "+"
                           : ""}
-                        {classification.handicapAdjustmentSeconds?.toFixed(3)}{" "}
+                        {classification.handicapAdjustmentSeconds?.toFixed(2)}{" "}
                         sec
                       </span>
                     </label>

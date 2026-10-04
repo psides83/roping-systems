@@ -270,7 +270,7 @@ function ClassificationUseFields({
               type="number"
               min="-60"
               max="60"
-              step="0.001"
+              step="0.01"
               defaultValue={adjustmentSeconds ?? 0}
               className="min-w-0 flex-1 bg-transparent font-mono outline-none"
               required
