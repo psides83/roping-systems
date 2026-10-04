@@ -11,6 +11,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
+import { payoutScheduleIssues } from "@/lib/payout-schedule-validation";
 
 function demoBrackets(finalSplit: number[]) {
   return [
@@ -186,8 +187,8 @@ export default async function PayoutSettingsPage() {
                         : "standard"),
                   )
                   .map((schedule) => (
-                    <option key={schedule.id} value={schedule.id}>
-                      {schedule.name}
+                    <option key={schedule.id} value={schedule.id} disabled={payoutScheduleIssues(schedule).length > 0}>
+                      {schedule.name}{payoutScheduleIssues(schedule).length ? " · Incomplete" : ""}
                     </option>
                   ))}
               </select>
@@ -218,6 +219,9 @@ export default async function PayoutSettingsPage() {
                 <div className="flex items-center gap-2">
                   <CircleDollarSign size={18} className="text-[#758078]" />
                   <h2 className="font-bold">{schedule.name}</h2>
+                  {payoutScheduleIssues(schedule).length ? (
+                    <span title={payoutScheduleIssues(schedule).join("\n")} className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">Incomplete</span>
+                  ) : null}
                   {schedule.competitionFormat === "four_d" ? (
                     <span className="rounded bg-sky-50 px-2 py-1 text-[10px] font-bold uppercase text-sky-800">
                       4D breakaway
@@ -227,6 +231,7 @@ export default async function PayoutSettingsPage() {
                 <p className="mt-2 text-sm text-[#66716b]">
                   {schedule.description || "No description"}
                 </p>
+                {payoutScheduleIssues(schedule).length ? <p className="mt-2 text-xs text-amber-900">{payoutScheduleIssues(schedule).join(" ")}</p> : null}
                 {schedule.addedMoneyCents ? (
                   <p className="mt-2 text-xs font-bold text-emerald-700">
                     Includes {formatCurrency(schedule.addedMoneyCents)} default

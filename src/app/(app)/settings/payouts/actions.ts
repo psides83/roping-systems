@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
+import { payoutScheduleIssues } from "@/lib/payout-schedule-validation";
 
 export interface PayoutFormState {
   success?: boolean;
@@ -136,6 +137,18 @@ export async function savePayoutSchedule(
         ? "Go-round, aggregate, and short-round allocations must total 100%."
         : "Go-round and aggregate allocations must total 100%.",
     };
+
+  const issues = payoutScheduleIssues({
+    ...parsed.data, shortRoundEnabled, fourDSettings,
+    bracketsByStage: Object.fromEntries(
+      ["go_round", "aggregate", "short_round"].map((stage) => [stage,
+        brackets.filter((b) => b.stageType === stage).map((b) => ({
+          ...b, percentages: b.places.map((p) => p.percentageBasisPoints / 100),
+        })),
+      ]),
+    ) as unknown as Parameters<typeof payoutScheduleIssues>[0]["bracketsByStage"],
+  });
+  if (issues.length) return { message: issues.join(" ") };
 
   const producer = await getActiveProducer();
   if (!producer || producer.role === "viewer")

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import { Copy, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import {
   deletePayoutSchedule,
   savePayoutSchedule,
@@ -22,7 +22,7 @@ type PayoutStage = "go_round" | "aggregate" | "short_round";
 
 const payoutStages: Array<{ id: PayoutStage; label: string }> = [
   { id: "go_round", label: "Go-rounds" },
-  { id: "aggregate", label: "Aggregate" },
+  { id: "aggregate", label: "Average" },
   { id: "short_round", label: "Short round" },
 ];
 
@@ -412,6 +412,14 @@ export function PayoutScheduleDialog({
                 <p className="text-xs text-[#758078]">
                   Percentages within each bracket in this stage must total 100%.
                 </p>
+                {selectedStage === "aggregate" ? (
+                  <button type="button" onClick={() => {
+                    if (bracketsByStage.aggregate.length && !window.confirm("Replace the Average paid-place rules with the go-round rules?")) return;
+                    setBracketsByStage((current) => ({ ...current, aggregate: current.go_round.map((bracket, index) => ({ ...bracket, percentages: [...bracket.percentages], key: `average-${Date.now()}-${index}` })) }));
+                  }} className="flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold">
+                    <Copy size={15} /> Copy go-rounds
+                  </button>
+                ) : null}
                 {brackets.map((bracket, bracketIndex) => {
                   const total = bracket.percentages.reduce(
                     (sum, value) => sum + Number(value || 0),
