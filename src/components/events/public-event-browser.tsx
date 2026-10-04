@@ -41,7 +41,7 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasonS
           </label>
           <label className="text-xs font-semibold text-[#66716b]">Sort
             <select value={oldestFirst ? "oldest" : "newest"} onChange={(event) => { setOldestFirst(event.target.value === "oldest"); setShowAll(false); }} className="mt-1 block h-9 max-w-full rounded-md border border-[#ccd4d0] bg-white pl-3 text-xs">
-              <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
+              <option value="newest">Latest first</option><option value="oldest">Oldest first</option>
             </select>
           </label>
         </div> : null}
