@@ -45,6 +45,7 @@ async function getDivisionData(): Promise<{
   divisionOptions: DivisionOption[];
   classificationOptions: ClassificationOption[];
   canEdit: boolean;
+  funds: { id: string; name: string }[];
 }> {
   if (!isSupabaseConfigured())
     return {
@@ -71,6 +72,7 @@ async function getDivisionData(): Promise<{
       ],
       classificationOptions: [],
       canEdit: false,
+      funds: [],
     };
   const producer = await getActiveProducer();
   if (!producer)
@@ -80,6 +82,7 @@ async function getDivisionData(): Promise<{
       divisionOptions: [],
       classificationOptions: [],
       canEdit: false,
+      funds: [],
     };
   const supabase = await createClient();
   const [
@@ -91,7 +94,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("roping_templates")
       .select(
-        "id, name, description, division_id, main_round_count, cattle_draw_enabled, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, division_id, main_round_count, cattle_draw_enabled, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("producer_id", producer.id)
       .order("sort_order")
@@ -130,8 +133,11 @@ async function getDivisionData(): Promise<{
       `Unable to load member classifications: ${classificationError.message}`,
     );
 
+  const { data: funds, error: fundError } = await supabase.from("producer_funds").select("id,name").eq("producer_id",producer.id).eq("is_active",true).order("name");
+  if (fundError) throw new Error(`Unable to load funds: ${fundError.message}`);
   return {
     canEdit: producer.role !== "viewer",
+    funds: funds ?? [],
     payoutSchedules: (schedules ?? []).map((schedule) => ({
       id: schedule.id,
       name: schedule.name,
@@ -193,6 +199,7 @@ async function getDivisionData(): Promise<{
           scope: FeeScope;
           kind: FeeKind;
           fund_tracking: "general" | "classification" | null;
+          destination_fund_id: string | null;
           payout_schedule_id: string | null;
           is_required: boolean;
           included_in_entry_price: boolean;
@@ -208,6 +215,7 @@ async function getDivisionData(): Promise<{
           scope: fee.scope,
           kind: fee.kind,
           fundTracking: fee.fund_tracking,
+          destinationFundId: fee.destination_fund_id,
           payoutScheduleId: fee.payout_schedule_id,
           isRequired: fee.is_required,
           includedInEntryPrice: fee.included_in_entry_price,
@@ -225,6 +233,7 @@ export default async function DivisionSettingsPage() {
     divisionOptions,
     classificationOptions,
     canEdit,
+    funds,
   } = await getDivisionData();
 
   return (
@@ -329,6 +338,7 @@ export default async function DivisionSettingsPage() {
                   <CircleDollarSign size={15} /> Fees & entry options
                 </p>
                 <AddFeeDialog
+                  funds={funds}
                   divisionId={division.id}
                   divisionName={division.name}
                   configured={configured && canEdit}
@@ -374,6 +384,7 @@ export default async function DivisionSettingsPage() {
                           </td>
                           <td className="py-3">
                             <EditFeeDialog
+                              funds={funds}
                               divisionId={division.id}
                               divisionName={division.name}
                               configured={configured && canEdit}

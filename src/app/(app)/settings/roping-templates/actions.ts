@@ -107,6 +107,7 @@ const feeSchema = z.object({
   scope: z.enum(["entry", "contestant_division", "contestant_event"]),
   kind: z.enum(["standard", "insurance", "side_pot", "other", "added_money"]),
   fundTracking: z.enum(["general", "classification"]).optional(),
+  destinationFundId: z.union([z.literal(""), z.uuid()]).optional(),
   payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   includedInEntryPrice: z.string().optional(),
   contributesToPayout: z.string().optional(),
@@ -417,6 +418,7 @@ export async function createFee(
     scope: parsed.data.kind === "added_money" ? "entry" : parsed.data.scope,
     kind: parsed.data.kind,
     fund_tracking: parsed.data.kind === "added_money" ? parsed.data.fundTracking : null,
+    destination_fund_id: parsed.data.kind === "added_money" ? parsed.data.destinationFundId || null : null,
     payout_schedule_id: parsed.data.kind === "added_money" ? null : parsed.data.payoutScheduleId || null,
     included_in_entry_price: parsed.data.includedInEntryPrice === "on",
     contributes_to_payout: parsed.data.kind !== "added_money" && (
@@ -472,6 +474,7 @@ export async function updateFee(
       scope: parsed.data.kind === "added_money" ? "entry" : parsed.data.scope,
       kind: parsed.data.kind,
       fund_tracking: parsed.data.kind === "added_money" ? parsed.data.fundTracking : null,
+      destination_fund_id: parsed.data.kind === "added_money" ? parsed.data.destinationFundId || null : null,
       payout_schedule_id: parsed.data.kind === "added_money" ? null : parsed.data.payoutScheduleId || null,
       included_in_entry_price: parsed.data.includedInEntryPrice === "on",
       contributes_to_payout: parsed.data.kind !== "added_money" && (

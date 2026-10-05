@@ -65,6 +65,7 @@ export interface FeeTemplateSummary {
   isRequired?: boolean;
   payoutScheduleId?: string | null;
   fundTracking?: "general" | "classification" | null;
+  destinationFundId?: string | null;
 }
 
 export interface DivisionTemplateSummary {

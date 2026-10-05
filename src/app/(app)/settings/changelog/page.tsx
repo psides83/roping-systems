@@ -11,6 +11,8 @@ const entityLabels: Record<string, string> = {
   memberships: "Membership",
   member_fines: "Member fine",
   membership_suspensions: "Membership suspension",
+  producer_funds: "Fund account",
+  fund_transactions: "Fund transaction",
   member_fine_transactions: "Fine payment or adjustment",
   member_fine_exceptions: "Fine exception",
   roping_templates: "Roping template",

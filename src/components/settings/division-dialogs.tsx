@@ -626,15 +626,18 @@ function FeeDialog({
   configured,
   payoutSchedules,
   fee,
+  funds = [],
 }: {
   divisionId: string;
   divisionName: string;
   configured: boolean;
   payoutSchedules: PayoutOption[];
   fee?: FeeTemplateSummary;
+  funds?: { id: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState(fee?.kind ?? "standard");
+  const [fundTracking, setFundTracking] = useState(fee?.fundTracking ?? "general");
   const [isRequired, setIsRequired] = useState(fee?.isRequired ?? true);
   const [state, action, pending] = useActionState(
     fee ? updateFee : createFee,
@@ -750,11 +753,17 @@ function FeeDialog({
             {kind === "added_money" ? <>
               <input type="hidden" name="scope" value="entry" />
               <label className="block text-sm font-semibold">Fund tracking
-                <select name="fundTracking" defaultValue={fee?.fundTracking ?? "general"} className={inputClass}>
+                <select name="fundTracking" value={fundTracking} onChange={(event) => setFundTracking(event.target.value as "general" | "classification")} className={inputClass}>
                   <option value="general">General added-money fund</option>
                   <option value="classification">By classification</option>
                 </select>
               </label>
+              {fundTracking === "general" ? <label className="block text-sm font-semibold">Destination fund
+                <select name="destinationFundId" defaultValue={fee?.destinationFundId ?? ""} className={inputClass}>
+                  <option value="">Use general / matching classification fund</option>
+                  {funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}
+                </select>
+              </label> : <input type="hidden" name="destinationFundId" value="" />}
             </> : null}
             {kind === "side_pot" || kind === "insurance" ? (
               <label className="block text-sm font-semibold">
@@ -865,6 +874,7 @@ export function AddFeeDialog(props: {
   divisionName: string;
   configured: boolean;
   payoutSchedules: PayoutOption[];
+  funds?: { id: string; name: string }[];
 }) {
   return <FeeDialog {...props} />;
 }
@@ -873,6 +883,7 @@ export function EditFeeDialog(props: {
   divisionName: string;
   configured: boolean;
   payoutSchedules: PayoutOption[];
+  funds?: { id: string; name: string }[];
   fee: FeeTemplateSummary;
 }) {
   return <FeeDialog {...props} />;
