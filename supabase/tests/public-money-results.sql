@@ -1,4 +1,7 @@
 begin;
+-- An obsolete visibility flag must not hide a published event's awards.
+update public.events set publication_state = 'published', is_public = false
+where id = '85981f1d-f150-49b3-bdc9-40eca089cff5';
 create temporary table expected_awards on commit drop as
 select * from public.public_event_money_results('85981f1d-f150-49b3-bdc9-40eca089cff5');
 do $$
@@ -26,7 +29,7 @@ begin
 end;
 $$;
 reset role;
-update public.events set publication_state = 'unpublished'
+update public.events set publication_state = 'unpublished', is_public = true
 where id = '85981f1d-f150-49b3-bdc9-40eca089cff5';
 set local role anon;
 do $$
