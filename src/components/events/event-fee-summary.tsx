@@ -73,7 +73,11 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
       </dl>
       {eventFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Event-wide fees</h3><FeeTable fees={eventFees} /></div> : null}
       {entryFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Entry fees across all ropings</h3><FeeTable fees={Array.from(itemized.values())} /></div> : null}
-      <div className="mt-4 divide-y divide-[#dfe4e1]">
+      <details className="mt-4 border-t border-[#dfe4e1]">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
+          By roping <span className="flex items-center gap-2 text-xs font-normal text-[#66716b]">{groups.size} ropings <ChevronDown size={16} /></span>
+        </summary>
+        <div className="divide-y divide-[#dfe4e1]">
         {Array.from(groups, ([id, group]) => (
           <details key={id} className="group py-2">
             <summary className="flex cursor-pointer list-none items-center gap-3 py-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
@@ -84,7 +88,8 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
             <FeeTable fees={group.fees} />
           </details>
         ))}
-      </div>
+        </div>
+      </details>
       {fees.some((fee) => fee.partial_payments) ? (
         <p className="mt-3 text-xs text-[#66716b]">Partial cash payments are allocated to event-wide fees first, then entry charges in the order created.</p>
       ) : null}
