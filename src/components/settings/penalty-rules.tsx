@@ -17,7 +17,7 @@ export function PenaltyRules({ rules, divisions, classifications, canEdit }: {
       <div><p className="text-sm font-semibold">{rule.name} <span className="ml-2 font-mono">+{Number(rule.seconds).toFixed(2)}s</span>
         {!rule.is_active ? <span className="ml-2 rounded bg-[#eef1ef] px-2 py-1 text-xs text-[#66716b]">Inactive</span> : null}</p>
         <p className="mt-1 text-xs text-[#66716b]">{divisions.find((d) => d.id === rule.division_id)?.name}
-          {rule.classification_mode !== "all" ? ` · ${rule.classification_mode === "only" ? "Only" : "Except"} ${classifications.filter((c) => rule.classification_ids.includes(c.id)).map((c) => c.name).join(", ")}` : " · All classifications"}
+          {rule.classification_mode !== "all" ? ` · ${rule.classification_mode === "only" ? "Only" : "Except"} ropings: ${classifications.filter((c) => rule.classification_ids.includes(c.id)).map((c) => c.name).join(", ")}` : " · All classifications"}
           {rule.age_mode !== "all" ? ` · ${rule.age_mode === "only" ? "Only" : "Except"} ${formatAgeRange(rule.minimum_age, rule.maximum_age).toLowerCase()}` : " · All ages"}</p>
       </div>{canEdit ? <button aria-label={`Edit ${rule.name}`} title={`Edit ${rule.name}`} onClick={() => setEditing(rule)} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border"><Pencil size={15} /></button> : null}
     </div>)}</div>{!rules.length && !editing ? <p className="px-5 pb-5 text-sm text-[#758078]">No penalties configured</p> : null}

@@ -12,7 +12,7 @@ declare
   rejected boolean;
 begin
   select run.id,run.producer_id,run.entry_id,run.status,r.id roping_id,r.event_id,r.division_id,r.scheduled_date,
-    r.timer_count,e.roper_id,e.membership_id into sample
+    r.timer_count,r.classification_id,e.roper_id,e.membership_id into sample
   from public.competition_runs run join public.event_ropings r on r.id=run.event_roping_id
   join public.events event on event.id=r.event_id join public.roping_entries e on e.id=run.entry_id
   where event.slug='test-suite-v1-weekend-1' and event.producer_id='8f96f20f-932b-45ae-ac93-9832818de64d'
@@ -20,10 +20,7 @@ begin
   order by run.id limit 1;
   if sample.id is null then raise exception 'Missing test fixture'; end if;
   insert into penalty_test_run values(sample.id);
-  select h.classification_id into class_id from public.membership_classification_history h
-  where h.membership_id=sample.membership_id and h.division_id=sample.division_id and h.effective_on<=sample.scheduled_date
-    and (h.ended_on is null or h.ended_on>=sample.scheduled_date)
-  order by h.effective_on desc,h.created_at desc limit 1;
+  class_id:=sample.classification_id;
   if class_id is null then raise exception 'Missing classification fixture'; end if;
   update public.ropers set birth_date=(sample.scheduled_date-interval '19 years')::date where id=sample.roper_id;
   insert into public.producer_penalty_rules(producer_id,division_id,name,seconds)
