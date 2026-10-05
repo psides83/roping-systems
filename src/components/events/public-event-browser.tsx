@@ -5,10 +5,10 @@ import { useId, useState } from "react";
 import { ChevronDown, Radio, Search } from "lucide-react";
 import type { PublicEvent } from "@/lib/events/public-event-data";
 import { publicEventDate, publicEventHref } from "@/lib/events/public-event-navigation";
-import { browseResultEvents, seasonLabel, seasonStartYear } from "@/lib/seasons";
+import { browseResultEvents, eventSeason, type ProducerSeason } from "@/lib/seasons";
 
-export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasonStartMonth, timezone }: {
-  events: PublicEvent[]; selectedSlug?: string; producerSlug: string; seasonStartMonth: number; timezone: string;
+export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasons, timezone }: {
+  events: PublicEvent[]; selectedSlug?: string; producerSlug: string; seasons: ProducerSeason[]; timezone: string;
 }) {
   const [season, setSeason] = useState("all");
   const [oldestFirst, setOldestFirst] = useState(false);
@@ -16,8 +16,9 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasonS
   const [showAll, setShowAll] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
-  const seasons = [...new Set(events.filter((event) => event.status === "completed").map((event) => seasonStartYear(event.startsAt, seasonStartMonth, timezone)).filter((year): year is number => year !== null))].sort((a, b) => b - a);
-  const { live, past } = browseResultEvents(events, search, season, seasonStartMonth, timezone, oldestFirst);
+  const orderedSeasons = seasons.toSorted((a, b) => b.startsOn.localeCompare(a.startsOn));
+  const unassigned = events.some((event) => event.status === "completed" && !eventSeason(event.startsAt, seasons, timezone));
+  const { live, past } = browseResultEvents(events, search, season, seasons, timezone, oldestFirst);
 
   return (
     <aside aria-label="Browse event results" className="min-w-0 lg:sticky lg:top-6">
@@ -36,7 +37,8 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasonS
           <label className="text-xs font-semibold text-[#66716b]">Season
             <select value={season} onChange={(event) => { setSeason(event.target.value); setShowAll(false); }} className="mt-1 block h-9 max-w-full rounded-md border border-[#ccd4d0] bg-white pl-3 text-xs">
               <option value="all">All seasons</option>
-              {seasons.map((year) => <option key={year} value={year}>{seasonLabel(year, seasonStartMonth)}</option>)}
+              {orderedSeasons.map((period) => <option key={period.id} value={period.id}>{period.name}</option>)}
+              {unassigned ? <option value="unassigned">Outside seasons</option> : null}
             </select>
           </label>
           <label className="text-xs font-semibold text-[#66716b]">Sort

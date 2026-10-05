@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const entityLabels: Record<string, string> = {
   producers: "Producer settings",
+  producer_seasons: "Season",
   producer_staff: "Team access",
   memberships: "Membership",
   roping_templates: "Roping template",

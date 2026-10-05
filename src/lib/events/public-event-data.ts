@@ -6,6 +6,7 @@ import { mapFourDResult, type FourDResultDatabaseRow, type FourDResultRow } from
 import type { PublicResult, PublicRoundResult } from "@/lib/events/public-standings";
 import { selectPublicEvent } from "@/lib/events/public-event-navigation";
 import type { PublicMoneyResult } from "@/lib/events/public-money-results";
+import type { ProducerSeason } from "@/lib/seasons";
 
 export interface PublicEvent {
   id: string;
@@ -92,10 +93,10 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
         logoUrl: null as string | null,
         brandPrimary: "#17251F",
         brandAccent: "#BB3E24",
-        seasonStartMonth: 1,
         timezone: "America/Chicago",
       },
       events,
+      seasons: [{ id: "preview-season", name: "2026", startsOn: "2026-01-01", endsOn: "2026-12-31" }] as ProducerSeason[],
       results: [
         {
           resultId: "1",
@@ -165,10 +166,14 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   const supabase = await createClient();
   const { data: producer } = await supabase
     .from("public_producer_pages")
-    .select("id, public_name, slug, logo_path, brand_primary, brand_accent, season_start_month, timezone")
+    .select("id, public_name, slug, logo_path, brand_primary, brand_accent, timezone")
     .eq("slug", producerSlug)
     .single();
   if (!producer) return null;
+  const { data: seasonRows, error: seasonError } = await supabase.from("public_producer_seasons")
+    .select("id, name, starts_on, ends_on").eq("producer_id", producer.id).order("starts_on", { ascending: false });
+  if (seasonError) throw new Error(`Unable to load seasons: ${seasonError.message}`);
+  const seasons: ProducerSeason[] = (seasonRows ?? []).map((row) => ({ id: row.id, name: row.name, startsOn: row.starts_on, endsOn: row.ends_on }));
   const { data: membershipForm, error: membershipFormError } = await supabase
     .from("public_membership_forms")
     .select("id")
@@ -361,10 +366,10 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       logoUrl,
       brandPrimary: producer.brand_primary,
       brandAccent: producer.brand_accent,
-      seasonStartMonth: producer.season_start_month,
       timezone: producer.timezone,
     },
     events,
+    seasons,
     results,
     fourDResults,
     roundResults,

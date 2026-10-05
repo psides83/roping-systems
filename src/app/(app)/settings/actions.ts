@@ -59,7 +59,6 @@ const settingsSchema = z.object({
     "America/New_York",
   ]),
   allowGuestEntries: z.string().optional(),
-  seasonStartMonth: z.coerce.number().int().min(1).max(12),
 });
 
 export async function updateProducerSettings(
@@ -80,7 +79,6 @@ export async function updateProducerSettings(
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
       timezone: parsed.data.timezone,
-      season_start_month: parsed.data.seasonStartMonth,
       allow_non_member_entries: parsed.data.allowGuestEntries === "on",
     })
     .eq("id", producer.id);

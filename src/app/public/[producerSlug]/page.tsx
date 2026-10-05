@@ -49,7 +49,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
         <section id="results" className="scroll-mt-4">
           <h2 className="mb-5 text-xl font-bold">Roping results</h2>
           <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <PublicEventBrowser events={data.events} selectedSlug={selectedEvent?.slug} producerSlug={producerSlug} seasonStartMonth={data.producer.seasonStartMonth} timezone={data.producer.timezone} />
+            <PublicEventBrowser events={data.events} selectedSlug={selectedEvent?.slug} producerSlug={producerSlug} seasons={data.seasons} timezone={data.producer.timezone} />
             <div className="min-w-0 space-y-5">
               {selectedEvent && ["in_progress", "completed"].includes(selectedEvent.status) ? (
                 <>
