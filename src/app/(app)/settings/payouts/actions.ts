@@ -31,7 +31,6 @@ const formSchema = z.object({
     .min(1, "Schedule name is required.")
     .transform(formatProperNoun),
   description: z.string().trim(),
-  addedMoney: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
   paybackPercent: z.coerce.number().positive().max(100),
   goRoundsPercent: z.coerce.number().min(0).max(100),
   aggregatePercent: z.coerce.number().min(0).max(100),
@@ -142,7 +141,7 @@ export async function savePayoutSchedule(
     target_schedule_id: parsed.data.scheduleId || null,
     schedule_name: parsed.data.name,
     schedule_description: parsed.data.description,
-    added_money_cents: Math.round(Number(parsed.data.addedMoney) * 100),
+    added_money_cents: 0,
     schedule_payback_basis_points: Math.round(parsed.data.paybackPercent * 100),
     schedule_go_rounds_basis_points: Math.round(
       parsed.data.goRoundsPercent * 100,

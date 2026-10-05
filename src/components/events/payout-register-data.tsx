@@ -6,16 +6,18 @@ export async function PayoutRegisterData({ eventId, producerId, canManage }: {
   eventId: string; producerId: string; canManage: boolean;
 }) {
   const supabase = await createClient();
-  const [awardResult, receiptResult] = await Promise.all([
+  const [awardResult, receiptResult, finalizedResult] = await Promise.all([
     supabase.rpc("event_payout_register_awards", { target_event_id: eventId }),
     supabase.from("payout_receipts")
       .select("id, roper_id, amount_cents, payment_method, received_by, receipt_confirmed, confirmed_at, note, paid_at, paid_by_label, reversed_at, reversal_reason, payout_receipt_awards(event_roping_id, amount_cents)")
       .eq("event_id", eventId).eq("producer_id", producerId).order("paid_at", { ascending: false }),
+    supabase.from("event_ropings").select("id").eq("event_id", eventId).not("payouts_finalized_at", "is", null),
   ]);
-  if (awardResult.error || receiptResult.error) {
-    throw new Error(`Unable to load payout register: ${(awardResult.error ?? receiptResult.error)?.message}`);
+  if (awardResult.error || receiptResult.error || finalizedResult.error) {
+    throw new Error(`Unable to load payout register: ${(awardResult.error ?? receiptResult.error ?? finalizedResult.error)?.message}`);
   }
-  const awards: RegisterAward[] = (awardResult.data ?? []).map((row: {
+  const finalized = new Set((finalizedResult.data ?? []).map(row => row.id));
+  const awards: RegisterAward[] = (awardResult.data ?? []).filter((row: {event_roping_id: string}) => finalized.has(row.event_roping_id)).map((row: {
     plan_id: string; event_roping_id: string; roping_name: string; pool_name: string;
     pool_type: string; entry_id: string; roper_id: string; contestant_name: string;
     member_number: string | null; section_type: string; round_number: number | null;

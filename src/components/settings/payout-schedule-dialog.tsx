@@ -30,7 +30,6 @@ export interface EditablePayoutSchedule {
   id: string;
   name: string;
   description: string;
-  addedMoneyCents: number;
   paybackPercent: number;
   goRoundsPercent: number;
   aggregatePercent: number;
@@ -217,7 +216,7 @@ export function PayoutScheduleDialog({
                 name="competitionFormat"
                 value={competitionFormat}
               />
-              <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+              <div className="grid gap-4">
                 <label className="block text-sm font-semibold">
                   Schedule name
                   <input
@@ -227,23 +226,6 @@ export function PayoutScheduleDialog({
                     placeholder="Standard 1 per 10"
                     required
                   />
-                </label>
-                <label className="block text-sm font-semibold">
-                  Default added money
-                  <div className="relative w-full max-w-36">
-                    <span className="absolute left-3 top-[19px] text-sm text-[#758078]">
-                      $
-                    </span>
-                    <input
-                      name="addedMoney"
-                      inputMode="decimal"
-                      defaultValue={(
-                        (schedule?.addedMoneyCents ?? 0) / 100
-                      ).toFixed(2)}
-                      className={`${inputClass} pl-7`}
-                      required
-                    />
-                  </div>
                 </label>
               </div>
               <label className="block text-sm font-semibold">

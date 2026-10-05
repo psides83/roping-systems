@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RopingFundingData } from "@/components/events/roping-funding-data";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -1062,6 +1063,7 @@ export default async function RopingDetailPage({
                   </div>
                 ) : null}
 
+                {isSupabaseConfigured() ? <RopingFundingData ropingId={division.id} canManage={event.canManage} /> : null}
                 <div className="flex justify-end border-t border-[#e7ebe8] px-4 py-3">
                   <RemoveEventRopingDialog
                     eventId={event.id}

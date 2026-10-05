@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Banknote, Users } from "lucide-react";
 import { initializePayoutPlans } from "./actions";
 import { PayoutRegisterData } from "@/components/events/payout-register-data";
+import { RopingFundingData } from "@/components/events/roping-funding-data";
 import { PageHeader } from "@/components/ui/page-header";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { getActiveProducer } from "@/lib/producers";
@@ -257,6 +258,10 @@ export default async function EventPayoutsPage({
         title={roping.title}
         description="Live projections use paid entries, separately selected side pots and insurance, payout-contributing charges, and added money."
       />
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">Finalize Roping Payouts</h2>
+        {payoutGroups.map(group => <details key={group[0].ropingDivisionId} className="rounded-md border border-[#dfe4e1]"><summary className="cursor-pointer p-4 font-semibold">{group[0].division}</summary><RopingFundingData ropingId={group[0].ropingDivisionId} canManage={producer.role !== "viewer"}/></details>)}
+      </section>
       <PayoutRegisterData eventId={eventId} producerId={producer.id} canManage={producer.role !== "viewer"} />
       {calculated.length ? (
         <section className="space-y-5">

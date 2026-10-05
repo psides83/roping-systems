@@ -10,7 +10,6 @@ import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/utils";
 import { payoutScheduleIssues } from "@/lib/payout-schedule-validation";
 
 function demoBrackets(finalSplit: number[]) {
@@ -30,7 +29,6 @@ async function getPayoutData() {
           id: "standard",
           name: "Standard 1 per 10",
           description: "One paid place for each ten entries",
-          addedMoneyCents: 0,
           paybackPercent: 65,
           goRoundsPercent: 50,
           aggregatePercent: 50,
@@ -67,7 +65,7 @@ async function getPayoutData() {
       supabase
         .from("payout_schedules")
         .select(
-          "id, name, description, default_added_money_cents, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, short_round_enabled, competition_format, four_d_settings, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
+          "id, name, description, payback_basis_points, go_rounds_basis_points, aggregate_basis_points, short_round_basis_points, short_round_enabled, competition_format, four_d_settings, payout_schedule_brackets(id, stage_type, minimum_entries, maximum_entries, payout_schedule_places(place_number, percentage_basis_points))",
         )
         .eq("producer_id", producer.id)
         .eq("is_active", true)
@@ -89,7 +87,6 @@ async function getPayoutData() {
       id: schedule.id,
       name: schedule.name,
       description: schedule.description ?? "",
-      addedMoneyCents: schedule.default_added_money_cents,
       paybackPercent: schedule.payback_basis_points / 100,
       goRoundsPercent: schedule.go_rounds_basis_points / 100,
       aggregatePercent: schedule.aggregate_basis_points / 100,
@@ -232,12 +229,6 @@ export default async function PayoutSettingsPage() {
                   {schedule.description || "No description"}
                 </p>
                 {payoutScheduleIssues(schedule).length ? <p className="mt-2 text-xs text-amber-900">{payoutScheduleIssues(schedule).join(" ")}</p> : null}
-                {schedule.addedMoneyCents ? (
-                  <p className="mt-2 text-xs font-bold text-emerald-700">
-                    Includes {formatCurrency(schedule.addedMoneyCents)} default
-                    added money
-                  </p>
-                ) : null}
                 <p className="mt-2 text-xs font-semibold text-[#66716b]">
                   {schedule.paybackPercent}% payback ·{" "}
                   {schedule.goRoundsPercent}% across go-rounds ·{" "}
