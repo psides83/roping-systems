@@ -1,4 +1,4 @@
-import type { PublicMoneyResult } from "@/lib/events/public-money-results";
+import { compareMoneyPools, type PublicMoneyResult } from "@/lib/events/public-money-results";
 
 export interface FourDResultRow {
   dNumber: number;
@@ -118,7 +118,7 @@ export function FourDStandings({
                             {row.finalTimeSeconds.toFixed(2)}
                           </span>
                           {awards ? <div className="col-start-2 col-span-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#66716b]">
-                            {awards.filter((award) => award.entryId === row.entryId).map((award) => <span key={`${award.planId}:${award.sectionType}:${award.roundNumber}`}>{award.poolType === "main" ? "Main" : award.poolName}: <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong></span>)}
+                            {awards.filter((award) => award.entryId === row.entryId).sort(compareMoneyPools).map((award) => <span key={`${award.planId}:${award.sectionType}:${award.roundNumber}`}>{award.poolType === "main" ? "Main" : award.poolName}: <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong></span>)}
                           </div> : null}
                         </div>
                       ))}

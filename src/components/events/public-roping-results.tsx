@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
-import type { PublicMoneyResult } from "@/lib/events/public-money-results";
+import { compareMoneyPools, type PublicMoneyResult } from "@/lib/events/public-money-results";
 import {
   averageStandings, roundStandings,
   type PublicResult, type PublicRoundResult,
@@ -88,7 +88,7 @@ export function PublicRopingResults({ results, runs, awards = [], shortRoundEnab
                   <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5">#{row.entryNumber}</td>
                   <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" || row.status === "turned_out" ? "TO" : row.status === "rerun" ? "Rerun" : "-"}</td>
                   <td className="px-2 py-4 text-right text-xs">
-                    {awards.filter((award) => award.entryId === row.entryId && (selected === "average" ? award.sectionType === "aggregate" : award.roundNumber === Number(selected))).map((award) => <span className="mb-1 block" key={award.planId}>
+                    {awards.filter((award) => award.entryId === row.entryId && (selected === "average" ? award.sectionType === "aggregate" : award.roundNumber === Number(selected))).sort(compareMoneyPools).map((award) => <span className="mb-1 block" key={award.planId}>
                       <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong><span className="block text-[10px] text-[#66716b]">{award.poolType === "main" ? "Main" : award.poolName}</span>
                     </span>)}
                   </td>
