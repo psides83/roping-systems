@@ -9,6 +9,9 @@ const entityLabels: Record<string, string> = {
   producer_penalty_rules: "Penalty rule",
   producer_staff: "Team access",
   memberships: "Membership",
+  member_fines: "Member fine",
+  member_fine_transactions: "Fine payment or adjustment",
+  member_fine_exceptions: "Fine exception",
   roping_templates: "Roping template",
   roping_template_fees: "Fee template",
   divisions: "Division",
@@ -54,6 +57,14 @@ function describeChanges(
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ) {
+  if (["member_fines", "member_fine_transactions", "member_fine_exceptions"].includes(entityType) && action === "insert") {
+    return [
+      { field: "Reason", before: "", after: formatValue(after?.reason) },
+      { field: "Type", before: "", after: formatValue(after?.restriction ?? after?.kind ?? "Temporary exception") },
+      { field: "Amount", before: "", after: after?.amount_cents ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(after.amount_cents) / 100) : "Not applicable" },
+      ...(after?.expires_at ? [{ field: "Expires", before: "", after: formatValue(after.expires_at) }] : []),
+    ];
+  }
   if (entityType === "payout_receipts" && action === "insert") {
     return [
       { field: "Amount", before: "", after: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(after?.amount_cents ?? 0) / 100) },

@@ -19,7 +19,10 @@ async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   if (!data?.claims) redirect("/auth/login");
 
   const [producer, producers] = await Promise.all([getActiveProducer(), getProducers()]);
-  if (!producer) redirect("/onboarding");
+  if (!producer) {
+    const { data: memberships } = await supabase.rpc("my_memberships");
+    redirect(memberships?.length ? "/roper" : "/onboarding");
+  }
 
   const email = typeof data.claims.email === "string" ? data.claims.email : "Signed-in user";
   return <EntryLabelProvider style={producer.entryLabelStyle}><AppShell producerName={producer.name} producers={producers.map(({ id, name }) => ({ id, name }))} activeProducerId={producer.id} userLabel={email} brandPrimary={producer.brandPrimary} brandAccent={producer.brandAccent}>{children}</AppShell></EntryLabelProvider>;

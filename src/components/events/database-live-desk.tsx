@@ -51,6 +51,7 @@ import { PenaltyChoices } from "@/components/events/penalty-choices";
 import { penaltyTotal, type PenaltyOption } from "@/lib/penalties";
 
 export interface LiveRunRow {
+  fineBlocked?: boolean;
   id: string;
   entryId: string;
   drawPosition: number | null;
@@ -851,6 +852,7 @@ function RunEntryForm({
         ) : null}
       </div>
       <div className="mt-5">
+        {run.fineBlocked ? <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">Competition blocked by an unpaid member fine. Record payment or approve a fine exception before this roper competes.</p> : null}
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase text-[#66716b]">
             Timer readings
@@ -925,7 +927,7 @@ function RunEntryForm({
       <button
         name="status"
         value="complete"
-        disabled={!canEdit || pending || resolved === null}
+        disabled={!canEdit || pending || resolved === null || run.fineBlocked}
         className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-md brand-accent-fill text-sm font-bold text-white disabled:opacity-40"
       >
         {pending ? (

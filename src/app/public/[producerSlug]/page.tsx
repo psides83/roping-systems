@@ -43,6 +43,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
             <a href="#results" className="brand-hover">Results</a>
             <a href="#schedule" className="brand-hover">Schedule</a>
             {data.membershipFormPublished ? <Link href={`/public/${producerSlug}/membership`} className="brand-hover">Membership</Link> : null}
+            <Link href="/roper" className="brand-hover">Roper portal</Link>
           </nav>
         </div>
       </header>
