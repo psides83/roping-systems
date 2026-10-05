@@ -11,6 +11,7 @@ import {
   Gauge,
   History,
   Menu,
+  PiggyBank,
   Settings,
   SlidersHorizontal,
   Users,
@@ -33,6 +34,7 @@ const navigation = [
   },
   { name: "Ropings", href: "/events", icon: CalendarDays },
   { name: "Live event", href: "/events/current", icon: CircleDollarSign },
+  { name: "Added-money funds", href: "/funds", icon: PiggyBank },
   {
     name: "Roping setup",
     href: "/settings/classifications",

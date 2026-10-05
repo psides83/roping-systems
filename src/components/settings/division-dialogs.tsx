@@ -717,7 +717,7 @@ function FeeDialog({
                       >,
                     );
                     if (!isEditing)
-                      setIsRequired(event.target.value === "standard");
+                      setIsRequired(["standard", "added_money"].includes(event.target.value));
                   }}
                   className={inputClass}
                 >
@@ -725,13 +725,16 @@ function FeeDialog({
                   <option value="insurance">Insurance</option>
                   <option value="side_pot">Side pot</option>
                   <option value="other">Other option</option>
+                  <option value="added_money">Added-money fund</option>
                 </select>
               </label>
               <label className="block text-sm font-semibold">
                 Applied
                 <select
                   name="scope"
-                  defaultValue={fee?.scope ?? "entry"}
+                  key={kind}
+                  defaultValue={kind === "added_money" ? "entry" : fee?.scope ?? "entry"}
+                  disabled={kind === "added_money"}
                   className={inputClass}
                 >
                   <option value="entry">Each entry</option>
@@ -744,6 +747,15 @@ function FeeDialog({
                 </select>
               </label>
             </div>
+            {kind === "added_money" ? <>
+              <input type="hidden" name="scope" value="entry" />
+              <label className="block text-sm font-semibold">Fund tracking
+                <select name="fundTracking" defaultValue={fee?.fundTracking ?? "general"} className={inputClass}>
+                  <option value="general">General added-money fund</option>
+                  <option value="classification">By classification</option>
+                </select>
+              </label>
+            </> : null}
             {kind === "side_pot" || kind === "insurance" ? (
               <label className="block text-sm font-semibold">
                 {kind === "insurance" ? "Insurance" : "Side pot"} payout
@@ -770,7 +782,8 @@ function FeeDialog({
                 <input
                   name="isRequired"
                   type="checkbox"
-                  checked={isRequired}
+                  checked={kind === "added_money" || isRequired}
+                  disabled={kind === "added_money"}
                   onChange={(event) => setIsRequired(event.target.checked)}
                   className="h-4 w-4 accent-[var(--brand-accent)]"
                 />{" "}
@@ -785,7 +798,7 @@ function FeeDialog({
                 />{" "}
                 Include in displayed entry price
               </label>
-              {kind !== "side_pot" && kind !== "insurance" ? (
+              {kind === "added_money" ? null : kind !== "side_pot" && kind !== "insurance" ? (
                 <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
                   <input
                     name="contributesToPayout"

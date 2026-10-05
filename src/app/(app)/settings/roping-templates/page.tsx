@@ -91,7 +91,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("roping_templates")
       .select(
-        "id, name, description, division_id, main_round_count, cattle_draw_enabled, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, division_id, main_round_count, cattle_draw_enabled, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("producer_id", producer.id)
       .order("sort_order")
@@ -192,6 +192,7 @@ async function getDivisionData(): Promise<{
           amount_cents: number;
           scope: FeeScope;
           kind: FeeKind;
+          fund_tracking: "general" | "classification" | null;
           payout_schedule_id: string | null;
           is_required: boolean;
           included_in_entry_price: boolean;
@@ -206,6 +207,7 @@ async function getDivisionData(): Promise<{
           amountCents: fee.amount_cents,
           scope: fee.scope,
           kind: fee.kind,
+          fundTracking: fee.fund_tracking,
           payoutScheduleId: fee.payout_schedule_id,
           isRequired: fee.is_required,
           includedInEntryPrice: fee.included_in_entry_price,
@@ -363,6 +365,7 @@ export default async function DivisionSettingsPage() {
                             {fee.isRequired !== false
                               ? " · Required"
                               : " · Optional"}
+                            {fee.kind === "added_money" ? <span className="mt-1 block text-xs normal-case">{fee.fundTracking === "classification" ? "Classification fund" : "General fund"}</span> : null}
                           </td>
                           <td className="py-3 text-sm text-[#66716b]">
                             {fee.includedInEntryPrice

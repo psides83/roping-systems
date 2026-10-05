@@ -9,7 +9,7 @@ export type RopingStatus =
   | "completed"
   | "cancelled";
 export type FeeScope = "entry" | "contestant_division" | "contestant_event";
-export type FeeKind = "standard" | "insurance" | "side_pot" | "other";
+export type FeeKind = "standard" | "insurance" | "side_pot" | "other" | "added_money";
 export type ResultStatus = "unofficial" | "official";
 export type CompetitionFormat = "standard" | "handicap" | "four_d";
 export type RoundOrderMethod =
@@ -64,6 +64,7 @@ export interface FeeTemplateSummary {
   kind?: FeeKind;
   isRequired?: boolean;
   payoutScheduleId?: string | null;
+  fundTracking?: "general" | "classification" | null;
 }
 
 export interface DivisionTemplateSummary {

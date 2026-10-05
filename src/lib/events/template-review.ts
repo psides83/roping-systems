@@ -19,7 +19,7 @@ const labels: Record<string, string> = {
   second_round_ordering: "Second-round order", later_round_ordering: "Later-round order",
   cattle_draw_enabled: "Drawn cattle", contributes_to_payout: "Main purse contribution",
   included_in_entry_price: "Included in entry price", is_required: "Required", amount_cents: "Fee",
-  scope: "Charged per", kind: "Type", sort_order: "Display order", enabled: "Enabled",
+  scope: "Charged per", kind: "Type", fund_tracking: "Added-money fund tracking", sort_order: "Display order", enabled: "Enabled",
   tie_policy: "Ties", brackets: "Entry brackets", minimumEntries: "Minimum entries",
   maximumEntries: "Maximum entries", comebackCount: "Qualifiers", credit_seconds: "Time adjustment",
   added_money_cents: "Added money", payback_basis_points: "Payback",

@@ -105,7 +105,8 @@ const feeSchema = z.object({
     .transform(formatProperNoun),
   amount: z.string().regex(/^\d+(?:\.\d{1,2})?$/, "Enter a valid amount."),
   scope: z.enum(["entry", "contestant_division", "contestant_event"]),
-  kind: z.enum(["standard", "insurance", "side_pot", "other"]),
+  kind: z.enum(["standard", "insurance", "side_pot", "other", "added_money"]),
+  fundTracking: z.enum(["general", "classification"]).optional(),
   payoutScheduleId: z.union([z.literal(""), z.uuid()]),
   includedInEntryPrice: z.string().optional(),
   contributesToPayout: z.string().optional(),
@@ -373,6 +374,7 @@ export async function createFee(
 ): Promise<SettingsFormState> {
   const parsed = feeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (parsed.data.kind === "added_money" && !parsed.data.fundTracking) return { message: "Choose how this added-money fund is tracked." };
   const context = await getManagerContext();
   if (!context)
     return {
@@ -412,14 +414,15 @@ export async function createFee(
     roping_template_id: division.id,
     title: parsed.data.title,
     amount_cents: Math.round(Number(parsed.data.amount) * 100),
-    scope: parsed.data.scope,
+    scope: parsed.data.kind === "added_money" ? "entry" : parsed.data.scope,
     kind: parsed.data.kind,
-    payout_schedule_id: parsed.data.payoutScheduleId || null,
+    fund_tracking: parsed.data.kind === "added_money" ? parsed.data.fundTracking : null,
+    payout_schedule_id: parsed.data.kind === "added_money" ? null : parsed.data.payoutScheduleId || null,
     included_in_entry_price: parsed.data.includedInEntryPrice === "on",
-    contributes_to_payout:
+    contributes_to_payout: parsed.data.kind !== "added_money" && (
       ["side_pot", "insurance"].includes(parsed.data.kind) ||
-      parsed.data.contributesToPayout === "on",
-    is_required: parsed.data.isRequired === "on",
+      parsed.data.contributesToPayout === "on"),
+    is_required: parsed.data.kind === "added_money" || parsed.data.isRequired === "on",
   });
   if (error) return { message: error.message };
   revalidatePath("/settings/roping-templates");
@@ -432,6 +435,7 @@ export async function updateFee(
 ): Promise<SettingsFormState> {
   const parsed = updateFeeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
+  if (parsed.data.kind === "added_money" && !parsed.data.fundTracking) return { message: "Choose how this added-money fund is tracked." };
   const context = await getManagerContext();
   if (!context) return { message: "Sign in with manager access to edit fees." };
   const { data: fee } = await context.supabase
@@ -465,14 +469,15 @@ export async function updateFee(
     .update({
       title: parsed.data.title,
       amount_cents: Math.round(Number(parsed.data.amount) * 100),
-      scope: parsed.data.scope,
+      scope: parsed.data.kind === "added_money" ? "entry" : parsed.data.scope,
       kind: parsed.data.kind,
-      payout_schedule_id: parsed.data.payoutScheduleId || null,
+      fund_tracking: parsed.data.kind === "added_money" ? parsed.data.fundTracking : null,
+      payout_schedule_id: parsed.data.kind === "added_money" ? null : parsed.data.payoutScheduleId || null,
       included_in_entry_price: parsed.data.includedInEntryPrice === "on",
-      contributes_to_payout:
+      contributes_to_payout: parsed.data.kind !== "added_money" && (
         ["side_pot", "insurance"].includes(parsed.data.kind) ||
-        parsed.data.contributesToPayout === "on",
-      is_required: parsed.data.isRequired === "on",
+        parsed.data.contributesToPayout === "on"),
+      is_required: parsed.data.kind === "added_money" || parsed.data.isRequired === "on",
     })
     .eq("id", fee.id)
     .eq("producer_id", context.producer.id);
