@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { LoadingNotice } from "./loading-notice";
 
 function Bar({ className = "h-4 w-32" }: { className?: string }) {
   return <div className={`loading-skeleton rounded ${className}`} />;
@@ -26,7 +27,7 @@ function Form() {
 }
 
 function LoadingRegion({ children, label = "Loading page" }: { children: ReactNode; label?: string }) {
-  return <div role="status" aria-live="polite" aria-busy="true"><span className="sr-only">{label}</span><div aria-hidden="true" className="space-y-6">{children}</div></div>;
+  return <div role="status" aria-live="polite" aria-busy="true"><LoadingNotice label={label} /><div aria-hidden="true" className="space-y-6">{children}</div></div>;
 }
 
 export function PageSkeleton({ variant = "list" }: { variant?: "list" | "dashboard" | "event" | "live" | "payouts" | "settings" }) {

@@ -10,7 +10,11 @@ const require = createRequire(import.meta.url);
 const source = readFileSync(new URL("../src/components/ui/page-skeleton.tsx", import.meta.url), "utf8");
 const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
 const compiled = { exports: {} };
-new Function("require", "module", "exports", code)(require, compiled, compiled.exports);
+const noticeSource = readFileSync(new URL("../src/components/ui/loading-notice.tsx", import.meta.url), "utf8");
+const noticeCode = ts.transpileModule(noticeSource, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
+const notice = { exports: {} };
+new Function("require", "module", "exports", noticeCode)(require, notice, notice.exports);
+new Function("require", "module", "exports", code)((name) => name === "./loading-notice" ? notice.exports : require(name), compiled, compiled.exports);
 const { PageSkeleton, PublicPageSkeleton, AppBootSkeleton } = compiled.exports;
 
 test("every page loading variant has a single accessible status and stable markup", () => {
@@ -19,6 +23,9 @@ test("every page loading variant has a single accessible status and stable marku
     assert.equal((markup.match(/role="status"/g) ?? []).length, 1);
     assert.match(markup, /aria-busy="true"/);
     assert.match(markup, /aria-hidden="true"/);
+    assert.match(markup, /Loading page\.\.\./);
+    assert.match(markup, /Please wait while we load your view/);
+    assert.match(markup, /loading-progress/);
     assert.equal(markup, renderToStaticMarkup(createElement(PageSkeleton, { variant })));
     assert.doesNotMatch(markup, /<button|<input|<select/);
   }

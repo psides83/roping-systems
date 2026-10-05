@@ -126,6 +126,12 @@ textarea:focus-visible {
   background-color: #e7ebe8;
   animation: skeleton-breathe 1.8s ease-in-out infinite;
 }
+.loading-spinner { animation: pending-spin 1s linear infinite; }
+.loading-progress > span { animation: loading-travel 1.25s ease-in-out infinite; }
+@keyframes loading-travel {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
 .navigation-pending {
   opacity: 0;
   animation: pending-reveal 120ms ease 150ms forwards, pending-spin 1s linear infinite;
@@ -142,6 +148,7 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .loading-skeleton { animation: none; }
   .navigation-pending { animation: none; opacity: 1; }
+  .loading-spinner, .loading-progress > span { animation: none; }
 }
 .brand-primary-fill {
   background-color: var(--brand-primary);
