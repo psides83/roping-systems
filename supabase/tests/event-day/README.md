@@ -1,5 +1,44 @@
 # Event-Day Tests
 
+## Current V2 Fixtures
+
+```sh
+npm run test:events -- --producer=ultimate-calf-roping --replace-tests
+npm run test:events -- --producer=ultimate-calf-roping --replace-tests --seed
+```
+
+The first command validates the entire replacement and rolls it back. The second
+commits it atomically. Cleanup targets the two V1 weekends, the explicitly identified
+manual Test event, and previously generated V2 fixtures only. Members are retained.
+No cleanup is included in deployment migrations.
+
+V2 reuses the 96 `TEST-V1-` memberships and their actual classification history.
+Their names are refreshed to distinct fictional names; example.com addresses and
+member IDs remain intact. Current numbered classes have separate ropings with mostly
+matching-class members and one eligible higher-number entrant. Open, Handicap, 4D,
+youth classifications, repeated class occurrences on another day, and all active
+producer templates are exercised.
+
+Two completed public weekends are dated November 7-8 and November 21-22, 2026.
+They have official results, finalized payouts, and sample acknowledged/reversed
+payout receipts. A partially scored public live event is dated December 5, and an
+upcoming public event is dated December 12. Both include two arenas, fixed and
+tentative times, and follows-previous schedules.
+
+Funding scenarios use inactive `TEST Fund / ...` template copies, preserving active
+producer templates. They include shared and classification-routed contributions,
+one grouped entry deposit per roping/fund, sponsor received/pledged policies,
+fund reservations and finalization debits, reopening, manual awards debits, and
+sample cash payout acknowledgments. All money is simulated. Fixture funds and
+events are clearly labeled TEST. Public fixtures are deliberately published.
+
+The checks cover database competition, scoring, fee, funding, payout and public
+projection behavior. They are not exhaustive browser, concurrency, load, payment
+processor, or online-entry authentication tests. Separate regression scripts cover
+fines, suspensions, penalties, season rules and payout schedule validation.
+
+## Historical V1 Fixture Notes
+
 These tests use the named producer's active templates, fees, payout schedules,
 classification numbers, and handicap credits. They never edit real members or
 existing events. The current fixture expects numbered classifications including

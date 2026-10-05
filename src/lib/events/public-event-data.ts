@@ -1,4 +1,5 @@
 import "server-only";
+import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { events as demoRopings } from "@/data/demo";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -216,8 +217,13 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   let shortRoundRopingIds: string[] = [];
   const formats = new Map<string, string>();
   if (selectedEvent) {
-    const { data: moneyRows, error: moneyError } = await supabase.rpc("public_event_money_results", { target_event_id: selectedEvent.id });
-    if (moneyError) throw new Error(`Unable to load money winners: ${moneyError.message}`);
+    const moneyRows = await readAllRows<{
+      event_roping_id: string; plan_id: string; pool_name: string; pool_type: string;
+      section_type: string; round_number: number | null; d_number: number | null;
+      place_number: number; entry_id: string; roper_id: string; contestant_name: string;
+      performance_seconds: number | string; payout_cents: number | string;
+    }>((first, last) => supabase.rpc("public_event_money_results", { target_event_id: selectedEvent.id })
+      .order("plan_id").order("section_type").order("round_number", { nullsFirst: true }).order("d_number", { nullsFirst: true }).order("entry_id").range(first,last), "Unable to load money winners");
     moneyResults = (moneyRows ?? []).map((row: {
       event_roping_id: string; plan_id: string; pool_name: string; pool_type: string;
       section_type: string; round_number: number | null; d_number: number | null;
@@ -240,12 +246,11 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       );
     for (const row of formatRows ?? []) formats.set(row.event_roping_id, row.competition_format);
     shortRoundRopingIds = (formatRows ?? []).filter((row) => row.short_round_enabled).map((row) => row.event_roping_id);
-    const { data: runRows, error: runError } = await supabase
+    const runRows = await readAllRows((first,last) => supabase
       .from("public_event_live_results")
       .select("run_id, entry_id, event_roping_id, first_name, last_name, entry_number, round_number, total_time_seconds, status, handicap_time_credit_seconds")
       .eq("producer_slug", producerSlug)
-      .eq("event_slug", selectedEvent.slug);
-    if (runError) throw new Error(`Unable to load round results: ${runError.message}`);
+      .eq("event_slug", selectedEvent.slug).order("run_id").range(first,last), "Unable to load round results");
     roundResults = (runRows ?? []).map((row) => ({
       id: row.run_id, entryId: row.entry_id, divisionId: row.event_roping_id,
       name: `${row.first_name} ${row.last_name}`.trim(), entryNumber: row.entry_number,
@@ -276,7 +281,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
         })),
       );
     }
-    const { data: resultRows, error: resultError } = await supabase
+    const resultRows = await readAllRows((first,last) => supabase
       .from("public_aggregate_results")
       .select(
         "result_id, event_roping_id, event_roping_name, result_status, first_name, last_name, entry_number, aggregate_time_seconds, handicap_time_credit_seconds, status, main_rounds_completed, main_round_count, is_short_round_qualifier, short_round_status",
@@ -284,9 +289,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       .eq("producer_slug", producerSlug)
       .eq("event_slug", selectedEvent.slug)
       .order("is_short_round_qualifier", { ascending: false })
-      .order("aggregate_time_seconds", { ascending: true, nullsFirst: false });
-    if (resultError)
-      throw new Error(`Unable to load public results: ${resultError.message}`);
+      .order("aggregate_time_seconds", { ascending: true, nullsFirst: false }).order("result_id").range(first,last), "Unable to load public results");
     results = resultRows.map((row) => ({
       resultId: row.result_id,
       divisionId: row.event_roping_id,

@@ -50,8 +50,8 @@ begin
   perform pg_temp.check_test(exists(select 1 from public.roping_templates where producer_id=fixture_producer and is_active and competition_format='handicap'), 'Handicap template exists');
 
   for weekend in 1..2 loop
-    event_date := case weekend when 1 then '2026-08-22'::date else '2026-09-19'::date end;
-    event_slug := case when current_setting('test.retain') = 'true' then 'test-suite-v1-weekend-' || weekend
+    event_date := case weekend when 1 then '2026-11-07'::date else '2026-11-21'::date end;
+    event_slug := case when current_setting('test.retain') = 'true' then 'test-suite-v2-weekend-' || weekend
       else 'automation-' || gen_random_uuid() end;
     select id into event_uuid from public.events where producer_id=fixture_producer and slug=event_slug;
     if event_uuid is not null then
@@ -59,7 +59,7 @@ begin
       continue;
     end if;
     insert into public.events(producer_id,title,slug,venue_name,venue_city,venue_state,starts_at,ends_at,status,arena_count,publication_state,is_public)
-    values(fixture_producer,'TEST Suite - Weekend ' || weekend,event_slug,'Test Arena','Granbury','TX',
+    values(fixture_producer,'TEST Classification Weekend ' || weekend,event_slug,'Test Arena','Granbury','TX',
       (event_date + time '08:00') at time zone producer_timezone,
       (event_date + 1 + time '20:00') at time zone producer_timezone,'draft',2,'unpublished',false)
     returning id into event_uuid;
@@ -67,22 +67,21 @@ begin
     values(fixture_producer,event_uuid,'Test Weekend Office Charge',2000,'contestant_event',true,false,false,'standard') returning id into office_fee;
 
     for template_record in
-      select t.*, 1 as test_day from public.roping_templates t where producer_id=fixture_producer and is_active
+      select t.*, 1 as test_day,c.id as test_class_id from public.roping_templates t
+      left join public.classifications c on c.division_id=t.division_id and c.producer_id=t.producer_id and c.is_active and c.standalone_enabled
+        and t.competition_format<>'handicap' and case when t.name ilike '%open%' or t.competition_format='four_d'
+          then c.name='Open' else c.eligibility_type in ('skill','age') end
+      where t.producer_id=fixture_producer and t.is_active
+        and (t.competition_format='handicap' or c.id is not null)
       union all
-      select t.*, 2 as test_day from public.roping_templates t where producer_id=fixture_producer and is_active
-        and division_id=td_division and main_round_count=3 and competition_format='standard' and name not ilike '%open%'
-      order by test_day,name
+      select t.*,2 as test_day,c.id as test_class_id from public.roping_templates t join public.classifications c
+        on c.division_id=t.division_id and c.producer_id=t.producer_id and c.is_active and c.standalone_enabled and c.eligibility_type='skill'
+      where t.producer_id=fixture_producer and t.is_active and t.division_id=td_division and t.main_round_count=3 and t.competition_format='standard' and t.name not ilike '%open%'
+      order by test_day,name,test_class_id
     loop
-      class_uuid := null;
-      if template_record.competition_format <> 'handicap' then
-        select c.id into strict class_uuid from public.classifications c
-        where c.producer_id=fixture_producer and c.division_id=template_record.division_id and c.is_active and c.standalone_enabled
-          and case when template_record.name ilike '%open%' or template_record.competition_format='four_d'
-            then c.eligibility_type='open' and c.name='Open'
-            else c.rank=11.5 end limit 1;
-      end if;
+      class_uuid := template_record.test_class_id;
       roping_uuid := public.add_roping_to_event(event_uuid,template_record.id,class_uuid,
-        event_date + template_record.test_day - 1,'fixed',
+        event_date + template_record.test_day - 1,(case when exists(select 1 from test_ropings tr join public.event_ropings er on er.id=tr.roping_id where tr.event_id=event_uuid and tr.day=template_record.test_day and er.arena_name=case when template_record.division_id=td_division then 'Arena 1' else 'Arena 2' end) then 'follows_previous' else 'fixed' end)::public.class_schedule_type,
         event_date + template_record.test_day - 1 + time '09:00',
         'Automated test fixture using ' || template_record.name,
         case when template_record.division_id=td_division then 'Arena 1' else 'Arena 2' end,
@@ -104,8 +103,10 @@ begin
       member_index := 0;
       for member_record in select * from test_members
         where case when roping_record.division_id=td_division then ordinal<=48 else ordinal>48 end
-          and (roping_record.classification_id is null or selected_class.eligibility_type<>'skill' or td_rank>=selected_class.rank)
-        order by ordinal
+          and (roping_record.classification_id is null or selected_class.eligibility_type<>'skill' or td_rank=selected_class.rank
+            or ordinal=(select min(ordinal) from test_members where ordinal<=48 and td_rank>selected_class.rank))
+          and (selected_class.eligibility_type is distinct from 'age' or ordinal%6=0)
+        order by (td_rank=selected_class.rank) desc nulls last,ordinal
       loop
         member_index := member_index+1;
         for repeat_index in 1..case when member_index<=case weekend when 1 then 4 else 12 end then coalesce(roping_record.max_entries_per_roper,1) else 1 end loop
@@ -125,6 +126,10 @@ begin
         end loop;
         if member_index=1 then target_roper:=member_record.roper_id; end if;
       end loop;
+      if selected_class.eligibility_type='skill' then
+        perform pg_temp.check_test((select count(*) from public.roping_entries e join test_members m on m.roper_id=e.roper_id where e.event_roping_id=roping_record.id and m.td_rank=selected_class.rank)
+          >=4*(select count(*) from public.roping_entries e join test_members m on m.roper_id=e.roper_id where e.event_roping_id=roping_record.id and m.td_rank<>selected_class.rank),'At least 80 percent of numbered entries match the roping classification');
+      end if;
       rejected:=false;
       begin
         perform public.create_event_entry_with_eligibility_override(roping_record.id,target_roper,'office','paid_cash',null);
@@ -133,7 +138,8 @@ begin
         rejected:=true;
       end;
       perform pg_temp.check_test(rejected,'Maximum entries enforced');
-      if selected_class.eligibility_type='skill' and roping_record.competition_format='standard' then
+      if selected_class.eligibility_type='skill' and roping_record.competition_format='standard'
+        and exists(select 1 from test_members where ordinal<=48 and td_rank<selected_class.rank) then
         select roper_id into target_roper from test_members where ordinal<=48 and td_rank<selected_class.rank limit 1;
         rejected:=false;
         begin
@@ -166,8 +172,8 @@ begin
         run_index:=0;
         for run_record in select * from public.competition_runs where event_roping_id=roping_record.id and round_number=round_index order by draw_position loop
           run_index:=run_index+1;
-          raw_seconds:=case when roping_record.division_id=td_division then 9 + ((run_index-1)%12)*0.15 + round_index*0.1 + weekend*0.01
-            else 2 + ((run_index-1)%4)*0.5 + (((run_index-1)/4)%5)*0.02 end;
+          raw_seconds:=case when roping_record.division_id=td_division then 8 + ((run_index*run_index*17 + run_index*37 + round_index*19 + weekend*11)%541)*0.01
+            else 2 + ((run_index-1)%4)*0.5 + ((run_index*17 + round_index*7 + weekend*3)%43)*0.01 end;
           penalty:=case when run_index%17=0 then 5 else 0 end;
           outcome:=case when run_index%13=0 then 'no_time' else 'complete' end;
           readings:=array_fill(raw_seconds,array[roping_record.timer_count]);
@@ -308,22 +314,17 @@ begin
           where run.entry_id=result.result_id
         ) expected
         where result.event_roping_id=roping_record.id
-          and result.aggregate_time_seconds is distinct from case when expected.no_time then null else expected.total end
+          and result.aggregate_time_seconds is distinct from expected.total
       ),'Public aggregate is the sum of adjusted qualified runs, not a mathematical mean');
       insert into test_report(scenario,detail) values('Event-day template passed',jsonb_build_object('weekend',weekend,'template',roping_record.template_name,
         'format',roping_record.competition_format,'classification',roping_record.name,'day',roping_record.scheduled_date,'entries',entry_total,
         'mainRounds',roping_record.main_round_count,'shortRound',roping_record.short_round_enabled,'ropingId',roping_record.id));
       update public.event_ropings set event_day_status='completed' where id=roping_record.id;
     end loop;
-    update public.events set status='completed',publication_state='unpublished' where id=event_uuid;
+    update public.events set status='completed',publication_state='published',is_public=true where id=event_uuid;
     insert into test_report(scenario,detail) values('Completed test weekend',jsonb_build_object('eventId',event_uuid,'slug',event_slug,
       'entries',(select count(*) from public.roping_entries where event_id=event_uuid),
       'runs',(select count(*) from public.competition_runs r join public.event_ropings e on e.id=r.event_roping_id where e.event_id=event_uuid)));
   end loop;
 end;
 $$;
-
-insert into test_report(scenario,detail) values('Assertion summary',jsonb_build_object(
-  'passedChecks',coalesce(nullif(current_setting('test.check_count',true),''),'0')::integer,
-  'templates',(select count(distinct template_id) from test_ropings),
-  'ropings',(select count(*) from test_ropings)));

@@ -34,6 +34,7 @@ declare
   membership_uuid uuid;
   td_class uuid;
   ba_class uuid;
+  current_td numeric;
   member_no text;
   i integer;
 begin
@@ -66,8 +67,9 @@ begin
     if membership_uuid is null then
       insert into public.ropers(first_name, last_name, email, birth_date, competition_gender)
       values (
-        'Test ' || (array['Clay','Luke','Wade','Cole','Emma','Avery','Paige','Riley'])[1 + ((i - 1) % 8)],
-        'Roper ' || lpad(i::text, 3, '0'),
+        (case when i<=48 then array['Clay','Luke','Wade','Cole','Wyatt','Grant','Eli','Owen','Caleb','Reid','Travis','Brooks','Austin','Dylan','Levi','Garrett']
+          else array['Emma','Avery','Paige','Riley','Abigail','Sadie','Morgan','Claire','Grace','Olivia','Harper','Brianna','Kelsey','Lauren','Madison','Tessa'] end)[1+((i-1)%16)],
+        (array['Bennett','Carter','Hayes','Mitchell','Parker','Reed','Sullivan','Walker','Anderson','Campbell','Davis','Foster','Graham','Harris','Lawson','Turner','Collins','Edwards','Hughes','Reynolds','Spencer','Wallace','Watson','Wells'])[1+((i-1)/4)%24],
         lower(member_no) || '@example.com',
         case when i % 6 = 0 then '2016-01-01'::date when i % 6 = 1 then '1960-01-01'::date else '1995-01-01'::date end,
         case when i <= 48 then 'male' else 'female' end::public.competition_gender
@@ -79,8 +81,20 @@ begin
       values (fixture_producer_id, membership_uuid, td_division, td_class, '2026-01-01', 'Automated test fixture', manager_id),
         (fixture_producer_id, membership_uuid, ba_division, ba_class, '2026-01-01', 'Automated test fixture', manager_id);
     end if;
+    if current_setting('test.retain')='true' then
+      update public.ropers set first_name=(case when i<=48 then array['Clay','Luke','Wade','Cole','Wyatt','Grant','Eli','Owen','Caleb','Reid','Travis','Brooks','Austin','Dylan','Levi','Garrett']
+        else array['Emma','Avery','Paige','Riley','Abigail','Sadie','Morgan','Claire','Grace','Olivia','Harper','Brianna','Kelsey','Lauren','Madison','Tessa'] end)[1+((i-1)%16)],
+        last_name=(array['Bennett','Carter','Hayes','Mitchell','Parker','Reed','Sullivan','Walker','Anderson','Campbell','Davis','Foster','Graham','Harris','Lawson','Turner','Collins','Edwards','Hughes','Reynolds','Spencer','Wallace','Watson','Wells'])[1+((i-1)/4)%24]
+        where id=person_id and email=lower(member_no)||'@example.com' and auth_user_id is null;
+    end if;
+    select c.rank into current_td from public.membership_classification_history h join public.classifications c on c.id=h.classification_id
+      where h.membership_id=membership_uuid and h.division_id=td_division and h.effective_on<='2026-11-07'
+      order by h.effective_on desc,h.created_at desc limit 1;
+    select h.classification_id into ba_class from public.membership_classification_history h
+      where h.membership_id=membership_uuid and h.division_id=ba_division and h.effective_on<='2026-11-07'
+      order by h.effective_on desc,h.created_at desc limit 1;
     insert into test_members values(i, person_id, membership_uuid,
-      (select rank from public.classifications where id = td_class), ba_class);
+      current_td, ba_class);
   end loop;
   insert into test_report(scenario, detail) values('Member pool',
     jsonb_build_object('members', 96, 'numberedClassifications', cardinality(td_classes),

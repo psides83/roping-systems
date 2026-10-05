@@ -1,13 +1,18 @@
 begin;
 do $$
-declare producer uuid := '8f96f20f-932b-45ae-ac93-9832818de64d'; roping uuid; fund uuid := gen_random_uuid(); contribution uuid := gen_random_uuid(); sponsor uuid := gen_random_uuid(); baseline bigint; total bigint; winner uuid; event uuid; receipt uuid := gen_random_uuid();
+declare producer uuid := '8f96f20f-932b-45ae-ac93-9832818de64d'; roping uuid; fund uuid := gen_random_uuid(); contribution uuid := gen_random_uuid(); sponsor uuid := gen_random_uuid(); baseline bigint; existing_pledges bigint; total bigint; winner uuid; event uuid; receipt uuid := gen_random_uuid();
 begin
   perform set_config('request.jwt.claim.sub',(select user_id::text from public.producer_staff where producer_id=producer and role='owner' limit 1),true);
   select r.id into roping from public.event_ropings r where r.producer_id=producer and r.event_day_status='completed'
     and exists(select 1 from public.event_payout_register_awards(r.event_id) a where a.event_roping_id=r.id and a.pool_type='main' and a.payout_cents>0)
     and not exists(select 1 from public.payout_receipt_awards a join public.payout_receipts p on p.id=a.receipt_id where a.event_roping_id=r.id and p.reversed_at is null) limit 1;
   if roping is null then raise exception 'A completed unpaid test roping is required'; end if;
+  if exists(select 1 from public.event_ropings where id=roping and payouts_finalized_at is not null) then
+    perform public.finalize_roping_payouts(roping,true,'Rollback test temporarily reopens fixture');
+  end if;
+  perform public.set_roping_sponsor_policy(roping,false);
   baseline := public.roping_added_money_cents(roping);
+  select coalesce(sum(amount_cents-received_cents),0) into existing_pledges from public.roping_funding where event_roping_id=roping and source='sponsor' and cancelled_at is null;
   select event_id into event from public.event_ropings where id=roping;
   select roper_id into winner from public.event_payout_register_awards(event) where event_roping_id=roping and payout_cents>paid_cents limit 1;
   begin
@@ -25,8 +30,8 @@ begin
   perform public.save_roping_funding(roping,sponsor,'sponsor',null,'Test sponsor',20000,5000,'Sponsor commitment',false);
   if public.roping_added_money_cents(roping)<>baseline+35000 then raise exception 'Received sponsor amount is incorrect'; end if;
   perform public.set_roping_sponsor_policy(roping,true);
-  if public.roping_added_money_cents(roping)<>baseline+50000 then raise exception 'Pledged sponsor amount is incorrect'; end if;
-  if (select added_money_cents from public.event_roping_payout_plans where event_roping_id=roping and pool_type='main' limit 1)<>baseline+50000 then
+  if public.roping_added_money_cents(roping)<>baseline+existing_pledges+50000 then raise exception 'Pledged sponsor amount is incorrect'; end if;
+  if (select added_money_cents from public.event_roping_payout_plans where event_roping_id=roping and pool_type='main' limit 1)<>baseline+existing_pledges+50000 then
     raise exception 'Added money did not reach the main payout calculation'; end if;
   if public.event_roping_template_snapshot(roping,false)::text like '%"added_money_cents"%' then
     raise exception 'Template comparisons still contain roping funding'; end if;
@@ -39,7 +44,7 @@ begin
     raise exception 'Finalized entries changed';
   exception when others then if sqlerrm='Finalized entries changed' then raise; end if; end;
   perform public.save_roping_funding(roping,sponsor,'sponsor',null,'Test sponsor',20000,20000,'Sponsor payment received',false);
-  if public.roping_added_money_cents(roping)<>baseline+50000 then raise exception 'Sponsor receipt changed finalized purse'; end if;
+  if public.roping_added_money_cents(roping)<>baseline+existing_pledges+50000 then raise exception 'Sponsor receipt changed finalized purse'; end if;
   perform public.record_roper_payout(event,winner,roping,1,'cash','Test recipient',true,'Rollback receipt',receipt);
   begin
     perform public.finalize_roping_payouts(roping,true,'Must reverse paid receipt first');

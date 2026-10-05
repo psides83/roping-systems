@@ -27,7 +27,8 @@ begin
     perform public.record_fund_transaction(fund,gen_random_uuid(),'reversal',null,'Duplicate reversal attempt',debit);
     raise exception 'Double reversal accepted';
   exception when others then if sqlerrm='Double reversal accepted' then raise; end if; end;
-  select * into roping from public.event_ropings where producer_id=producer and roping_template_id is not null limit 1;
+  select * into roping from public.event_ropings where producer_id=producer and roping_template_id is not null and payouts_finalized_at is null
+    and exists(select 1 from public.roping_entries e where e.event_roping_id=public.event_ropings.id) limit 1;
   insert into public.roping_template_fees(producer_id,roping_template_id,title,amount_cents,scope,kind,fund_tracking,destination_fund_id,is_required,contributes_to_payout)
     values(producer,roping.roping_template_id,'Ledger Test Fee',1500,'entry','added_money','general',fund,true,false) returning id into fee;
   insert into public.event_fees(producer_id,event_id,event_roping_id,roping_template_fee_id,title,amount_cents,scope,kind,is_required,contributes_to_payout)

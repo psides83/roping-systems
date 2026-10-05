@@ -15,7 +15,7 @@ begin
     r.timer_count,r.classification_id,e.roper_id,e.membership_id into sample
   from public.competition_runs run join public.event_ropings r on r.id=run.event_roping_id
   join public.events event on event.id=r.event_id join public.roping_entries e on e.id=run.entry_id
-  where event.slug='test-suite-v1-weekend-1' and event.producer_id='8f96f20f-932b-45ae-ac93-9832818de64d'
+  where event.slug in ('test-suite-v1-weekend-1','test-suite-v2-live') and r.payouts_finalized_at is null and event.producer_id='8f96f20f-932b-45ae-ac93-9832818de64d'
     and e.membership_id is not null and r.competition_format='standard' and run.status='complete'
   order by run.id limit 1;
   if sample.id is null then raise exception 'Missing test fixture'; end if;

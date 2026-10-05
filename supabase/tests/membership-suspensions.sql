@@ -10,7 +10,8 @@ begin
   perform set_config('request.jwt.claim.sub', owner_id::text, true);
   select m.id,m.roper_id,e.event_roping_id,e.id into member_id,roper,roping,entry
     from public.memberships m join public.roping_entries e on e.roper_id = m.roper_id and e.producer_id = m.producer_id
-    where m.producer_id = producer and e.competition_status = 'active' limit 1;
+    where m.producer_id = producer and e.competition_status = 'active'
+      and exists(select 1 from public.event_ropings r where r.id=e.event_roping_id and r.payouts_finalized_at is null) limit 1;
   if member_id is null then raise exception 'Test requires an entered member'; end if;
   select (now() at time zone timezone)::date into today from public.producers where id = producer;
   select scheduled_date into event_date from public.event_ropings where id = roping;
