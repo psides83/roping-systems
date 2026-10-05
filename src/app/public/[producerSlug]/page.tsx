@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EntryLabelProvider } from "@/components/events/entry-label";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowRight, CalendarDays, MapPin, Radio } from "lucide-react";
@@ -22,7 +23,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
   const upcoming = data.events.filter((event) => ["scheduled", "entries_open", "entries_closed"].includes(event.status));
 
   return (
-    <main style={getBrandStyle(data.producer.brandPrimary, data.producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
+    <EntryLabelProvider style={data.producer.entryLabelStyle}><main style={getBrandStyle(data.producer.brandPrimary, data.producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
       {isSupabaseConfigured() ? <PublicResultsRefresh live={selectedEvent?.status === "in_progress"} /> : null}
       <header className="border-b border-[#dfe4e1] brand-primary-fill text-white">
         <div className="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
@@ -105,6 +106,6 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
           </div>
         </section>
       </div>
-    </main>
+    </main></EntryLabelProvider>
   );
 }

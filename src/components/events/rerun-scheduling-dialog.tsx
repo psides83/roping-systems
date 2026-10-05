@@ -1,4 +1,5 @@
 "use client";
+import { EntryLabel } from "./entry-label";
 
 import { LoaderCircle, RotateCcw, X } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
@@ -83,7 +84,7 @@ export function RerunSchedulingDialog({
               <div>
                 <h2 className="text-lg font-bold">Schedule rerun</h2>
                 <p className="mt-1 text-sm text-[#66716b]">
-                  {run.name} · Entry #{run.entryNumber}
+                  {run.name} · Entry <EntryLabel number={run.entryNumber} />
                 </p>
               </div>
               <button

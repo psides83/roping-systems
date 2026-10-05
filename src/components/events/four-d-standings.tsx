@@ -1,4 +1,5 @@
 import { compareMoneyPools, type PublicMoneyResult } from "@/lib/events/public-money-results";
+import { EntryLabel } from "./entry-label";
 
 export interface FourDResultRow {
   dNumber: number;
@@ -112,7 +113,7 @@ export function FourDStandings({
                             {row.placeNumber}
                           </span>
                           <span className="min-w-0 break-words font-semibold">
-                            {row.contestantName} <span className="font-normal text-[#758078]">#{row.entryNumber}</span>
+                            {row.contestantName} <span className="font-normal text-[#758078]"><EntryLabel number={row.entryNumber} /></span>
                           </span>
                           <span className="font-mono font-bold">
                             {row.finalTimeSeconds.toFixed(2)}

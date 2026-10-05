@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import type { EntryLabelStyle } from "@/lib/entry-labels";
 
 export interface ActiveProducer {
   id: string;
@@ -9,6 +10,7 @@ export interface ActiveProducer {
   timezone: string;
   brandPrimary: string;
   brandAccent: string;
+  entryLabelStyle: EntryLabelStyle;
   role: "owner" | "admin" | "operator" | "viewer";
 }
 
@@ -17,13 +19,13 @@ export async function getProducers(): Promise<ActiveProducer[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("producer_staff")
-    .select("producer_id, role, producers!inner(id, name, slug, timezone, brand_primary, brand_accent)")
+    .select("producer_id, role, producers!inner(id, name, slug, timezone, brand_primary, brand_accent, entry_label_style)")
     .order("created_at", { ascending: true });
 
   if (error || !data?.length) return [];
   return data.map((membership) => {
-    const producer = membership.producers as unknown as { id: string; name: string; slug: string; timezone: string; brand_primary: string; brand_accent: string };
-    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, role: membership.role as ActiveProducer["role"] };
+    const producer = membership.producers as unknown as { id: string; name: string; slug: string; timezone: string; brand_primary: string; brand_accent: string; entry_label_style: EntryLabelStyle };
+    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: membership.role as ActiveProducer["role"] };
   });
 }
 

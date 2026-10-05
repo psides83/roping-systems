@@ -59,6 +59,7 @@ const settingsSchema = z.object({
     "America/New_York",
   ]),
   allowGuestEntries: z.string().optional(),
+  entryLabelStyle: z.enum(["number", "letter"]),
 });
 
 export async function updateProducerSettings(
@@ -80,10 +81,12 @@ export async function updateProducerSettings(
       phone: parsed.data.phone || null,
       timezone: parsed.data.timezone,
       allow_non_member_entries: parsed.data.allowGuestEntries === "on",
+      entry_label_style: parsed.data.entryLabelStyle,
     })
     .eq("id", producer.id);
   if (error) return { message: error.message };
   revalidatePath("/settings");
+  revalidatePath("/", "layout");
   revalidatePath("/dashboard");
   revalidatePath(`/public/${producer.slug}`);
   return { success: true, message: "Producer settings saved." };

@@ -94,6 +94,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
         brandPrimary: "#17251F",
         brandAccent: "#BB3E24",
         timezone: "America/Chicago",
+        entryLabelStyle: "number" as const,
       },
       events,
       seasons: [{ id: "preview-season", name: "2026", startsOn: "2026-01-01", endsOn: "2026-12-31" }] as ProducerSeason[],
@@ -166,7 +167,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   const supabase = await createClient();
   const { data: producer } = await supabase
     .from("public_producer_pages")
-    .select("id, public_name, slug, logo_path, brand_primary, brand_accent, timezone")
+    .select("id, public_name, slug, logo_path, brand_primary, brand_accent, timezone, entry_label_style")
     .eq("slug", producerSlug)
     .single();
   if (!producer) return null;
@@ -367,6 +368,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       brandPrimary: producer.brand_primary,
       brandAccent: producer.brand_accent,
       timezone: producer.timezone,
+      entryLabelStyle: producer.entry_label_style as "number" | "letter",
     },
     events,
     seasons,

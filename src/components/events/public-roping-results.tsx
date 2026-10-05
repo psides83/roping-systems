@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { EntryLabel } from "./entry-label";
 import { formatFinalTimeAdjustment } from "@/lib/scoring";
 import { compareMoneyPools, type PublicMoneyResult } from "@/lib/events/public-money-results";
 import {
@@ -85,7 +86,7 @@ export function PublicRopingResults({ results, runs, awards = [], shortRoundEnab
                     {row.adjustment ? <span className="mt-1 block text-[10px] font-bold text-emerald-700">{formatFinalTimeAdjustment(row.adjustment)} sec handicap</span> : null}
                     {row.progress ? <span className="mt-1 block text-[10px] font-semibold text-[#758078]">{row.progress}</span> : null}
                   </td>
-                  <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5">#{row.entryNumber}</td>
+                  <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5"><EntryLabel number={row.entryNumber} /></td>
                   <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" || row.status === "turned_out" ? "TO" : row.status === "rerun" ? "Rerun" : "-"}</td>
                   <td className="px-2 py-4 text-right text-xs">
                     {awards.filter((award) => award.entryId === row.entryId && (selected === "average" ? award.sectionType === "aggregate" : award.roundNumber === Number(selected))).sort(compareMoneyPools).map((award) => <span className="mb-1 block" key={award.planId}>

@@ -1,4 +1,6 @@
 "use client";
+import { EntryLabel, useEntryLabelStyle } from "./entry-label";
+import { formatEntryLabel } from "@/lib/entry-labels";
 
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/navigation-pending";
@@ -178,11 +180,13 @@ export function DatabaseLiveDesk({
           ? "Custom order · build a starting list, then move contestants"
           : "Fewest qualified times first, then slowest aggregate to fastest";
   const normalizedSearch = search.trim().toLowerCase();
+  const entryLabelStyle = useEntryLabelStyle();
   const visibleRuns = normalizedSearch
     ? orderedRuns.filter(
         (run) =>
           run.name.toLowerCase().includes(normalizedSearch) ||
-          String(run.entryNumber).includes(normalizedSearch),
+          String(run.entryNumber).includes(normalizedSearch) ||
+          formatEntryLabel(run.entryNumber, entryLabelStyle).toLowerCase().includes(normalizedSearch),
       )
     : orderedRuns;
 
@@ -556,7 +560,7 @@ export function DatabaseLiveDesk({
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-5 py-4 text-sm">#{run.entryNumber}</td>
+                    <td className="px-5 py-4 text-sm"><EntryLabel number={run.entryNumber} /></td>
                     {cattleDrawEnabled ? (
                       <td className="px-5 py-4 font-mono text-sm font-bold">
                         {run.cattleTag ?? "-"}
@@ -741,7 +745,7 @@ function ArenaQueue({
         </p>
         {current ? (
           <p className="mt-1 text-xs opacity-80">
-            Draw {current.drawPosition} · Entry #{current.entryNumber}
+            Draw {current.drawPosition} · Entry <EntryLabel number={current.entryNumber} />
             {current.cattleTag ? ` · Cattle ${current.cattleTag}` : ""}
             {current.rerunCount ? ` · Rerun ${current.rerunCount}` : ""}
           </p>
@@ -759,7 +763,7 @@ function ArenaQueue({
               </span>
               <span className="min-w-0 truncate font-semibold">{run.name}</span>
               <span className="font-mono text-xs text-[#66716b]">
-                #{run.entryNumber}
+                <EntryLabel number={run.entryNumber} />
                 {run.cattleTag ? ` · C${run.cattleTag}` : ""}
                 {run.rerunCount ? ` · R${run.rerunCount}` : ""}
               </span>
@@ -834,7 +838,7 @@ function RunEntryForm({
       <input type="hidden" name="runId" value={run.id} />
       <input type="hidden" name="penalty" value={penalty} />
       <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
-        Draw {run.drawPosition ?? "-"} · Entry {run.entryNumber}
+        Draw {run.drawPosition ?? "-"} · Entry <EntryLabel number={run.entryNumber} />
         {run.cattleTag ? ` · Cattle ${run.cattleTag}` : ""}
         {run.rerunCount ? ` · Rerun ${run.rerunCount}` : ""}
       </p>

@@ -1,4 +1,5 @@
 "use client";
+import { EntryLabel } from "./entry-label";
 
 import { useActionState, useMemo, useState } from "react";
 import { ChevronDown, LoaderCircle, Search, ShieldAlert } from "lucide-react";
@@ -234,7 +235,7 @@ function ContestantRow({
               className={`flex items-center rounded-md pl-2 text-xs font-semibold ${entry.competitionStatus === "withdrawn" ? "bg-rose-50 text-rose-950" : entry.eligibilityOverridden ? "bg-amber-50 text-amber-950" : "bg-[#f0f2f1]"}`}
             >
               <span className="py-1">
-                {entry.division} #{entry.entryNumber}
+                {entry.division} <EntryLabel number={entry.entryNumber} />
                 {entry.incentiveAdjustment
                   ? ` · ${formatFinalTimeAdjustment(entry.incentiveAdjustment)} sec`
                   : ""}

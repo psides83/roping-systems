@@ -7,6 +7,7 @@ import {
   type ProducerSettingsState,
 } from "@/app/(app)/settings/actions";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useEntryLabelStyle } from "@/components/events/entry-label";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)] disabled:bg-[#f3f4f3]";
@@ -25,6 +26,7 @@ export function ProducerSettingsForm({
   };
   canEdit: boolean;
 }) {
+  const entryLabelStyle = useEntryLabelStyle();
   const [state, action, pending] = useActionState<
     ProducerSettingsState,
     FormData
@@ -86,6 +88,14 @@ export function ProducerSettingsForm({
           </select>
         </label>
       </div>
+      <label className="block text-sm font-semibold">
+        Multiple-entry labels
+        <select name="entryLabelStyle" defaultValue={entryLabelStyle} disabled={!canEdit}
+          className="mt-2 block h-10 w-56 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm">
+          <option value="number">Numbers (1, 2, 3)</option>
+          <option value="letter">Letters (A, B, C)</option>
+        </select>
+      </label>
       <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
         <input
           name="allowGuestEntries"
