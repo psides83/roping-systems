@@ -13,6 +13,8 @@ delete from public.payout_receipt_awards where receipt_id in(select id from publ
 delete from public.payout_receipts where event_id in(select id from reset_events);
 delete from public.fund_transactions where event_roping_id in(select id from public.event_ropings where event_id in(select id from reset_events));
 delete from public.roping_funding where event_roping_id in(select id from public.event_ropings where event_id in(select id from reset_events));
+-- Stop completion reconciliation from rebuilding deposits while disposable charges are removed.
+update public.event_ropings set event_day_status='scheduled' where event_id in(select id from reset_events);
 delete from public.member_fine_exceptions where event_roping_id in(select id from public.event_ropings where event_id in(select id from reset_events));
 delete from public.entry_roping_transfers where event_id in(select id from reset_events);
 delete from public.online_entry_submission_ropings where event_roping_id in(select id from public.event_ropings where event_id in(select id from reset_events));

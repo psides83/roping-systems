@@ -67,16 +67,22 @@ begin
     values(fixture_producer,event_uuid,'Test Weekend Office Charge',2000,'contestant_event',true,false,false,'standard') returning id into office_fee;
 
     for template_record in
-      select t.*, 1 as test_day,c.id as test_class_id from public.roping_templates t
-      left join public.classifications c on c.division_id=t.division_id and c.producer_id=t.producer_id and c.is_active and c.standalone_enabled
-        and t.competition_format<>'handicap' and case when t.name ilike '%open%' or t.competition_format='four_d'
-          then c.name='Open' else c.eligibility_type in ('skill','age') end
-      where t.producer_id=fixture_producer and t.is_active
-        and (t.competition_format='handicap' or c.id is not null)
-      union all
-      select t.*,2 as test_day,c.id as test_class_id from public.roping_templates t join public.classifications c
-        on c.division_id=t.division_id and c.producer_id=t.producer_id and c.is_active and c.standalone_enabled and c.eligibility_type='skill'
-      where t.producer_id=fixture_producer and t.is_active and t.division_id=td_division and t.main_round_count=3 and t.competition_format='standard' and t.name not ilike '%open%'
+      with classes as (
+        select c.*,row_number() over(partition by division_id order by rank desc,name,id) as class_ordinal
+        from public.classifications c where producer_id=fixture_producer and is_active and standalone_enabled
+      ), candidates as (
+        select t.*,d.test_day,c.id as test_class_id,coalesce(c.class_ordinal,1) as class_ordinal,
+          row_number() over(partition by d.test_day,t.division_id,c.id,t.competition_format order by t.name,t.id) as format_choice,
+          count(*) over(partition by d.test_day,t.division_id,c.id,t.competition_format) as format_count
+        from public.roping_templates t cross join generate_series(1,2) as d(test_day)
+        left join classes c on c.division_id=t.division_id and t.competition_format<>'handicap'
+          and case when t.name ilike '%open%' or t.competition_format='four_d'
+            then c.name='Open' else c.eligibility_type in ('skill','age') end
+        where t.producer_id=fixture_producer and t.is_active
+          and (t.competition_format='handicap' or c.id is not null)
+      )
+      select * from candidates
+      where format_choice=1+mod(class_ordinal+weekend+test_day-3,format_count)
       order by test_day,name,test_class_id
     loop
       class_uuid := template_record.test_class_id;
@@ -87,7 +93,7 @@ begin
         case when template_record.division_id=td_division then 'Arena 1' else 'Arena 2' end,
         template_record.main_round_count,template_record.cattle_draw_enabled);
       insert into test_ropings values(event_uuid,roping_uuid,template_record.id,template_record.name,template_record.competition_format,template_record.test_day);
-      perform pg_temp.check_test(public.get_event_template_reviews(event_uuid)='[]'::jsonb,
+      perform pg_temp.check_test(public.event_roping_template_snapshot(roping_uuid,false)=public.event_roping_template_snapshot(roping_uuid,true),
         'New roping matches template: ' || template_record.name);
       select count(*) into copied_fees from public.event_fees where event_roping_id=roping_uuid;
       perform pg_temp.check_test(copied_fees=(select count(*) from public.roping_template_fees where roping_template_id=template_record.id), 'All template fees copied');
@@ -95,6 +101,10 @@ begin
         insert into test_report(scenario,detail) values('Configuration warning',jsonb_build_object('template',template_record.name,'warning','No payout schedule selected; payout amounts cannot be tested for this template.'));
       end if;
     end loop;
+    perform pg_temp.check_test(not exists(
+      select 1 from public.event_ropings where event_id=event_uuid
+      group by scheduled_date,division_id,classification_id,competition_format having count(*)>1
+    ),'Only one roping per classification and format per division per day');
 
     for roping_record in
       select r.*, t.template_name from public.event_ropings r join test_ropings t on t.roping_id=r.id where r.event_id=event_uuid order by r.sort_order

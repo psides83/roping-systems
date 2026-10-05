@@ -18,6 +18,10 @@ member IDs remain intact. Current numbered classes have separate ropings with mo
 matching-class members and one eligible higher-number entrant. Open, Handicap, 4D,
 youth classifications, repeated class occurrences on another day, and all active
 producer templates are exercised.
+Each classification has only one roping per division and format per day. Numbered
+format templates rotate across classifications, days, and weekends, rather than
+creating multiple numbered ropings on the same day. Open standard breakaway and
+4D Open breakaway are distinct formats; each appears once per day.
 
 Two completed public weekends are dated November 7-8 and November 21-22, 2026.
 They have official results, finalized payouts, and sample acknowledged/reversed
@@ -31,6 +35,9 @@ one grouped entry deposit per completed roping/fund, sponsor received/pledged po
 fund reservations and finalization debits, reopening, manual awards debits, and
 sample cash payout acknowledgments. All money is simulated. Fixture funds and
 events are clearly labeled TEST. Public fixtures are deliberately published.
+Existing added-money fees are reused. A $15 general fund contribution is added to
+the test copy only when the original template has no fund contribution fee; the
+suite does not stack an artificial contribution on top of an existing one.
 No artificial opening balance is added; allocations are covered by completed
 roping contributions. `supabase/tests/fund-ledger.sql` checks completion-only
 posting, single-row corrections, reopening, and protection for spent contributions.

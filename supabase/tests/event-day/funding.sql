@@ -1,4 +1,5 @@
 create temporary table test_funding_templates(original_id uuid primary key,copy_id uuid,fee_id uuid) on commit drop;
+create temporary table test_funding_fee_map(original_id uuid primary key,copy_id uuid) on commit drop;
 create temporary table test_public_future_events(id uuid primary key) on commit drop;
 do $$
 declare producer uuid:=current_setting('test.producer_id')::uuid; fund uuid; deposit_fund uuid; allocation integer; r record; fee uuid; source_fee uuid; copied_template uuid; funding uuid; sponsor uuid; balance bigint; receipt uuid; winner record; event uuid; template record; class_id uuid; member record; live_roping uuid; checks integer:=0; schedule_date date;
@@ -11,15 +12,36 @@ begin
     if copied_template is null then
       copied_template:=public.duplicate_division_template(producer,r.roping_template_id);
       update public.roping_templates set name='TEST Fund / '||(select name from public.roping_templates where id=r.roping_template_id),is_active=false where id=copied_template;
-      insert into public.roping_template_fees(producer_id,roping_template_id,title,amount_cents,scope,is_required,contributes_to_payout,included_in_entry_price,kind,fund_tracking,destination_fund_id)
-        values(producer,copied_template,'TEST Finals Fund Contribution',1500,'entry',true,false,false,'added_money',case when r.main_round_count=2 then 'classification' else 'general' end,case when r.main_round_count=2 then null else fund end) returning id into source_fee;
+      -- Keep copied event fees linked to the corresponding fee in the copied template.
+      with originals as (
+        select f.id,to_jsonb(f)-array['id','roping_template_id','created_at','updated_at'] as settings,
+          row_number() over(partition by to_jsonb(f)-array['id','roping_template_id','created_at','updated_at'] order by f.id) as ordinal
+        from public.roping_template_fees f where f.roping_template_id=r.roping_template_id
+      ), copies as (
+        select f.id,to_jsonb(f)-array['id','roping_template_id','created_at','updated_at'] as settings,
+          row_number() over(partition by to_jsonb(f)-array['id','roping_template_id','created_at','updated_at'] order by f.id) as ordinal
+        from public.roping_template_fees f where f.roping_template_id=copied_template
+      )
+      insert into test_funding_fee_map select o.id,c.id from originals o join copies c on c.settings=o.settings and c.ordinal=o.ordinal;
+      perform pg_temp.check_test((select count(*) from test_funding_fee_map m join public.roping_template_fees f on f.id=m.original_id where f.roping_template_id=r.roping_template_id)
+        =(select count(*) from public.roping_template_fees where roping_template_id=r.roping_template_id),'Every copied template fee has a matching reference');
+      select id into source_fee from public.roping_template_fees where roping_template_id=copied_template and kind='added_money' order by sort_order,id limit 1;
+      if source_fee is null then
+        insert into public.roping_template_fees(producer_id,roping_template_id,title,amount_cents,scope,is_required,contributes_to_payout,included_in_entry_price,kind,fund_tracking,destination_fund_id)
+          values(producer,copied_template,'TEST Finals Fund Contribution',1500,'entry',true,false,false,'added_money','general',fund) returning id into source_fee;
+      end if;
       insert into test_funding_templates values(r.roping_template_id,copied_template,source_fee);
     end if;
     update public.event_ropings set roping_template_id=copied_template where id=r.id;
-    insert into public.event_fees(producer_id,event_id,event_roping_id,roping_template_fee_id,title,amount_cents,scope,is_required,contributes_to_payout,included_in_entry_price,kind,fund_tracking,destination_fund_id)
-      values(producer,r.event_id,r.id,source_fee,'TEST Finals Fund Contribution',1500,'entry',true,false,false,'added_money','general',fund) returning id into fee;
-    insert into public.entry_charges(producer_id,event_id,entry_id,roper_id,event_fee_id,title,amount_cents)
-      select producer,r.event_id,e.id,e.roper_id,fee,'TEST Finals Fund Contribution',1500 from public.roping_entries e where e.event_roping_id=r.id;
+    update public.event_fees f set roping_template_fee_id=m.copy_id from test_funding_fee_map m
+      where f.event_roping_id=r.id and f.roping_template_fee_id=m.original_id;
+    select id into fee from public.event_fees where event_roping_id=r.id and roping_template_fee_id=source_fee;
+    if fee is null then
+      insert into public.event_fees(producer_id,event_id,event_roping_id,roping_template_fee_id,title,amount_cents,scope,is_required,contributes_to_payout,included_in_entry_price,kind,fund_tracking,destination_fund_id)
+        values(producer,r.event_id,r.id,source_fee,'TEST Finals Fund Contribution',1500,'entry',true,false,false,'added_money','general',fund) returning id into fee;
+      insert into public.entry_charges(producer_id,event_id,entry_id,roper_id,event_fee_id,title,amount_cents)
+        select producer,r.event_id,e.id,e.roper_id,fee,'TEST Finals Fund Contribution',1500 from public.roping_entries e where e.event_roping_id=r.id;
+    end if;
     select destination_fund_id into deposit_fund from public.entry_charges where event_fee_id=fee limit 1;
     if deposit_fund<>fund then update public.producer_funds set name='TEST '||name where id=deposit_fund and name not like 'TEST %'; end if;
     perform pg_temp.check_test((select count(*) from public.fund_transactions where fund_id=deposit_fund and event_roping_id=r.id and kind='entry_deposit')=1,'One grouped entry contribution deposit per roping');
@@ -30,6 +52,8 @@ begin
     perform public.save_roping_funding(r.id,funding,'fund',deposit_fund,'',allocation,allocation,'TEST finals money allocated to this roping',false);
     perform public.save_roping_funding(r.id,sponsor,'sponsor',null,'TEST Arena Sponsor',10000,5000,'TEST sponsor commitment',false);
     perform public.set_roping_sponsor_policy(r.id,r.sort_order%2=0);
+    perform pg_temp.check_test(public.event_roping_template_snapshot(r.id,false)=public.event_roping_template_snapshot(r.id,true),
+      'Fund test roping still matches its template');
     perform pg_temp.check_test(public.roping_added_money_cents(r.id)=allocation+case when r.sort_order%2=0 then 10000 else 5000 end,'Received-only and pledged sponsor policies');
     perform public.finalize_roping_payouts(r.id,false,'TEST results and funding reviewed');
     perform public.finalize_roping_payouts(r.id,false,'TEST idempotent finalization retry');
