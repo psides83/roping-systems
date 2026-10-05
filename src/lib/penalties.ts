@@ -7,3 +7,9 @@ export interface PenaltyRule {
 export function penaltyTotal(options: PenaltyOption[], selected: string[]) {
   return Math.round(options.filter((option) => selected.includes(option.id)).reduce((total, option) => total + Number(option.seconds), 0) * 100) / 100;
 }
+export function formatAgeRange(minimum: number | null, maximum: number | null) {
+  if (minimum === null && maximum === null) return "All ages";
+  if (minimum === null) return `${maximum} and under`;
+  if (maximum === null) return `${minimum} and over`;
+  return minimum === maximum ? `Age ${minimum}` : `Ages ${minimum}-${maximum}`;
+}
