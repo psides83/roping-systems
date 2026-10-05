@@ -519,7 +519,7 @@ export async function duplicateDivision(
     };
   const { error } = await context.supabase.rpc("duplicate_division_template", {
     target_organization_id: context.producer.id,
-    roping_template_id: parsed.data,
+    source_template_id: parsed.data,
   });
   if (error) return { message: error.message };
   revalidatePath("/settings/roping-templates");
