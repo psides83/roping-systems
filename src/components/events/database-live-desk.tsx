@@ -45,6 +45,8 @@ import {
   type ShortRoundCandidate,
 } from "@/components/events/short-round-field-dialog";
 import type { RoundOrderMethod } from "@/types/domain";
+import { PenaltyChoices } from "@/components/events/penalty-choices";
+import { penaltyTotal, type PenaltyOption } from "@/lib/penalties";
 
 export interface LiveRunRow {
   id: string;
@@ -60,6 +62,8 @@ export interface LiveRunRow {
   status: RunStatus;
   rerunCount: number;
   cattleTag: string | null;
+  penaltyOptions?: PenaltyOption[];
+  selectedPenaltyIds?: string[];
 }
 
 interface LiveDeskProps {
@@ -799,7 +803,8 @@ function RunEntryForm({
   const [times, setTimes] = useState<string[]>(() =>
     Array.from({ length: timerCount }, () => ""),
   );
-  const [penalty, setPenalty] = useState("0");
+  const [selectedPenalties, setSelectedPenalties] = useState<string[]>([]);
+  const penalty = penaltyTotal(run.penaltyOptions ?? [], selectedPenalties);
   const resolved = useMemo(() => {
     return resolveTimerReadings(times, timerResolution);
   }, [times, timerResolution]);
@@ -884,27 +889,7 @@ function RunEntryForm({
           ))}
         </div>
       </div>
-      <div className="mt-4">
-        <p className="text-xs font-bold uppercase text-[#66716b]">Penalty</p>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {["0", "5", "10"].map((value) => (
-            <button
-              type="button"
-              key={value}
-              onClick={() => setPenalty(value)}
-              disabled={!canEdit}
-              className={cn(
-                "h-11 rounded-md border text-sm font-bold disabled:opacity-50",
-                penalty === value
-                  ? "border-[var(--brand-primary)] brand-primary-fill text-white"
-                  : "border-[#d7ddda]",
-              )}
-            >
-              {value === "0" ? "None" : `+${value}`}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PenaltyChoices options={run.penaltyOptions ?? []} selected={selectedPenalties} onChange={setSelectedPenalties} disabled={!canEdit} />
       <div className="mt-5 flex items-center justify-between border-y border-[#e7ebe8] py-4">
         <span>
           <span className="block text-sm font-semibold text-[#66716b]">

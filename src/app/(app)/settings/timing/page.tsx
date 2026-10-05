@@ -5,12 +5,17 @@ import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { PenaltyRules } from "@/components/settings/penalty-rules";
+import type { PenaltyRule } from "@/lib/penalties";
 
 export default async function TimingSettingsPage() {
   const configured = isSupabaseConfigured();
   const producer = await getActiveProducer();
   const canEdit =
     configured && Boolean(producer && producer.role !== "viewer");
+  let penalties: PenaltyRule[] = [];
+  let penaltyDivisions: Array<{ id: string; name: string }> = [];
+  let penaltyClasses: Array<{ id: string; name: string; division_id: string }> = [];
   let divisions: Array<{
     id: string;
     name: string;
@@ -30,16 +35,24 @@ export default async function TimingSettingsPage() {
     if (error)
       throw new Error(`Unable to load timing settings: ${error.message}`);
     divisions = data as typeof divisions;
+    const rules = await supabase.from("producer_penalty_rules").select("*").eq("producer_id", producer.id).order("name");
+    const categories = await supabase.from("divisions").select("id,name").eq("producer_id", producer.id).order("name");
+    const classes = await supabase.from("classifications").select("id,name,division_id").eq("producer_id", producer.id).order("rank");
+    if (rules.error || categories.error || classes.error) throw new Error("Unable to load penalty settings.");
+    penalties = rules.data as PenaltyRule[];
+    penaltyDivisions = categories.data ?? [];
+    penaltyClasses = classes.data ?? [];
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Roping setup"
-        title="Timing rules"
+        title="Timing & penalties"
         description="Choose how many timer readings are entered for each run and how those readings become the official raw time."
       />
       <RopingSetupTabs active="timing" />
+      <PenaltyRules rules={penalties} divisions={penaltyDivisions} classifications={penaltyClasses} canEdit={canEdit} />
       <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
         <header className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4">
           <span className="grid h-9 w-9 place-items-center rounded-md bg-[#eef1ef]">

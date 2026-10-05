@@ -12,7 +12,7 @@ const tabs = [
     href: "/settings/roping-templates",
   },
   { id: "payouts", label: "Payouts", href: "/settings/payouts" },
-  { id: "timing", label: "Timing rules", href: "/settings/timing" },
+  { id: "timing", label: "Timing & penalties", href: "/settings/timing" },
 ] as const;
 
 export function RopingSetupTabs({

@@ -7,6 +7,8 @@ import {
   type LiveRunState,
 } from "@/app/(app)/events/[eventId]/actions";
 import { runStatusLabels, type RunStatus } from "@/lib/run-status";
+import { PenaltyChoices } from "@/components/events/penalty-choices";
+import { penaltyTotal, type PenaltyOption } from "@/lib/penalties";
 
 interface CorrectableRun {
   id: string;
@@ -15,6 +17,8 @@ interface CorrectableRun {
   status: RunStatus;
   penalty: number;
   timerReadings: number[];
+  penaltyOptions?: PenaltyOption[];
+  selectedPenaltyIds?: string[];
 }
 
 const correctionOutcomes: RunStatus[] = [
@@ -40,7 +44,8 @@ export function RunCorrectionDialog({
   const [status, setStatus] = useState<RunStatus>(
     run.status === "scratch" ? "turned_out" : run.status,
   );
-  const [penalty, setPenalty] = useState(String(run.penalty));
+  const [selectedPenalties, setSelectedPenalties] = useState(run.selectedPenaltyIds ?? []);
+  const penalty = penaltyTotal(run.penaltyOptions ?? [], selectedPenalties);
   const action = correctRun.bind(null, eventId);
   const [state, formAction, pending] = useActionState<LiveRunState, FormData>(
     action,
@@ -141,18 +146,7 @@ export function RunCorrectionDialog({
                       </label>
                     ))}
                   </div>
-                  <label className="mt-3 block text-sm font-semibold">
-                    Penalty seconds
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      step="0.01"
-                      value={penalty}
-                      onChange={(event) => setPenalty(event.target.value)}
-                      className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3 font-mono"
-                    />
-                  </label>
+                  <PenaltyChoices options={run.penaltyOptions ?? []} selected={selectedPenalties} onChange={setSelectedPenalties} />
                 </div>
               ) : null}
 

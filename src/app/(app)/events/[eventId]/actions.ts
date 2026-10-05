@@ -740,11 +740,11 @@ export async function recordRun(
   if (!valid) return { message: "Enter a valid reading from every timer." };
 
   const supabase = await requireManager();
-  const { error } = await supabase.rpc("record_run_result_multi", {
+  const { error } = await supabase.rpc("save_run_with_penalties", {
     target_run_id: parsed.data.runId,
     entered_timer_readings:
       parsed.data.status === "complete" ? timerReadings : [],
-    entered_penalty: parsed.data.penalty,
+    selected_penalty_ids: formData.getAll("penaltyId").map(String),
     entered_status: parsed.data.status,
   });
   if (error) return { message: error.message };
@@ -771,11 +771,11 @@ export async function correctRun(
   if (!valid) return { message: "Enter a valid reading from every timer." };
 
   const supabase = await requireManager();
-  const { error } = await supabase.rpc("correct_run_result_multi", {
+  const { error } = await supabase.rpc("save_run_with_penalties", {
     target_run_id: parsed.data.runId,
     entered_timer_readings:
       parsed.data.status === "complete" ? timerReadings : [],
-    entered_penalty: parsed.data.penalty,
+    selected_penalty_ids: formData.getAll("penaltyId").map(String),
     entered_status: parsed.data.status,
     entered_reason: parsed.data.reason,
   });

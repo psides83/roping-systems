@@ -19,6 +19,7 @@ import type { RunStatus } from "@/lib/run-status";
 import type { RoundOrderMethod } from "@/types/domain";
 import type { ClassEventDayStatus } from "@/components/events/class-operations-dialog";
 import type { ShortRoundCandidate } from "@/components/events/short-round-field-dialog";
+import type { PenaltyOption } from "@/lib/penalties";
 import {
   finalizeRoping,
   startRoping,
@@ -185,7 +186,7 @@ export default async function LiveRopingPage({
     const { data: runData, error } = await supabase
       .from("competition_runs")
       .select(
-        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), entries:roping_entries!inner(entry_number, handicap_time_credit_seconds, ropers!inner(first_name, last_name))",
+        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, applied_penalties, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), entries:roping_entries!inner(entry_number, handicap_time_credit_seconds, ropers!inner(first_name, last_name))",
       )
       .eq("event_roping_id", selectedDivisionId)
       .eq("round_number", selectedRound)
@@ -207,6 +208,8 @@ export default async function LiveRopingPage({
         rawTime:
           run.raw_time_seconds === null ? null : Number(run.raw_time_seconds),
         penalty: Number(run.penalty_seconds),
+        selectedPenaltyIds: (run.applied_penalties as unknown as PenaltyOption[]).map((p) => p.id).concat(
+          Number(run.penalty_seconds) > 0 && !(run.applied_penalties as unknown as PenaltyOption[]).length ? ["recorded"] : []),
         incentiveAdjustment: Number(entry.handicap_time_credit_seconds),
         timerReadings: (
           run.run_timer_readings as unknown as Array<{
@@ -224,6 +227,12 @@ export default async function LiveRopingPage({
             ?.tag_number ?? null,
       };
     });
+    if (producer.role !== "viewer") {
+      const { data: options, error: penaltyError } = await supabase.rpc("event_run_penalty_options", { target_event_roping_id: selectedDivisionId });
+      if (penaltyError) throw new Error(`Unable to load applicable penalties: ${penaltyError.message}`);
+      const byRun = new Map((options as Array<{ run_id: string; options: PenaltyOption[] }>).map((row) => [row.run_id, row.options]));
+      runs = runs.map((run) => ({ ...run, penaltyOptions: byRun.get(run.id) ?? [] }));
+    }
     if (selectedDivision?.cattleDrawEnabled) {
       const { data: cattleData, error: cattleError } = await supabase
         .from("event_cattle")
