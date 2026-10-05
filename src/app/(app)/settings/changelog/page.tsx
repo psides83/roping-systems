@@ -20,6 +20,8 @@ const entityLabels: Record<string, string> = {
   payout_schedule_brackets: "Payout bracket",
   payout_schedule_places: "Payout place",
   payout_disbursements: "Payout payment",
+  payout_receipts: "Roper payout receipt",
+  payout_receipt_awards: "Payout allocation",
   events: "Event",
   event_ropings: "Roping",
   event_roping_handicap_adjustments: "Handicap adjustment",
@@ -52,6 +54,14 @@ function describeChanges(
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ) {
+  if (entityType === "payout_receipts" && action === "insert") {
+    return [
+      { field: "Amount", before: "", after: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(after?.amount_cents ?? 0) / 100) },
+      { field: "Received by", before: "", after: formatValue(after?.received_by) },
+      { field: "Payment method", before: "", after: formatValue(after?.payment_method) },
+      { field: "Receipt confirmed", before: "", after: formatValue(after?.receipt_confirmed) },
+    ];
+  }
   if (entityType === "entry_roping_transfers" && action === "insert") {
     return [
       { field: "Reason", before: "", after: formatValue(after?.reason) },

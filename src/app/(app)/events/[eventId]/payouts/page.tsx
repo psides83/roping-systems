@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, Check, RotateCcw, Users } from "lucide-react";
-import { initializePayoutPlans, setPayoutPaid } from "./actions";
+import { ArrowLeft, Banknote, Users } from "lucide-react";
+import { initializePayoutPlans } from "./actions";
+import { PayoutRegisterData } from "@/components/events/payout-register-data";
 import { PageHeader } from "@/components/ui/page-header";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { getActiveProducer } from "@/lib/producers";
@@ -44,8 +45,6 @@ interface PayoutPlan {
     performanceSeconds: number;
     payoutCents: number;
     dNumber: number | null;
-    awardKey: string;
-    paid: boolean;
   }>;
 }
 
@@ -86,7 +85,6 @@ export default async function EventPayoutsPage({
   const [
     { data: roping },
     { data: plans, error },
-    { data: disbursements, error: disbursementError },
   ] = await Promise.all([
     supabase
       .from("events")
@@ -102,23 +100,9 @@ export default async function EventPayoutsPage({
       .eq("event_id", eventId)
       .eq("producer_id", producer.id)
       .order("created_at"),
-    supabase
-      .from("payout_disbursements")
-      .select("payout_plan_id, award_key")
-      .eq("event_id", eventId)
-      .eq("producer_id", producer.id),
   ]);
   if (!roping) notFound();
   if (error) throw new Error(`Unable to load payout plans: ${error.message}`);
-  if (disbursementError)
-    throw new Error(
-      `Unable to load completed payouts: ${disbursementError.message}`,
-    );
-  const paidAwards = new Set(
-    (disbursements ?? []).map(
-      (payment) => `${payment.payout_plan_id}:${payment.award_key}`,
-    ),
-  );
 
   const calculated = await Promise.all(
     (plans ?? []).map(async (plan): Promise<PayoutPlan> => {
@@ -245,14 +229,7 @@ export default async function EventPayoutsPage({
                 dNumber: null,
               }),
             )
-        ).map((result) => {
-          const awardKey = payoutAwardKey(result);
-          return {
-            ...result,
-            awardKey,
-            paid: paidAwards.has(`${plan.id}:${awardKey}`),
-          };
-        }),
+        ),
       };
     }),
   );
@@ -280,6 +257,7 @@ export default async function EventPayoutsPage({
         title={roping.title}
         description="Live projections use paid entries, separately selected side pots and insurance, payout-contributing charges, and added money."
       />
+      <PayoutRegisterData eventId={eventId} producerId={producer.id} canManage={producer.role !== "viewer"} />
       {calculated.length ? (
         <section className="space-y-5">
           {payoutGroups.map((group) => {
@@ -321,8 +299,6 @@ export default async function EventPayoutsPage({
                     <PayoutPlanSection
                       key={plan.id}
                       plan={plan}
-                      eventId={eventId}
-                      canManage={producer.role !== "viewer"}
                     />
                   ))}
                 </div>
@@ -353,12 +329,8 @@ export default async function EventPayoutsPage({
 
 function PayoutPlanSection({
   plan,
-  eventId,
-  canManage,
 }: {
   plan: PayoutPlan;
-  eventId: string;
-  canManage: boolean;
 }) {
   const poolLabel =
     plan.poolType === "main"
@@ -408,8 +380,6 @@ function PayoutPlanSection({
             {plan.results.length ? (
               <PayoutResults
                 plan={plan}
-                eventId={eventId}
-                canManage={canManage}
               />
             ) : null}
           </>
@@ -422,8 +392,6 @@ function PayoutPlanSection({
           {plan.results.length ? (
             <PayoutResults
               plan={plan}
-              eventId={eventId}
-              canManage={canManage}
             />
           ) : null}
         </>
@@ -455,28 +423,10 @@ function allocatePlaces(poolCents: number, places: PayoutPlace[]) {
   return amounts;
 }
 
-function payoutAwardKey(result: {
-  entryId: string;
-  sectionType: string;
-  roundNumber: number | null;
-  dNumber: number | null;
-}) {
-  return [
-    result.sectionType,
-    result.roundNumber ?? 0,
-    result.dNumber ?? 0,
-    result.entryId,
-  ].join(":");
-}
-
 function PayoutResults({
   plan,
-  eventId,
-  canManage,
 }: {
   plan: PayoutPlan;
-  eventId: string;
-  canManage: boolean;
 }) {
   const sections = Map.groupBy(plan.results, (result) =>
     result.dNumber
@@ -506,7 +456,7 @@ function PayoutResults({
               {results.map((result) => (
                 <div
                   key={`${section}-${result.entryId}`}
-                  className="grid grid-cols-[28px_1fr_auto_auto] items-center gap-2 px-3 py-2.5 text-sm"
+                  className="grid grid-cols-[28px_1fr_auto] items-center gap-2 px-3 py-2.5 text-sm"
                 >
                   <span className="font-bold">{result.place}</span>
                   <span className="min-w-0">
@@ -520,54 +470,6 @@ function PayoutResults({
                   <span className="font-bold">
                     {formatCurrency(result.payoutCents)}
                   </span>
-                  {canManage ? (
-                    <form
-                      action={setPayoutPaid.bind(
-                        null,
-                        eventId,
-                        {
-                          planId: plan.id,
-                          entryId: result.entryId,
-                          awardKey: result.awardKey,
-                          sectionType: result.sectionType,
-                          roundNumber: result.roundNumber,
-                          dNumber: result.dNumber,
-                          place: result.place,
-                          contestantName: result.contestantName,
-                          amountCents: result.payoutCents,
-                        },
-                        !result.paid,
-                      )}
-                    >
-                      <button
-                        className={`grid h-8 w-8 place-items-center rounded-md border ${
-                          result.paid
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : "border-[#d7ddda] bg-white text-[#66716b]"
-                        }`}
-                        aria-label={
-                          result.paid
-                            ? "Mark payout unpaid"
-                            : "Mark payout paid"
-                        }
-                        title={
-                          result.paid
-                            ? "Mark payout unpaid"
-                            : "Mark payout paid"
-                        }
-                      >
-                        {result.paid ? (
-                          <RotateCcw size={14} />
-                        ) : (
-                          <Check size={15} />
-                        )}
-                      </button>
-                    </form>
-                  ) : (
-                    <span className="w-8 text-center text-xs font-semibold text-emerald-700">
-                      {result.paid ? "Paid" : ""}
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
