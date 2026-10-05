@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EventFeeSummary } from "@/components/events/event-fee-summary";
 import { RopingFundingData } from "@/components/events/roping-funding-data";
 import { notFound } from "next/navigation";
 import {
@@ -825,6 +826,7 @@ export default async function RopingDetailPage({
           </div>
         </section>
       ) : null}
+      {isSupabaseConfigured() ? <EventFeeSummary eventId={event.id} /> : null}
       <section id="setup" className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

@@ -6,7 +6,6 @@ begin
   if not exists(select 1 from test_ropings) then return; end if;
   select id into fund from public.producer_funds where producer_id=producer and name='TEST Finals General Fund';
   if fund is null then fund:=gen_random_uuid(); perform public.manage_producer_fund(producer,fund,'TEST Finals General Fund','Simulated funds for event-day testing only',true); end if;
-  perform public.record_fund_transaction(fund,gen_random_uuid(),'manual_deposit',1000000,'TEST opening fund balance',null);
   for r in select er.* from public.event_ropings er join test_ropings tr on tr.roping_id=er.id order by er.event_id,er.sort_order loop
     select copy_id,fee_id into copied_template,source_fee from test_funding_templates where original_id=r.roping_template_id;
     if copied_template is null then

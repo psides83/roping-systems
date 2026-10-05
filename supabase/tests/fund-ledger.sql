@@ -42,6 +42,8 @@ begin
     count_entries:=count_entries+1;
   end loop;
   if count_entries<>2 then raise exception 'Test requires two entries'; end if;
+  if exists(select 1 from public.fund_transactions where fund_id=fund and event_roping_id=roping.id) then raise exception 'Contribution deposited before roping completion'; end if;
+  update public.event_ropings set event_day_status='completed' where id=roping.id;
   if (select count(*) from public.fund_transactions where fund_id=fund and event_roping_id=roping.id and kind='entry_deposit')<>1 then raise exception 'Multiple per-roper deposits created'; end if;
   if (select sum(amount_cents) from public.fund_transactions where fund_id=fund and event_roping_id=roping.id)<>3000 then raise exception 'Roping contribution total incorrect'; end if;
   perform public.reconcile_roping_fund(fund,roping.id);
@@ -49,6 +51,16 @@ begin
   if balance<>13000 then raise exception 'Reconciliation duplicated money'; end if;
   update public.roping_entries set payment_status='refunded' where id=entry.id;
   if (select sum(amount_cents) from public.fund_transactions where fund_id=fund and event_roping_id=roping.id)<>1500 then raise exception 'Refund failed to adjust ledger'; end if;
+  if (select count(*) from public.fund_transactions where fund_id=fund and event_roping_id=roping.id)<>1 then raise exception 'Refund created individual adjustment deposits'; end if;
+  update public.event_ropings set event_day_status='in_progress' where id=roping.id;
+  if exists(select 1 from public.fund_transactions where fund_id=fund and event_roping_id=roping.id) then raise exception 'Reopening retained completion deposit'; end if;
+  update public.event_ropings set event_day_status='completed' where id=roping.id;
+  if (select count(*) from public.fund_transactions where fund_id=fund and event_roping_id=roping.id)<>1 then raise exception 'Recompletion duplicated deposit'; end if;
+  perform public.record_fund_transaction(fund,gen_random_uuid(),'manual_debit',11000,'Test spending collected contribution',null);
+  begin
+    update public.event_ropings set event_day_status='in_progress' where id=roping.id;
+    raise exception 'Spent contribution could be removed by reopening';
+  exception when others then if sqlerrm='Spent contribution could be removed by reopening' then raise; end if; end;
   perform public.manage_producer_fund(producer,fund,'Ledger Test Account '||fund::text,'Archived test account',false);
   begin
     perform public.record_fund_transaction(fund,gen_random_uuid(),'manual_deposit',500,'Archived deposit attempt',null);
@@ -60,4 +72,5 @@ begin
     raise exception 'Unrelated account read ledger';
   exception when others then if sqlerrm='Unrelated account read ledger' then raise; end if; end;
 end $$;
+select 'Completion deposits, refunds, reopening, overdraft protection, and access checks passed' as result;
 rollback;

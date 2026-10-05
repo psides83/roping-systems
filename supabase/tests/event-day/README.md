@@ -27,10 +27,15 @@ tentative times, and follows-previous schedules.
 
 Funding scenarios use inactive `TEST Fund / ...` template copies, preserving active
 producer templates. They include shared and classification-routed contributions,
-one grouped entry deposit per roping/fund, sponsor received/pledged policies,
+one grouped entry deposit per completed roping/fund, sponsor received/pledged policies,
 fund reservations and finalization debits, reopening, manual awards debits, and
 sample cash payout acknowledgments. All money is simulated. Fixture funds and
 events are clearly labeled TEST. Public fixtures are deliberately published.
+No artificial opening balance is added; allocations are covered by completed
+roping contributions. `supabase/tests/fund-ledger.sql` checks completion-only
+posting, single-row corrections, reopening, and protection for spent contributions.
+`supabase/tests/event-fee-summary.sql` checks itemized collection totals,
+once-per-event charges, partial cash receipts, voids, and producer isolation.
 
 The checks cover database competition, scoring, fee, funding, payout and public
 projection behavior. They are not exhaustive browser, concurrency, load, payment
