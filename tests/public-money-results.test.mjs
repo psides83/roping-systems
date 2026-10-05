@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { moneyWinnerRanking, moneySectionLabel } from "../src/lib/events/public-money-results.ts";
+import { compareMoneyPools, moneyWinnerRanking, moneySectionLabel } from "../src/lib/events/public-money-results.ts";
 
 const award = (values = {}) => ({
   ropingId: "roping", planId: "main", poolName: "Main", poolType: "main",
   sectionType: "round", roundNumber: 1, dNumber: null, place: 1,
   entryId: "entry", roperId: "roper", name: "Roper", time: 10, payoutCents: 100,
   ...values,
+});
+
+test("winnings list main pot, side pot, then insurance side pot", () => {
+  const pools = [
+    award({ poolName: "Insurance Side Pot", poolType: "side_pot" }),
+    award({ poolName: "Side Pot", poolType: "side_pot" }),
+    award(),
+    award({ poolName: "Coverage", poolType: "insurance" }),
+  ].sort(compareMoneyPools);
+  assert.deepEqual(pools.map((pool) => pool.poolName), ["Main", "Side Pot", "Coverage", "Insurance Side Pot"]);
 });
 
 test("total winnings combine multiple entries, rounds, and optional pots by roper identity", () => {

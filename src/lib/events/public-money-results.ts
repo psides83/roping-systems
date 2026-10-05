@@ -14,6 +14,12 @@ export interface PublicMoneyResult {
   payoutCents: number;
 }
 
+export function compareMoneyPools(a: PublicMoneyResult, b: PublicMoneyResult) {
+  const order = (pool: PublicMoneyResult) => pool.poolType === "main" ? 0
+    : pool.poolType === "insurance" || /\binsurance\b/i.test(pool.poolName) ? 2 : 1;
+  return order(a) - order(b) || a.poolName.localeCompare(b.poolName);
+}
+
 export function moneyWinnerRanking(awards: PublicMoneyResult[]) {
   const winners = new Map<string, { roperId: string; name: string; mainCents: number; sideCents: number; totalCents: number; place: number }>();
   for (const award of awards) {

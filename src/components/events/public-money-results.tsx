@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { moneySectionLabel, moneyWinnerRanking, type PublicMoneyResult } from "@/lib/events/public-money-results";
+import { compareMoneyPools, moneySectionLabel, moneyWinnerRanking, type PublicMoneyResult } from "@/lib/events/public-money-results";
 
 const currency = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 
@@ -21,7 +21,7 @@ export function PublicMoneyResults({ awards, contestantQuery }: { awards: Public
   const winners = moneyWinnerRanking(awards).filter((winner) => matches(winner.name));
   const stageAwards = awards.filter((award) => `${award.sectionType}:${award.roundNumber ?? 0}` === active);
   const pools = [...new Map(stageAwards.map((award) => [award.planId, award])).values()]
-    .sort((a, b) => Number(b.poolType === "main") - Number(a.poolType === "main") || a.poolName.localeCompare(b.poolName));
+    .sort(compareMoneyPools);
   const sectionLabel = (section: (typeof sections)[number]) => section.type === "aggregate" ? "Average"
     : section.type === "short_round" ? "Short round" : section.type === "four_d" ? "4D results" : `Round ${section.round}`;
 
