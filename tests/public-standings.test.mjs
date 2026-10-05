@@ -24,7 +24,21 @@ test("incomplete averages have progress but no placing", () => {
   const rows = averageStandings([average("partial", 8, {status: "pending", roundsCompleted: 1}),
     average("A", 30), average("B", 30), average("C", 31)]);
   assert.deepEqual(rows.map((row) => row.place), [1, 1, 3, null]);
-  assert.equal(rows[3].progress, "1/3 main rounds");
+  assert.equal(rows[3].progress, "On one");
+});
+test("partial aggregates show qualified times but rank below ropers with more times", () => {
+  const rows = averageStandings([average("two", 22.45, { status: "no_time", roundsCompleted: 2 }),
+    average("three", 45), average("one", 10, { status: "no_time", roundsCompleted: 1 }),
+    average("none", null, { status: "no_time", roundsCompleted: 0 })]);
+  assert.deepEqual(rows.map((row) => row.id), ["three", "two", "one", "none"]);
+  assert.equal(rows[1].time, 22.45);
+  assert.equal(rows[1].progress, "On two");
+  assert.equal(rows[1].place, null);
+  assert.equal(rows[3].progress, "No qualified times");
+});
+test("a qualified short round counts toward the on count", () => {
+  const rows = averageStandings([average("final", 40, { shortRoundQualifier: true, shortRoundStatus: "complete" })]);
+  assert.equal(rows[0].progress, "On four · Short round qualifier");
 });
 test("short round qualifiers cannot place before their final run", () => {
   const rows = averageStandings([average("waiting", 30, {shortRoundQualifier: true, shortRoundStatus: "pending"}),

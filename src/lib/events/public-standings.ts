@@ -55,17 +55,23 @@ export function roundStandings(runs: PublicRoundResult[], round: number): Standi
 export function averageStandings(results: PublicResult[]): StandingRow[] {
   const hasShortRound = results.some((row) => row.shortRoundQualifier);
   const sorted = [...results].sort((a, b) =>
-    Number(b.shortRoundQualifier) - Number(a.shortRoundQualifier) ||
-    b.roundsCompleted - a.roundsCompleted ||
+    qualifiedTimeCount(b) - qualifiedTimeCount(a) ||
     (a.totalTime ?? Infinity) - (b.totalTime ?? Infinity) || a.name.localeCompare(b.name),
   );
   const eligible = sorted.filter((row) => row.status === "complete" &&
-    row.totalTime !== null && (!hasShortRound || (row.shortRoundQualifier && row.shortRoundStatus === "complete")));
+    row.roundsCompleted === row.mainRoundCount && row.totalTime !== null && (!hasShortRound || (row.shortRoundQualifier && row.shortRoundStatus === "complete")));
   return sorted.map((row) => ({
     id: row.resultId, entryId: row.resultId, name: row.name, entryNumber: row.entryNumber,
     time: row.totalTime, status: row.status, adjustment: row.incentiveAdjustment,
-    progress: `${row.roundsCompleted}/${row.mainRoundCount} main rounds${row.shortRoundQualifier ? " · Short round qualifier" : ""}`,
+    progress: `${qualifiedTimeLabel(qualifiedTimeCount(row))}${row.shortRoundQualifier ? " · Short round qualifier" : ""}`,
     place: eligible.some((other) => other.resultId === row.resultId)
       ? eligible.findIndex((other) => other.totalTime === row.totalTime) + 1 : null,
   }));
+}
+function qualifiedTimeCount(row: PublicResult) {
+  return row.roundsCompleted + (row.shortRoundQualifier && row.shortRoundStatus === "complete" ? 1 : 0);
+}
+export function qualifiedTimeLabel(count: number) {
+  const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+  return count === 0 ? "No qualified times" : `On ${words[count] ?? count}`;
 }
