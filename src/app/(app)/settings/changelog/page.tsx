@@ -10,6 +10,7 @@ const entityLabels: Record<string, string> = {
   producer_staff: "Team access",
   memberships: "Membership",
   member_fines: "Member fine",
+  membership_suspensions: "Membership suspension",
   member_fine_transactions: "Fine payment or adjustment",
   member_fine_exceptions: "Fine exception",
   roping_templates: "Roping template",
@@ -57,6 +58,13 @@ function describeChanges(
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ) {
+  if (entityType === "membership_suspensions" && action === "insert") {
+    return [
+      { field: "Reason", before: "", after: formatValue(after?.reason) },
+      { field: "Starts on", before: "", after: formatValue(after?.starts_on) },
+      { field: "Ends on", before: "", after: formatValue(after?.ends_on) },
+    ];
+  }
   if (["member_fines", "member_fine_transactions", "member_fine_exceptions"].includes(entityType) && action === "insert") {
     return [
       { field: "Reason", before: "", after: formatValue(after?.reason) },
