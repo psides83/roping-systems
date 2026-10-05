@@ -77,7 +77,7 @@ export function AppShell({
       {open ? (
         <button
           aria-label="Close navigation"
-          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          className="navigation-backdrop fixed inset-0 z-40 bg-black/30 lg:hidden"
           onClick={() => setOpen(false)}
         />
       ) : null}
@@ -129,7 +129,7 @@ export function AppShell({
             />
           </button>
           {producerMenuOpen ? (
-            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-md border border-[#dfe4e1] bg-white py-1 text-[#17201c] shadow-xl">
+            <div className="menu-enter absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-md border border-[#dfe4e1] bg-white py-1 text-[#17201c] shadow-xl">
               {demo ? (
                 <p className="px-3 py-2 text-xs text-[#66716b]">
                   Producer switching becomes available after Supabase is

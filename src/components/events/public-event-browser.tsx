@@ -26,7 +26,7 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasons
       <button type="button" aria-expanded={expanded} aria-controls={listId} onClick={() => setExpanded(!expanded)} className="mt-2 flex min-h-10 w-full items-center justify-between text-sm font-semibold lg:hidden">
         Browse results <ChevronDown size={15} className={expanded ? "rotate-180" : ""} />
       </button>
-      <div id={listId} className={`${expanded ? "block" : "hidden"} lg:block`}>
+      <div id={listId} className={`${expanded ? "disclosure-content block" : "hidden"} lg:block`}>
       <div className="relative mt-3">
         <Search size={16} className="pointer-events-none absolute left-3 top-3 text-[#758078]" />
         <input type="search" aria-label="Find an event" placeholder="Find an event" value={search} onChange={(event) => { setSearch(event.target.value); setShowAll(false); }} className="h-10 w-full rounded-md border border-[#ccd4d0] bg-white pl-9 pr-3 text-sm" />

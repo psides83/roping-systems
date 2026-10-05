@@ -41,7 +41,7 @@ export function CollapsibleCard({
           </button>
         </div>
       </header>
-      {open ? <div id={contentId}>{children}</div> : null}
+      {open ? <div id={contentId} className="disclosure-content">{children}</div> : null}
     </article>
   );
 }
