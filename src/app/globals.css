@@ -122,6 +122,27 @@ textarea:focus-visible {
   scrollbar-color: #c5ccc8 transparent;
   scrollbar-width: thin;
 }
+.loading-skeleton {
+  background-color: #e7ebe8;
+  animation: skeleton-breathe 1.8s ease-in-out infinite;
+}
+.navigation-pending {
+  opacity: 0;
+  animation: pending-reveal 120ms ease 150ms forwards, pending-spin 1s linear infinite;
+}
+@keyframes skeleton-breathe {
+  50% { background-color: #f0f2f1; }
+}
+@keyframes pending-reveal {
+  to { opacity: 1; }
+}
+@keyframes pending-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-skeleton { animation: none; }
+  .navigation-pending { animation: none; opacity: 1; }
+}
 .brand-primary-fill {
   background-color: var(--brand-primary);
   color: var(--brand-primary-foreground);

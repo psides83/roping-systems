@@ -6,6 +6,7 @@ import { ChevronDown, Radio, Search } from "lucide-react";
 import type { PublicEvent } from "@/lib/events/public-event-data";
 import { publicEventDate, publicEventHref } from "@/lib/events/public-event-navigation";
 import { browseResultEvents, eventSeason, type ProducerSeason } from "@/lib/seasons";
+import { NavigationPending } from "@/components/ui/navigation-pending";
 
 export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasons, timezone }: {
   events: PublicEvent[]; selectedSlug?: string; producerSlug: string; seasons: ProducerSeason[]; timezone: string;
@@ -51,7 +52,8 @@ export function PublicEventBrowser({ events, selectedSlug, producerSlug, seasons
         {section.items.map((event) => (
           <li key={event.id}>
             <Link href={publicEventHref(producerSlug, event.slug)} aria-current={selectedSlug === event.slug ? "page" : undefined}
-              className={`block border-l-2 px-3 py-3 ${selectedSlug === event.slug ? "border-[var(--brand-accent)] bg-white" : "border-transparent hover:bg-white"}`}>
+              className={`relative block border-l-2 py-3 pl-3 pr-9 ${selectedSlug === event.slug ? "border-[var(--brand-accent)] bg-white" : "border-transparent hover:bg-white"}`}>
+              <NavigationPending label="Loading event results" className="absolute right-3 top-1/2 -translate-y-1/2" />
               <span className="flex items-center justify-between gap-2 text-[11px] text-[#66716b]">
                 {publicEventDate(event.startsAt)}
                 {event.status === "in_progress" ? <span className="inline-flex items-center gap-1 font-semibold text-emerald-700"><Radio size={12} /> Live</span> : null}

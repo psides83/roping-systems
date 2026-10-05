@@ -3,8 +3,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getActiveProducer, getProducers } from "@/lib/producers";
+import { Suspense } from "react";
+import { AppBootSkeleton } from "@/components/ui/page-skeleton";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<AppBootSkeleton />}><AuthenticatedShell>{children}</AuthenticatedShell></Suspense>;
+}
+
+async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   if (!isSupabaseConfigured()) return <AppShell demo>{children}</AppShell>;
 
   const supabase = await createClient();

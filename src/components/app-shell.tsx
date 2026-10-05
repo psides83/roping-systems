@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { signOut } from "@/app/auth/actions";
 import { switchProducer } from "@/app/actions/producers";
 import { getBrandStyle } from "@/lib/branding";
+import { NavigationPending } from "@/components/ui/navigation-pending";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Gauge },
@@ -193,6 +194,7 @@ export function AppShell({
               >
                 <Icon size={18} strokeWidth={1.8} />
                 {item.name}
+                <NavigationPending className="ml-auto" />
               </Link>
             );
           })}
@@ -203,6 +205,7 @@ export function AppShell({
             className="flex h-10 items-center gap-3 rounded-md px-3 text-sm brand-muted hover:bg-white/[0.07] brand-hover"
           >
             <Settings size={18} /> Settings
+            <NavigationPending className="ml-auto" />
           </Link>
           <div className="mt-2 flex items-center gap-3 px-3 py-2">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-[#e0a458] text-xs font-bold text-[#38220c]">

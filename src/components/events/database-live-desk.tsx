@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { NavigationPending } from "@/components/ui/navigation-pending";
 import { useActionState, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -261,7 +262,7 @@ export function DatabaseLiveDesk({
                   key={round}
                   href={`/events/${eventId}/live?division=${selectedDivisionId}&round=${round}`}
                   className={cn(
-                    "border-b-2 px-4 py-2 text-xs font-bold",
+                    "inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-xs font-bold",
                     round === selectedRound
                       ? "border-[var(--brand-accent)] text-[#17201c]"
                       : "border-transparent text-[#758078]",
@@ -270,6 +271,7 @@ export function DatabaseLiveDesk({
                   {round > (selectedDivision?.numberOfRuns ?? 0)
                     ? "Short round"
                     : `Round ${round}`}
+                  <NavigationPending label="Loading round" />
                 </Link>
               ),
             )}
@@ -703,7 +705,7 @@ export function DatabaseLiveDesk({
                     : "hover:bg-[#f1f3f2]",
                 )}
               >
-                <span>{division.name}</span>
+                <span className="flex min-w-0 items-center gap-2">{division.name}<NavigationPending label="Loading roping" /></span>
                 <span className="text-[10px] opacity-75">
                   {division.numberOfRuns}R
                   {division.shortRoundEnabled ? " + Final" : ""}
