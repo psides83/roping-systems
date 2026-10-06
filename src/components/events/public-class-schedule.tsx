@@ -1,4 +1,5 @@
 import type { PublicEvent } from "@/lib/events/public-event-data";
+import { groupScheduleByArena } from "@/lib/events/arena-schedule";
 
 export function PublicClassSchedule({
   events,
@@ -16,10 +17,14 @@ export function PublicClassSchedule({
   };
 
   return (
-    <ol
-      className={`${live ? "mt-6" : "mt-4"} divide-y divide-[#e7ebe8] border-y border-[#e7ebe8]`}
+    <div
+      className={`${live ? "mt-6" : "mt-4"} space-y-5`}
     >
-      {events.map((roping) => {
+      {groupScheduleByArena(events, (roping) => roping.arenaName).map((group) => (
+        <section key={group.name}>
+          <h4 className="mb-2 text-xs font-bold uppercase text-[#56615b]">{group.name}</h4>
+          <ol className="divide-y divide-[#e7ebe8] border-y border-[#e7ebe8]">
+      {group.ropings.map((roping) => {
         const displayStart = roping.estimatedStartsAt ?? roping.startsAt;
         const startLabel = displayStart && !Number.isNaN(Date.parse(displayStart))
           ? new Intl.DateTimeFormat("en-US", {
@@ -34,11 +39,6 @@ export function PublicClassSchedule({
           >
             <span className="min-w-0 flex-1 font-semibold">
               <span className="block break-words">{roping.name}</span>
-              {roping.arenaName ? (
-                <span className="mt-1 block text-[10px] font-medium text-[#66716b]">
-                  {roping.arenaName}
-                </span>
-              ) : null}
             </span>
             <span className="max-w-[60%] shrink-0 break-words text-right text-[#66716b]">
               <span className="block">
@@ -64,6 +64,9 @@ export function PublicClassSchedule({
           </li>
         );
       })}
-    </ol>
+          </ol>
+        </section>
+      ))}
+    </div>
   );
 }

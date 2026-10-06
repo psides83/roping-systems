@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { groupScheduleByArena } from "@/lib/events/arena-schedule";
 import type { CompetitionFormat } from "@/types/domain";
 
 export interface IncentiveClassification {
@@ -239,9 +240,10 @@ export function ScheduledClassFields({
     );
   }
 
-  function moveOccurrence(index: number, offset: -1 | 1) {
+  function moveOccurrence(key: string, targetKey: string) {
     setOccurrences((current) => {
-      const target = index + offset;
+      const index = current.findIndex((item) => item.key === key);
+      const target = current.findIndex((item) => item.key === targetKey);
       if (target < 0 || target >= current.length) return current;
       const next = [...current];
       [next[index], next[target]] = [next[target], next[index]];
@@ -300,7 +302,14 @@ export function ScheduledClassFields({
       ) : null}
 
       <div className="mt-3 space-y-3">
-        {occurrences.map((occurrence, index) => {
+        {groupScheduleByArena(occurrences, (item) => item.arenaName).map((group) => (
+          <section key={group.name} className="space-y-3 border-t border-[#dfe4e1] pt-4">
+            <h3 className="flex items-center gap-2 text-sm font-bold">
+              {group.name}
+              <span className="text-xs font-medium text-[#758078]">{group.ropings.length} ropings</span>
+            </h3>
+        {group.ropings.map((occurrence, arenaIndex) => {
+          const index = occurrences.findIndex((item) => item.key === occurrence.key);
           const template = templates.find(
             (item) => item.id === occurrence.templateId,
           );
@@ -369,7 +378,7 @@ export function ScheduledClassFields({
             >
               <header className="flex items-start gap-3 border-b border-[#e7ebe8] p-4">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#eef1ef] text-xs font-bold">
-                  {index + 1}
+                  {arenaIndex + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <h4 className="truncate text-sm font-bold">
@@ -404,15 +413,15 @@ export function ScheduledClassFields({
                   </IconButton>
                   <IconButton
                     label="Move earlier"
-                    disabled={index === 0}
-                    onClick={() => moveOccurrence(index, -1)}
+                    disabled={arenaIndex === 0}
+                    onClick={() => moveOccurrence(occurrence.key, group.ropings[arenaIndex - 1].key)}
                   >
                     <ArrowUp size={15} />
                   </IconButton>
                   <IconButton
                     label="Move later"
-                    disabled={index === occurrences.length - 1}
-                    onClick={() => moveOccurrence(index, 1)}
+                    disabled={arenaIndex === group.ropings.length - 1}
+                    onClick={() => moveOccurrence(occurrence.key, group.ropings[arenaIndex + 1].key)}
                   >
                     <ArrowDown size={15} />
                   </IconButton>
@@ -836,6 +845,8 @@ export function ScheduledClassFields({
             </section>
           );
         })}
+          </section>
+        ))}
       </div>
 
       {!occurrences.length ? (
