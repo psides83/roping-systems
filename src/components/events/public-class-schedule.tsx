@@ -32,15 +32,15 @@ export function PublicClassSchedule({
             key={roping.id}
             className="flex items-start justify-between gap-3 py-3 text-xs"
           >
-            <span className="min-w-0 font-semibold">
-              <span className="block truncate">{roping.name}</span>
+            <span className="min-w-0 flex-1 font-semibold">
+              <span className="block break-words">{roping.name}</span>
               {roping.arenaName ? (
                 <span className="mt-1 block text-[10px] font-medium text-[#66716b]">
                   {roping.arenaName}
                 </span>
               ) : null}
             </span>
-            <span className="shrink-0 text-right text-[#66716b]">
+            <span className="max-w-[60%] shrink-0 break-words text-right text-[#66716b]">
               <span className="block">
                 {displayStart
                   ? `${roping.estimatedStartsAt ? "Updated " : ""}${startLabel}`

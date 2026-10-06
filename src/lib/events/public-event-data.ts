@@ -1,4 +1,5 @@
 import "server-only";
+import { ropingDisplayName } from "./roping-display-name";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { events as demoRopings } from "@/data/demo";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -199,7 +200,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   const { data: scheduleRows, error: classScheduleError } = await supabase
     .from("public_event_entry_options")
     .select(
-      "event_id, event_roping_id, event_roping_name, event_roping_starts_at, scheduled_date, schedule_type, schedule_note, arena_name, event_day_status, estimated_starts_at, event_day_note, sort_order",
+      "event_id, event_roping_id, event_roping_name, division_name, event_roping_starts_at, scheduled_date, schedule_type, schedule_note, arena_name, event_day_status, estimated_starts_at, event_day_note, sort_order",
     )
     .eq("producer_slug", producerSlug)
     .order("scheduled_date")
@@ -333,29 +334,25 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       resultStatus: event.result_status,
       entriesOpenAt: event.entries_open_at,
       entriesCloseAt: event.entries_close_at,
-      scheduledRopings: eventRows.map((row, index) => ({
+      scheduledRopings: eventRows.map((row, index) => {
+        const previousRoping = row.schedule_type === "follows_previous"
+          ? eventRows.slice(0, index).findLast((previous) => previous.scheduled_date === row.scheduled_date && previous.arena_name === row.arena_name)
+          : undefined;
+        return {
         id: row.event_roping_id,
-        name: row.event_roping_name,
+        name: ropingDisplayName(row.event_roping_name, row.division_name),
         scheduledDate: row.scheduled_date,
         startsAt: row.event_roping_starts_at,
         scheduleType: row.schedule_type,
-        followsRopingName:
-          row.schedule_type === "follows_previous"
-            ? (eventRows
-                .slice(0, index)
-                .findLast(
-                  (previous) =>
-                    previous.scheduled_date === row.scheduled_date &&
-                    previous.arena_name === row.arena_name,
-                )?.event_roping_name ?? null)
-            : null,
+        followsRopingName: previousRoping ? ropingDisplayName(previousRoping.event_roping_name, previousRoping.division_name) : null,
         scheduleNote: row.schedule_note,
         arenaName: row.arena_name,
         eventDayStatus: row.event_day_status,
         estimatedStartsAt: row.estimated_starts_at,
         eventDayNote: row.event_day_note,
         competitionFormat: formats.get(row.event_roping_id),
-      })),
+        };
+      }),
     };
   });
   const logoUrl = producer.logo_path

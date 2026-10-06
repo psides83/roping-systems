@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EventSummaryCard as Metric } from "@/components/events/event-summary-card";
 import { getEventFeeCollections } from "@/lib/events/fee-collections-data";
 import { feeCollectionTotals, payoutSummary } from "@/lib/events/fee-collections";
+import { ropingDisplayName } from "@/lib/events/roping-display-name";
 import { RopingFundingData } from "@/components/events/roping-funding-data";
 import { notFound } from "next/navigation";
 import {
@@ -287,7 +288,7 @@ async function getEvent(
     supabase
       .from("events")
       .select(
-        "id, title, slug, starts_at, ends_at, venue_name, address, venue_city, venue_state, venue_postal_code, arena_count, publication_state, status, result_status, is_public, entries_open_at, entries_close_at, event_ropings(id, name, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, main_round_count, minimum_positions_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries:roping_entries(id), event_roping_handicap_adjustments(id, handicap_time_credit_seconds, classifications!inner(name)), event_roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), event_fees(id, title, amount_cents, included_in_entry_price))",
+        "id, title, slug, starts_at, ends_at, venue_name, address, venue_city, venue_state, venue_postal_code, arena_count, publication_state, status, result_status, is_public, entries_open_at, entries_close_at, event_ropings(id, name, divisions!roping_division_discipline_same_organization(name), starts_at, scheduled_date, schedule_type, schedule_note, sort_order, main_round_count, minimum_positions_between_entries, second_round_ordering, later_round_ordering, cattle_draw_enabled, arena_name, event_day_status, estimated_starts_at, event_day_note, incentive_enabled, short_round_enabled, short_round_tie_policy, entries:roping_entries(id), event_roping_handicap_adjustments(id, handicap_time_credit_seconds, classifications!inner(name)), event_roping_short_round_brackets(minimum_entries, maximum_entries, comeback_count, sort_order), event_fees(id, title, amount_cents, included_in_entry_price))",
       )
       .eq("id", eventId)
       .eq("producer_id", producer.id)
@@ -365,6 +366,7 @@ async function getEvent(
     data.event_ropings as unknown as Array<{
       id: string;
       name: string;
+      divisions: { name: string };
       main_round_count: number;
       minimum_positions_between_entries: number;
       second_round_ordering: RoundOrderMethod;
@@ -423,10 +425,13 @@ async function getEvent(
           .filter((run) => run.round_number === currentRound)
           .map((run) => run.entry_id),
       ).size;
+      const previousRoping = division.schedule_type === "follows_previous"
+        ? orderedDivisions.slice(0, index).findLast((previous) => previous.scheduled_date === division.scheduled_date && previous.arena_name === division.arena_name)
+        : undefined;
 
       return {
         id: division.id,
-        name: division.name,
+        name: ropingDisplayName(division.name, division.divisions.name),
         runs: division.main_round_count,
         minimumRunsBetweenEntries: division.minimum_positions_between_entries,
         secondRoundOrdering: division.second_round_ordering,
@@ -472,16 +477,7 @@ async function getEvent(
             }).format(new Date(division.starts_at))
           : "",
         scheduleType: division.schedule_type,
-        followsRopingName:
-          division.schedule_type === "follows_previous"
-            ? (orderedDivisions
-                .slice(0, index)
-                .findLast(
-                  (previous) =>
-                    previous.scheduled_date === division.scheduled_date &&
-                    previous.arena_name === division.arena_name,
-                )?.name ?? null)
-            : null,
+        followsRopingName: previousRoping ? ropingDisplayName(previousRoping.name, previousRoping.divisions.name) : null,
         scheduleNote: division.schedule_note,
         incentiveEnabled: division.incentive_enabled,
         incentiveRules: division.event_roping_handicap_adjustments.map((rule) => ({
