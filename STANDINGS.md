@@ -25,11 +25,8 @@ Classification ladders must be division-specific and exclude Open, youth, and ha
 
 ## Remaining Integration
 
-1. Add producer standings/qualification settings and expose the carryover cap beside classification watch rules.
-2. Build a safe public data source from official payout calculations, all qualifying entries, classification history, and limited public roper details. Do not expose contact information or private member records.
-3. Persist explicit carryover decisions, with changelog entries and correction handling. Prevent unintended recalculation when a producer changes rules later.
-4. Add public season/class selectors and standings tables, plus producer review tools.
-5. Connect roping eligibility to standings qualification and cutoff snapshots, with audited staff exceptions.
-6. Add database and end-to-end tests using retained test events.
+1. Add producer qualification settings and connect roping eligibility to top-place/attendance requirements and cutoff snapshots, with audited staff exceptions.
+2. Add producer carryover review tools and explicit handling when earnings cannot roll beyond the last numbered class.
+3. Broaden end-to-end tests for classification moves and qualification using retained test events.
 
-The calculation foundation is implemented; these integrations are not yet available in the app. Handle a transfer beyond the last configured numbered class explicitly in the producer workflow rather than silently inventing a destination.
+The public standings page, season/class selectors, search, official payout data source, and carryover-cap setting are implemented. The cap policy is saved on each new classification assignment so future policy changes do not affect past moves. Database tests verify payout totals, deduplicated attendance, tenant isolation, and limited public profile fields. Qualification enforcement and producer review tools remain unfinished.

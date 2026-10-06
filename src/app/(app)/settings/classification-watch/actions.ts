@@ -6,6 +6,18 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 
 type State = { error?: string; success?: boolean };
+
+export async function updateStandingsCarryover(_: State, form: FormData): Promise<State> {
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "An owner or administrator must change this setting." };
+  const db = await createClient();
+  const { error } = await db.from("producers").update({ standings_cap_carryover: form.get("cap") === "on" })
+    .eq("id", producer.id).select("id").single();
+  if (error) return { error: error.message };
+  revalidatePath("/settings/classification-watch");
+  revalidatePath("/public", "layout");
+  return { success: true };
+}
 const ruleSchema = z.object({
   name: z.string().trim().min(1).max(100),
   classificationId: z.uuid(),

@@ -44,6 +44,7 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
           <nav aria-label="Producer public pages" className="flex flex-wrap items-center gap-5 text-sm font-semibold brand-muted">
             <Link href={`/public/${producerSlug}`} className="brand-hover">Results</Link>
             <Link href={`/public/${producerSlug}/schedule`} aria-current="page" className="text-white underline underline-offset-8">Schedule</Link>
+            <Link href={`/public/${producerSlug}/standings`} className="brand-hover">Standings</Link>
             {data.membershipFormPublished ? <Link href={`/public/${producerSlug}/membership`} className="brand-hover">Membership</Link> : null}
             <Link href="/roper" className="brand-hover">Roper portal</Link>
           </nav>

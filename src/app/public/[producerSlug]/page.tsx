@@ -42,6 +42,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
           <nav aria-label="Producer public pages" className="flex flex-wrap items-center gap-5 text-sm font-semibold brand-muted">
             <Link href={`/public/${producerSlug}`} aria-current="page" className="text-white underline underline-offset-8">Results</Link>
             <Link href={`/public/${producerSlug}/schedule`} className="brand-hover">Schedule</Link>
+            <Link href={`/public/${producerSlug}/standings`} className="brand-hover">Standings</Link>
             {data.membershipFormPublished ? <Link href={`/public/${producerSlug}/membership`} className="brand-hover">Membership</Link> : null}
             <Link href="/roper" className="brand-hover">Roper portal</Link>
           </nav>

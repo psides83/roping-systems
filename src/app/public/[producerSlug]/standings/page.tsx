@@ -1,0 +1,113 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getPublicData } from "@/lib/events/public-event-data";
+import { getBrandStyle } from "@/lib/branding";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { calculateSeasonStandings, type StandingContribution, type StandingMove } from "@/lib/season-standings";
+import { StandingsFilters } from "@/components/events/standings-filters";
+import { seasonCalendarDate } from "@/lib/seasons";
+
+interface StandingsSource {
+  contributions: (StandingContribution & { entryIds: string[]; eventId: string })[];
+  moves: StandingMove[];
+  classes: { id: string; name: string; divisionName: string }[];
+  ropers: { roperId: string; classId: string; name: string; city: string | null; state: string | null;
+    handicap: string | null; handicapSeconds: number | null }[];
+}
+
+export default async function StandingsPage({ params, searchParams }: PageProps<"/public/[producerSlug]/standings">) {
+  const { producerSlug } = await params;
+  const query = await searchParams;
+  const data = await getPublicData(producerSlug, undefined, false);
+  if (!data) notFound();
+  const { producer } = data;
+  const today = seasonCalendarDate(new Date().toISOString(), producer.timezone)!;
+  const seasons = [...data.seasons].sort((a, b) => b.startsOn.localeCompare(a.startsOn));
+  const season = seasons.find((item) => item.id === query.season)
+    ?? seasons.find((item) => today >= item.startsOn && today <= item.endsOn) ?? seasons[0];
+  let source: StandingsSource = { contributions: [], moves: [], classes: [], ropers: [] };
+  if (season && isSupabaseConfigured()) {
+    const db = await createClient();
+    const { data: result, error } = await db.rpc("public_season_standings_source", {
+      target_producer_slug: producerSlug, target_season_id: season.id,
+    });
+    if (error) throw new Error(`Unable to load standings: ${error.message}`);
+    source = result as StandingsSource;
+    const winnings = new Map<string, number>();
+    for (const eventId of new Set(source.contributions.map((item) => item.eventId))) {
+      // Read event-sized pages; a whole season can exceed the database request limit.
+      for (let first = 0; ; first += 500) {
+        const awards = await db.rpc("public_event_money_results", { target_event_id: eventId })
+          .order("plan_id").order("section_type").order("round_number", { nullsFirst: true })
+          .order("d_number", { nullsFirst: true }).order("entry_id").range(first, first + 499);
+        if (awards.error) throw new Error(`Unable to load standings winnings: ${awards.error.message}`);
+        for (const award of awards.data ?? []) {
+          winnings.set(award.entry_id, (winnings.get(award.entry_id) ?? 0) + Number(award.payout_cents));
+        }
+        if ((awards.data?.length ?? 0) < 500) break;
+      }
+    }
+    source.contributions = source.contributions.map((item) => ({ ...item,
+      winningsCents: item.entryIds.reduce((sum, id) => sum + (winnings.get(id) ?? 0), 0),
+    }));
+  }
+  source.classes = source.classes.filter((item) => !source.classes.some((group) =>
+    group.id.includes(":") && group.id !== item.id && group.name === item.name && group.divisionName === item.divisionName));
+  const populatedClasses = new Set(source.contributions.map((item) => item.classId));
+  const selectedClass = source.classes.find((item) => item.id === query.class)
+    ?? source.classes.find((item) => populatedClasses.has(item.id)) ?? source.classes[0];
+  const search = typeof query.search === "string" ? query.search.slice(0, 100) : "";
+  const profiles = new Map(source.ropers.map((roper) => [`${roper.roperId}:${roper.classId}`, roper]));
+  const names = new Map(source.ropers.map((roper) => [roper.roperId, roper]));
+  const standings = season ? calculateSeasonStandings(source.contributions, source.moves, season).rows : [];
+  const rows = standings.filter((row) => row.classId === selectedClass?.id).map((row) => ({
+    ...row, profile: profiles.get(`${row.roperId}:${row.classId}`) ?? names.get(row.roperId),
+  })).filter((row) => row.profile?.name.toLowerCase().includes(search.toLowerCase()));
+  const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  return <main style={getBrandStyle(producer.brandPrimary, producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
+    <header className="brand-primary-fill text-white">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
+        <Link href={`/public/${producerSlug}`} className="text-lg font-bold">{producer.name}</Link>
+        <nav aria-label="Producer public pages" className="flex flex-wrap gap-5 text-sm font-semibold">
+          <Link href={`/public/${producerSlug}`}>Results</Link>
+          <Link href={`/public/${producerSlug}/schedule`}>Schedule</Link>
+          <Link href={`/public/${producerSlug}/standings`} aria-current="page" className="underline underline-offset-8">Standings</Link>
+          <Link href="/roper">Roper portal</Link>
+        </nav>
+      </div>
+    </header>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <h1 className="text-2xl font-bold">Season standings</h1>
+      {season ? <StandingsFilters key={`${season.id}:${selectedClass?.id}`} seasons={seasons} classes={source.classes}
+        seasonId={season.id} classId={selectedClass?.id ?? ""} search={search} /> : null}
+      <section className="mt-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">{selectedClass ? `${selectedClass.name} ${selectedClass.divisionName}` : "Standings"}</h2>
+          <span className="text-xs text-[#66716b]">Official results · {rows.length} ropers</span>
+        </div>
+        <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]">
+              <tr><th className="px-2 py-3 sm:px-4">Rank</th><th className="px-2 py-3 sm:px-4">Contestant</th>
+                <th className="px-2 py-3 text-right sm:px-4">Ropings</th><th className="px-2 py-3 text-right sm:px-4">Won</th></tr>
+            </thead>
+            <tbody>{rows.map((row) => <tr key={row.roperId} className="border-t border-[#e7ebe8]">
+              <td className="px-2 py-4 font-semibold tabular-nums sm:px-4">{row.rank}</td>
+              <td className="min-w-24 px-2 py-4 sm:min-w-44 sm:px-4"><span className="font-semibold">{row.profile?.name ?? "Roper"}</span>
+                <div className="mt-1 text-xs text-[#66716b]">{[row.profile?.city, row.profile?.state].filter(Boolean).join(", ")}</div>
+                {selectedClass?.id.endsWith(":handicap") && row.profile?.handicap ?
+                  <div className="mt-1 text-xs text-[#66716b]">{row.profile.handicap} · {Number(row.profile.handicapSeconds) > 0 ? "+" : ""}{Number(row.profile.handicapSeconds).toFixed(2)} sec</div> : null}
+              </td>
+              <td className="px-2 py-4 text-right tabular-nums sm:px-4">{row.ropingsEntered}</td>
+              <td className="whitespace-nowrap px-2 py-4 text-right font-semibold tabular-nums sm:px-4">{money(row.winningsCents)}</td>
+            </tr>)}</tbody>
+          </table>
+          {!rows.length ? <p className="p-8 text-center text-sm text-[#66716b]">
+            {search ? "No contestants match your search." : "No official results for this class and season yet."}
+          </p> : null}
+        </div>
+      </section>
+    </div>
+  </main>;
+}
