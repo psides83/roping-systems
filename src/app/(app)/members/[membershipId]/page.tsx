@@ -18,7 +18,7 @@ import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { MemberFinesData } from "@/components/members/member-fines-data";
 import { MemberSuspensionsData } from "@/components/members/member-suspensions-data";
 import { ClassificationMoveBackProgress } from "@/components/members/classification-move-back-progress";
-import type { MoveBackProgress } from "@/lib/classification-move-back";
+import type { MoveBackProgress, MoveBackException, MoveBackDetails } from "@/lib/classification-move-back";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
   getMemberProfileSections,
@@ -76,6 +76,8 @@ interface MemberDetail {
   }>;
   canEdit: boolean;
   moveBackProgress: MoveBackProgress[];
+  moveBackExceptions: MoveBackException[];
+  timezone: string;
 }
 
 const formatDate = (value: string | null) =>
@@ -109,6 +111,8 @@ async function getMemberDetail(
       profileSections: [],
       canEdit: false,
       moveBackProgress: [],
+      moveBackExceptions: [],
+      timezone: "America/Chicago",
       divisions: [
         {
           id: "calf-roping",
@@ -238,10 +242,13 @@ async function getMemberDetail(
     competition_gender: "female" | "male" | null;
   };
 
-  const progress = await supabase.rpc("member_move_back_progress", { target_membership_id: membership.id });
+  const progress = await supabase.rpc("member_move_back_details", { target_membership_id: membership.id });
   if (progress.error) throw new Error("Unable to load move-back eligibility.");
+  const details = progress.data as MoveBackDetails;
   return {
-    moveBackProgress: (progress.data ?? []) as MoveBackProgress[],
+    moveBackProgress: details.progress,
+    moveBackExceptions: details.exceptions,
+    timezone: producer.timezone,
     id: membership.id,
     firstName: person.first_name,
     lastName: person.last_name,
@@ -366,18 +373,20 @@ export default async function MemberDetailPage({
               currentClassifications={currentClassifications}
               profileSections={member.profileSections}
               enabled={member.canEdit}
+              moveBackProgress={member.moveBackProgress}
             />
             <AssignClassificationDialog
               membershipId={member.id}
               divisions={options}
               enabled={member.canEdit}
+              moveBackProgress={member.moveBackProgress}
             />
           </div>
         </div>
       </div>
       {isSupabaseConfigured() ? <MemberFinesData membershipId={member.id} canManage={member.canEdit} /> : null}
       {isSupabaseConfigured() ? <MemberSuspensionsData membershipId={member.id} canManage={member.canEdit} /> : null}
-      <ClassificationMoveBackProgress membershipId={member.id} progress={member.moveBackProgress} canEdit={member.canEdit} />
+      <ClassificationMoveBackProgress membershipId={member.id} progress={member.moveBackProgress} exceptions={member.moveBackExceptions} canEdit={member.canEdit} timezone={member.timezone} />
       {isSupabaseConfigured() ? <ClassificationWatchEvidence membershipId={member.id} /> : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
@@ -479,6 +488,7 @@ export default async function MemberDetailPage({
                   enabled={member.canEdit}
                   reviewId={review.id}
                   defaultDisciplineId={review.disciplineId}
+                  moveBackProgress={member.moveBackProgress}
                   compact
                 />
               </div>

@@ -4,8 +4,19 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
+import type { MoveBackDetails } from "@/lib/classification-move-back";
 
 type State = { error?: string; success?: boolean };
+export async function loadMoveBackDetails(membershipId: string): Promise<{ details?: MoveBackDetails; error?: string }> {
+  const producer = await getActiveProducer();
+  if (!producer || !z.uuid().safeParse(membershipId).success) return { error: "Member not found." };
+  const db = await createClient();
+  const member = await db.from("memberships").select("id").eq("id", membershipId).eq("producer_id", producer.id).single();
+  if (member.error) return { error: "Member not found for this producer." };
+  const result = await db.rpc("member_move_back_details", { target_membership_id: membershipId });
+  if (result.error) return { error: "Unable to check move-back eligibility. Please try again." };
+  return { details: result.data as MoveBackDetails };
+}
 export async function saveMoveBackRequirement(_: State, form: FormData): Promise<State> {
   const producer = await getActiveProducer();
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "An owner or administrator must change this setting." };

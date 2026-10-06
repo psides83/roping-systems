@@ -7,6 +7,8 @@ import {
   type MemberProfileFormState,
 } from "@/app/(app)/members/[membershipId]/actions";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { blocksMoveBack, type MoveBackProgress } from "@/lib/classification-move-back";
+import { MoveBackFeedback } from "./move-back-feedback";
 import type {
   MemberProfileField,
   MemberProfileSection,
@@ -52,12 +54,14 @@ export function EditMemberDialog({
   currentClassifications,
   profileSections,
   enabled,
+  moveBackProgress = [],
 }: {
   member: EditableMember;
   divisions: DisciplineOption[];
   currentClassifications: Record<string, string>;
   profileSections: MemberProfileSection[];
   enabled: boolean;
+  moveBackProgress?: MoveBackProgress[];
 }) {
   const [open, setOpen] = useState(false);
   const [classifications, setClassifications] = useState(
@@ -81,6 +85,7 @@ export function EditMemberDialog({
   );
   const formMessage =
     state.message ?? Object.values(state.errors ?? {}).flat()[0];
+  const blocked = moveBackProgress.some((p) => blocksMoveBack(p, classifications[p.divisionId] ?? ""));
 
   useEffect(() => {
     if (!state.success) return;
@@ -294,6 +299,7 @@ export function EditMemberDialog({
                     </label>
                   ))}
                 </div>
+                <div className="mt-3 space-y-2">{moveBackProgress.map((p) => <MoveBackFeedback key={p.assignmentId} progress={p} targetId={classifications[p.divisionId] ?? ""} memberId={member.id} onNavigate={() => setOpen(false)} />)}</div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <Field
                     label="Class change effective date"
@@ -329,7 +335,7 @@ export function EditMemberDialog({
                   Cancel
                 </button>
                 <button
-                  disabled={pending}
+                  disabled={pending || blocked}
                   className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {pending ? (

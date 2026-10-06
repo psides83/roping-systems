@@ -6,6 +6,8 @@ import {
   assignMemberClassification,
   type MemberClassificationFormState,
 } from "@/app/(app)/members/[membershipId]/actions";
+import { blocksMoveBack, type MoveBackProgress } from "@/lib/classification-move-back";
+import { MoveBackFeedback } from "./move-back-feedback";
 
 interface DisciplineOption {
   id: string;
@@ -18,7 +20,8 @@ const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function DialogFrame({
@@ -42,6 +45,7 @@ function DialogFrame({
       <section
         role="dialog"
         aria-modal="true"
+        aria-label={title}
         className="relative my-8 w-full max-w-xl rounded-md bg-white shadow-2xl"
       >
         <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
@@ -82,6 +86,7 @@ export function AssignClassificationDialog({
   reviewId = "",
   defaultDisciplineId,
   compact = false,
+  moveBackProgress = [],
 }: {
   membershipId: string;
   divisions: DisciplineOption[];
@@ -89,6 +94,7 @@ export function AssignClassificationDialog({
   reviewId?: string;
   defaultDisciplineId?: string;
   compact?: boolean;
+  moveBackProgress?: MoveBackProgress[];
 }) {
   const [open, setOpen] = useState(false);
   const [disciplineId, setDisciplineId] = useState(
@@ -98,6 +104,7 @@ export function AssignClassificationDialog({
     assignMemberClassification,
     initialState,
   );
+  const [classificationId, setClassificationId] = useState("");
   useEffect(() => {
     if (!state.success) return;
     const timeoutId = window.setTimeout(() => setOpen(false), 0);
@@ -106,6 +113,9 @@ export function AssignClassificationDialog({
   const selected = divisions.find(
     (discipline) => discipline.id === disciplineId,
   );
+  const targetId = classificationId || selected?.classifications[0]?.id || "";
+  const progress = moveBackProgress.find((p) => p.divisionId === disciplineId);
+  const blocked = blocksMoveBack(progress, targetId);
 
   return (
     <>
@@ -136,7 +146,7 @@ export function AssignClassificationDialog({
                 <select
                   name="disciplineId"
                   value={disciplineId}
-                  onChange={(event) => setDisciplineId(event.target.value)}
+                  onChange={(event) => { setDisciplineId(event.target.value); setClassificationId(""); }}
                   className={inputClass}
                 >
                   {divisions.map((discipline) => (
@@ -151,6 +161,8 @@ export function AssignClassificationDialog({
                 <select
                   name="classificationId"
                   key={disciplineId}
+                  value={targetId}
+                  onChange={(event) => setClassificationId(event.target.value)}
                   className={inputClass}
                   required
                 >
@@ -162,6 +174,7 @@ export function AssignClassificationDialog({
                 </select>
               </label>
             </div>
+            <MoveBackFeedback progress={progress} targetId={targetId} memberId={membershipId} onNavigate={() => setOpen(false)} />
             <label className="block text-sm font-semibold">
               Effective date
               <input
@@ -190,7 +203,7 @@ export function AssignClassificationDialog({
                 Cancel
               </button>
               <button
-                disabled={pending || !selected?.classifications.length}
+                disabled={pending || blocked || !selected?.classifications.length}
                 className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
               >
                 {pending ? (
