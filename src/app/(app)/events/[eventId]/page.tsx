@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { EventFeeSummary } from "@/components/events/event-fee-summary";
+import { EventSummaryCard as Metric } from "@/components/events/event-summary-card";
+import { getEventFeeCollections } from "@/lib/events/fee-collections-data";
+import { feeCollectionTotals, payoutSummary } from "@/lib/events/fee-collections";
 import { RopingFundingData } from "@/components/events/roping-funding-data";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  BadgeCheck,
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
@@ -508,7 +509,7 @@ async function getEvent(
 
   let payoutTotalCents = 0;
   let payoutCompletedCents = 0;
-  if (data.status === "completed") {
+  {
     const [{ data: payoutPlans, error: payoutPlanError }, payoutPayments] =
       await Promise.all([
         supabase
@@ -691,6 +692,11 @@ export default async function RopingDetailPage({
     nextRoping,
     firstScheduledRoping,
   });
+  const collections = feeCollectionTotals(isSupabaseConfigured() ? await getEventFeeCollections(event.id) : []);
+  const payouts = payoutSummary(event.payoutTotalCents, event.payoutCompletedCents);
+  const resultsHref = event.publicationState === "published"
+    ? `/public/${producerSlug}?event=${encodeURIComponent(event.slug)}#results`
+    : `/events/${event.id}/live`;
 
   return (
     <div className="space-y-6">
@@ -802,35 +808,22 @@ export default async function RopingDetailPage({
         <EventPublicationControl key={event.publicationState} eventId={event.id} publicationState={event.publicationState} enabled={event.canManage && isSupabaseConfigured()} />
         <EventOfficialResultsControl eventId={event.id} status={event.status} resultStatus={event.resultStatus} enabled={event.canManage && isSupabaseConfigured()} />
       </div>
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Event dashboard" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {dashboardMetrics.map((metric) => (
           <Metric key={metric.label} {...metric} />
         ))}
+        <Metric icon={CircleDollarSign} label="Fee collections" value={formatCurrency(collections.collectedCents)} detail={`${formatCurrency(collections.outstandingCents)} outstanding`} href={`/events/${event.id}/fee-collections`} />
+        <Metric icon={WalletCards} label="Payouts" href={`/events/${event.id}/payouts`} detail={event.status === "completed" ? undefined : "Provisional awards from recorded runs"} breakdown={[
+          { label: "Due", value: formatCurrency(payouts.dueCents) },
+          { label: "Completed", value: formatCurrency(payouts.completedCents) },
+          { label: "Remaining", value: formatCurrency(payouts.remainingCents) },
+        ]} />
+        <Metric icon={ListChecks} label="Results" value={event.resultStatus === "official" ? "Official" : "Unofficial"} detail={`${event.completedRuns} runs recorded${event.publicationState !== "published" ? " · Staff view" : ""}`} href={resultsHref} newTab={event.publicationState === "published"} />
       </section>
-      {event.eventFees.length ? (
-        <section className="rounded-md border border-[#dfe4e1] bg-white p-5">
-          <h2 className="font-bold">Event-wide charges</h2>
-          <p className="mt-1 text-xs text-[#758078]">
-            Assessed once per contestant across every class and day in this
-            event.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {event.eventFees.map((fee) => (
-              <span
-                key={fee.id}
-                className="rounded-md bg-[#f1f3f2] px-3 py-2 text-sm font-semibold"
-              >
-                {fee.title}: {formatCurrency(fee.amountCents)} once
-              </span>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      {isSupabaseConfigured() ? <EventFeeSummary eventId={event.id} /> : null}
       <section id="setup" className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold">Scheduled events</h2>
+            <h2 className="text-lg font-bold">Scheduled ropings</h2>
             <p className="mt-1 text-sm text-[#66716b]">
               {event.divisions.length} roping
               {event.divisions.length === 1 ? "" : "s"} in this event
@@ -856,7 +849,8 @@ export default async function RopingDetailPage({
           {event.divisions.map((division, index) => (
             <details
               key={division.id}
-              className="group overflow-hidden rounded-md border border-[#dfe4e1] bg-white open:shadow-sm"
+              id={`roping-${division.id}`}
+              className="group scroll-mt-6 overflow-hidden rounded-md border border-[#dfe4e1] bg-white open:shadow-sm target:border-[var(--brand-accent)]"
             >
               <summary className="flex cursor-pointer list-none items-start gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden sm:items-center">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#f1f3f2] font-mono text-xs font-bold text-[#66716b]">
@@ -1144,36 +1138,16 @@ function getDashboardMetrics({
   label: string;
   value: string;
   detail?: string;
+  href: string;
 }> {
   if (event.status === "completed") {
-    const payoutRemaining = Math.max(
-      event.payoutTotalCents - event.payoutCompletedCents,
-      0,
-    );
     return [
       {
-        icon: CircleDollarSign,
-        label: "Payouts due",
-        value: formatCurrency(event.payoutTotalCents),
-        detail: "Total awarded",
-      },
-      {
-        icon: BadgeCheck,
-        label: "Payouts completed",
-        value: formatCurrency(event.payoutCompletedCents),
-        detail: "Marked paid",
-      },
-      {
-        icon: ListChecks,
-        label: "Results",
-        value: event.resultStatus === "official" ? "Official" : "Unofficial",
-        detail: `${event.completedRuns} runs recorded`,
-      },
-      {
-        icon: WalletCards,
-        label: "Payouts remaining",
-        value: formatCurrency(payoutRemaining),
-        detail: payoutRemaining === 0 ? "All payouts complete" : "Still to pay",
+        icon: Users,
+        label: "Entries",
+        value: String(totalEntries),
+        detail: `${event.divisions.length} ropings`,
+        href: `/events/${event.id}/entries`,
       },
     ];
   }
@@ -1185,24 +1159,28 @@ function getDashboardMetrics({
         label: "Current roping",
         value: activeRoping?.name ?? "Not selected",
         detail: activeRoping ? `Round ${activeRoping.currentRound}` : undefined,
+        href: `/events/${event.id}/live${activeRoping ? `?division=${activeRoping.id}` : ""}`,
       },
       {
         icon: Clock3,
         label: "Next roping",
         value: nextRoping?.name ?? "None remaining",
         detail: nextRoping ? ropingScheduleLabel(nextRoping) : undefined,
+        href: nextRoping ? `#roping-${nextRoping.id}` : "#setup",
       },
       {
         icon: Users,
         label: "Remaining entries",
         value: String(activeRoping?.remainingEntries ?? 0),
         detail: activeRoping ? "In the current round" : "No active roping",
+        href: `/events/${event.id}/live${activeRoping ? `?division=${activeRoping.id}` : ""}`,
       },
       {
         icon: ListChecks,
         label: "Runs completed",
         value: `${event.completedRuns} of ${event.totalRuns}`,
         detail: `${Math.max(event.totalRuns - event.completedRuns, 0)} runs remaining`,
+        href: `/events/${event.id}/live`,
       },
     ];
   }
@@ -1212,7 +1190,8 @@ function getDashboardMetrics({
       icon: Users,
       label: "Entries",
       value: String(totalEntries),
-      detail: `${event.divisions.length} scheduled events`,
+      detail: `${event.divisions.length} scheduled ropings`,
+      href: `/events/${event.id}/entries`,
     },
     {
       icon: CircleDollarSign,
@@ -1220,12 +1199,14 @@ function getDashboardMetrics({
       value: String(event.unpaidEntries),
       detail:
         event.unpaidEntries === 0 ? "Entry balances are clear" : "Need payment",
+      href: `/events/${event.id}/entries`,
     },
     {
       icon: Clock3,
       label: "Next scheduled start",
       value: ropingScheduleLabel(firstScheduledRoping),
       detail: firstScheduledRoping?.name,
+      href: firstScheduledRoping ? `#roping-${firstScheduledRoping.id}` : "#setup",
     },
     {
       icon: ClipboardList,
@@ -1235,33 +1216,7 @@ function getDashboardMetrics({
         event.pendingOnlineEntries === 0
           ? "Online requests are clear"
           : "Awaiting review",
+      href: `/events/${event.id}/entries`,
     },
   ];
-}
-
-function Metric({
-  icon: Icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  detail?: string;
-}) {
-  return (
-    <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-      <div className="flex items-center gap-2 text-[#66716b]">
-        <Icon size={16} />
-        <p className="text-xs font-semibold">{label}</p>
-      </div>
-      <p className="mt-2 text-xl font-bold">{value}</p>
-      {detail ? (
-        <p className="mt-1 truncate text-xs font-medium text-[#758078]">
-          {detail}
-        </p>
-      ) : null}
-    </div>
-  );
 }

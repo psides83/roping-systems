@@ -1,31 +1,15 @@
 import { ChevronDown, CircleDollarSign } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
-
-interface FeeCollection {
-  fee_id: string;
-  title: string;
-  event_roping_id: string | null;
-  roping_name: string | null;
-  kind: string;
-  contributes_to_payout: boolean;
-  assessed_cents: number;
-  waived_cents: number;
-  collected_cents: number;
-  outstanding_cents: number;
-  charge_count: number;
-  partial_payments: boolean;
-}
+import type { FeeCollection } from "@/lib/events/fee-collections";
+import { getEventFeeCollections } from "@/lib/events/fee-collections-data";
 
 export async function EventFeeSummary({ eventId }: { eventId: string }) {
   const db = await createClient();
-  const [{ data, error }, schedule] = await Promise.all([
-    db.rpc("event_fee_collection_summary", { target_event_id: eventId }),
-    db.from("event_ropings").select("id, scheduled_date").eq("event_id", eventId),
-  ]);
-  if (error || schedule.error) throw new Error("Unable to load fee collections.");
+  const fees = await getEventFeeCollections(eventId);
+  const schedule = await db.from("event_ropings").select("id, scheduled_date").eq("event_id", eventId);
+  if (schedule.error) throw new Error("Unable to load fee collections.");
   const dates = new Map((schedule.data ?? []).map((row) => [row.id, row.scheduled_date as string]));
-  const fees = (data ?? []) as FeeCollection[];
   const sum = (rows: FeeCollection[], field: "collected_cents" | "outstanding_cents") =>
     rows.reduce((total, row) => total + Number(row[field]), 0);
   const eventFees = fees.filter((fee) => !fee.event_roping_id);
@@ -35,11 +19,11 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
     const key = `${fee.title.toLowerCase()}|${fee.kind}|${fee.contributes_to_payout}`;
     const row = itemized.get(key);
     if (row) {
-      row.assessed_cents += Number(fee.assessed_cents);
-      row.waived_cents += Number(fee.waived_cents);
-      row.collected_cents += Number(fee.collected_cents);
-      row.outstanding_cents += Number(fee.outstanding_cents);
-      row.charge_count += Number(fee.charge_count);
+      row.assessed_cents = Number(row.assessed_cents) + Number(fee.assessed_cents);
+      row.waived_cents = Number(row.waived_cents) + Number(fee.waived_cents);
+      row.collected_cents = Number(row.collected_cents) + Number(fee.collected_cents);
+      row.outstanding_cents = Number(row.outstanding_cents) + Number(fee.outstanding_cents);
+      row.charge_count = Number(row.charge_count) + Number(fee.charge_count);
     } else {
       itemized.set(key, { ...fee, fee_id: key, assessed_cents: Number(fee.assessed_cents), waived_cents: Number(fee.waived_cents), collected_cents: Number(fee.collected_cents), outstanding_cents: Number(fee.outstanding_cents), charge_count: Number(fee.charge_count) });
     }
