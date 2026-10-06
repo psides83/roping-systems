@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
+import { refreshEventQualificationChecks } from "@/lib/events/qualification-checks";
 
 export interface EntryFormState {
   success?: boolean;
@@ -216,6 +217,8 @@ export async function addExistingEntry(
     };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
+  const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
+  if (qualificationError) return { message: qualificationError };
   const { data: entryId, error } = await context.supabase.rpc(
     "create_event_entry_with_eligibility_override",
     {
@@ -257,6 +260,8 @@ export async function addGuestEntry(
     };
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
+  const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
+  if (qualificationError) return { message: qualificationError };
   const { data: entryId, error } = await context.supabase.rpc(
     "create_guest_event_entry_v2_with_eligibility_override",
     {
@@ -303,6 +308,10 @@ export async function reviewOnlineEntryRequest(
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
 
+  if (parsed.data.decision === "accepted") {
+    const qualificationError = await refreshEventQualificationChecks(eventId);
+    if (qualificationError) return { message: qualificationError };
+  }
   const { data, error } = await context.supabase.rpc(
     "review_online_entry_request_with_eligibility_override",
     {
@@ -367,6 +376,8 @@ export async function transferEntry(
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
 
+  const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.destinationDivisionId);
+  if (qualificationError) return { message: qualificationError };
   const { error } = await context.supabase.rpc(
     "transfer_event_entry_with_eligibility_override",
     {
@@ -467,6 +478,10 @@ export async function changeEntryWithdrawal(
   const context = await requireManager();
   if (!context) return { message: "Manager access is required." };
 
+  if (parsed.data.action === "reinstate") {
+    const qualificationError = await refreshEventQualificationChecks(eventId);
+    if (qualificationError) return { message: qualificationError };
+  }
   const result =
     parsed.data.action === "withdraw"
       ? await context.supabase.rpc("withdraw_event_entry", {

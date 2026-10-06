@@ -4,17 +4,10 @@ import { getPublicData } from "@/lib/events/public-event-data";
 import { getBrandStyle } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { calculateSeasonStandings, qualifiesForStandings, type StandingContribution, type StandingMove } from "@/lib/season-standings";
+import { calculateSeasonStandings, qualifiesForStandings } from "@/lib/season-standings";
+import { loadSeasonStandings, type SeasonStandingsSource } from "@/lib/events/season-standings-data";
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { seasonCalendarDate } from "@/lib/seasons";
-
-interface StandingsSource {
-  contributions: (StandingContribution & { entryIds: string[]; eventId: string })[];
-  moves: StandingMove[];
-  classes: { id: string; name: string; divisionName: string }[];
-  ropers: { roperId: string; classId: string; name: string; city: string | null; state: string | null;
-    handicap: string | null; handicapSeconds: number | null }[];
-}
 
 export default async function StandingsPage({ params, searchParams }: PageProps<"/public/[producerSlug]/standings">) {
   const { producerSlug } = await params;
@@ -26,31 +19,9 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
   const seasons = [...data.seasons].sort((a, b) => b.startsOn.localeCompare(a.startsOn));
   const season = seasons.find((item) => item.id === query.season)
     ?? seasons.find((item) => today >= item.startsOn && today <= item.endsOn) ?? seasons[0];
-  let source: StandingsSource = { contributions: [], moves: [], classes: [], ropers: [] };
+  let source: SeasonStandingsSource = { contributions: [], moves: [], classes: [], ropers: [] };
   if (season && isSupabaseConfigured()) {
-    const db = await createClient();
-    const { data: result, error } = await db.rpc("public_season_standings_source", {
-      target_producer_slug: producerSlug, target_season_id: season.id,
-    });
-    if (error) throw new Error(`Unable to load standings: ${error.message}`);
-    source = result as StandingsSource;
-    const winnings = new Map<string, number>();
-    for (const eventId of new Set(source.contributions.map((item) => item.eventId))) {
-      // Read event-sized pages; a whole season can exceed the database request limit.
-      for (let first = 0; ; first += 500) {
-        const awards = await db.rpc("public_event_money_results", { target_event_id: eventId })
-          .order("plan_id").order("section_type").order("round_number", { nullsFirst: true })
-          .order("d_number", { nullsFirst: true }).order("entry_id").range(first, first + 499);
-        if (awards.error) throw new Error(`Unable to load standings winnings: ${awards.error.message}`);
-        for (const award of awards.data ?? []) {
-          winnings.set(award.entry_id, (winnings.get(award.entry_id) ?? 0) + Number(award.payout_cents));
-        }
-        if ((awards.data?.length ?? 0) < 500) break;
-      }
-    }
-    source.contributions = source.contributions.map((item) => ({ ...item,
-      winningsCents: item.entryIds.reduce((sum, id) => sum + (winnings.get(id) ?? 0), 0),
-    }));
+    source = await loadSeasonStandings(producerSlug, season.id);
   }
   source.classes = source.classes.filter((item) => !source.classes.some((group) =>
     group.id.includes(":") && group.id !== item.id && group.name === item.name && group.divisionName === item.divisionName));

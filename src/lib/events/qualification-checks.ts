@@ -1,0 +1,58 @@
+import "server-only";
+import { getActiveProducer } from "@/lib/producers";
+import { createClient } from "@/lib/supabase/server";
+import { calculateSeasonStandings } from "@/lib/season-standings";
+import { loadSeasonStandings } from "@/lib/events/season-standings-data";
+
+export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string) {
+  const producer = await getActiveProducer();
+  if (!producer || producer.role === "viewer") throw new Error("Manager access is required.");
+  const db = await createClient();
+  const settings = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
+  const season = await db.from("producer_seasons").select("starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
+  const rule = await db.from("standings_qualification_rules").select("cutoff_on,updated_at")
+    .eq("producer_id", producer.id).eq("season_id", seasonId).eq("class_key", classKey).single();
+  if (settings.error || season.error || rule.error) throw new Error("Configure qualification requirements for this class and season first.");
+  const source = await loadSeasonStandings(producer.slug, seasonId);
+  const rows = calculateSeasonStandings(source.contributions, source.moves,
+    { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, rule.data.cutoff_on ?? season.data.ends_on).rows
+    .filter((row) => row.classId === classKey);
+  const result = await db.rpc("save_roping_qualification_check", {
+    target_roping_id: ropingId, target_season_id: seasonId, target_class_key: classKey,
+    expected_revision: settings.data.standings_revision, target_standings: rows,
+    target_rule_updated_at: rule.data.updated_at,
+  });
+  if (result.error) throw new Error(result.error.message);
+}
+
+export async function refreshEventQualificationChecks(eventId: string, ropingId?: string): Promise<string | null> {
+  try {
+    const producer = await getActiveProducer();
+    if (!producer || producer.role === "viewer") return "Manager access is required.";
+    const db = await createClient();
+    let query = db.from("roping_qualification_checks")
+      .select("event_roping_id,season_id,class_key,source_revision,rule_updated_at,event_ropings!inner(event_id,classification_id,division_id,competition_format)")
+      .eq("producer_id", producer.id).eq("event_ropings.event_id", eventId);
+    if (ropingId) query = query.eq("event_roping_id", ropingId);
+    const checks = await query;
+    if (checks.error) return checks.error.message;
+    if (!checks.data.length) return null;
+    for (const check of checks.data) {
+      const roping = check.event_ropings as unknown as { classification_id: string | null; division_id: string; competition_format: string };
+      const classKey = ["handicap", "four_d"].includes(roping.competition_format)
+        ? `${roping.division_id}:${roping.competition_format}` : roping.classification_id;
+      if (classKey !== check.class_key) return "This roping classification changed. Update its qualification setup before accepting entries.";
+      const revision = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
+      const rule = await db.from("standings_qualification_rules").select("updated_at")
+        .eq("season_id", check.season_id).eq("class_key", check.class_key).eq("producer_id", producer.id).maybeSingle();
+      if (revision.error || rule.error) return "Unable to refresh qualification standings.";
+      if (!rule.data) return "This roping's qualification requirements were removed. Update its qualification setup.";
+      if (String(check.source_revision) !== String(revision.data.standings_revision) || check.rule_updated_at !== rule.data.updated_at) {
+        await buildQualificationCheck(check.event_roping_id, check.season_id, check.class_key);
+      }
+    }
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Unable to refresh qualification standings.";
+  }
+}

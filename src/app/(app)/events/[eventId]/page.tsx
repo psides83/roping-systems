@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { ShortRoundTiePolicy } from "@/components/events/short-round-settings";
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
+import { RopingQualificationDialog } from "@/components/events/roping-qualification-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
 import { EventPublicationControl } from "@/components/events/event-publication-control";
@@ -649,6 +650,14 @@ export default async function RopingDetailPage({
   const { eventId } = await params;
   const { event, producerSlug } = await getEvent(eventId);
   if (!event) notFound();
+  const qualificationRopings = new Set<string>();
+  if (isSupabaseConfigured()) {
+    const db = await createClient();
+    const checks = await db.from("roping_qualification_checks").select("event_roping_id,event_ropings!inner(event_id)")
+      .eq("event_ropings.event_id", event.id);
+    if (checks.error) throw new Error("Unable to load roping qualification settings.");
+    for (const check of checks.data) qualificationRopings.add(check.event_roping_id);
+  }
   const totalEntries = event.divisions.reduce(
     (sum, division) => sum + division.entries,
     0,
@@ -945,6 +954,7 @@ export default async function RopingDetailPage({
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <RopingQualificationDialog ropingId={division.id} name={division.name} required={qualificationRopings.has(division.id)} editable={roundsEditable && isSupabaseConfigured()} />
                     <ClassScheduleDialog
                       arenaName={division.arenaName}
                       arenaCount={event.arenaCount}
