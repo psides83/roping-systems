@@ -3,6 +3,7 @@ import { EventSummaryCard as Metric } from "@/components/events/event-summary-ca
 import { getEventFeeCollections } from "@/lib/events/fee-collections-data";
 import { feeCollectionTotals, payoutSummary } from "@/lib/events/fee-collections";
 import { ropingDisplayName } from "@/lib/events/roping-display-name";
+import { groupScheduleByArena } from "@/lib/events/arena-schedule";
 import { RopingFundingData } from "@/components/events/roping-funding-data";
 import { notFound } from "next/navigation";
 import {
@@ -842,7 +843,15 @@ export default async function RopingDetailPage({
         </div>
 
         <div className="space-y-3">
-          {event.divisions.map((division, index) => (
+          {groupScheduleByArena(event.divisions, (division) => division.arenaName).map((group) => (
+            <section key={group.name} className="space-y-3 border-t border-[#dfe4e1] pt-4">
+              <h3 className="flex items-center gap-2 font-bold">
+                {group.name}
+                <span className="text-xs font-medium text-[#66716b]">
+                  {group.ropings.length} {group.ropings.length === 1 ? "roping" : "ropings"}
+                </span>
+              </h3>
+          {group.ropings.map((division, index) => (
             <details
               key={division.id}
               id={`roping-${division.id}`}
@@ -858,12 +867,12 @@ export default async function RopingDetailPage({
                   ropingName={division.name}
                   canMoveUp={
                     index > 0 &&
-                    event.divisions[index - 1].scheduledDateValue ===
+                    group.ropings[index - 1].scheduledDateValue ===
                       division.scheduledDateValue
                   }
                   canMoveDown={
-                    index < event.divisions.length - 1 &&
-                    event.divisions[index + 1].scheduledDateValue ===
+                    index < group.ropings.length - 1 &&
+                    group.ropings[index + 1].scheduledDateValue ===
                       division.scheduledDateValue
                   }
                   enabled={setupEditable && isSupabaseConfigured()}
@@ -1074,6 +1083,8 @@ export default async function RopingDetailPage({
                 </div>
               </div>
             </details>
+          ))}
+            </section>
           ))}
         </div>
       </section>

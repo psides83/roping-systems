@@ -292,7 +292,7 @@ export async function moveEventRoping(
   const supabase = await requireManager();
   const { data, error } = await supabase
     .from("event_ropings")
-    .select("id, scheduled_date, sort_order, created_at")
+    .select("id, scheduled_date, arena_name, sort_order, created_at")
     .eq("event_id", parsed.data.eventId)
     .order("scheduled_date")
     .order("sort_order")
@@ -305,14 +305,22 @@ export async function moveEventRoping(
   );
   if (currentIndex < 0) return { message: "That roping is unavailable." };
 
-  const adjacentIndex =
-    currentIndex + (parsed.data.direction === "up" ? -1 : 1);
+  const currentRoping = orderedRopings[currentIndex];
+  const step = parsed.data.direction === "up" ? -1 : 1;
+  let adjacentIndex = currentIndex + step;
+  while (adjacentIndex >= 0 && adjacentIndex < orderedRopings.length) {
+    const candidate = orderedRopings[adjacentIndex];
+    if (candidate.scheduled_date !== currentRoping.scheduled_date) break;
+    if (candidate.arena_name === currentRoping.arena_name) break;
+    adjacentIndex += step;
+  }
   const adjacentRoping = orderedRopings[adjacentIndex];
   if (
     !adjacentRoping ||
-    adjacentRoping.scheduled_date !== orderedRopings[currentIndex].scheduled_date
+    adjacentRoping.scheduled_date !== currentRoping.scheduled_date ||
+    adjacentRoping.arena_name !== currentRoping.arena_name
   )
-    return { message: "Ropings can only be reordered within the same day." };
+    return { message: "Ropings can only be reordered within the same day and arena." };
 
   [orderedRopings[currentIndex], orderedRopings[adjacentIndex]] = [
     orderedRopings[adjacentIndex],
