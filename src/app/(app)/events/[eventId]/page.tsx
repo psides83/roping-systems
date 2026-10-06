@@ -842,15 +842,22 @@ export default async function RopingDetailPage({
           />
         </div>
 
-        <div className="space-y-3">
-          {groupScheduleByArena(event.divisions, (division) => division.arenaName).map((group) => (
+        <div className="space-y-8">
+          {Array.from(new Set(event.divisions.map((division) => division.scheduledDateValue))).sort().map((date) => (
+            <section key={date} className="space-y-4">
+              <h3 className="border-b border-[#ccd4d0] pb-3 text-lg font-bold">
+                {date ? new Intl.DateTimeFormat("en-US", {
+                  weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
+                }).format(new Date(`${date}T12:00:00Z`)) : "Date not assigned"}
+              </h3>
+          {groupScheduleByArena(event.divisions.filter((division) => division.scheduledDateValue === date), (division) => division.arenaName).map((group) => (
             <section key={group.name} className="space-y-3 border-t border-[#dfe4e1] pt-4">
-              <h3 className="flex items-center gap-2 font-bold">
+              <h4 className="flex items-center gap-2 font-bold">
                 {group.name}
                 <span className="text-xs font-medium text-[#66716b]">
                   {group.ropings.length} {group.ropings.length === 1 ? "roping" : "ropings"}
                 </span>
-              </h3>
+              </h4>
           {group.ropings.map((division, index) => (
             <details
               key={division.id}
@@ -1083,6 +1090,8 @@ export default async function RopingDetailPage({
                 </div>
               </div>
             </details>
+          ))}
+            </section>
           ))}
             </section>
           ))}
