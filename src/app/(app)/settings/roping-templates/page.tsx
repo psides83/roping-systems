@@ -235,6 +235,16 @@ export default async function DivisionSettingsPage() {
     canEdit,
     funds,
   } = await getDivisionData();
+  const templateGroups = new Map<string, { name: string; templates: DivisionTemplateSummary[] }>();
+  for (const division of divisionOptions) {
+    templateGroups.set(division.id, { name: division.name, templates: [] });
+  }
+  for (const template of divisions) {
+    const key = template.disciplineId ?? template.divisionName ?? "unassigned";
+    const group = templateGroups.get(key) ?? { name: template.divisionName || "Unassigned division", templates: [] };
+    group.templates.push(template);
+    templateGroups.set(key, group);
+  }
 
   return (
     <div className="space-y-6">
@@ -253,7 +263,15 @@ export default async function DivisionSettingsPage() {
       />
       <RopingSetupTabs active="templates" />
       <section className="space-y-4">
-        {divisions.map((division) => (
+        {Array.from(templateGroups, ([id, group]) => group.templates.length ? (
+          <section key={id} className="space-y-4">
+            <header className="flex flex-wrap items-baseline gap-3 border-b border-[#dfe4e1] pb-3">
+              <h2 className="text-lg font-bold">{group.name}</h2>
+              <span className="text-xs font-medium text-[#66716b]">
+                {group.templates.length} {group.templates.length === 1 ? "template" : "templates"}
+              </span>
+            </header>
+        {group.templates.map((division) => (
           <article
             key={division.id}
             className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
@@ -261,15 +279,12 @@ export default async function DivisionSettingsPage() {
             <div className="flex items-start gap-3 border-b border-[#e7ebe8] p-5">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-lg font-bold">{division.name}</h2>
+                  <h3 className="text-base font-bold">{division.name}</h3>
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${division.isActive ? "bg-emerald-50 text-emerald-700" : "bg-[#eef1ef] text-[#66716b]"}`}
                   >
                     <Check size={12} />{" "}
                     {division.isActive ? "Active" : "Inactive"}
-                  </span>
-                  <span className="rounded-full bg-[#eef1ef] px-2.5 py-1 text-xs font-semibold text-[#56615b]">
-                    {division.divisionName}
                   </span>
                   <span className="rounded-full bg-[#eef1ef] px-2.5 py-1 text-xs font-semibold text-[#56615b]">
                     {division.competitionFormat === "four_d"
@@ -411,6 +426,8 @@ export default async function DivisionSettingsPage() {
             </details>
           </article>
         ))}
+          </section>
+        ) : null)}
         {!divisions.length ? (
           <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">
             <p className="font-semibold">Create your first roping template</p>
