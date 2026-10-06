@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { ArrowRight, CalendarDays, MapPin, Radio } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, MapPin, Radio } from "lucide-react";
+import type { PublicEvent } from "@/lib/events/public-event-data";
 import { getPublicData } from "@/lib/events/public-event-data";
 import { getBrandStyle } from "@/lib/branding";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -15,9 +16,20 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
   if (!data) notFound();
   const { producer } = data;
   const events = data.events.filter((event) => ["scheduled", "entries_open", "entries_closed", "in_progress"].includes(event.status))
-    .sort((a, b) => Number(b.status === "in_progress") - Number(a.status === "in_progress") || Date.parse(a.startsAt) - Date.parse(b.startsAt));
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
   const dateLabel = (value: string) => new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`));
   const now = new Date().getTime();
+  const months = new Map<string, { label: string; events: PublicEvent[] }>();
+  for (const event of events) {
+    const date = new Date(event.startsAt);
+    const key = new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", timeZone: producer.timezone }).format(date);
+    const month = months.get(key) ?? {
+      label: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: producer.timezone }).format(date),
+      events: [],
+    };
+    month.events.push(event);
+    months.set(key, month);
+  }
 
   return (
     <main style={getBrandStyle(producer.brandPrimary, producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
@@ -43,7 +55,10 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
           label: `${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: producer.timezone }).format(new Date(event.startsAt))} · ${event.title}${event.status === "in_progress" ? " · Live" : ""}`,
         }))} /> : null}
         <div className="mt-6 space-y-10">
-          {events.map((event) => {
+          {Array.from(months).sort(([a], [b]) => a.localeCompare(b)).map(([key, month]) => (
+            <section key={key} className="space-y-5">
+              <h2 className="text-xl font-bold">{month.label}</h2>
+          {month.events.map((event) => {
             const open = event.status !== "entries_closed" && (!event.entriesOpenAt || Date.parse(event.entriesOpenAt) <= now) && (!event.entriesCloseAt || Date.parse(event.entriesCloseAt) > now);
             const days = Array.from(new Set(event.scheduledRopings.map((roping) => roping.scheduledDate))).sort();
             const entryStatus = open ? "Entries open" : event.entriesOpenAt && Date.parse(event.entriesOpenAt) > now ? "Entries opening soon" : "Entries closed";
@@ -54,7 +69,7 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
                     {event.status === "in_progress" ? <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-emerald-800"><Radio size={13} />In progress</span> : null}
                     <span className={open ? "text-emerald-700" : "text-[#66716b]"}>{entryStatus}</span>
                   </div>
-                  <h2 className="mt-2 break-words text-xl font-bold">{event.title}</h2>
+                  <h3 className="mt-2 break-words text-lg font-bold">{event.title}</h3>
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]">
                     <span className="flex items-center gap-2"><CalendarDays size={16} />{new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: producer.timezone }).format(new Date(event.startsAt))}</span>
                     <span className="flex items-start gap-2"><MapPin size={16} className="mt-0.5 shrink-0" />{[event.venue, event.address].filter(Boolean).join(", ")}</span>
@@ -65,13 +80,22 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
                   {open && isSupabaseConfigured() ? <Link href={`/public/${producerSlug}/${event.slug}/enter`} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-bold text-white">Enter online<ArrowRight size={15} /></Link> : null}
                 </div>
               </header>
+              <details className="group/schedule mt-4">
+                <summary className="flex w-fit cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-semibold text-[var(--brand-accent-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
+                  Roping schedule
+                  <span className="text-xs font-normal text-[#66716b]">{event.scheduledRopings.length} {event.scheduledRopings.length === 1 ? "roping" : "ropings"}</span>
+                  <ChevronDown size={16} className="transition-transform group-open/schedule:rotate-180 motion-reduce:transition-none" />
+                </summary>
               {days.map((day) => <div key={day} className="mt-6">
-                <h3 className="border-b border-[#d7ddda] pb-2 text-sm font-bold">{dateLabel(day)}</h3>
+                <h4 className="border-b border-[#d7ddda] pb-2 text-sm font-bold">{dateLabel(day)}</h4>
                 <PublicClassSchedule events={event.scheduledRopings.filter((roping) => roping.scheduledDate === day)} columns timeOnly timezone={producer.timezone} />
               </div>)}
               {!days.length ? <p className="mt-6 text-sm text-[#66716b]">Roping schedule to be announced.</p> : null}
+              </details>
             </section>;
           })}
+            </section>
+          ))}
           {!events.length ? <p className="border-t border-[#d7ddda] py-10 text-sm text-[#66716b]">No upcoming events are published.</p> : null}
         </div>
       </div>
