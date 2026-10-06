@@ -1,11 +1,12 @@
 "use client";
 
-export function StandingsFilters({ seasons, classes, seasonId, classId, search }: {
+export function StandingsFilters({ seasons, classes, seasonId, classId, search, includeSearch = true }: {
   seasons: { id: string; name: string }[];
   classes: { id: string; name: string; divisionName: string }[];
   seasonId: string;
   classId: string;
   search: string;
+  includeSearch?: boolean;
 }) {
   const divisions = Array.from(new Set(classes.map((item) => item.divisionName)));
   return <form className="my-5 flex flex-wrap items-end gap-3">
@@ -28,10 +29,10 @@ export function StandingsFilters({ seasons, classes, seasonId, classId, search }
         </optgroup>)}
       </select>
     </label>
-    <label className="text-xs font-semibold">Contestant
+    {includeSearch ? <><label className="text-xs font-semibold">Contestant
       <input name="search" type="search" defaultValue={search} placeholder="Find a roper" maxLength={100}
         className="mt-1 block h-10 w-48 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm" />
     </label>
-    <button className="h-10 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white">Search</button>
+    <button className="h-10 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white">Search</button></> : null}
   </form>;
 }

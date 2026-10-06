@@ -80,3 +80,15 @@ test('corrected official earnings replace previous totals on rebuild', () => {
   assert.equal(calculateSeasonStandings([entry('a', '11', 150)], [], season).rows[0].winningsCents, 150);
   assert.equal(calculateSeasonStandings([entry('a', '11', 125)], [], season).rows[0].winningsCents, 125);
 });
+
+test('attendance-only rules do not impose a placing requirement', () => {
+  assert.equal(qualifiesForStandings({ rank: 50, ropingsEntered: 10 }, { topPlaces: null, minimumRopings: 10 }), true);
+  assert.equal(qualifiesForStandings({ rank: 1, ropingsEntered: 9 }, { topPlaces: null, minimumRopings: 10 }), false);
+});
+
+test('qualification cutoff ignores later earnings and attendance', () => {
+  const { rows } = calculateSeasonStandings([entry('a', '11', 100),
+    entry('a', '11', 1000, { date: '2026-08-01', ropingId: 'roping-2' })], [], season, '2026-07-01');
+  assert.equal(rows[0].ropingsEntered, 1);
+  assert.equal(qualifiesForStandings(rows[0], { topPlaces: 5, minimumRopings: 2 }), false);
+});

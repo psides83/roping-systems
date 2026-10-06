@@ -25,8 +25,8 @@ Classification ladders must be division-specific and exclude Open, youth, and ha
 
 ## Remaining Integration
 
-1. Add producer qualification settings and connect roping eligibility to top-place/attendance requirements and cutoff snapshots, with audited staff exceptions.
+1. Connect individual qualifying ropings to the saved season/class requirements, with entry enforcement, cutoff snapshots, and audited staff exceptions.
 2. Add producer carryover review tools and explicit handling when earnings cannot roll beyond the last numbered class.
 3. Broaden end-to-end tests for classification moves and qualification using retained test events.
 
-The public standings page, season/class selectors, search, official payout data source, and carryover-cap setting are implemented. The cap policy is saved on each new classification assignment so future policy changes do not affect past moves. Database tests verify payout totals, deduplicated attendance, tenant isolation, and limited public profile fields. Qualification enforcement and producer review tools remain unfinished.
+The public standings page, season/class selectors, search, official payout data source, and carryover-cap setting are implemented. The cap policy is saved on each new classification assignment so future policy changes do not affect past moves. Producer settings support per-season/class top-place requirements, minimum ropings, and an optional cutoff. Public standings show qualification against those requirements, using historical totals through the cutoff while retaining current season winnings in the main table. These settings alone do not block entry into ordinary ropings. Database tests verify payout totals, deduplicated attendance, tenant isolation, cutoff validation, and limited public profile fields. Roping opt-in, qualification enforcement, and producer review tools remain unfinished.

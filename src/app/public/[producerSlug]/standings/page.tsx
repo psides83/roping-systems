@@ -4,7 +4,7 @@ import { getPublicData } from "@/lib/events/public-event-data";
 import { getBrandStyle } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { calculateSeasonStandings, type StandingContribution, type StandingMove } from "@/lib/season-standings";
+import { calculateSeasonStandings, qualifiesForStandings, type StandingContribution, type StandingMove } from "@/lib/season-standings";
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { seasonCalendarDate } from "@/lib/seasons";
 
@@ -61,6 +61,20 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
   const profiles = new Map(source.ropers.map((roper) => [`${roper.roperId}:${roper.classId}`, roper]));
   const names = new Map(source.ropers.map((roper) => [roper.roperId, roper]));
   const standings = season ? calculateSeasonStandings(source.contributions, source.moves, season).rows : [];
+  let requirement: { top_places: number | null; minimum_ropings: number; cutoff_on: string | null } | undefined;
+  if (season && selectedClass && isSupabaseConfigured()) {
+    const db = await createClient();
+    const result = await db.rpc("public_standings_qualification_rules", {
+      target_producer_slug: producerSlug, target_season_id: season.id,
+    });
+    if (result.error) throw new Error("Unable to load qualification requirements.");
+    requirement = result.data?.find((item: { class_key: string }) => item.class_key === selectedClass.id);
+  }
+  const qualificationRows = season && requirement ? calculateSeasonStandings(source.contributions, source.moves, season,
+    requirement.cutoff_on ?? season.endsOn).rows : [];
+  const qualified = new Set(qualificationRows.filter((row) => row.classId === selectedClass?.id && qualifiesForStandings(row, {
+    topPlaces: requirement!.top_places, minimumRopings: requirement!.minimum_ropings,
+  })).map((row) => row.roperId));
   const rows = standings.filter((row) => row.classId === selectedClass?.id).map((row) => ({
     ...row, profile: profiles.get(`${row.roperId}:${row.classId}`) ?? names.get(row.roperId),
   })).filter((row) => row.profile?.name.toLowerCase().includes(search.toLowerCase()));
@@ -82,6 +96,11 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
       {season ? <StandingsFilters key={`${season.id}:${selectedClass?.id}`} seasons={seasons} classes={source.classes}
         seasonId={season.id} classId={selectedClass?.id ?? ""} search={search} /> : null}
       <section className="mt-5">
+        {requirement ? <div className="mb-4 flex flex-wrap gap-3 text-xs text-[#66716b]">
+          {requirement.top_places ? <span>Top {requirement.top_places} · ties included</span> : null}
+          <span>{requirement.minimum_ropings} ropings required</span>
+          {requirement.cutoff_on ? <span>Cutoff: {requirement.cutoff_on}</span> : null}
+        </div> : null}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold">{selectedClass ? `${selectedClass.name} ${selectedClass.divisionName}` : "Standings"}</h2>
           <span className="text-xs text-[#66716b]">Official results · {rows.length} ropers</span>
@@ -96,6 +115,9 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
               <td className="px-2 py-4 font-semibold tabular-nums sm:px-4">{row.rank}</td>
               <td className="min-w-24 px-2 py-4 sm:min-w-44 sm:px-4"><span className="font-semibold">{row.profile?.name ?? "Roper"}</span>
                 <div className="mt-1 text-xs text-[#66716b]">{[row.profile?.city, row.profile?.state].filter(Boolean).join(", ")}</div>
+                {requirement ? <div className={`mt-1 text-xs font-semibold ${qualified.has(row.roperId) ? "text-emerald-700" : "text-[#66716b]"}`}>
+                  {qualified.has(row.roperId) ? "Meets requirements" : "Not qualified"}
+                </div> : null}
                 {selectedClass?.id.endsWith(":handicap") && row.profile?.handicap ?
                   <div className="mt-1 text-xs text-[#66716b]">{row.profile.handicap} · {Number(row.profile.handicapSeconds) > 0 ? "+" : ""}{Number(row.profile.handicapSeconds).toFixed(2)} sec</div> : null}
               </td>
