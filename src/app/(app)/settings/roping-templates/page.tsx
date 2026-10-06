@@ -1,4 +1,4 @@
-import { Check, CircleDollarSign } from "lucide-react";
+import { Check, ChevronDown, CircleDollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import {
@@ -332,11 +332,16 @@ export default async function DivisionSettingsPage() {
                 />
               </div>
             </div>
-            <div className="p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase text-[#66716b]">
+            <details className="group/fees">
+              <summary className="flex cursor-pointer list-none items-center gap-2 p-5 text-xs font-bold uppercase text-[#66716b] outline-none hover:bg-[#f7f8f7] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
                   <CircleDollarSign size={15} /> Fees & entry options
-                </p>
+                <span className="ml-auto text-xs font-medium normal-case">
+                  {division.fees.length} {division.fees.length === 1 ? "item" : "items"}
+                </span>
+                <ChevronDown size={16} className="shrink-0 transition-transform group-open/fees:rotate-180 motion-reduce:transition-none" />
+              </summary>
+              <div className="px-5 pb-5">
+              <div className="mb-3 flex justify-end">
                 <AddFeeDialog
                   funds={funds}
                   divisionId={division.id}
@@ -402,7 +407,8 @@ export default async function DivisionSettingsPage() {
                   No default fees or options yet.
                 </p>
               )}
-            </div>
+              </div>
+            </details>
           </article>
         ))}
         {!divisions.length ? (
