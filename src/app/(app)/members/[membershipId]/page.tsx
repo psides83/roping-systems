@@ -13,6 +13,7 @@ import {
 import { notFound } from "next/navigation";
 import { dismissClassificationReview } from "./actions";
 import { AssignClassificationDialog } from "@/components/members/classification-dialogs";
+import { ClassificationWatchEvidence } from "@/components/members/classification-watch-evidence";
 import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { MemberFinesData } from "@/components/members/member-fines-data";
 import { MemberSuspensionsData } from "@/components/members/member-suspensions-data";
@@ -369,6 +370,7 @@ export default async function MemberDetailPage({
       </div>
       {isSupabaseConfigured() ? <MemberFinesData membershipId={member.id} canManage={member.canEdit} /> : null}
       {isSupabaseConfigured() ? <MemberSuspensionsData membershipId={member.id} canManage={member.canEdit} /> : null}
+      {isSupabaseConfigured() ? <ClassificationWatchEvidence membershipId={member.id} /> : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="flex items-center gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
           <Mail size={17} className="text-[#758078]" />

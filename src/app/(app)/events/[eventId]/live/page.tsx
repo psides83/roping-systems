@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { ClassificationWatchEvidence } from "@/components/members/classification-watch-evidence";
 import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { notFound } from "next/navigation";
 import {
@@ -366,6 +368,7 @@ export default async function LiveRopingPage({
       roundLocked={roundLocked}
       mainRoundsComplete={mainRoundsComplete}
       canEdit={producer.role !== "viewer"}
+      watchEvidence={<ClassificationWatchEvidence eventId={eventId} compact />}
     />
   );
 }
@@ -386,6 +389,7 @@ function LiveWorkspace({
   roundLocked,
   mainRoundsComplete,
   canEdit,
+  watchEvidence,
 }: {
   eventId: string;
   arenaCount: number;
@@ -402,6 +406,7 @@ function LiveWorkspace({
   roundLocked: boolean;
   mainRoundsComplete: boolean;
   canEdit: boolean;
+  watchEvidence?: ReactNode;
 }) {
   const selectedDivision = divisions.find(
     (division) => division.id === selectedDivisionId,
@@ -444,6 +449,7 @@ function LiveWorkspace({
           ) : null
         }
       />
+      {watchEvidence}
       {selectedDivisionId && selectedDivision ? (
         <>
           {selectedDivision.competitionFormat === "four_d" ? (

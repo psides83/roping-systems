@@ -13,6 +13,7 @@ const tabs = [
   },
   { id: "payouts", label: "Payouts", href: "/settings/payouts" },
   { id: "timing", label: "Timing & penalties", href: "/settings/timing" },
+  { id: "watch", label: "Classification watch", href: "/settings/classification-watch" },
 ] as const;
 
 export function RopingSetupTabs({
