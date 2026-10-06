@@ -8,7 +8,8 @@ import { PublicEventBrowser } from "@/components/events/public-event-browser";
 import { PublicResultsWorkspace } from "@/components/events/public-results-workspace";
 import { PublicClassSchedule } from "@/components/events/public-class-schedule";
 import { getPublicData } from "@/lib/events/public-event-data";
-import { publicEventDate, selectPublicEvent } from "@/lib/events/public-event-navigation";
+import { selectPublicEvent } from "@/lib/events/public-event-navigation";
+import { eventDateRange } from "@/lib/events/event-date-range";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getBrandStyle } from "@/lib/branding";
 
@@ -66,7 +67,7 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
                     </div>
                     <h3 className="mt-3 break-words text-2xl font-bold">{selectedEvent.title}</h3>
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]">
-                      <span className="flex items-center gap-2"><CalendarDays size={15} /> {publicEventDate(selectedEvent.startsAt)}</span>
+                      <span className="flex items-center gap-2"><CalendarDays size={15} /> {eventDateRange(selectedEvent.startsAt, selectedEvent.endsAt, data.producer.timezone)}</span>
                       <span className="flex min-w-0 items-center gap-2"><MapPin size={15} className="shrink-0" /> {[selectedEvent.venue, selectedEvent.address].filter(Boolean).join(", ")}</span>
                     </div>
                     {selectedEvent.scheduledRopings.length ? (

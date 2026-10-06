@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { PublicClassSchedule } from "@/components/events/public-class-schedule";
 import { PublicResultsRefresh } from "@/components/public-results-refresh";
 import { PublicScheduleJump } from "@/components/events/public-schedule-jump";
+import { eventDateRange } from "@/lib/events/event-date-range";
 
 export default async function PublicSchedulePage({ params }: PageProps<"/public/[producerSlug]/schedule">) {
   const { producerSlug } = await params;
@@ -52,7 +53,7 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
         <h1 className="text-2xl font-bold">Event schedule</h1>
         {events.length > 1 ? <PublicScheduleJump events={events.map((event) => ({
           id: event.id,
-          label: `${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: producer.timezone }).format(new Date(event.startsAt))} · ${event.title}${event.status === "in_progress" ? " · Live" : ""}`,
+          label: `${eventDateRange(event.startsAt, event.endsAt, producer.timezone)} · ${event.title}${event.status === "in_progress" ? " · Live" : ""}`,
         }))} /> : null}
         <div className="mt-6 space-y-10">
           {Array.from(months).sort(([a], [b]) => a.localeCompare(b)).map(([key, month]) => (
@@ -71,7 +72,7 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
                   </div>
                   <h3 className="mt-2 break-words text-lg font-bold">{event.title}</h3>
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]">
-                    <span className="flex items-center gap-2"><CalendarDays size={16} />{new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: producer.timezone }).format(new Date(event.startsAt))}</span>
+                    <span className="flex items-center gap-2"><CalendarDays size={16} />{eventDateRange(event.startsAt, event.endsAt, producer.timezone)}</span>
                     <span className="flex items-start gap-2"><MapPin size={16} className="mt-0.5 shrink-0" />{[event.venue, event.address].filter(Boolean).join(", ")}</span>
                   </div>
                 </div>

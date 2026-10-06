@@ -15,6 +15,7 @@ export interface PublicEvent {
   title: string;
   slug: string;
   startsAt: string;
+  endsAt?: string | null;
   venue: string;
   address: string;
   status: string;
@@ -189,7 +190,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   const { data: schedule, error: scheduleError } = await supabase
     .from("public_event_schedule")
     .select(
-      "id, title, slug, venue_name, address, venue_city, venue_state, venue_postal_code, starts_at, entries_open_at, entries_close_at, status, result_status",
+      "id, title, slug, venue_name, address, venue_city, venue_state, venue_postal_code, starts_at, ends_at, entries_open_at, entries_close_at, status, result_status",
     )
     .eq("producer_id", producer.id)
     .order("starts_at", { ascending: false });
@@ -322,6 +323,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       title: event.title,
       slug: event.slug,
       startsAt: event.starts_at,
+      endsAt: event.ends_at,
       venue: event.venue_name ?? "Location pending",
       address: [
         event.address,
