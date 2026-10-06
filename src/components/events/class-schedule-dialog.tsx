@@ -19,6 +19,8 @@ export function ClassScheduleDialog({
   scheduleNote,
   followsRopingName,
   editable,
+  arenaName,
+  arenaCount,
 }: {
   eventId: string;
   divisionId: string;
@@ -29,9 +31,13 @@ export function ClassScheduleDialog({
   scheduleNote: string | null;
   followsRopingName: string | null;
   editable: boolean;
+  arenaName: string | null;
+  arenaCount: number;
 }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState(scheduleType);
+  const [arena, setArena] = useState(arenaName ?? "Arena 1");
+  const [date, setDate] = useState(scheduledDate);
   const action = updateClassSchedule.bind(null, eventId, divisionId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -78,13 +84,30 @@ export function ClassScheduleDialog({
               </button>
             </header>
             <form action={formAction} className="space-y-4 p-5">
+              <label className="block text-sm font-semibold">
+                Arena
+                <select
+                  name="arenaName"
+                  value={arena}
+                  onChange={(event) => setArena(event.target.value)}
+                  className="mt-2 block h-11 rounded-md border border-[#ccd4d0] bg-white px-3"
+                >
+                  {Array.from({ length: arenaCount }, (_, index) => (
+                    <option key={index} value={`Arena ${index + 1}`}>
+                      Arena {index + 1}
+                    </option>
+                  ))}
+                  <option value="First Available">First Available</option>
+                </select>
+              </label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-semibold">
                   Date
                   <input
                     name="scheduledDate"
                     type="date"
-                    defaultValue={scheduledDate}
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
                     required
                     className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] px-3"
                   />
@@ -107,7 +130,7 @@ export function ClassScheduleDialog({
                     <option value="fixed">Set time</option>
                     <option value="tentative">Tentative time</option>
                     <option value="follows_previous">
-                      {followsRopingName
+                      {followsRopingName && arena === arenaName && date === scheduledDate
                         ? `Follows ${followsRopingName}`
                         : "Follows previous in this arena"}
                     </option>

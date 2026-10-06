@@ -946,6 +946,8 @@ export default async function RopingDetailPage({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <ClassScheduleDialog
+                      arenaName={division.arenaName}
+                      arenaCount={event.arenaCount}
                       eventId={event.id}
                       divisionId={division.id}
                       name={division.name}

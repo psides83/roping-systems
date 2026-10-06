@@ -523,6 +523,7 @@ export async function updateClassEventDayStatus(
 }
 
 const scheduleSchema = z.object({
+  arenaName: z.string().regex(/^(Arena [1-9]\d*|First Available)$/),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
   startTime: z
@@ -557,14 +558,15 @@ export async function updateClassSchedule(
       .select("id", { count: "exact", head: true })
       .eq("event_id", eventId)
       .eq("scheduled_date", parsed.data.scheduledDate)
-      .eq("arena_name", division.arena_name)
+      .eq("arena_name", parsed.data.arenaName)
       .lt("sort_order", division.sort_order);
     if (!count)
       return {
         message: "A follows roping needs an earlier roping in the same arena.",
       };
   }
-  const { error } = await supabase.rpc("save_class_schedule", {
+  const { error } = await supabase.rpc("save_roping_schedule", {
+    target_arena_name: parsed.data.arenaName,
     target_roping_division_id: divisionId,
     target_scheduled_date: parsed.data.scheduledDate,
     target_schedule_type: parsed.data.scheduleType,
@@ -576,7 +578,7 @@ export async function updateClassSchedule(
   });
   if (error) return { message: error.message };
   revalidatePath(`/events/${eventId}`);
-  revalidatePath(`/public`);
+  revalidatePath(`/public`, "layout");
   return { success: true, message: "Schedule updated." };
 }
 
