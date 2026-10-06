@@ -39,9 +39,9 @@ export function PageSkeleton({ variant = "list" }: { variant?: "list" | "dashboa
   </LoadingRegion>;
 }
 
-export function PublicPageSkeleton() {
+export function PublicPageSkeleton({ label = "Loading results" }: { label?: string } = {}) {
   return <div className="min-h-screen bg-[#f5f6f7]"><div aria-hidden="true" className="border-b border-[#dfe4e1] bg-white px-4 py-5"><div className="mx-auto flex max-w-6xl items-center gap-3"><Bar className="h-11 w-14" /><Bar className="h-5 w-48" /></div></div>
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6"><LoadingRegion label="Loading results"><Header /><div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]"><div className="space-y-5"><Bar className="h-9 w-56 max-w-full" />{Array.from({ length: 4 }, (_, index) => <div key={index} className="space-y-2 border-b border-[#dfe4e1] py-3"><Bar className="h-3 w-36" /><Bar className="h-3 w-48" /></div>)}</div><div className="min-w-0 space-y-5"><Header /><Rows /></div></div></LoadingRegion></div>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6"><LoadingRegion label={label}><Header /><div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]"><div className="space-y-5"><Bar className="h-9 w-56 max-w-full" />{Array.from({ length: 4 }, (_, index) => <div key={index} className="space-y-2 border-b border-[#dfe4e1] py-3"><Bar className="h-3 w-36" /><Bar className="h-3 w-48" /></div>)}</div><div className="min-w-0 space-y-5"><Header /><Rows /></div></div></LoadingRegion></div>
   </div>;
 }
 

@@ -4,9 +4,15 @@ import { groupScheduleByArena } from "@/lib/events/arena-schedule";
 export function PublicClassSchedule({
   events,
   live = false,
+  columns = false,
+  timezone = "America/Chicago",
+  timeOnly = false,
 }: {
   events: PublicEvent["scheduledRopings"];
   live?: boolean;
+  columns?: boolean;
+  timezone?: string;
+  timeOnly?: boolean;
 }) {
   const statusLabels: Record<string, string> = {
     scheduled: "Scheduled",
@@ -18,7 +24,7 @@ export function PublicClassSchedule({
 
   return (
     <div
-      className={`${live ? "mt-6" : "mt-4"} space-y-5`}
+      className={`${live ? "mt-6" : "mt-4"} ${columns ? "grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3" : "space-y-5"}`}
     >
       {groupScheduleByArena(events, (roping) => roping.arenaName).map((group) => (
         <section key={group.name}>
@@ -28,8 +34,8 @@ export function PublicClassSchedule({
         const displayStart = roping.estimatedStartsAt ?? roping.startsAt;
         const startLabel = displayStart && !Number.isNaN(Date.parse(displayStart))
           ? new Intl.DateTimeFormat("en-US", {
-              weekday: "short", month: "short", day: "numeric",
-              hour: "numeric", minute: "2-digit", timeZone: "America/Chicago",
+              ...(timeOnly ? {} : { weekday: "short" as const, month: "short" as const, day: "numeric" as const }),
+              hour: "numeric", minute: "2-digit", timeZone: timezone,
             }).format(new Date(displayStart))
           : displayStart;
         return (

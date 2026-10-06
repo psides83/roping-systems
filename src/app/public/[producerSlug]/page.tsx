@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EntryLabelProvider } from "@/components/events/entry-label";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { ArrowRight, CalendarDays, MapPin, Radio } from "lucide-react";
+import { CalendarDays, MapPin, Radio } from "lucide-react";
 import { PublicResultsRefresh } from "@/components/public-results-refresh";
 import { PublicEventBrowser } from "@/components/events/public-event-browser";
 import { PublicResultsWorkspace } from "@/components/events/public-results-workspace";
@@ -20,7 +20,6 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
   if (!data) notFound();
   const selectedEvent = selectPublicEvent(data.events, requestedEvent);
   if (requestedEvent && !selectedEvent) notFound();
-  const upcoming = data.events.filter((event) => ["scheduled", "entries_open", "entries_closed"].includes(event.status));
 
   return (
     <EntryLabelProvider style={data.producer.entryLabelStyle}><main style={getBrandStyle(data.producer.brandPrimary, data.producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
@@ -39,9 +38,9 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
             )}
             <h1 className="break-words text-lg font-bold sm:text-xl">{data.producer.name}</h1>
           </Link>
-          <nav aria-label="Producer public pages" className="flex items-center gap-5 text-sm font-semibold brand-muted">
-            <a href="#results" className="brand-hover">Results</a>
-            <a href="#schedule" className="brand-hover">Schedule</a>
+          <nav aria-label="Producer public pages" className="flex flex-wrap items-center gap-5 text-sm font-semibold brand-muted">
+            <Link href={`/public/${producerSlug}`} aria-current="page" className="text-white underline underline-offset-8">Results</Link>
+            <Link href={`/public/${producerSlug}/schedule`} className="brand-hover">Schedule</Link>
             {data.membershipFormPublished ? <Link href={`/public/${producerSlug}/membership`} className="brand-hover">Membership</Link> : null}
             <Link href="/roper" className="brand-hover">Roper portal</Link>
           </nav>
@@ -81,29 +80,8 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
                     runs={data.roundResults} moneyResults={data.moneyResults} shortRoundRopingIds={data.shortRoundRopingIds}
                     initialRopingId={typeof query.roping === "string" ? query.roping : undefined} />
                 </>
-              ) : <p className="py-10 text-sm text-[#66716b]">No results are available yet. <a href="#schedule" className="font-semibold text-[var(--brand-accent-strong)]">View upcoming events</a></p>}
+              ) : <p className="py-10 text-sm text-[#66716b]">No results are available yet. <Link href={`/public/${producerSlug}/schedule`} className="font-semibold text-[var(--brand-accent-strong)]">View upcoming events</Link></p>}
             </div>
-          </div>
-        </section>
-        <section id="schedule" className="scroll-mt-4 border-t border-[#d7ddda] pt-8">
-          <h2 className="text-xl font-bold">Upcoming events</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {upcoming.map((event) => {
-              const open = event.status !== "entries_closed" && (!event.entriesOpenAt || new Date(event.entriesOpenAt) <= new Date()) && (!event.entriesCloseAt || new Date(event.entriesCloseAt) > new Date());
-              return (
-                <article key={event.id} className="rounded-md border border-[#dfe4e1] bg-white p-5">
-                  <p className="text-xs font-semibold text-[var(--brand-accent-strong)]">{publicEventDate(event.startsAt)}</p>
-                  <h3 className="mt-2 font-bold">{event.title}</h3>
-                  <p className="mt-2 text-sm text-[#66716b]">{[event.venue, event.address].filter(Boolean).join(", ")}</p>
-                  <PublicClassSchedule events={event.scheduledRopings} />
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className={`text-xs font-semibold ${open ? "text-emerald-700" : "text-[#66716b]"}`}>{open ? "Entries open" : "Entries closed"}</p>
-                    {open && isSupabaseConfigured() ? <Link href={`/public/${producerSlug}/${event.slug}/enter`} className="flex h-9 items-center gap-2 rounded-md brand-accent-fill px-3 text-xs font-bold text-white">Enter online <ArrowRight size={14} /></Link> : null}
-                  </div>
-                </article>
-              );
-            })}
-            {!upcoming.length ? <p className="text-sm text-[#758078]">No upcoming events are published.</p> : null}
           </div>
         </section>
       </div>

@@ -45,7 +45,7 @@ export interface PublicFourDResult extends FourDResultRow {
 }
 
 
-export async function getPublicData(producerSlug: string, requestedEventSlug?: string) {
+export async function getPublicData(producerSlug: string, requestedEventSlug?: string, includeResults = true) {
   if (!isSupabaseConfigured()) {
     const events: PublicEvent[] = demoRopings.map((event) => ({
       id: event.id,
@@ -217,7 +217,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
   let moneyResults: PublicMoneyResult[] = [];
   let shortRoundRopingIds: string[] = [];
   const formats = new Map<string, string>();
-  if (selectedEvent) {
+  if (selectedEvent && includeResults) {
     const moneyRows = await readAllRows<{
       event_roping_id: string; plan_id: string; pool_name: string; pool_type: string;
       section_type: string; round_number: number | null; d_number: number | null;
