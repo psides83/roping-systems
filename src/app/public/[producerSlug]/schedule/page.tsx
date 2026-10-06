@@ -7,6 +7,7 @@ import { getBrandStyle } from "@/lib/branding";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { PublicClassSchedule } from "@/components/events/public-class-schedule";
 import { PublicResultsRefresh } from "@/components/public-results-refresh";
+import { PublicScheduleJump } from "@/components/events/public-schedule-jump";
 
 export default async function PublicSchedulePage({ params }: PageProps<"/public/[producerSlug]/schedule">) {
   const { producerSlug } = await params;
@@ -37,7 +38,10 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
       </header>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="text-2xl font-bold">Event schedule</h1>
-        {events.length > 1 ? <nav aria-label="Scheduled events" className="mt-4 flex flex-wrap gap-2">{events.map((event) => <a key={event.id} href={`#event-${event.id}`} className="rounded-md border border-[#d7ddda] bg-white px-3 py-2 text-sm font-semibold hover:border-[var(--brand-accent)]">{event.title}</a>)}</nav> : null}
+        {events.length > 1 ? <PublicScheduleJump events={events.map((event) => ({
+          id: event.id,
+          label: `${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: producer.timezone }).format(new Date(event.startsAt))} · ${event.title}${event.status === "in_progress" ? " · Live" : ""}`,
+        }))} /> : null}
         <div className="mt-6 space-y-10">
           {events.map((event) => {
             const open = event.status !== "entries_closed" && (!event.entriesOpenAt || Date.parse(event.entriesOpenAt) <= now) && (!event.entriesCloseAt || Date.parse(event.entriesCloseAt) > now);
