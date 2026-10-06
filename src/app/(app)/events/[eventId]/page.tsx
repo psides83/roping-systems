@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CopyDayScheduleDialog } from "@/components/events/copy-day-schedule-dialog";
 import { EventSummaryCard as Metric } from "@/components/events/event-summary-card";
 import { getEventFeeCollections } from "@/lib/events/fee-collections-data";
 import { feeCollectionTotals, payoutSummary } from "@/lib/events/fee-collections";
@@ -845,11 +846,16 @@ export default async function RopingDetailPage({
         <div className="space-y-8">
           {Array.from(new Set(event.divisions.map((division) => division.scheduledDateValue))).sort().map((date) => (
             <section key={date} className="space-y-4">
-              <h3 className="border-b border-[#ccd4d0] pb-3 text-lg font-bold">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ccd4d0] pb-3">
+              <h3 className="text-lg font-bold">
                 {date ? new Intl.DateTimeFormat("en-US", {
                   weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
                 }).format(new Date(`${date}T12:00:00Z`)) : "Date not assigned"}
               </h3>
+              <CopyDayScheduleDialog eventId={event.id} sourceDate={date} enabled={setupEditable && isSupabaseConfigured()}
+                dates={Array.from({ length: Math.max(0, Math.round((Date.parse(event.finalScheduleDate) - Date.parse(event.defaultScheduleDate)) / 86400000) + 1) }, (_, index) => new Date(Date.parse(`${event.defaultScheduleDate}T12:00:00Z`) + index * 86400000).toISOString().slice(0, 10))
+                  .filter((day) => !event.divisions.some((division) => division.scheduledDateValue === day))} />
+              </div>
           {groupScheduleByArena(event.divisions.filter((division) => division.scheduledDateValue === date), (division) => division.arenaName).map((group) => (
             <section key={group.name} className="space-y-3 border-t border-[#dfe4e1] pt-4">
               <h4 className="flex items-center gap-2 font-bold">

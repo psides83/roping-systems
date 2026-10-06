@@ -16,6 +16,16 @@ export type ScheduleFormState = LiveRunState;
 export type CattleFormState = LiveRunState;
 export type EventDayFormState = LiveRunState;
 export type EventScheduleFormState = LiveRunState;
+export async function copyEventDaySchedule(eventId: string, sourceDate: string, destinationDate: string): Promise<EventScheduleFormState> {
+  const parsed = z.object({ eventId: z.uuid(), sourceDate: z.iso.date(), destinationDate: z.iso.date() }).safeParse({ eventId, sourceDate, destinationDate });
+  if (!parsed.success) return { message: "Choose valid event dates." };
+  const db = await requireManager();
+  const { error } = await db.rpc("copy_event_day_schedule", { target_event_id: eventId, source_date: sourceDate, destination_date: destinationDate });
+  if (error) return { message: error.message };
+  revalidatePath(`/events/${eventId}`);
+  revalidatePath("/public", "layout");
+  return { success: true };
+}
 export interface EventDetailsFormState extends LiveRunState {
   errors?: Record<string, string[]>;
 }
