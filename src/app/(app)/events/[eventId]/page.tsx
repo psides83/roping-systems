@@ -955,6 +955,7 @@ export default async function RopingDetailPage({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <RopingQualificationDialog ropingId={division.id} name={division.name} required={qualificationRopings.has(division.id)} editable={roundsEditable && isSupabaseConfigured()} />
+                    {qualificationRopings.has(division.id) ? <Link href={`/events/${event.id}/qualification/${division.id}`} className="inline-flex h-9 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Qualifiers</Link> : null}
                     <ClassScheduleDialog
                       arenaName={division.arenaName}
                       arenaCount={event.arenaCount}

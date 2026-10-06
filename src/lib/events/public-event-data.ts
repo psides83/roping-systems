@@ -9,6 +9,8 @@ import type { PublicResult, PublicRoundResult } from "@/lib/events/public-standi
 import { selectPublicEvent } from "@/lib/events/public-event-navigation";
 import type { PublicMoneyResult } from "@/lib/events/public-money-results";
 import type { ProducerSeason } from "@/lib/seasons";
+import { loadPublicQualificationNotices } from "./public-qualification-data";
+import type { QualificationNotice } from "./qualification-notice";
 
 export interface PublicEvent {
   id: string;
@@ -35,6 +37,7 @@ export interface PublicEvent {
     estimatedStartsAt: string | null;
     eventDayNote: string | null;
     competitionFormat?: string;
+    qualification?: QualificationNotice;
   }>;
 }
 
@@ -212,6 +215,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
     );
   const selectedEvent =
     selectPublicEvent(schedule, requestedEventSlug);
+  const qualificationNotices = await loadPublicQualificationNotices(producerSlug);
   let results: PublicResult[] = [];
   const fourDResults: PublicFourDResult[] = [];
   let roundResults: PublicRoundResult[] = [];
@@ -353,6 +357,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
         estimatedStartsAt: row.estimated_starts_at,
         eventDayNote: row.event_day_note,
         competitionFormat: formats.get(row.event_roping_id),
+        qualification: qualificationNotices.get(row.event_roping_id),
         };
       }),
     };

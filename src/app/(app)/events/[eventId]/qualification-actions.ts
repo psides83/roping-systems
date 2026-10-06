@@ -47,6 +47,7 @@ export async function saveRopingQualification(ropingId: string, seasonId: string
     }
     revalidatePath(`/events/${roping.data.event_id}`);
     revalidatePath(`/events/${roping.data.event_id}/entries`);
+    revalidatePath("/public", "layout");
     return { success: true };
   } catch (error) { return { error: error instanceof Error ? error.message : "Unable to save qualification." }; }
 }

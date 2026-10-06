@@ -8,11 +8,13 @@ import {
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { qualificationNoticeText, type QualificationNotice } from "@/lib/events/qualification-notice";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
 
 interface EntryDivision {
+  qualification?: QualificationNotice;
   id: string;
   name: string;
   description: string | null;
@@ -181,6 +183,7 @@ export function OnlineEntryForm({
                     className="min-w-0 flex-1"
                   >
                     <span className="font-bold">{division.name}</span>
+                    {division.qualification ? <span className="mt-2 block text-xs font-semibold leading-5 text-amber-800">{qualificationNoticeText(division.qualification)}</span> : null}
                     {division.description ? (
                       <span className="mt-1 block text-sm leading-5 text-[#66716b]">
                         {division.description}
@@ -195,7 +198,7 @@ export function OnlineEntryForm({
                     </span>
                     <span className="mt-1 block text-xs font-semibold text-[var(--brand-accent-strong)]">
                       {division.eligibilityType === "open"
-                        ? "Open to any contestant"
+                        ? division.qualification ? "Open classification" : "Open to any contestant"
                         : division.eligibilityType === "age"
                           ? division.minimumAge !== null &&
                             division.maximumAge !== null

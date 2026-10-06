@@ -6,6 +6,8 @@ import { OnlineEntryForm } from "@/components/events/online-entry-form";
 import { getBrandStyle } from "@/lib/branding";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { loadPublicQualificationNotices } from "@/lib/events/public-qualification-data";
+import { ropingDisplayName } from "@/lib/events/roping-display-name";
 
 export default async function PublicOnlineEntryPage({
   params,
@@ -22,7 +24,7 @@ export default async function PublicOnlineEntryPage({
     supabase
       .from("public_event_entry_options")
       .select(
-        "producer_name, logo_path, brand_primary, brand_accent, allow_non_member_entries, event_id, title, venue_name, address, starts_at, ends_at, entries_close_at, entries_are_open, incentive_enabled, event_roping_id, event_roping_name, event_roping_description, event_roping_starts_at, scheduled_date, schedule_type, schedule_note, arena_name, max_entries_per_roper, allow_non_members, eligibility_type, minimum_age, maximum_age, estimated_first_entry_cents, sort_order",
+        "producer_name, logo_path, brand_primary, brand_accent, allow_non_member_entries, event_id, title, venue_name, address, starts_at, ends_at, entries_close_at, entries_are_open, incentive_enabled, event_roping_id, event_roping_name, division_name, event_roping_description, event_roping_starts_at, scheduled_date, schedule_type, schedule_note, arena_name, max_entries_per_roper, allow_non_members, eligibility_type, minimum_age, maximum_age, estimated_first_entry_cents, sort_order",
       )
       .eq("producer_slug", producerSlug)
       .eq("event_slug", eventSlug)
@@ -48,6 +50,7 @@ export default async function PublicOnlineEntryPage({
   if (!rows?.length) notFound();
 
   const event = rows[0];
+  const notices = await loadPublicQualificationNotices(producerSlug, event.event_id);
   const logoUrl = event.logo_path
     ? supabase.storage.from("organization-logos").getPublicUrl(event.logo_path)
         .data.publicUrl
@@ -64,7 +67,8 @@ export default async function PublicOnlineEntryPage({
     : null;
   const divisions = rows.map((row, index) => ({
     id: row.event_roping_id,
-    name: row.event_roping_name,
+    qualification: notices.get(row.event_roping_id),
+    name: ropingDisplayName(row.event_roping_name, row.division_name),
     description: row.event_roping_description,
     maximumEntries: row.max_entries_per_roper,
     allowGuests: row.allow_non_members && row.allow_non_member_entries,
@@ -138,7 +142,7 @@ export default async function PublicOnlineEntryPage({
       </header>
       <div className="mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
         <Link
-          href={`/public/${producerSlug}`}
+          href={`/public/${producerSlug}/schedule`}
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#66716b]"
         >
           <ArrowLeft size={16} /> Back to schedule
