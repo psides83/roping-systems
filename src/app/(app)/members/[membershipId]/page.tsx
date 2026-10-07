@@ -17,6 +17,7 @@ import { ClassificationWatchEvidence } from "@/components/members/classification
 import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { MemberFinesData } from "@/components/members/member-fines-data";
 import { MemberSuspensionsData } from "@/components/members/member-suspensions-data";
+import { MemberFinalsPositions } from "@/components/members/member-finals-positions";
 import { ClassificationMoveBackProgress } from "@/components/members/classification-move-back-progress";
 import type { MoveBackProgress, MoveBackException, MoveBackDetails } from "@/lib/classification-move-back";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -303,6 +304,7 @@ export default async function MemberDetailPage({
 }: PageProps<"/members/[membershipId]">) {
   const { membershipId } = await params;
   const member = await getMemberDetail(membershipId);
+  const producer = isSupabaseConfigured() ? await getActiveProducer() : null;
   if (!member) notFound();
   const options = member.divisions.map((discipline) => ({
     id: discipline.id,
@@ -386,6 +388,7 @@ export default async function MemberDetailPage({
       </div>
       {isSupabaseConfigured() ? <MemberFinesData membershipId={member.id} canManage={member.canEdit} /> : null}
       {isSupabaseConfigured() ? <MemberSuspensionsData membershipId={member.id} canManage={member.canEdit} /> : null}
+      {producer && <MemberFinalsPositions producerId={producer.id} producerSlug={producer.slug} memberId={member.id} />}
       <ClassificationMoveBackProgress membershipId={member.id} progress={member.moveBackProgress} exceptions={member.moveBackExceptions} canEdit={member.canEdit} timezone={member.timezone} />
       {isSupabaseConfigured() ? <ClassificationWatchEvidence membershipId={member.id} /> : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

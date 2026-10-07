@@ -15,6 +15,7 @@ const tabs = [
   { id: "timing", label: "Timing & penalties", href: "/settings/timing" },
   { id: "watch", label: "Classification watch", href: "/settings/classification-watch" },
   { id: "standings", label: "Standings", href: "/settings/standings" },
+  { id: "finals", label: "Finals positions", href: "/settings/finals" },
 ] as const;
 
 export function RopingSetupTabs({

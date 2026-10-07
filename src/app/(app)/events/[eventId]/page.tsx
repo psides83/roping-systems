@@ -29,6 +29,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import type { ShortRoundTiePolicy } from "@/components/events/short-round-settings";
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
 import { RopingQualificationDialog } from "@/components/events/roping-qualification-dialog";
+import { FinalsQualifierDialog } from "@/components/events/finals-qualifier-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
 import { EventPublicationControl } from "@/components/events/event-publication-control";
@@ -960,6 +961,7 @@ export default async function RopingDetailPage({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <RopingQualificationDialog ropingId={division.id} name={division.name} required={qualificationRopings.has(division.id)} editable={roundsEditable && isSupabaseConfigured()} />
+                    <FinalsQualifierDialog ropingId={division.id} name={division.name} editable={event.canManage && isSupabaseConfigured()} />
                     {qualificationRopings.has(division.id) ? <Link href={`/events/${event.id}/qualification/${division.id}`} className="inline-flex h-9 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Qualifiers</Link> : null}
                     <ClassScheduleDialog
                       arenaName={division.arenaName}

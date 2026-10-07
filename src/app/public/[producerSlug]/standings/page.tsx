@@ -8,6 +8,7 @@ import { calculateSeasonStandings, qualifiesForStandings } from "@/lib/season-st
 import { loadSeasonStandings, type SeasonStandingsSource } from "@/lib/events/season-standings-data";
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { seasonCalendarDate } from "@/lib/seasons";
+import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 
 export default async function StandingsPage({ params, searchParams }: PageProps<"/public/[producerSlug]/standings">) {
   const { producerSlug } = await params;
@@ -32,6 +33,9 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
   const profiles = new Map(source.ropers.map((roper) => [`${roper.roperId}:${roper.classId}`, roper]));
   const names = new Map(source.ropers.map((roper) => [roper.roperId, roper]));
   const standings = season ? calculateSeasonStandings(source.contributions, source.moves, season).rows : [];
+  const finals = season && isSupabaseConfigured() ? await loadFinalsQualifications(producerSlug, season.id) : null;
+  const finalsProfiles = new Map(finals?.profiles.map((profile) => [profile.memberId, profile]) ?? []);
+  const finalsPositions = new Map(finals?.totals.map((row) => [`${finalsProfiles.get(row.memberId)?.roperId}:${row.classId}`, row.positions]) ?? []);
   let requirement: { top_places: number | null; minimum_ropings: number; cutoff_on: string | null } | undefined;
   if (season && selectedClass && isSupabaseConfigured()) {
     const db = await createClient();
@@ -80,7 +84,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
           <table className="w-full text-sm">
             <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]">
               <tr><th className="px-2 py-3 sm:px-4">Rank</th><th className="px-2 py-3 sm:px-4">Contestant</th>
-                <th className="px-2 py-3 text-right sm:px-4">Ropings</th><th className="px-2 py-3 text-right sm:px-4">Won</th></tr>
+                <th className="px-2 py-3 text-right sm:px-4">Ropings</th><th className="px-2 py-3 text-right sm:px-4">Won</th><th className="px-2 py-3 text-right sm:px-4">Finals positions</th></tr>
             </thead>
             <tbody>{rows.map((row) => <tr key={row.roperId} className="border-t border-[#e7ebe8]">
               <td className="px-2 py-4 font-semibold tabular-nums sm:px-4">{row.rank}</td>
@@ -94,6 +98,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
               </td>
               <td className="px-2 py-4 text-right tabular-nums sm:px-4">{row.ropingsEntered}</td>
               <td className="whitespace-nowrap px-2 py-4 text-right font-semibold tabular-nums sm:px-4">{money(row.winningsCents)}</td>
+              <td className="px-2 py-4 text-right tabular-nums sm:px-4">{finalsPositions.get(`${row.roperId}:${row.classId}`) ?? 0}</td>
             </tr>)}</tbody>
           </table>
           {!rows.length ? <p className="p-8 text-center text-sm text-[#66716b]">

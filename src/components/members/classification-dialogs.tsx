@@ -8,6 +8,7 @@ import {
 } from "@/app/(app)/members/[membershipId]/actions";
 import { blocksMoveBack, type MoveBackProgress } from "@/lib/classification-move-back";
 import { MoveBackFeedback } from "./move-back-feedback";
+import { FinalsMoveDecision } from "./finals-move-decision";
 
 interface DisciplineOption {
   id: string;
@@ -194,6 +195,7 @@ export function AssignClassificationDialog({
               />
             </label>
             <FormMessage state={state} />
+            <FinalsMoveDecision />
             <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
               <button
                 type="button"

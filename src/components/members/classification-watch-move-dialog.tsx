@@ -7,6 +7,7 @@ import type { RunFlag, WatchClassificationChoice, WatchCurrentAssignment } from 
 import { loadMoveBackDetails } from "@/app/(app)/settings/classification-watch/move-back-actions";
 import { blocksMoveBack, type MoveBackProgress } from "@/lib/classification-move-back";
 import { MoveBackFeedback } from "./move-back-feedback";
+import { FinalsMoveDecision } from "./finals-move-decision";
 
 export function ClassificationWatchMoveDialog({ flags, choices, current, currentName, today, onClose }: {
   flags: RunFlag[]; choices: WatchClassificationChoice[]; current: WatchCurrentAssignment;
@@ -67,6 +68,7 @@ export function ClassificationWatchMoveDialog({ flags, choices, current, current
         </div>
         {eligibility.loading ? <p role="status" className="flex items-center gap-2 rounded-md bg-[#f0f2f1] p-3 text-sm"><LoaderCircle size={16} className="animate-spin" />Checking classification eligibility...</p> : eligibility.error ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"><p>{eligibility.error}</p><button type="button" onClick={() => { setEligibility({ loading: true }); setCheckAttempt((n) => n + 1); }} className="mt-2 font-semibold underline">Try again</button></div> : <MoveBackFeedback progress={eligibility.progress} targetId={classificationId} memberId={current.membership_id} onNavigate={onClose} />}
         <label className="flex min-w-0 flex-col items-start gap-2 text-sm font-semibold">Reason for the move<textarea name="reason" required minLength={5} maxLength={2000} rows={3} className="w-96 min-w-0 max-w-full rounded-md border border-[#ccd4d0] p-3 text-sm" /></label>
+        <FinalsMoveDecision />
         <details className="border-y border-[#e7ebe8] py-3"><summary className="cursor-pointer text-sm font-semibold">Run evidence · {flags.length} runs</summary><ul className="mt-3 space-y-2 text-xs text-[#66716b]">{flags.map((f) => <li key={f.id} className="flex flex-wrap justify-between gap-2"><span>{f.event_ropings.name} · Round {f.round_number} · {f.occurred_on}</span><strong className="font-mono">{Number(f.measured_seconds).toFixed(2)} sec</strong></li>)}</ul></details>
       </fieldset>
       <p className="text-xs leading-5 text-[#66716b]">Existing entries and scored runs stay unchanged. The move, staff decision, and selected run evidence are retained in classification history.</p>

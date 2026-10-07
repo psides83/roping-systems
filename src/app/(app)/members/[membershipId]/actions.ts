@@ -175,7 +175,7 @@ export async function updateMember(
   if ("errors" in profileFields) return { errors: profileFields.errors };
 
   const { error } = await context.supabase.rpc(
-    "update_organization_member_v2",
+    "update_organization_member_with_finals",
     {
       target_organization_id: context.producer.id,
       target_membership_id: parsed.data.membershipId,
@@ -194,6 +194,7 @@ export async function updateMember(
       classification_effective_on: parsed.data.classificationEffectiveOn,
       classification_change_reason: parsed.data.classificationReason,
       member_profile_fields: profileFields.values,
+      finals_decision: ["transfer", "revoke"].includes(String(formData.get("finalsDecision"))) ? String(formData.get("finalsDecision")) : null,
     },
   );
   if (error)
@@ -220,13 +221,14 @@ export async function assignMemberClassification(
   if (!context)
     return { message: "Manager access is required to change classifications." };
 
-  const { error } = await context.supabase.rpc("set_member_classification", {
+  const { error } = await context.supabase.rpc("set_member_classification_with_finals", {
     target_organization_id: context.producer.id,
     target_membership_id: parsed.data.membershipId,
     target_classification_id: parsed.data.classificationId,
     new_effective_on: parsed.data.effectiveOn,
     change_reason: parsed.data.reason,
     source_review_id: parsed.data.reviewId || null,
+    finals_decision: ["transfer", "revoke"].includes(String(formData.get("finalsDecision"))) ? String(formData.get("finalsDecision")) : null,
   });
   if (error) return { message: error.message };
 

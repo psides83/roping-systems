@@ -22,7 +22,7 @@ export async function approveWatchMove(form: FormData): Promise<{ error?: string
   const parsed = approvalSchema.safeParse({ ...Object.fromEntries(form), flagIds: form.getAll("flagId") });
   if (!parsed.success) return { error: "Choose a classification, effective date, and reason (at least five characters)." };
   const db = await createClient();
-  const { error } = await db.rpc("approve_classification_watch", {
+  const { error } = await db.rpc("approve_classification_watch_with_finals", {
     target_producer_id: producer.id,
     target_membership_id: parsed.data.membershipId,
     target_division_id: parsed.data.divisionId,
@@ -32,6 +32,7 @@ export async function approveWatchMove(form: FormData): Promise<{ error?: string
     change_reason: parsed.data.reason,
     source_flag_ids: parsed.data.flagIds,
     target_review_id: parsed.data.reference,
+    finals_decision: ["transfer", "revoke"].includes(String(form.get("finalsDecision"))) ? String(form.get("finalsDecision")) : null,
   });
   if (error) return { error: error.message };
   revalidatePath("/settings/classification-watch");

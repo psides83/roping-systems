@@ -1,4 +1,5 @@
 "use client";
+import { FinalsMoveDecision } from "./finals-move-decision";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Pencil, X } from "lucide-react";
@@ -300,6 +301,7 @@ export function EditMemberDialog({
                   ))}
                 </div>
                 <div className="mt-3 space-y-2">{moveBackProgress.map((p) => <MoveBackFeedback key={p.assignmentId} progress={p} targetId={classifications[p.divisionId] ?? ""} memberId={member.id} onNavigate={() => setOpen(false)} />)}</div>
+                {hasClassificationChanges && <div className="mt-3"><FinalsMoveDecision /></div>}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <Field
                     label="Class change effective date"
