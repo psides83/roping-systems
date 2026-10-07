@@ -4,12 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { StaffAccessForm } from "@/components/settings/staff-access-form";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { isPlatformOwner } from "@/lib/platform-access";
+import { StaffEventForm } from "@/components/settings/staff-event-form";
 export default async function StaffPage() {
   const producer = await getActiveProducer();
   if (!producer) return <p>Select a producer.</p>;
   const canManage = ["owner", "admin"].includes(producer.role);
   const platformOwner = await isPlatformOwner();
   const db = await createClient();
+  const events = canManage ? await readAllRows((first,last) => db.from("events").select("id,name")
+    .eq("producer_id",producer.id).order("id").range(first,last), "Unable to load events") : [];
+  const assignments = canManage ? await readAllRows((first,last) => db.from("staff_event_assignments").select("event_id,user_id")
+    .eq("producer_id",producer.id).order("event_id").order("user_id").range(first,last), "Unable to load event assignments") : [];
   const staff = await readAllRows((first,last) => db.from("producer_staff_directory").select("user_id,email,role")
     .eq("producer_id",producer.id).order("user_id").range(first,last), "Unable to load staff");
   const invitations = canManage ? await readAllRows((first,last) => db.from("producer_staff_invitations")
@@ -17,6 +22,15 @@ export default async function StaffPage() {
     .order("id").range(first,last), "Unable to load invitations") : [];
   return <section className="space-y-6"><Link href="/settings" className="text-sm font-semibold text-[#66716b]">Back to settings</Link>
     <h1 className="text-2xl font-bold">Staff access</h1>
+    {canManage ? <details className="border-y border-[#dfe4e1] py-4"><summary className="cursor-pointer text-lg font-bold">Event assignments</summary>
+      <p className="mt-2 text-sm text-[#66716b]">Operator access: producer-wide</p>
+      <div className="mt-4 divide-y divide-[#dfe4e1]">{staff.map((person) => <div key={person.user_id} className="space-y-3 py-4">
+        <p className="break-all text-sm font-semibold">{person.email}</p>
+        {assignments.filter((item) => item.user_id === person.user_id).map((item) => <div key={item.event_id} className="flex flex-wrap items-center gap-3 text-sm">
+          <span>{events.find((event) => event.id === item.event_id)?.name ?? "Event"}</span><StaffEventForm userId={person.user_id} eventId={item.event_id} />
+        </div>)}
+        <StaffEventForm userId={person.user_id} events={events.filter((event) => !assignments.some((item) => item.user_id === person.user_id && item.event_id === event.id))} />
+      </div>)}</div></details> : null}
     {canManage ? <StaffAccessForm operation="invite" owner={producer.role === "owner"} platformOwner={platformOwner} /> : null}
     <div className="divide-y divide-[#dfe4e1] border-y border-[#dfe4e1]">{staff.map((person) => {
       const editable = canManage && person.role !== "owner" && (producer.role === "owner" || !["owner","admin"].includes(person.role));

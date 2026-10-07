@@ -5,6 +5,18 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { sendStaffInvitation } from "@/lib/send-staff-invitation";
 export interface StaffActionState { error?: string; success?: boolean; warning?: string }
+export async function assignStaffEvent(_: StaffActionState, form: FormData): Promise<StaffActionState> {
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Event assignments require an owner or administrator." };
+  const parsed = z.object({ userId: z.uuid(), eventId: z.uuid(), assigned: z.enum(["true", "false"]) }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "Choose a valid event and staff member." };
+  const db = await createClient();
+  const { error } = await db.rpc("assign_staff_event", { target_producer: producer.id,
+    target_event: parsed.data.eventId, target_user: parsed.data.userId, assigned: parsed.data.assigned === "true" });
+  if (error) return { error: error.message };
+  revalidatePath("/settings/staff");
+  return { success: true };
+}
 export async function manageStaff(_: StaffActionState, form: FormData): Promise<StaffActionState> {
   const producer = await getActiveProducer();
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Staff management requires an owner or administrator." };
