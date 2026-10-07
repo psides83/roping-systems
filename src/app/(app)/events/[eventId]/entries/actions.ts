@@ -189,6 +189,16 @@ function getOptionIds(formData: FormData) {
     .filter((value) => z.uuid().safeParse(value).success);
 }
 
+async function requireEntryOffice(eventId: string) {
+  const producer = await getActiveProducer();
+  if (!producer) return null;
+  const supabase = await createClient();
+  const event = await supabase.from("events").select("id").eq("id", eventId).eq("producer_id", producer.id).maybeSingle();
+  const permission = await supabase.rpc("can_enter_event", { target_event: eventId });
+  if (event.error || !event.data || permission.error || !permission.data) return null;
+  return { producer, supabase };
+}
+
 async function addSelectedOptions(
   supabase: Awaited<ReturnType<typeof createClient>>,
   entryId: string,
@@ -215,8 +225,10 @@ export async function addExistingEntry(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
-  if (!context) return { message: "Manager access is required." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
+  const roping = await context.supabase.from("event_ropings").select("id").eq("id", parsed.data.divisionId).eq("event_id", eventId).maybeSingle();
+  if (roping.error || !roping.data) return { message: "Choose a roping from this event." };
   const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
   if (qualificationError) return { message: qualificationError };
   const { data: entryId, error } = await context.supabase.rpc(
@@ -407,13 +419,15 @@ export async function updateEntryOptions(
 ): Promise<EntryOptionFormState> {
   if (!z.uuid().safeParse(entryId).success)
     return { message: "This entry is unavailable." };
-  const context = await requireManager();
-  if (!context) return { message: "Manager access is required." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
+  const entry = await context.supabase.from("roping_entries").select("id").eq("id", entryId).eq("event_id", eventId).maybeSingle();
+  if (entry.error || !entry.data) return { message: "Choose an entry from this event." };
 
   const optionIds = getOptionIds(formData);
   const { data, error } = await context.supabase.rpc("set_entry_options", {
     target_entry_id: entryId,
-    selected_event_fee_ids: optionIds,
+    selected_roping_fee_ids: optionIds,
   });
   if (error) return { message: error.message };
 
@@ -517,8 +531,8 @@ export async function updateContestantCheckIn(
   if (!z.uuid().safeParse(personId).success)
     return { message: "This contestant is unavailable." };
   const checkedIn = formData.get("checkedIn") === "true";
-  const context = await requireManager();
-  if (!context) return { message: "Manager access is required." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
 
   const { error } = await context.supabase.rpc(
     "set_event_contestant_check_in",
@@ -551,8 +565,8 @@ export async function recordCashPayment(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
-  if (!context) return { message: "Manager access is required." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
 
   const amountCents = Math.round(parsed.data.amount * 100);
   const { error } = await context.supabase.rpc("record_event_cash_payment", {

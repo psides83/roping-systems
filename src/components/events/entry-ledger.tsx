@@ -86,11 +86,13 @@ export function EntryLedger({
   contestants,
   divisions,
   canEdit,
+  canOffice = canEdit,
 }: {
   eventId: string;
   contestants: LedgerContestant[];
   divisions: TransferDivision[];
   canEdit: boolean;
+  canOffice?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -181,6 +183,7 @@ export function EntryLedger({
                 contestant={contestant}
                 divisions={divisions}
                 canEdit={canEdit}
+                canOffice={canOffice}
               />
             ))}
             {!filtered.length ? (
@@ -207,11 +210,13 @@ function ContestantRow({
   contestant,
   divisions,
   canEdit,
+  canOffice,
 }: {
   eventId: string;
   contestant: LedgerContestant;
   divisions: TransferDivision[];
   canEdit: boolean;
+  canOffice: boolean;
 }) {
   const hasActiveEntries = contestant.entries.some(
     (entry) => entry.competitionStatus === "active",
@@ -273,7 +278,7 @@ function ContestantRow({
                 contestantName={contestant.name}
                 divisionName={entry.division}
                 options={entry.options}
-                enabled={canEdit && entry.competitionStatus === "active"}
+                enabled={canOffice && entry.competitionStatus === "active"}
               />
               <EntryTransferDialog
                 eventId={eventId}
@@ -304,7 +309,7 @@ function ContestantRow({
           contestantName={contestant.name}
           checkedIn={contestant.checkedIn}
           checkedInAt={contestant.checkedInAt}
-          enabled={canEdit && (hasActiveEntries || contestant.checkedIn)}
+          enabled={canOffice && (hasActiveEntries || contestant.checkedIn)}
         />
       </td>
       <td className="px-5 py-4">
@@ -325,7 +330,8 @@ function ContestantRow({
           contestantName={contestant.name}
           balanceDueCents={contestant.balanceDueCents}
           payments={contestant.payments}
-          enabled={canEdit && hasActiveEntries}
+          enabled={canOffice && hasActiveEntries}
+          canVoid={canEdit}
         />
       </td>
       <td className="px-5 py-4 text-right">

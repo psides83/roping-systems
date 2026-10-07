@@ -32,9 +32,11 @@ interface EntryRequest {
 export function OnlineEntryRequestList({
   eventId,
   requests,
+  enabled = true,
 }: {
   eventId: string;
   requests: EntryRequest[];
+  enabled?: boolean;
 }) {
   if (!requests.length) return null;
   return (
@@ -54,7 +56,7 @@ export function OnlineEntryRequestList({
       </div>
       <div className="divide-y divide-[#e7ebe8]">
         {requests.map((request) => (
-          <RequestRow key={request.id} eventId={eventId} request={request} />
+          <RequestRow key={request.id} eventId={eventId} request={request} enabled={enabled} />
         ))}
       </div>
     </section>
@@ -64,9 +66,11 @@ export function OnlineEntryRequestList({
 function RequestRow({
   eventId,
   request,
+  enabled,
 }: {
   eventId: string;
   request: EntryRequest;
+  enabled: boolean;
 }) {
   const action = reviewOnlineEntryRequest.bind(null, eventId);
   const [state, formAction, pending] = useActionState<EntryFormState, FormData>(
@@ -165,7 +169,7 @@ function RequestRow({
             <button
               name="decision"
               value="declined"
-              disabled={pending}
+              disabled={pending || !enabled}
               className="flex h-9 items-center justify-center gap-1.5 rounded-md border border-[#ccd4d0] text-xs font-bold disabled:opacity-50"
             >
               <X size={15} /> Decline
@@ -173,7 +177,7 @@ function RequestRow({
             <button
               name="decision"
               value="accepted"
-              disabled={pending}
+              disabled={pending || !enabled}
               className="flex h-9 items-center justify-center gap-1.5 rounded-md brand-accent-fill text-xs font-bold text-white disabled:opacity-50"
             >
               {pending ? (

@@ -14,6 +14,7 @@ export interface ActiveProducer {
   entryLabelStyle: EntryLabelStyle;
   role: "owner" | "admin" | "operator" | "viewer";
   timingStaff?: boolean;
+  entryOffice?: boolean;
 }
 
 export async function getProducers(): Promise<ActiveProducer[]> {
@@ -31,7 +32,7 @@ export async function getProducers(): Promise<ActiveProducer[]> {
   if (error || !data?.length) return [];
   return data.map((membership) => {
     const producer = membership.producers as unknown as { id: string; name: string; slug: string; timezone: string; brand_primary: string; brand_accent: string; entry_label_style: EntryLabelStyle };
-    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: producerAccessRole(membership.role), timingStaff: membership.role === "timing_staff" };
+    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: producerAccessRole(membership.role), timingStaff: membership.role === "timing_staff", entryOffice: membership.role === "entry_office" };
   });
 }
 

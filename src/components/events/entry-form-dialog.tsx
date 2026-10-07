@@ -31,11 +31,13 @@ export function EntryFormDialog({
   divisions,
   ropers,
   enabled = true,
+  manager = true,
 }: {
   eventId: string;
   divisions: EntryDivision[];
   ropers: Array<{ id: string; name: string; memberNumber: string }>;
   enabled?: boolean;
+  manager?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"member" | "guest">("member");
@@ -113,6 +115,7 @@ export function EntryFormDialog({
                   Member
                 </button>
                 <button
+                  disabled={!manager}
                   onClick={() => setMode("guest")}
                   className={cn(
                     "border-b-2 pb-3 text-sm font-bold",
@@ -138,7 +141,7 @@ export function EntryFormDialog({
                     ))}
                   </select>
                 </label>
-                <CommonEntryFields divisions={divisions} />
+                <CommonEntryFields divisions={divisions} manager={manager} />
                 <FormMessage state={state} />
                 <FormFooter pending={pending} close={() => setOpen(false)} />
               </form>
@@ -215,7 +218,7 @@ export function EntryFormDialog({
   );
 }
 
-function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
+function CommonEntryFields({ divisions, manager = true }: { divisions: EntryDivision[]; manager?: boolean }) {
   const [divisionId, setDivisionId] = useState("");
   const [eligibilityOverride, setEligibilityOverride] = useState(false);
   const options =
@@ -248,8 +251,8 @@ function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
             className={inputClass}
           >
             <option value="unpaid">Unpaid</option>
-            <option value="paid_cash">Paid cash</option>
-            <option value="comped">Comped</option>
+            {manager ? <option value="paid_cash">Paid cash</option> : null}
+            {manager ? <option value="comped">Comped</option> : null}
           </select>
         </label>
       </div>
@@ -286,7 +289,7 @@ function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
         </fieldset>
       ) : null}
       <div className="border-t border-[#e7ebe8] pt-4">
-        <label className="flex items-start gap-3 text-sm font-semibold">
+        {manager ? <label className="flex items-start gap-3 text-sm font-semibold">
           <input
             name="eligibilityOverride"
             type="checkbox"
@@ -301,7 +304,7 @@ function CommonEntryFields({ divisions }: { divisions: EntryDivision[] }) {
               classification, or age rules.
             </span>
           </span>
-        </label>
+        </label> : null}
         {eligibilityOverride ? (
           <label className="mt-3 block text-sm font-semibold">
             Override reason

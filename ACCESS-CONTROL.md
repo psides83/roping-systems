@@ -6,10 +6,13 @@ Public signup creates a personal roper login, never a producer or staff assignme
 
 ## Remaining Work
 
-- Specialized Event Manager, Entry Office, and Treasurer roles. Do not expose these until their database policies and privileged functions enforce their scoped permissions.
+- Specialized Event Manager and Treasurer roles. Do not expose these until their database policies and privileged functions enforce their scoped permissions.
+- Extend Entry Office to guest creation, online request review, and contact corrections with the same scoped authorization. These remain manager-only in the initial rollout.
 - Enforce event-specific assignments for specialized roles and test every write workflow.
 
-Roles now include owner, admin, operator, timing_staff, and viewer. Operator remains broad event-operating access, not a substitute for a limited timing or entry-office role.
+Roles now include owner, admin, operator, timing_staff, entry_office, and viewer. Operator remains broad event-operating access, not a substitute for a limited timing or entry-office role.
+
+Entry Office can add eligible existing members, select optional entry fees, check contestants in, and record cash payments for assigned non-completed/non-cancelled events. Entries begin unpaid; cash must be recorded through the ledger. Eligibility exceptions, comps, waivers, payment voids/refunds, transfers, guest creation, and online-request review remain manager-only. Qualification snapshots are validated before entry; if stale, a manager must refresh them. Entry Office cannot publish arbitrary qualification snapshots. Like Timing Staff, Entry Office retains producer-wide read access but a read-only base access level outside explicitly authorized workflows.
 
 Owners and administrators can record and remove event assignments in Staff access. Assignments are audited, restricted to the same producer, and automatically removed when staff access or an event is deleted. Timing Staff can record times, apply permitted penalties, correct with a reason, and schedule reruns only for assigned events. They retain producer-wide read access, but no entries, funds, payouts, rules, draw building, round completion, or event finalization writes. Existing Operator access stays producer-wide, and Viewers gain no write access from assignments. The producer context intentionally gives specialized roles a read-only base access level; the timing workspace separately checks database permission. Direct scoring internals are not callable by authenticated clients; the penalty-validating workflow calls them internally.
 

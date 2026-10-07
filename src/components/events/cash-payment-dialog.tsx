@@ -36,6 +36,7 @@ export function CashPaymentDialog({
   balanceDueCents,
   payments,
   enabled,
+  canVoid = enabled,
 }: {
   eventId: string;
   personId: string;
@@ -43,6 +44,7 @@ export function CashPaymentDialog({
   balanceDueCents: number;
   payments: CashPaymentRecord[];
   enabled: boolean;
+  canVoid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const boundAction = recordCashPayment.bind(null, eventId, personId);
@@ -216,7 +218,7 @@ export function CashPaymentDialog({
                           >
                             <Printer size={13} /> Receipt
                           </Link>
-                          {!payment.voided && enabled ? (
+                          {!payment.voided && canVoid ? (
                             <VoidPaymentForm
                               eventId={eventId}
                               paymentId={payment.id}

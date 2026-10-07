@@ -548,6 +548,8 @@ export default async function EventEntriesPage({
     })),
   }));
 
+  const officePermission = await supabase.rpc("can_enter_event", { target_event: eventId });
+  if (officePermission.error) throw new Error("Unable to check entry office access.");
   return (
     <EntriesWorkspace
       eventId={eventId}
@@ -558,6 +560,7 @@ export default async function EventEntriesPage({
       requests={requests}
       totalEntries={entryData?.length ?? 0}
       canEdit={producer.role !== "viewer"}
+      canOffice={Boolean(officePermission.data)}
     />
   );
 }
@@ -571,6 +574,7 @@ function EntriesWorkspace({
   requests,
   totalEntries,
   canEdit,
+  canOffice = canEdit,
 }: {
   eventId: string;
   title: string;
@@ -603,6 +607,7 @@ function EntriesWorkspace({
   }>;
   totalEntries: number;
   canEdit: boolean;
+  canOffice?: boolean;
 }) {
   const totalCharges = contestants.reduce(
     (sum, contestant) => sum + contestant.totalCents,
@@ -638,7 +643,8 @@ function EntriesWorkspace({
             eventId={eventId}
             divisions={divisions}
             ropers={ropers}
-            enabled={canEdit}
+            enabled={canOffice}
+            manager={canEdit}
           />
         }
       />
@@ -666,12 +672,13 @@ function EntriesWorkspace({
           icon={Banknote}
         />
       </section>
-      <OnlineEntryRequestList eventId={eventId} requests={requests} />
+      <OnlineEntryRequestList eventId={eventId} requests={requests} enabled={canEdit} />
       <EntryLedger
         eventId={eventId}
         contestants={contestants}
         divisions={divisions.map(({ id, name }) => ({ id, name }))}
         canEdit={canEdit}
+        canOffice={canOffice}
       />
     </div>
   );

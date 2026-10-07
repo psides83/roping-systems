@@ -28,7 +28,7 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
 export async function refreshEventQualificationChecks(eventId: string, ropingId?: string): Promise<string | null> {
   try {
     const producer = await getActiveProducer();
-    if (!producer || producer.role === "viewer") return "Manager access is required.";
+    if (!producer || (producer.role === "viewer" && !producer.entryOffice)) return "Manager access is required.";
     const db = await createClient();
     let query = db.from("roping_qualification_checks")
       .select("event_roping_id,season_id,class_key,source_revision,rule_updated_at,event_ropings!inner(event_id,classification_id,division_id,competition_format)")
@@ -48,6 +48,7 @@ export async function refreshEventQualificationChecks(eventId: string, ropingId?
       if (revision.error || rule.error) return "Unable to refresh qualification standings.";
       if (!rule.data) return "This roping's qualification requirements were removed. Update its qualification setup.";
       if (String(check.source_revision) !== String(revision.data.standings_revision) || check.rule_updated_at !== rule.data.updated_at) {
+        if (producer.entryOffice) return "A manager must refresh this roping's qualification standings before entries can be accepted.";
         await buildQualificationCheck(check.event_roping_id, check.season_id, check.class_key);
       }
     }
