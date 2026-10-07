@@ -12,7 +12,7 @@ export function ProducerSeasons({ seasons, canEdit }: { seasons: ProducerSeason[
   const [editing, setEditing] = useState<ProducerSeason | "new" | null>(null);
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
-  return <section className="mt-6 border-t border-[#e7ebe8] pt-5">
+  return <section>
     <header className="flex flex-wrap items-center justify-between gap-3">
       <h3 className="font-bold">Seasons</h3>
       {canEdit ? <button type="button" onClick={() => { setEditing("new"); setMessage(""); }} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold"><Plus size={15} /> Add season</button> : null}

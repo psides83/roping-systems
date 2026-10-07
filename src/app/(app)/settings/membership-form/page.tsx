@@ -6,6 +6,7 @@ import {
   type MembershipFormDraft,
 } from "@/components/members/membership-form-builder";
 import { PageHeader } from "@/components/ui/page-header";
+import { ProducerSettingsTabs } from "@/components/settings/producer-settings-tabs";
 import {
   getStandardMembershipField,
   type CustomMembershipSection,
@@ -144,7 +145,7 @@ export default async function MembershipFormSettingsPage() {
           ) : null
         }
       />
-
+      <ProducerSettingsTabs active="membership" />
       {enabled ? (
         <MembershipFormBuilder initial={initial} />
       ) : (

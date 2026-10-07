@@ -5,6 +5,9 @@ import { StaffAccessForm } from "@/components/settings/staff-access-form";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { isPlatformOwner } from "@/lib/platform-access";
 import { StaffEventForm } from "@/components/settings/staff-event-form";
+import { ProducerSettingsTabs } from "@/components/settings/producer-settings-tabs";
+import { StaffIdentity } from "@/components/settings/staff-identity";
+import { PageHeader } from "@/components/ui/page-header";
 export default async function StaffPage() {
   const producer = await getActiveProducer();
   if (!producer) return <p>Select a producer.</p>;
@@ -15,17 +18,18 @@ export default async function StaffPage() {
     .eq("producer_id",producer.id).order("id").range(first,last), "Unable to load events") : [];
   const assignments = canManage ? await readAllRows((first,last) => db.from("staff_event_assignments").select("event_id,user_id")
     .eq("producer_id",producer.id).order("event_id").order("user_id").range(first,last), "Unable to load event assignments") : [];
-  const staff = await readAllRows((first,last) => db.from("producer_staff_directory").select("user_id,email,role")
-    .eq("producer_id",producer.id).order("user_id").range(first,last), "Unable to load staff");
+  const staff = await readAllRows((first,last) => db.from("producer_staff_directory").select("user_id,email,role,display_name")
+    .eq("producer_id",producer.id).order("display_name", { nullsFirst: false }).order("user_id").range(first,last), "Unable to load staff");
   const invitations = canManage ? await readAllRows((first,last) => db.from("producer_staff_invitations")
     .select("id,email,role,expires_at,email_status").eq("producer_id",producer.id).is("accepted_at",null).is("cancelled_at",null)
     .order("id").range(first,last), "Unable to load invitations") : [];
-  return <section className="space-y-6"><Link href="/settings" className="text-sm font-semibold text-[#66716b]">Back to settings</Link>
-    <h1 className="text-2xl font-bold">Staff access</h1>
+  return <section className="space-y-5">
+    <PageHeader title="Producer settings" description="Staff access" />
+    <ProducerSettingsTabs active="staff" />
     {canManage ? <details className="border-y border-[#dfe4e1] py-4"><summary className="cursor-pointer text-lg font-bold">Event assignments</summary>
       <p className="mt-2 text-sm text-[#66716b]">Operator access: producer-wide</p>
       <div className="mt-4 divide-y divide-[#dfe4e1]">{staff.map((person) => <div key={person.user_id} className="space-y-3 py-4">
-        <p className="break-all text-sm font-semibold">{person.email}</p>
+        <StaffIdentity name={person.display_name} email={person.email} />
         {assignments.filter((item) => item.user_id === person.user_id).map((item) => <div key={item.event_id} className="flex flex-wrap items-center gap-3 text-sm">
           <span>{events.find((event) => event.id === item.event_id)?.title ?? "Event"}</span><StaffEventForm userId={person.user_id} eventId={item.event_id} />
         </div>)}
@@ -34,7 +38,7 @@ export default async function StaffPage() {
     {canManage ? <StaffAccessForm operation="invite" owner={producer.role === "owner"} platformOwner={platformOwner} /> : null}
     <div className="divide-y divide-[#dfe4e1] border-y border-[#dfe4e1]">{staff.map((person) => {
       const editable = canManage && person.role !== "owner" && (producer.role === "owner" || !["owner","admin"].includes(person.role));
-      return <div key={person.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><p className="break-all text-sm font-semibold">{person.email}</p><p className="mt-1 text-xs capitalize text-[#66716b]">{person.role === "admin" ? "Administrator" : person.role.replaceAll("_", " ")}</p></div>
+      return <div key={person.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><StaffIdentity name={person.display_name} email={person.email} /><p className="mt-1 text-xs capitalize text-[#66716b]">{person.role === "admin" ? "Administrator" : person.role.replaceAll("_", " ")}</p></div>
         {editable ? <div className="flex flex-wrap gap-2"><StaffAccessForm operation="role" id={person.user_id} role={person.role} owner={producer.role === "owner"} /><StaffAccessForm operation="remove" id={person.user_id} /></div> : null}</div>;
     })}</div>
     {canManage ? <section><h2 className="text-lg font-bold">Pending invitations</h2><p className="mt-2 text-sm text-[#66716b]">Acceptance page: <Link href="/staff-invitations" className="underline">{process.env.NEXT_PUBLIC_SITE_URL ?? "https://roping-systems.vercel.app"}/staff-invitations</Link></p>

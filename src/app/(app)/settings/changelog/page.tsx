@@ -1,5 +1,6 @@
 import { History, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { ProducerSettingsTabs } from "@/components/settings/producer-settings-tabs";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -202,6 +203,7 @@ export default async function ChangelogPage({
         title="Producer changelog"
         description="Review data entry and configuration changes, including who made each change and exactly what was modified."
       />
+      <ProducerSettingsTabs active="activity" />
       <form className="flex flex-wrap items-end gap-3 rounded-md border border-[#dfe4e1] bg-white p-4">
         <label className="block max-w-full text-xs font-bold uppercase text-[#66716b]">
           Record type

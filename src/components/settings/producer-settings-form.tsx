@@ -33,8 +33,8 @@ export function ProducerSettingsForm({
   >(updateProducerSettings, {});
   return (
     <form action={action} className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-semibold">
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="block w-80 max-w-full text-sm font-semibold">
           Producer name
           <input
             name="name"
@@ -44,7 +44,7 @@ export function ProducerSettingsForm({
             required
           />
         </label>
-        <label className="block text-sm font-semibold">
+        <label className="block w-80 max-w-full text-sm font-semibold">
           Public display name
           <input
             name="publicName"
@@ -54,7 +54,7 @@ export function ProducerSettingsForm({
             placeholder="Defaults to producer name"
           />
         </label>
-        <label className="block text-sm font-semibold">
+        <label className="block w-80 max-w-full text-sm font-semibold">
           Public contact email
           <input
             name="email"
@@ -64,7 +64,7 @@ export function ProducerSettingsForm({
             className={inputClass}
           />
         </label>
-        <label className="block text-sm font-semibold">
+        <label className="block w-56 max-w-full text-sm font-semibold">
           Public contact phone
           <PhoneInput
             defaultValue={producer.phone}
@@ -72,7 +72,7 @@ export function ProducerSettingsForm({
             className={inputClass}
           />
         </label>
-        <label className="block text-sm font-semibold">
+        <label className="block w-40 max-w-full text-sm font-semibold">
           Event timezone
           <select
             name="timezone"
@@ -87,8 +87,7 @@ export function ProducerSettingsForm({
             <option value="America/New_York">Eastern</option>
           </select>
         </label>
-      </div>
-      <label className="block text-sm font-semibold">
+      <label className="block w-56 max-w-full text-sm font-semibold">
         Multiple-entry labels
         <select name="entryLabelStyle" defaultValue={entryLabelStyle} disabled={!canEdit}
           className="mt-2 block h-10 w-56 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm">
@@ -96,7 +95,8 @@ export function ProducerSettingsForm({
           <option value="letter">Letters (A, B, C)</option>
         </select>
       </label>
-      <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+      </div>
+      <label className="flex items-center gap-3 text-sm font-semibold">
         <input
           name="allowGuestEntries"
           type="checkbox"
@@ -104,7 +104,7 @@ export function ProducerSettingsForm({
           disabled={!canEdit}
           className="h-4 w-4 accent-[var(--brand-accent)]"
         />{" "}
-        Allow producers to enable non-member entries
+        Allow non-member entries
       </label>
       {state.message ? (
         <p
