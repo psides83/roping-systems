@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { MobileActionMenu } from "@/components/ui/mobile-action-menu";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { ShortRoundTiePolicy } from "@/components/events/short-round-settings";
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
@@ -739,17 +740,19 @@ export default async function RopingDetailPage({
         description={`${event.startsAt} · ${event.location}`}
         actions={
           <>
+            <MobileActionMenu>
             <Link
               href={event.publicationState === "published"
                 ? `/public/${producerSlug}?event=${encodeURIComponent(event.slug)}#results`
                 : `/public/${producerSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="grid h-10 w-10 place-items-center rounded-md border border-[#d7ddda] bg-white"
+              className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold sm:w-10 sm:justify-center sm:px-0"
               aria-label="View public page (opens in a new tab)"
               title={event.publicationState === "published" ? "View this event's public results" : "View producer page; publish this event to display its results"}
             >
               <ExternalLink size={17} />
+              <span className="sm:hidden">Public page</span>
             </Link>
             {isSupabaseConfigured() ? (
               <>
@@ -795,6 +798,7 @@ export default async function RopingDetailPage({
                 </Link>
               </>
             ) : null}
+            </MobileActionMenu>
             <Link
               href={
                 event.status === "in_progress"
@@ -803,11 +807,11 @@ export default async function RopingDetailPage({
                     : "/events/current"
                   : "#setup"
               }
-              className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"
+              className="order-1 flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-md brand-primary-fill px-4 text-sm font-semibold text-white sm:order-none sm:h-10 [&>svg]:shrink-0"
             >
               <Settings2 size={16} />
               {event.status === "in_progress"
-                ? "Open event desk"
+                ? <><span className="sm:hidden">Event desk</span><span className="hidden sm:inline">Open event desk</span></>
                 : "Event setup"}
             </Link>
           </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { LoaderCircle, Pencil, X } from "lucide-react";
 import {
   updateEventDetails,
@@ -63,9 +64,17 @@ export function EventDetailsDialog({
     return () => window.clearTimeout(timeoutId);
   }, [state.success]);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
   return (
     <>
       <button
+        data-close-mobile-menu
         type="button"
         onClick={() => setOpen(true)}
         disabled={!editable}
@@ -74,11 +83,11 @@ export function EventDetailsDialog({
             ? "Edit event details"
             : "Event details lock when the event starts"
         }
-        className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold disabled:opacity-45"
+        className="flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold disabled:opacity-45 [&>svg]:shrink-0"
       >
         <Pencil size={15} /> Edit event
       </button>
-      {open ? (
+      {open ? createPortal(
         <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-black/45 p-4">
           <button
             type="button"
@@ -344,7 +353,7 @@ export function EventDetailsDialog({
               </div>
             </form>
           </section>
-        </div>
+        </div>, document.body
       ) : null}
     </>
   );
