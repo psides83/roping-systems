@@ -27,6 +27,29 @@ test('unofficial, other-season, and post-cutoff results do not count', () => {
   assert.deepEqual(rows, []);
 });
 
+test('per-entry attendance combines with once-per-roping attendance for finals', () => {
+  const { rows } = calculateSeasonStandings([
+    entry('a', '11', 100, { attendanceCount: 3 }),
+    entry('a', '11', 0, { ropingId: 'roping-2' }),
+    entry('a', '10', 0, { ropingId: 'roping-3', attendanceCount: 2 }),
+  ], [], season);
+  const row = rows.find(row => row.classId === '11');
+  assert.equal(row.ropingsEntered, 4);
+  assert.equal(qualifiesForStandings(row, { topPlaces: null, minimumRopings: 4 }), true);
+  assert.equal(qualifiesForStandings(row, { topPlaces: null, minimumRopings: 5 }), false);
+  assert.equal(rows.find(row => row.classId === '10').ropingsEntered, 2);
+});
+
+test('award breakdowns never multiply weighted attendance', () => {
+  const { rows } = calculateSeasonStandings([
+    entry('a', '11', 100, { attendanceCount: 3 }),
+    entry('a', '11', 50, { attendanceCount: 3 }),
+  ], [], season);
+  assert.equal(rows[0].ropingsEntered, 3);
+  assert.equal(rows[0].winningsCents, 150);
+  assert.throws(() => calculateSeasonStandings([entry('a', '11', 0, { attendanceCount: 1.5 })], [], season));
+});
+
 test('earnings and attendance belong to the class competed in', () => {
   const { rows } = calculateSeasonStandings([entry('number-15', '11.5', 100)], [], season);
   assert.equal(rows[0].classId, '11.5');

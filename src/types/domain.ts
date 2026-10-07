@@ -76,6 +76,7 @@ export interface DivisionTemplateSummary {
   minimumRunsBetweenEntries?: number;
   numberOfRuns?: number;
   cattleDrawEnabled?: boolean;
+  attendanceCountMode?: "once_per_roping" | "per_entry";
   allowGuests: boolean;
   isActive: boolean;
   disciplineId?: string | null;

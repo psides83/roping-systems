@@ -5,6 +5,7 @@ export interface StandingContribution {
   date: string;
   official: boolean;
   winningsCents: number;
+  attendanceCount?: number;
 }
 
 export interface StandingMove {
@@ -53,7 +54,7 @@ export function calculateSeasonStandings(
   cutoffDate = season.endsOn,
 ): { rows: StandingRow[]; carryovers: CarryoverRecord[] } {
   const balances = new Map<string, Map<string, number>>();
-  const attendance = new Map<string, Map<string, Set<string>>>();
+  const attendance = new Map<string, Map<string, Map<string, number>>>();
   const carryovers: CarryoverRecord[] = [];
   const end = cutoffDate < season.endsOn ? cutoffDate : season.endsOn;
   const inPeriod = (date: string) => date >= season.startsOn && date <= end;
@@ -80,8 +81,10 @@ export function calculateSeasonStandings(
       money.set(item.classId, (money.get(item.classId) ?? 0) + item.winningsCents);
       if (!attendance.has(item.roperId)) attendance.set(item.roperId, new Map());
       const classes = attendance.get(item.roperId)!;
-      if (!classes.has(item.classId)) classes.set(item.classId, new Set());
-      classes.get(item.classId)!.add(item.ropingId);
+      const count = item.attendanceCount ?? 1;
+      if (!Number.isSafeInteger(count) || count < 1) throw new Error("Roping count must be a positive whole number.");
+      if (!classes.has(item.classId)) classes.set(item.classId, new Map());
+      classes.get(item.classId)!.set(item.ropingId, count);
       continue;
     }
 
@@ -126,7 +129,7 @@ export function calculateSeasonStandings(
   const rows: StandingRow[] = [];
   for (const [roperId, classes] of balances) {
     for (const [classId, winningsCents] of classes) {
-      const ropingsEntered = attendance.get(roperId)?.get(classId)?.size ?? 0;
+      const ropingsEntered = Array.from(attendance.get(roperId)?.get(classId)?.values() ?? []).reduce((sum, count) => sum + count, 0);
       if (winningsCents > 0 || ropingsEntered > 0) {
         rows.push({ roperId, classId, winningsCents, ropingsEntered, rank: 0 });
       }

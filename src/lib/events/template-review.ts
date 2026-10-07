@@ -17,7 +17,7 @@ const labels: Record<string, string> = {
   allow_non_members: "Non-member entries", timer_count: "Timers", timer_resolution: "Timer method",
   minimum_positions_between_entries: "Minimum draw spacing", competition_format: "Format",
   second_round_ordering: "Second-round order", later_round_ordering: "Later-round order",
-  cattle_draw_enabled: "Drawn cattle", contributes_to_payout: "Main purse contribution",
+  cattle_draw_enabled: "Drawn cattle", attendance_count_mode: "Member roping count", contributes_to_payout: "Main purse contribution",
   included_in_entry_price: "Included in entry price", is_required: "Required", amount_cents: "Fee",
   scope: "Charged per", kind: "Type", fund_tracking: "Added-money fund tracking", sort_order: "Display order", enabled: "Enabled",
   tie_policy: "Ties", brackets: "Entry brackets", minimumEntries: "Minimum entries",

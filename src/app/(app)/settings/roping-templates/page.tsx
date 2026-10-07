@@ -94,7 +94,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("roping_templates")
       .select(
-        "id, name, description, division_id, main_round_count, cattle_draw_enabled, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, division_id, main_round_count, cattle_draw_enabled, attendance_count_mode, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("producer_id", producer.id)
       .order("sort_order")
@@ -161,6 +161,7 @@ async function getDivisionData(): Promise<{
       minimumRunsBetweenEntries: division.minimum_positions_between_entries,
       numberOfRuns: division.main_round_count,
       cattleDrawEnabled: division.cattle_draw_enabled,
+      attendanceCountMode: division.attendance_count_mode as "once_per_roping" | "per_entry",
       allowGuests: division.allow_non_members,
       isActive: division.is_active,
       disciplineId: division.division_id,
@@ -298,6 +299,7 @@ export default async function DivisionSettingsPage() {
                   {division.description || "No description"}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-[#758078]">
+                  <span>{division.attendanceCountMode === "per_entry" ? "Each entry counts toward attendance" : "Attendance counts once per roping"}</span>
                   <span>
                     {division.numberOfRuns}{" "}
                     {division.numberOfRuns === 1 ? "round" : "rounds"}

@@ -323,6 +323,13 @@ function EventTemplateDialog({
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
+                Member roping count
+                <select name="attendanceCountMode" defaultValue={template?.attendanceCountMode ?? "once_per_roping"} className={inputClass}>
+                  <option value="once_per_roping">Once per roping</option>
+                  <option value="per_entry">Each entry</option>
+                </select>
+              </label>
+              <label className="block text-sm font-semibold">
                 Main rounds
                 <input
                   name="numberOfRuns"
