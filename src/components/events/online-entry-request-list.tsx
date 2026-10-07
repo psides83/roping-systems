@@ -14,6 +14,7 @@ import {
   reviewOnlineEntryRequest,
   type EntryFormState,
 } from "@/app/(app)/events/[eventId]/entries/actions";
+import { formatPhoneNumber } from "@/lib/utils";
 
 interface EntryRequest {
   id: string;
@@ -33,10 +34,12 @@ export function OnlineEntryRequestList({
   eventId,
   requests,
   enabled = true,
+  manager = true,
 }: {
   eventId: string;
   requests: EntryRequest[];
   enabled?: boolean;
+  manager?: boolean;
 }) {
   if (!requests.length) return null;
   return (
@@ -56,7 +59,7 @@ export function OnlineEntryRequestList({
       </div>
       <div className="divide-y divide-[#e7ebe8]">
         {requests.map((request) => (
-          <RequestRow key={request.id} eventId={eventId} request={request} enabled={enabled} />
+          <RequestRow key={request.id} eventId={eventId} request={request} enabled={enabled} manager={manager} />
         ))}
       </div>
     </section>
@@ -67,10 +70,12 @@ function RequestRow({
   eventId,
   request,
   enabled,
+  manager,
 }: {
   eventId: string;
   request: EntryRequest;
   enabled: boolean;
+  manager: boolean;
 }) {
   const action = reviewOnlineEntryRequest.bind(null, eventId);
   const [state, formAction, pending] = useActionState<EntryFormState, FormData>(
@@ -105,7 +110,7 @@ function RequestRow({
                 href={`tel:${request.phone}`}
                 className="flex items-center gap-1.5"
               >
-                <Phone size={13} /> {request.phone}
+                <Phone size={13} /> {formatPhoneNumber(request.phone)}
               </a>
             ) : null}
             {request.birthDate ? (
@@ -147,6 +152,7 @@ function RequestRow({
             Office note
             <input
               name="reviewNote"
+              disabled={!enabled || pending}
               required={eligibilityOverride}
               minLength={eligibilityOverride ? 5 : undefined}
               className="mt-1.5 h-9 w-full rounded-md border border-[#ccd4d0] px-3 text-sm outline-none focus:border-[var(--brand-accent)]"
@@ -155,16 +161,17 @@ function RequestRow({
               }
             />
           </label>
-          <label className="mt-2 flex items-start gap-2 text-xs font-semibold text-[#66716b]">
+          {manager ? <label className="mt-2 flex items-start gap-2 text-xs font-semibold text-[#66716b]">
             <input
               name="eligibilityOverride"
+              disabled={!enabled || pending}
               type="checkbox"
               checked={eligibilityOverride}
               onChange={(event) => setEligibilityOverride(event.target.checked)}
               className="mt-0.5 h-4 w-4 accent-[var(--brand-accent)]"
             />
             Approve eligibility exception
-          </label>
+          </label> : null}
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button
               name="decision"

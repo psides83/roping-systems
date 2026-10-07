@@ -269,8 +269,10 @@ export async function addGuestEntry(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager(eventId);
-  if (!context) return { message: "Manager access is required." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
+  const roping = await context.supabase.from("event_ropings").select("id").eq("id", parsed.data.divisionId).eq("event_id", eventId).maybeSingle();
+  if (roping.error || !roping.data) return { message: "Choose a roping from this event." };
   const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
   if (qualificationError) return { message: qualificationError };
   const { data: entryId, error } = await context.supabase.rpc(
@@ -316,8 +318,10 @@ export async function reviewOnlineEntryRequest(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager(eventId);
-  if (!context) return { message: "Manager access is required." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
+  const request = await context.supabase.from("online_entry_submissions").select("id").eq("id", parsed.data.requestId).eq("event_id", eventId).maybeSingle();
+  if (request.error || !request.data) return { message: "Choose a request from this event." };
 
   if (parsed.data.decision === "accepted") {
     const qualificationError = await refreshEventQualificationChecks(eventId);
@@ -343,6 +347,25 @@ export async function reviewOnlineEntryRequest(
         ? `${data} ${data === 1 ? "entry was" : "entries were"} added.`
         : "Request declined.",
   };
+}
+
+export async function correctContestantContact(eventId: string, roperId: string, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
+  const parsed = z.object({
+    email: z.union([z.literal(""), z.email()]),
+    phone: z.string().trim(),
+    reason: z.string().trim().min(5, "Enter a brief correction reason.").max(300),
+  }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { message: parsed.error.issues[0]?.message };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
+  const { error } = await context.supabase.rpc("correct_event_roper_contact", {
+    target_event: eventId, target_roper: roperId, contact_email: parsed.data.email,
+    contact_phone: parsed.data.phone, correction_reason: parsed.data.reason,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/events/${eventId}/entries`);
+  revalidatePath("/members");
+  return { success: true, message: "Contact details corrected." };
 }
 
 export async function updateContestantPayment(

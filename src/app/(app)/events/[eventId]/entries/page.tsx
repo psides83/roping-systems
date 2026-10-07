@@ -219,7 +219,7 @@ export default async function EventEntriesPage({
     supabase
       .from("roping_entries")
       .select(
-        "id, entry_number, source, payment_status, competition_status, roper_id, handicap_time_credit_seconds, eligibility_overridden, eligibility_note, eligibility_override_reason, event_ropings!inner(id, name, scheduled_date), ropers!inner(first_name, last_name)",
+        "id, entry_number, source, payment_status, competition_status, roper_id, handicap_time_credit_seconds, eligibility_overridden, eligibility_note, eligibility_override_reason, event_ropings!inner(id, name, scheduled_date), ropers!inner(first_name, last_name, email, phone)",
       )
       .eq("event_id", eventId)
       .order("entered_at", { ascending: false }),
@@ -400,6 +400,8 @@ export default async function EventEntriesPage({
     const person = entry.ropers as unknown as {
       first_name: string;
       last_name: string;
+      email: string | null;
+      phone: string | null;
     };
     const division = entry.event_ropings as unknown as {
       id: string;
@@ -413,6 +415,8 @@ export default async function EventEntriesPage({
     ) ?? {
       personId: entry.roper_id,
       name: `${person.first_name} ${person.last_name}`,
+      email: person.email,
+      phone: person.phone,
       memberNumber: memberNumbers.get(entry.roper_id) ?? null,
       paymentStatus: entry.payment_status as PaymentStatus,
       totalCents: 0,
@@ -681,7 +685,7 @@ function EntriesWorkspace({
           icon={Banknote}
         />
       </section>
-      <OnlineEntryRequestList eventId={eventId} requests={requests} enabled={canEdit} />
+      <OnlineEntryRequestList eventId={eventId} requests={requests} enabled={canOffice} manager={canEdit} />
       <EntryLedger
         eventId={eventId}
         contestants={contestants}

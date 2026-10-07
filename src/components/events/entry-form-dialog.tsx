@@ -115,7 +115,6 @@ export function EntryFormDialog({
                   Member
                 </button>
                 <button
-                  disabled={!manager}
                   onClick={() => setMode("guest")}
                   className={cn(
                     "border-b-2 pb-3 text-sm font-bold",
@@ -192,6 +191,7 @@ export function EntryFormDialog({
                   </label>
                 </div>
                 <CommonEntryFields
+                  manager={manager}
                   divisions={divisions.filter(
                     (division) => division.allowGuests,
                   )}
@@ -235,7 +235,7 @@ function CommonEntryFields({ divisions, manager = true }: { divisions: EntryDivi
             className={inputClass}
             required
           >
-            <option value="">Choose an class</option>
+            <option value="">Choose a class</option>
             {divisions.map((division) => (
               <option key={division.id} value={division.id}>
                 {division.name}

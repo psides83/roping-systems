@@ -1,5 +1,6 @@
 "use client";
 import { EntryLabel } from "./entry-label";
+import { ContestantContactDialog } from "./contestant-contact-dialog";
 
 import { useActionState, useMemo, useState } from "react";
 import { ChevronDown, LoaderCircle, Search, ShieldAlert } from "lucide-react";
@@ -31,6 +32,8 @@ type PaymentSummary = PaymentStatus | "mixed";
 export interface LedgerContestant {
   personId: string;
   name: string;
+  email?: string | null;
+  phone?: string | null;
   memberNumber: string | null;
   paymentStatus: PaymentSummary;
   totalCents: number;
@@ -238,6 +241,7 @@ function ContestantRow({
         <p className="mt-1 font-mono text-[11px] text-[#758078]">
           {contestant.memberNumber ?? "Guest"}
         </p>
+        {canOffice ? <ContestantContactDialog eventId={eventId} roperId={contestant.personId} email={contestant.email ?? null} phone={contestant.phone ?? null} /> : null}
       </td>
       <td className="px-5 py-4 text-sm font-semibold">
         {contestant.entries.length}

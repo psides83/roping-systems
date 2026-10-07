@@ -7,6 +7,8 @@ declare platform_user uuid; manager_user uuid:=gen_random_uuid(); treasurer_user
   deposit_id uuid:=gen_random_uuid(); debit_id uuid:=gen_random_uuid(); receipt_id uuid:=gen_random_uuid();
   award record; balance bigint;
   foreign_producer uuid;
+  finalist uuid;
+  transfer_destination uuid:=gen_random_uuid();
 begin
   select id into strict platform_user from auth.users where lower(email)='psides83@hotmail.com';
   select chosen.id,chosen.producer_id,chosen.event_id,chosen.scheduled_date,chosen.arena_name into strict target
@@ -17,6 +19,9 @@ begin
       and not exists(select 1 from public.roping_entries e where e.event_roping_id=target.id and e.roper_id=m.roper_id)
     order by m.id limit 1;
   select id into strict other_event from public.events where id<>target.event_id order by id limit 1;
+  insert into public.event_ropings select (jsonb_populate_record(null::public.event_ropings,to_jsonb(original)||jsonb_build_object('id',transfer_destination,'name','Rollback transfer destination'))).* from public.event_ropings original where original.id=target.id;
+  insert into public.event_fees select (jsonb_populate_record(null::public.event_fees,to_jsonb(original)||jsonb_build_object('id',gen_random_uuid(),'event_roping_id',transfer_destination))).* from public.event_fees original where original.event_roping_id=target.id;
+  perform public.apply_short_round_settings(target.producer_id,target.id,true,'[{"minimumEntries":1,"maximumEntries":null,"comebackCount":1}]');
   insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values
     (manager_user,'manager-'||manager_user::text||'@example.com',now(),'{}'),
     (treasurer_user,'treasurer-'||treasurer_user::text||'@example.com',now(),'{}');
@@ -59,6 +64,9 @@ begin
   end;
   perform public.save_roping_schedule(target.id,target.scheduled_date,'fixed',target.scheduled_date+time '09:00','Permission test',target.arena_name);
   created_entry:=public.create_event_entry_with_eligibility_override(target.id,member_roper,'office','paid_cash',null);
+  perform public.transfer_event_entry_with_eligibility_override(created_entry,transfer_destination,'Permission test move',null);
+  if not exists(select 1 from public.roping_entries where id=created_entry and event_roping_id=transfer_destination) then raise exception 'Manager transfer did not move the entry'; end if;
+  perform public.transfer_event_entry_with_eligibility_override(created_entry,target.id,'Permission test restore',null);
   perform public.initialize_roping_payout_plans(target.event_id);
   perform public.set_roping_in_progress(target.event_id);
   for r in select er.* from public.event_ropings er where er.event_id=target.event_id
@@ -73,7 +81,21 @@ begin
     end loop;
     if r.short_round_enabled then
       perform public.seed_short_round(r.id);
+      select cr.entry_id into finalist from public.competition_runs cr where cr.event_roping_id=r.id and cr.round_number>r.main_round_count limit 1;
+      if finalist is null then raise exception 'Short-round test did not generate a finalist'; end if;
+      if finalist is not null then
+        perform public.manage_short_round_qualifier(r.id,finalist,'removed','Permission test field correction');
+        perform public.manage_short_round_qualifier(r.id,finalist,'added','Permission test field restoration');
+      end if;
       perform public.lock_short_round_field(r.id);
+      if finalist is not null then
+        begin
+          perform public.manage_short_round_qualifier(r.id,finalist,'removed','Unauthorized locked change');
+          raise exception 'Manager changed a locked finalist field';
+        exception when others then
+          if sqlerrm<>'The short round field is locked' then raise; end if;
+        end;
+      end if;
       for run in select cr.id from public.competition_runs cr where cr.event_roping_id=r.id and cr.round_number>r.main_round_count loop
         select array_agg(12.34::numeric) into readings from generate_series(1,r.timer_count);
         perform public.save_run_with_penalties(run.id,readings,'{}','complete');
@@ -122,6 +144,15 @@ begin
   if found then raise exception 'Treasurer edited classifications'; end if;
   update public.competition_runs set id=id where producer_id=target.producer_id;
   if found then raise exception 'Treasurer edited competition'; end if;
+  perform set_config('request.jwt.claim.sub',platform_user::text,true);
+  perform public.assign_staff_event(target.producer_id,target.event_id,manager_user,false);
+  perform set_config('request.jwt.claim.sub',manager_user::text,true);
+  begin
+    perform public.set_event_publication(target.event_id,'unpublished');
+    raise exception 'Revoked manager retained event write access';
+  exception when others then
+    if sqlerrm<>'Event management access is required' then raise; end if;
+  end;
 end;
 $$;
 rollback;
