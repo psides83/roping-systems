@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 import { isPlatformOwner } from "@/lib/platform-access";
+import { sendStaffInvitation } from "@/lib/send-staff-invitation";
 
 export interface ProducerState {
   message?: string;
@@ -13,6 +14,7 @@ export interface ProducerState {
 }
 
 const producerSchema = z.object({
+  ownerEmail: z.string().trim().toLowerCase().email("Enter the producer owner's email."),
   name: z
     .string()
     .trim()
@@ -41,9 +43,10 @@ export async function createProducer(
   if (!claims?.claims)
     return { message: "Your session expired. Sign in and try again." };
 
-  const { data, error } = await supabase.rpc("create_organization", {
-    organization_name: parsed.data.name,
-    organization_slug: parsed.data.slug,
+  const { data, error } = await supabase.rpc("provision_producer", {
+    producer_name: parsed.data.name,
+    producer_slug: parsed.data.slug,
+    owner_email: parsed.data.ownerEmail,
   });
 
   if (error)
@@ -53,12 +56,15 @@ export async function createProducer(
           ? "That public URL is already in use."
           : error.message,
     };
+  const created = data?.[0];
+  if (!created) return { message: "Producer setup did not return a confirmation." };
+  await sendStaffInvitation(created.invitation_id);
   const cookieStore = await cookies();
-  cookieStore.set("active_producer_id", data as string, {
+  cookieStore.set("active_producer_id", created.producer_id, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });
-  redirect("/dashboard");
+  redirect("/settings/staff");
 }

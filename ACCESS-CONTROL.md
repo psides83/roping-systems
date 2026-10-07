@@ -6,11 +6,12 @@ Public signup creates a personal roper login, never a producer or staff assignme
 
 ## Remaining Work
 
-- Platform provisioning form that assigns an invited initial Producer Owner rather than the platform owner.
 - Specialized Event Manager, Entry Office, Timing Staff, and Treasurer roles. Do not expose these until their database policies and privileged functions enforce their scoped permissions.
 - Event-specific assignments and permission tests across every write workflow.
 
 Existing roles remain owner, admin, operator, and viewer during this security foundation phase. Operator remains broad event-operating access, not a substitute for a limited timing or entry-office role.
+
+Platform provisioning requires the initial Producer Owner email. Creation and invitation are atomic; the platform account retains bootstrap owner access so it can manage pending invitations. Setup opens the staff page to show delivery status and allow retries. The invited owner receives access only after accepting with a matching verified account.
 
 Staff management is available at Settings > Manage staff. Invitations expire after seven days, require a matching verified auth email, and recheck the inviter's current authority at acceptance. Owners may invite administrators/operators/viewers; administrators may invite only operators/viewers. Only the platform owner's invitation form includes Producer Owner. Cancellation, role changes, and revocation are audited; direct authenticated writes to the staff table are revoked. Removing staff also cancels outstanding invitations for that person and producer.
 
