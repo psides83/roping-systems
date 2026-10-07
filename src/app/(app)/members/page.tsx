@@ -151,10 +151,12 @@ export default async function MembersPage() {
         title="Members"
         description="Manage memberships, division-specific classifications, and review history while each roper keeps one shared profile."
         actions={
+          <div className="flex flex-wrap items-center gap-3">
+          {canEdit && <Link href="/members/import" className="inline-flex items-center gap-2 rounded-md border border-[#dfe4e1] bg-white px-3 py-2 text-sm font-semibold">Import members</Link>}
           <AddMemberDialog
             configured={configured && canEdit}
             divisions={divisions}
-          />
+          /></div>
         }
       />
       <div className="grid gap-3 sm:grid-cols-3">
