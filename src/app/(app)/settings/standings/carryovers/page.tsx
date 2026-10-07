@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { calculateSeasonStandings } from "@/lib/season-standings";
 import { formatCurrency } from "@/lib/utils";
+import { readAllRows } from "@/lib/supabase/read-all-rows";
 
 export default async function CarryoversPage({ searchParams }: PageProps<"/settings/standings/carryovers">) {
   const producer = await getActiveProducer();
@@ -21,6 +22,10 @@ export default async function CarryoversPage({ searchParams }: PageProps<"/setti
   const profiles = new Map(source?.ropers.map((item) => [item.roperId, item]) ?? []);
   const classes = new Map(source?.classes.map((item) => [item.id, `${item.name} ${item.divisionName}`]) ?? []);
   const moves = new Map(source?.moves.map((item) => [item.id, item]) ?? []);
+  const history = source?.moves.length ? await readAllRows((first, last) => db
+    .from("membership_classification_history").select("id,membership_id")
+    .eq("producer_id", producer.id).order("id").range(first, last), "Unable to load carryover history links") : [];
+  const memberships = new Map(history.map((item) => [item.id, item.membership_id]));
   const search = typeof query.search === "string" ? query.search.slice(0, 100) : "";
   const status = typeof query.status === "string" ? query.status : "all";
   const records = calculation.carryovers.map((record) => {
@@ -44,12 +49,16 @@ export default async function CarryoversPage({ searchParams }: PageProps<"/setti
       <span><strong>{formatCurrency(records.reduce((sum, item) => sum + item.cappedCents, 0))}</strong> excluded by caps</span>
       <span><strong>{records.filter((item) => item.status === "retained_at_end").length}</strong> end-of-ladder reviews</span></div>
     <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white"><table className="w-full text-sm">
-      <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]"><tr><th className="p-3">Effective date</th><th className="p-3">Roper</th><th className="p-3">From / To</th><th className="p-3 text-right">Before move</th><th className="p-3 text-right">Carried</th><th className="p-3 text-right">Capped</th></tr></thead>
+      <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]"><tr><th className="hidden p-3 lg:table-cell">Effective date</th><th className="p-2 sm:p-3">Roper / Move</th><th className="hidden p-3 lg:table-cell">From / To</th><th className="hidden p-3 text-right sm:table-cell">Before move</th><th className="p-2 text-right sm:p-3">Carried</th><th className="p-2 text-right sm:p-3">Capped</th></tr></thead>
       <tbody>{visible.map((record) => <tr key={`${record.moveId}:${record.fromClassId}:${record.toClassId}`} className="border-t border-[#e7ebe8] align-top">
-        <td className="whitespace-nowrap p-3">{record.move.date}</td><td className="min-w-40 p-3"><p className="font-semibold">{record.profile?.name ?? "Roper"}</p><p className="mt-1 text-xs text-[#66716b]">{[record.profile?.city, record.profile?.state].filter(Boolean).join(", ")}</p></td>
-        <td className="min-w-48 p-3"><p>{classes.get(record.fromClassId) ?? "Previous class"}</p><p className="mt-1 text-xs text-[#66716b]">To {classes.get(record.toClassId) ?? "New class"}</p>
+        <td className="hidden whitespace-nowrap p-3 lg:table-cell">{record.move.date}</td><td className="min-w-0 p-2 sm:p-3"><p className="font-semibold">{record.profile?.name ?? "Roper"}</p><p className="mt-1 text-xs text-[#66716b]">{[record.profile?.city, record.profile?.state].filter(Boolean).join(", ")}</p>
+          <div className="mt-1 space-y-1 text-xs text-[#66716b] lg:hidden"><p>{record.move.date}</p><p>{classes.get(record.fromClassId) ?? "Previous class"} → {classes.get(record.toClassId) ?? "New class"}</p>
+            {record.status === "retained_at_end" ? <p className="font-semibold text-amber-800">No next class · Earnings retained</p> : null}</div>
+          {memberships.has(record.moveId) ? <Link href={`/members/${memberships.get(record.moveId)}#classification-history-${record.moveId}`} className="mt-2 inline-block text-xs font-semibold text-[var(--brand-accent-strong)] underline underline-offset-2">View classification move</Link> : null}
+          <p className="mt-1 text-xs text-[#66716b] sm:hidden">Before: {formatCurrency(record.earnedCents)}</p></td>
+        <td className="hidden min-w-48 p-3 lg:table-cell"><p>{classes.get(record.fromClassId) ?? "Previous class"}</p><p className="mt-1 text-xs text-[#66716b]">To {classes.get(record.toClassId) ?? "New class"}</p>
           {record.status === "retained_at_end" ? <p className="mt-2 max-w-xs text-xs font-semibold leading-5 text-amber-800">Needs review: no next numbered class. Earnings retained in this class.</p> : null}</td>
-        <td className="whitespace-nowrap p-3 text-right tabular-nums">{formatCurrency(record.earnedCents)}</td><td className="whitespace-nowrap p-3 text-right font-semibold tabular-nums">{formatCurrency(record.carriedCents)}</td><td className="whitespace-nowrap p-3 text-right tabular-nums">{formatCurrency(record.cappedCents)}</td>
+        <td className="hidden whitespace-nowrap p-3 text-right tabular-nums sm:table-cell">{formatCurrency(record.earnedCents)}</td><td className="whitespace-nowrap p-2 text-right font-semibold tabular-nums sm:p-3">{formatCurrency(record.carriedCents)}</td><td className="whitespace-nowrap p-2 text-right tabular-nums sm:p-3">{formatCurrency(record.cappedCents)}</td>
       </tr>)}</tbody></table>{!visible.length ? <p className="p-8 text-center text-sm text-[#66716b]">{records.length ? "No carryovers match this view." : "No winnings carried over in this season."}</p> : null}</div>
   </section>;
 }

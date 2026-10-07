@@ -557,7 +557,7 @@ export default async function MemberDetailPage({
             </thead>
             <tbody className="divide-y divide-[#edf0ee]">
               {member.history.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} id={`classification-history-${item.id}`} className="scroll-mt-24 target:bg-amber-50 target:outline target:outline-2 target:outline-amber-300">
                   <td className="px-5 py-3 text-sm">
                     {formatDate(item.effectiveOn)}
                   </td>

@@ -60,6 +60,14 @@ export default async function QualificationPage({ params, searchParams }: PagePr
   const status = typeof query.status === "string" ? query.status : "all";
   const visible = review.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()) &&
     (status === "qualified" ? item.qualified : status === "unqualified" ? !item.qualified : status === "exceptions" ? item.exceptions.length > 0 : true));
+  const qualificationStatus = (item: typeof review[number]) => <>
+    <span className={`text-xs font-semibold ${item.qualified ? "text-emerald-700" : "text-[#66716b]"}`}>{!available ? "Setup needs review" : item.qualified ? "Meets requirements" : "Not qualified"}</span>
+    {available && !item.qualified ? <p className="mt-1 text-xs text-[#66716b]">{!item.row ? "No qualifying standings" : [
+      rule.data!.top_places && item.row.rank > rule.data!.top_places ? `Outside top ${rule.data!.top_places}` : null,
+      item.row.ropingsEntered < rule.data!.minimum_ropings ? `${rule.data!.minimum_ropings - item.row.ropingsEntered} more ropings needed` : null,
+    ].filter(Boolean).join(" · ")}</p> : null}
+    <p className="mt-1 text-xs text-[#66716b]">{item.accepted.length} accepted entries</p>
+  </>;
   return <section className="space-y-5">
     <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-[#66716b]"><Link href="/events">Events</Link><span>/</span><Link href={back}>Manage event</Link><span>/</span><span>Qualifiers</span></nav>
     <div><h1 className="text-2xl font-bold">{roping.data.name} · Qualifiers</h1>
@@ -76,19 +84,15 @@ export default async function QualificationPage({ params, searchParams }: PagePr
       <button className="h-10 rounded-md border border-[#ccd4d0] bg-white px-4 text-sm font-semibold">Filter</button>
     </form>
     <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white"><table className="w-full text-sm">
-      <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]"><tr><th className="p-3">Rank</th><th className="p-3">Roper</th><th className="p-3 text-right">Ropings</th><th className="p-3 text-right">Won</th><th className="p-3">Status</th></tr></thead>
+      <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]"><tr><th className="p-2 sm:p-3">Rank</th><th className="p-2 sm:p-3">Roper</th><th className="p-2 text-right sm:p-3">Ropings</th><th className="p-2 text-right sm:p-3">Won</th><th className="hidden p-3 lg:table-cell">Status</th></tr></thead>
       <tbody>{visible.map((item) => <tr key={item.id} className="border-t border-[#e7ebe8] align-top">
-        <td className="p-3 tabular-nums">{item.row?.rank ?? "-"}</td>
-        <td className="min-w-44 p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#66716b]">{[item.profile?.city, item.profile?.state].filter(Boolean).join(", ")}</p>
+        <td className="p-2 tabular-nums sm:p-3">{item.row?.rank ?? "-"}</td>
+        <td className="min-w-0 p-2 sm:p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#66716b]">{[item.profile?.city, item.profile?.state].filter(Boolean).join(", ")}</p>
+          <div className="mt-2 lg:hidden">{qualificationStatus(item)}</div>
           {item.profile?.handicap ? <p className="mt-1 text-xs">{item.profile.handicap} · {Number(item.profile.handicapSeconds).toFixed(2)} sec</p> : null}
           {item.exceptions.map((entry) => <details key={entry.id} className="mt-2 text-xs"><summary className="cursor-pointer font-semibold text-amber-800">Approved eligibility exception</summary><p className="mt-1 max-w-sm leading-5">{entry.eligibility_override_reason}</p><p className="text-[#66716b]">{entry.eligibility_overridden_at ? new Date(entry.eligibility_overridden_at).toLocaleDateString("en-US") : ""}</p></details>)}</td>
-        <td className="p-3 text-right tabular-nums">{item.row?.ropingsEntered ?? 0}</td><td className="whitespace-nowrap p-3 text-right tabular-nums">{formatCurrency(item.row?.winningsCents ?? 0)}</td>
-        <td className="min-w-40 p-3"><span className={`text-xs font-semibold ${item.qualified ? "text-emerald-700" : "text-[#66716b]"}`}>{!available ? "Setup needs review" : item.qualified ? "Meets requirements" : "Not qualified"}</span>
-          {available && !item.qualified ? <p className="mt-1 text-xs text-[#66716b]">{!item.row ? "No qualifying standings" : [
-            rule.data!.top_places && item.row.rank > rule.data!.top_places ? `Outside top ${rule.data!.top_places}` : null,
-            item.row.ropingsEntered < rule.data!.minimum_ropings ? `${rule.data!.minimum_ropings - item.row.ropingsEntered} more ropings needed` : null,
-          ].filter(Boolean).join(" · ")}</p> : null}
-          <p className="mt-1 text-xs text-[#66716b]">{item.accepted.length} accepted entries</p></td>
+        <td className="p-2 text-right tabular-nums sm:p-3">{item.row?.ropingsEntered ?? 0}</td><td className="whitespace-nowrap p-2 text-right tabular-nums sm:p-3">{formatCurrency(item.row?.winningsCents ?? 0)}</td>
+        <td className="hidden min-w-40 p-3 lg:table-cell">{qualificationStatus(item)}</td>
       </tr>)}</tbody></table>{!visible.length ? <p className="p-8 text-center text-sm text-[#66716b]">No ropers match this view.</p> : null}</div>
   </section>;
 }
