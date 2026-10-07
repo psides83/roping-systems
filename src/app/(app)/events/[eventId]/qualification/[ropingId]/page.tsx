@@ -16,11 +16,11 @@ export default async function QualificationPage({ params, searchParams }: PagePr
   const producer = await getActiveProducer();
   if (!producer) notFound();
   const db = await createClient();
-  const roping = await db.from("event_ropings").select("name,classification_id,division_id,competition_format")
+  const roping = await db.from("event_ropings").select("name,classification_id,division_id,competition_format,max_entries_per_roper")
     .eq("id", ropingId).eq("event_id", eventId).eq("producer_id", producer.id).maybeSingle();
   if (roping.error) throw new Error("Unable to load roping.");
   if (!roping.data) notFound();
-  const check = await db.from("roping_qualification_checks").select("season_id,class_key")
+  const check = await db.from("roping_qualification_checks").select("season_id,class_key,bonus_entries_enabled")
     .eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
   if (check.error) throw new Error("Unable to load qualification setup.");
   const back = `/events/${eventId}`;
@@ -73,6 +73,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     ].filter(Boolean).join(" · ")}</p> : null}
     <p className="mt-1 text-xs text-[#66716b]">{item.accepted.length} accepted entries</p>
     {!!item.row?.finalsPositions && <p className="mt-1 text-xs font-semibold text-emerald-700">{item.row.finalsPositions} earned finals positions</p>}
+    {check.data!.bonus_entries_enabled && <p className="mt-1 text-xs font-semibold">Entry allowance: {roping.data!.max_entries_per_roper === null ? "Unlimited" : `${roping.data!.max_entries_per_roper} regular + ${item.qualified ? item.row?.finalsPositions ?? 0 : 0} bonus`}</p>}
   </>;
   return <section className="space-y-5">
     <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-[#66716b]"><Link href="/events">Events</Link><span>/</span><Link href={back}>Manage event</Link><span>/</span><span>Qualifiers</span></nav>

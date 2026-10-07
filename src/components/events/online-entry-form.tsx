@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef, useTransition } from "react";
 import { CheckCircle2, LoaderCircle, Minus, Plus } from "lucide-react";
 import {
   submitOnlineEntry,
+  loadOnlineFinalsAllowance,
   type OnlineEntryFormState,
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
@@ -57,6 +58,10 @@ export function OnlineEntryForm({
   >(action, {});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const [checkingAllowance, startAllowanceCheck] = useTransition();
+  const [allowances, setAllowances] = useState<Awaited<ReturnType<typeof loadOnlineFinalsAllowance>>["allowances"]>([]);
+  const [allowanceMessage, setAllowanceMessage] = useState("");
   const requiresBirthDate = divisions.some(
     (division) => selected[division.id] && division.eligibilityType === "age",
   );
@@ -72,13 +77,16 @@ export function OnlineEntryForm({
   }
 
   return (
-    <form action={formAction} className="space-y-7">
+    <form ref={formRef} action={formAction} className="space-y-7" onChange={(event) => {
+      const name = event.target instanceof HTMLInputElement ? event.target.name : null;
+      if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); }
+    }}>
       <section>
         <h2 className="text-lg font-bold">Contestant information</h2>
         <p className="mt-1 text-sm text-[#66716b]">
           Use the email address associated with your membership when applicable.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <fieldset disabled={checkingAllowance} className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field
             label="First name"
             name="firstName"
@@ -143,7 +151,18 @@ export function OnlineEntryForm({
             required={!allowGuests}
             error={state.errors?.memberNumber?.[0]}
           />
-        </div>
+        </fieldset>
+        {divisions.some((division) => division.qualification) && <div className="mt-4">
+          <button type="button" disabled={checkingAllowance || pending} onClick={() => startAllowanceCheck(async () => {
+            if (!formRef.current) return;
+            const result = await loadOnlineFinalsAllowance(producerSlug, eventSlug, new FormData(formRef.current));
+            setAllowances(result.allowances ?? []);
+            setSelected((current) => Object.fromEntries(Object.entries(current).map(([id, selected]) => [id, result.allowances?.some((item) => item.event_roping_id === id && item.remaining_entries === 0) ? false : selected])));
+            setAllowanceMessage(result.error ?? (result.allowances?.length ? "Finals entry allowances updated." : "No bonus entry allowance found for these membership details."));
+            setQuantities({});
+          })} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold">{checkingAllowance && <LoaderCircle size={15} className="animate-spin" />}Check bonus entries</button>
+          {allowanceMessage && <p role="status" className="mt-2 text-xs text-[#66716b]">{allowanceMessage}</p>}
+        </div>}
         <label className="absolute left-[-10000px]" aria-hidden="true">
           Website
           <input name="website" tabIndex={-1} autoComplete="off" />
@@ -160,7 +179,8 @@ export function OnlineEntryForm({
           {divisions.map((division) => {
             const isSelected = selected[division.id] ?? false;
             const quantity = quantities[division.id] ?? 1;
-            const maximum = division.maximumEntries ?? 20;
+            const allowance = allowances?.find((item) => item.event_roping_id === division.id);
+            const maximum = allowance ? allowance.remaining_entries ?? 20 : division.maximumEntries ?? 20;
             return (
               <div key={division.id} className="p-4 sm:p-5">
                 <div className="flex items-start gap-3">
@@ -169,6 +189,7 @@ export function OnlineEntryForm({
                     name="divisionIds"
                     value={division.id}
                     type="checkbox"
+                    disabled={maximum === 0}
                     checked={isSelected}
                     onChange={(event) =>
                       setSelected((current) => ({
@@ -184,6 +205,7 @@ export function OnlineEntryForm({
                   >
                     <span className="font-bold">{division.name}</span>
                     {division.qualification ? <span className="mt-2 block text-xs font-semibold leading-5 text-amber-800">{qualificationNoticeText(division.qualification)}</span> : null}
+                    {allowance && <span className="mt-1 block text-xs font-semibold text-emerald-700">{allowance.normal_entries === null ? "Unlimited entries" : `${allowance.normal_entries} regular + ${allowance.bonus_entries} bonus · ${allowance.remaining_entries} available`}</span>}
                     {division.description ? (
                       <span className="mt-1 block text-sm leading-5 text-[#66716b]">
                         {division.description}

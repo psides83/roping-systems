@@ -10,6 +10,15 @@ export interface OnlineEntryFormState {
   errors?: Record<string, string[]>;
 }
 
+export async function loadOnlineFinalsAllowance(producerSlug: string, eventSlug: string, form: FormData) {
+  const parsed = z.object({ email: z.email(), memberNumber: z.string().trim().min(1).max(50) }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "Enter your membership email and member number first." };
+  const db = await createClient();
+  const result = await db.rpc("online_finals_entry_allowances", { target_producer_slug: producerSlug, target_event_slug: eventSlug, target_member_number: parsed.data.memberNumber, target_email: parsed.data.email });
+  if (result.error) return { error: "Unable to check bonus entries. Contact the event office." };
+  return { allowances: result.data as { event_roping_id: string; normal_entries: number | null; bonus_entries: number; remaining_entries: number | null }[] };
+}
+
 const onlineEntrySchema = z.object({
   firstName: z
     .string()

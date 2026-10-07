@@ -8,13 +8,14 @@ export function RopingQualificationDialog({ ropingId, name, editable, required }
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof loadRopingQualification>> | null>(null);
   const [season, setSeason] = useState("");
+  const [bonusEntries, setBonusEntries] = useState(false);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const rule = data?.rules.find((item) => item.season_id === season);
   const load = () => {
     setOpen(true); setData(null); setError("");
     startTransition(async () => {
-      try { const result = await loadRopingQualification(ropingId); setData(result); setSeason(result.current?.season_id ?? ""); }
+      try { const result = await loadRopingQualification(ropingId); setData(result); setSeason(result.current?.season_id ?? ""); setBonusEntries(result.current?.bonus_entries_enabled ?? false); }
       catch (error) { setError(error instanceof Error ? error.message : "Unable to load qualification."); }
     });
   };
@@ -37,6 +38,7 @@ export function RopingQualificationDialog({ ropingId, name, editable, required }
               {data.seasons.map((item) => <option key={item.id} value={item.id}>{item.name} standings</option>)}
             </select>
           </label>
+          {season && <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={bonusEntries} onChange={(event) => setBonusEntries(event.target.checked)} disabled={pending} />Add earned bonus positions to the normal entry allowance</label>}
           {rule ? <div className="flex flex-wrap gap-3 text-sm text-[#66716b]">
             {rule.top_places ? <span>Top {rule.top_places} · ties included</span> : null}
             <span>{rule.minimum_ropings} ropings required</span>
@@ -49,7 +51,7 @@ export function RopingQualificationDialog({ ropingId, name, editable, required }
         <footer className="mt-5 flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
           <button type="button" onClick={() => setOpen(false)} className="h-10 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold">Cancel</button>
           <button type="button" disabled={pending || !data} onClick={() => startTransition(async () => {
-            setError(""); const result = await saveRopingQualification(ropingId, season);
+            setError(""); const result = await saveRopingQualification(ropingId, season, !!season && bonusEntries);
             if (result.error) setError(result.error); else setOpen(false);
           })} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white disabled:opacity-50">
             {pending ? <LoaderCircle size={16} className="animate-spin" /> : null}Save qualification

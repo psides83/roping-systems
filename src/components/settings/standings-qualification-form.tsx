@@ -17,7 +17,7 @@ export function StandingsQualificationForm({ season, classId, rule, canEdit }: {
         <label className="text-xs font-semibold">Minimum ropings<input name="minimumRopings" type="number" min={0} max={10000} defaultValue={rule?.minimum_ropings ?? 0} required className={input} /></label>
         <label className="text-xs font-semibold">Cutoff date<input name="cutoff" type="date" min={season.startsOn} max={season.endsOn} defaultValue={rule?.cutoff_on ?? ""} className={input} /></label>
       </div>
-      <label className="grid gap-2 text-xs font-semibold">Earned finals positions<select name="earnedPositionPolicy" defaultValue={rule?.earned_position_policy ?? "none"} className="h-10 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"><option value="none">Do not bypass standings requirements</option><option value="rank">Bypass rank limit; attendance still required</option><option value="rank_and_attendance">Bypass rank and attendance requirements</option></select></label>
+      <label className="grid gap-2 text-xs font-semibold">Bonus entry requirements<select name="earnedPositionPolicy" defaultValue={rule?.earned_position_policy ?? "none"} className="h-10 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"><option value="none">Rank and minimum attendance required</option><option value="rank">Minimum attendance required; rank limit waived</option><option value="rank_and_attendance">No rank or minimum attendance requirement</option></select></label>
       <button className="h-10 rounded-md brand-accent-fill px-4 text-sm font-semibold text-white">{pending ? "Saving..." : "Save requirements"}</button>
     </fieldset>
     {state.error ? <p role="alert" className="text-sm text-rose-700">{state.error}</p> : null}

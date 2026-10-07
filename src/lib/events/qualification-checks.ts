@@ -6,7 +6,7 @@ import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { includeFinalsPositions } from "@/lib/finals-entry-eligibility";
 
-export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string) {
+export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string, bonusEntries?: boolean) {
   const producer = await getActiveProducer();
   if (!producer || (producer.role === "viewer" && !producer.eventManager)) throw new Error("Manager access is required.");
   const db = await createClient();
@@ -23,10 +23,13 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
     .filter((row) => row.classId === classKey);
   const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data.cutoff_on ?? season.data.ends_on);
   const rows = includeFinalsPositions(standings, finals.totals, finals.profiles, classKey);
-  const result = await db.rpc("save_roping_qualification_check", {
+  const current = await db.from("roping_qualification_checks").select("bonus_entries_enabled").eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
+  if (current.error) throw new Error("Unable to load bonus entry rules.");
+  const result = await db.rpc("save_roping_qualification_check_with_bonus", {
     target_roping_id: ropingId, target_season_id: seasonId, target_class_key: classKey,
     expected_revision: settings.data.standings_revision, target_standings: rows,
     target_rule_updated_at: rule.data.updated_at,
+    target_bonus_entries_enabled: bonusEntries ?? current.data?.bonus_entries_enabled ?? false,
   });
   if (result.error) throw new Error(result.error.message);
 }
