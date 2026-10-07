@@ -17,9 +17,13 @@ export interface ActiveProducer {
 export async function getProducers(): Promise<ActiveProducer[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (typeof userId !== "string") return [];
   const { data, error } = await supabase
     .from("producer_staff")
     .select("producer_id, role, producers!inner(id, name, slug, timezone, brand_primary, brand_accent, entry_label_style)")
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
   if (error || !data?.length) return [];
