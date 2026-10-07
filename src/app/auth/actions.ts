@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatProperNoun } from "@/lib/utils";
+import { authDestination } from "@/lib/auth-destination";
 
 export interface AuthState {
   message?: string;
@@ -44,6 +45,7 @@ export async function login(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { message: error.message };
+  if (authDestination(formData.get("next")) === "/staff-invitations") redirect("/staff-invitations");
   const invitations = await supabase.rpc("my_staff_invitations");
   if (invitations.data?.length) redirect("/staff-invitations");
   redirect("/dashboard");
@@ -66,11 +68,11 @@ export async function signup(
     process.env.NEXT_PUBLIC_SITE_URL ??
     "http://localhost:3000";
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(authDestination(formData.get("next")))}`,
       data: {
         first_name: parsed.data.firstName,
         last_name: parsed.data.lastName,
@@ -79,9 +81,12 @@ export async function signup(
   });
 
   if (error) return { message: error.message };
+  if (data.session) redirect(authDestination(formData.get("next")));
   return {
     message:
-      "Check your email to confirm your account, then return here to sign in.",
+      authDestination(formData.get("next")) === "/staff-invitations"
+        ? "Check your email to confirm your account and continue to your staff invitation. If the confirmation opens elsewhere, return to the invitation link and sign in."
+        : "Check your email to confirm your account, then return here to sign in.",
   };
 }
 
