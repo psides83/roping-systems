@@ -17,7 +17,7 @@ export async function loadImportChoices(): Promise<ImportDivision[]> {
   const { producer, db } = await manager();
   const { data, error } = await db.from("divisions").select("id,name,classifications(id,name,is_active,eligibility_type)").eq("producer_id", producer.id).eq("is_active", true).order("sort_order");
   if (error) throw new Error("Unable to load classifications.");
-  return (data ?? []).map((division) => ({ id: division.id, name: division.name, classifications: division.classifications.filter((item) => item.is_active && item.eligibility_type === "skill").map(({ id, name }) => ({ id, name })) }));
+  return (data ?? []).map((division) => ({ id: division.id, name: division.name, classifications: division.classifications.filter((item) => item.is_active && ["skill", "open"].includes(item.eligibility_type)).map(({ id, name }) => ({ id, name })) }));
 }
 
 export async function reviewImportRows(rows: ImportRow[], effectiveOn: string): Promise<ImportPreview[]> {

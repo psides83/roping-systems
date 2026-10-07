@@ -32,6 +32,12 @@ begin
   end if;
   result:=public.import_member_row(producer,4,jsonb_set(payload,'{firstName}','"Stale"'),current_date,batch,'stale',true);
   if result->>'error' not like '%changed after preview%' then raise exception 'Stale preview accepted: %',result; end if;
+  select c.id,c.division_id into strict class_id,division from public.classifications c join public.divisions d on d.id=c.division_id
+    where c.producer_id=producer and c.eligibility_type='open' and c.is_active and lower(d.name) like '%breakaway%' limit 1;
+  payload:=jsonb_set(payload,'{classifications}',jsonb_build_array(jsonb_build_object('divisionId',division,'classificationId',class_id)));
+  preview:=public.import_member_row(producer,7,payload,current_date);
+  result:=public.import_member_row(producer,7,payload,current_date,batch,preview->>'snapshot',true);
+  if result ? 'error' or not exists(select 1 from public.membership_classification_history where membership_id=member_id and classification_id=class_id and ended_on is null) then raise exception 'Open breakaway import failed: %',result; end if;
   perform set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
   result:=public.import_member_row(producer,5,payload,current_date);
   if result->>'error' not like '%management access%' then raise exception 'Unauthorized import accepted'; end if;
