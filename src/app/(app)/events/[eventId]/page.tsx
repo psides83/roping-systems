@@ -85,6 +85,7 @@ interface EventDetail {
   defaultScheduleDate: string;
   finalScheduleDate: string;
   canManage: boolean;
+  canFinance?: boolean;
   availableTemplates: AddRopingTemplate[];
   availableClassifications: AddRopingClassification[];
   eventFees: Array<{
@@ -550,6 +551,9 @@ async function getEvent(
       0,
     );
   }
+  const management = await supabase.rpc("can_manage_event", { target_event: eventId });
+  const finance = await supabase.rpc("can_finance_event", { target_event: eventId });
+  if (management.error || finance.error) throw new Error("Unable to check event staff permissions.");
   return {
     producerSlug: producer.slug,
     event: {
@@ -607,7 +611,8 @@ async function getEvent(
         month: "2-digit",
         day: "2-digit",
       }).format(new Date(data.ends_at ?? data.starts_at)),
-      canManage: producer.role !== "viewer",
+      canManage: Boolean(management.data),
+      canFinance: Boolean(finance.data),
       availableTemplates: (templateData ?? []).map((template) => ({
         id: template.id,
         name: template.name,
@@ -1090,7 +1095,7 @@ export default async function RopingDetailPage({
                   </div>
                 ) : null}
 
-                {isSupabaseConfigured() ? <RopingFundingData ropingId={division.id} canManage={event.canManage} /> : null}
+                {isSupabaseConfigured() ? <RopingFundingData ropingId={division.id} canManage={event.canFinance ?? event.canManage} /> : null}
                 <div className="flex justify-end border-t border-[#e7ebe8] px-4 py-3">
                   <RemoveEventRopingDialog
                     eventId={event.id}

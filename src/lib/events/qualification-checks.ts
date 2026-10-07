@@ -6,8 +6,10 @@ import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 
 export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") throw new Error("Manager access is required.");
+  if (!producer || (producer.role === "viewer" && !producer.eventManager)) throw new Error("Manager access is required.");
   const db = await createClient();
+  const scope = await db.rpc("can_manage_event_roping", { target_roping: ropingId });
+  if (scope.error || !scope.data) throw new Error("Management access for this roping is required.");
   const settings = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
   const season = await db.from("producer_seasons").select("starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
   const rule = await db.from("standings_qualification_rules").select("cutoff_on,updated_at")
@@ -28,7 +30,7 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
 export async function refreshEventQualificationChecks(eventId: string, ropingId?: string): Promise<string | null> {
   try {
     const producer = await getActiveProducer();
-    if (!producer || (producer.role === "viewer" && !producer.entryOffice)) return "Manager access is required.";
+    if (!producer || (producer.role === "viewer" && !producer.entryOffice && !producer.eventManager)) return "Manager access is required.";
     const db = await createClient();
     let query = db.from("roping_qualification_checks")
       .select("event_roping_id,season_id,class_key,source_revision,rule_updated_at,event_ropings!inner(event_id,classification_id,division_id,competition_format)")

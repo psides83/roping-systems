@@ -120,6 +120,8 @@ export default async function LiveRopingPage({
   const timingPermission = await supabase.rpc("can_time_event", { target_event: eventId });
   if (timingPermission.error) throw new Error("Unable to check timing access.");
   const canTime = Boolean(timingPermission.data);
+  const managePermission = await supabase.rpc("can_manage_event", { target_event: eventId });
+  if (managePermission.error) throw new Error("Unable to check event management access.");
 
   const divisions = (
     roping.event_ropings as unknown as Array<{
@@ -370,7 +372,7 @@ export default async function LiveRopingPage({
       fourDResults={fourDResults}
       roundLocked={roundLocked}
       mainRoundsComplete={mainRoundsComplete}
-      canEdit={producer.role !== "viewer"}
+      canEdit={Boolean(managePermission.data)}
       canTime={canTime}
       watchEvidence={<ClassificationWatchEvidence eventId={eventId} compact />}
     />

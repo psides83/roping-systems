@@ -7,7 +7,7 @@ import { buildQualificationCheck } from "@/lib/events/qualification-checks";
 
 export async function loadRopingQualification(ropingId: string) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer" || !z.uuid().safeParse(ropingId).success) throw new Error("Manager access is required.");
+  if (!producer || (producer.role === "viewer" && !producer.eventManager) || !z.uuid().safeParse(ropingId).success) throw new Error("Manager access is required.");
   const db = await createClient();
   const roping = await db.from("event_ropings").select("classification_id,division_id,competition_format")
     .eq("id", ropingId).eq("producer_id", producer.id).single();
@@ -27,7 +27,7 @@ export async function loadRopingQualification(ropingId: string) {
 export async function saveRopingQualification(ropingId: string, seasonId: string): Promise<{ error?: string; success?: boolean }> {
   try {
     const producer = await getActiveProducer();
-    if (!producer || producer.role === "viewer" || !z.uuid().safeParse(ropingId).success) return { error: "Manager access is required." };
+    if (!producer || (producer.role === "viewer" && !producer.eventManager) || !z.uuid().safeParse(ropingId).success) return { error: "Manager access is required." };
     const db = await createClient();
     const roping = await db.from("event_ropings").select("event_id,classification_id,division_id,competition_format")
       .eq("id", ropingId).eq("producer_id", producer.id).single();

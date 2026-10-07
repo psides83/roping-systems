@@ -6,7 +6,7 @@ import { moneyInputCents } from "@/lib/member-fines";
 
 export async function changeRopingFunding(ropingId: string, operation: string, reference: string, form: FormData) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") return { error: "Manager access is required." };
+  if (!producer || (producer.role === "viewer" && !producer.treasurer)) return { error: "Finance access is required." };
   const db = await createClient();
   const { data: roping } = await db.from("event_ropings").select("event_id").eq("id", ropingId).eq("producer_id", producer.id).single();
   if (!roping) return { error: "Roping not found." };

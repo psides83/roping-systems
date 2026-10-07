@@ -18,7 +18,7 @@ export default async function FundPage({ params,searchParams }: { params: Promis
   if (ledgerError || balanceError) throw new Error("Unable to load the fund ledger.");
   const balance = balances?.find((row: { id: string }) => row.id===fundId)?.balance_cents ?? 0;
   const availability = balances?.find((row: { id: string }) => row.id===fundId);
-  const canManage = producer.role!=="viewer";
+  const canManage = producer.role!=="viewer" || Boolean(producer.treasurer);
   const labels: Record<string,string> = { entry_deposit: "Roping contribution deposit",entry_adjustment: "Roping contribution adjustment",manual_deposit: "Manual deposit",manual_debit: "Manual debit",reversal: "Reversal",roping_allocation: "Added money used at roping",roping_return: "Added money returned on reopening" };
   return <div className="space-y-5"><Link href="/funds" className="inline-flex items-center gap-2 text-sm font-semibold"><ArrowLeft size={16} />Funds</Link>
     <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-bold">{fund.name}</h1><p className="mt-2 text-sm text-[#66716b]">{fund.description}</p>{!fund.is_active ? <span className="mt-2 inline-block rounded bg-[#eef1ef] px-2 py-1 text-xs font-semibold">Archived</span> : null}</div>{canManage ? <FundDialog operation="edit" fund={fund} /> : null}</header>

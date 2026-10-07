@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveProducer } from "@/lib/producers";
+import { eventStaffAccess } from "@/lib/staff-access";
 import { formatProperNoun } from "@/lib/utils";
 
 export interface LiveRunState {
@@ -19,7 +20,7 @@ export type EventScheduleFormState = LiveRunState;
 export async function copyEventDaySchedule(eventId: string, sourceDate: string, destinationDate: string): Promise<EventScheduleFormState> {
   const parsed = z.object({ eventId: z.uuid(), sourceDate: z.iso.date(), destinationDate: z.iso.date() }).safeParse({ eventId, sourceDate, destinationDate });
   if (!parsed.success) return { message: "Choose valid event dates." };
-  const db = await requireManager();
+  const db = await requireManager(eventId);
   const { error } = await db.rpc("copy_event_day_schedule", { target_event_id: eventId, source_date: sourceDate, destination_date: destinationDate });
   if (error) return { message: error.message };
   revalidatePath(`/events/${eventId}`);
@@ -66,11 +67,10 @@ const eventDetailsSchema = z.object({
   publicationState: z.enum(["draft", "published", "unpublished"]),
 });
 
-async function requireManager() {
-  const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer")
-    throw new Error("Manager access is required.");
-  return createClient();
+async function requireManager(eventId: string) {
+  const access = await eventStaffAccess(eventId, "can_manage_event");
+  if (!access) throw new Error("Management access for this event is required.");
+  return access.supabase;
 }
 
 export async function updateEventDetails(
@@ -103,7 +103,7 @@ export async function updateEventDetails(
       },
     };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data: arenaAssignments, error: arenaAssignmentsError } =
     await supabase
       .from("event_ropings")
@@ -190,7 +190,7 @@ export async function addRopingToEvent(
     };
   if (parsed.data.scheduleType !== "follows_previous" && !parsed.data.startTime)
     return { message: "Set and tentative schedules require a start time." };
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const [{ data: event }, { data: previousRopings }, { data: template }] =
     await Promise.all([
       supabase
@@ -264,7 +264,7 @@ export async function removeRopingFromEvent(
     Object.fromEntries(formData),
   );
   if (!parsed.success) return { message: parsed.error.issues[0]?.message };
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data, error } = await supabase.rpc("remove_roping_from_event", {
     target_roping_division_id: divisionId,
     removal_reason: parsed.data.reason,
@@ -299,7 +299,7 @@ export async function moveEventRoping(
   });
   if (!parsed.success) return { message: "Choose a valid roping to move." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data, error } = await supabase
     .from("event_ropings")
     .select("id, scheduled_date, arena_name, sort_order, created_at")
@@ -376,7 +376,7 @@ export async function updateClassEntrySpacing(
   const parsed = entrySpacingSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
     throw new Error("Entry spacing must be between 0 and 100 runs.");
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("set_division_entry_spacing", {
     target_roping_division_id: parsed.data.divisionId,
     new_minimum_runs: parsed.data.minimumRunsBetweenEntries,
@@ -392,7 +392,7 @@ export async function updateClassRoundOrdering(
 ) {
   const parsed = roundOrderingSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error("Choose valid round ordering rules.");
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("set_division_round_ordering", {
     target_roping_division_id: parsed.data.divisionId,
     new_second_round_ordering: parsed.data.secondRoundOrdering,
@@ -415,7 +415,7 @@ export async function saveEventCattle(
   if (tags.some((tag) => tag.length > 40))
     return { message: "Keep each cattle number under 40 characters." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data, error } = await supabase.rpc("save_event_cattle", {
     target_roping_id: eventId,
     cattle_tags: tags,
@@ -441,7 +441,7 @@ export async function drawRoundCattle(
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { message: "Choose a valid class and round." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data, error } = await supabase.rpc("draw_round_cattle", {
     target_roping_division_id: parsed.data.divisionId,
     target_run_number: parsed.data.runNumber,
@@ -480,7 +480,7 @@ export async function updateClassEventDayStatus(
   if (!parsed.success)
     return { message: "Check the arena, status, expected start, and note." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data: division } = await supabase
     .from("event_ropings")
     .select(
@@ -545,7 +545,7 @@ export async function updateClassSchedule(
   if (parsed.data.scheduleType !== "follows_previous" && !parsed.data.startTime)
     return { message: "Set and tentative schedules require a time." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   if (parsed.data.scheduleType === "follows_previous") {
     const { data: division } = await supabase
       .from("event_ropings")
@@ -583,7 +583,7 @@ export async function updateClassSchedule(
 }
 
 export async function startRoping(eventId: string) {
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("set_roping_in_progress", {
     target_roping_id: eventId,
   });
@@ -597,7 +597,7 @@ export async function generateDraw(eventId: string, _state: DrawOrderState, form
     .object({ divisionId: z.uuid(), runNumber: z.coerce.number().int().min(1) })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { message: "Choose a valid roping and round." };
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("generate_division_draw", {
     target_roping_division_id: parsed.data.divisionId,
     target_run_number: parsed.data.runNumber,
@@ -623,7 +623,7 @@ export async function saveDrawOrder(
   )
     return { message: "The draw order is incomplete or invalid." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data, error } = await supabase.rpc("set_division_draw_order", {
     target_roping_division_id: parsed.data.divisionId,
     target_run_number: parsed.data.runNumber,
@@ -644,7 +644,7 @@ export async function seedShortRound(
 ): Promise<LiveRunState> {
   const divisionId = z.uuid().safeParse(formData.get("divisionId"));
   if (!divisionId.success) return { message: "Choose a valid class." };
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { data, error } = await supabase.rpc("seed_short_round", {
     target_roping_division_id: divisionId.data,
   });
@@ -674,7 +674,7 @@ export async function changeShortRoundQualifier(
   if (!parsed.success)
     return { message: "Choose a contestant and enter a brief reason." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("manage_short_round_qualifier", {
     target_roping_division_id: divisionId,
     target_entry_id: parsed.data.entryId,
@@ -701,7 +701,7 @@ export async function lockShortRoundField(
 ): Promise<LiveRunState> {
   void _state;
   void _formData;
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("lock_short_round_field", {
     target_roping_division_id: divisionId,
   });
@@ -860,7 +860,7 @@ export async function completeRound(
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { message: "Choose a valid round." };
 
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("complete_roping_round", {
     target_roping_division_id: parsed.data.divisionId,
     target_run_number: parsed.data.runNumber,
@@ -871,7 +871,7 @@ export async function completeRound(
 }
 
 export async function finalizeRoping(eventId: string): Promise<void> {
-  const supabase = await requireManager();
+  const supabase = await requireManager(eventId);
   const { error } = await supabase.rpc("finalize_roping_results", {
     target_roping_id: eventId,
   });

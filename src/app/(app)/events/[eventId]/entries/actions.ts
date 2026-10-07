@@ -6,6 +6,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 import { refreshEventQualificationChecks } from "@/lib/events/qualification-checks";
+import { eventStaffAccess } from "@/lib/staff-access";
 
 export interface EntryFormState {
   success?: boolean;
@@ -176,10 +177,8 @@ const voidPaymentSchema = z.object({
   reason: z.string().trim().min(5, "Enter a brief correction reason.").max(240),
 });
 
-async function requireManager() {
-  const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") return null;
-  return { producer, supabase: await createClient() };
+async function requireManager(eventId: string) {
+  return eventStaffAccess(eventId, "can_manage_event");
 }
 
 function getOptionIds(formData: FormData) {
@@ -270,7 +269,7 @@ export async function addGuestEntry(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
+  const context = await requireManager(eventId);
   if (!context) return { message: "Manager access is required." };
   const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
   if (qualificationError) return { message: qualificationError };
@@ -317,7 +316,7 @@ export async function reviewOnlineEntryRequest(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
+  const context = await requireManager(eventId);
   if (!context) return { message: "Manager access is required." };
 
   if (parsed.data.decision === "accepted") {
@@ -353,7 +352,7 @@ export async function updateContestantPayment(
 ): Promise<PaymentFormState> {
   const parsed = paymentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { message: "Choose a valid payment status." };
-  const context = await requireManager();
+  const context = await eventStaffAccess(eventId, "can_adjust_event_finances");
   if (!context) return { message: "Manager access is required." };
 
   const { data, error } = await context.supabase.rpc(
@@ -385,7 +384,7 @@ export async function transferEntry(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
+  const context = await requireManager(eventId);
   if (!context) return { message: "Manager access is required." };
 
   const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.destinationDivisionId);
@@ -453,7 +452,7 @@ export async function updateChargeWaiver(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
+  const context = await eventStaffAccess(eventId, "can_adjust_event_finances");
   if (!context) return { message: "Manager access is required." };
 
   const shouldWaive = parsed.data.action === "waive";
@@ -489,7 +488,7 @@ export async function changeEntryWithdrawal(
   if (parsed.data.action === "withdraw" && !parsed.data.financialAction)
     return { message: "Choose how to handle this entry’s charges." };
 
-  const context = await requireManager();
+  const context = await requireManager(eventId);
   if (!context) return { message: "Manager access is required." };
 
   if (parsed.data.action === "reinstate") {
@@ -565,7 +564,7 @@ export async function recordCashPayment(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireEntryOffice(eventId);
+  const context = await eventStaffAccess(eventId, "can_collect_event");
   if (!context) return { message: "Entry access for this event is required." };
 
   const amountCents = Math.round(parsed.data.amount * 100);
@@ -596,7 +595,7 @@ export async function voidCashPayment(
       errors: parsed.error.flatten().fieldErrors,
       message: parsed.error.issues[0]?.message,
     };
-  const context = await requireManager();
+  const context = await eventStaffAccess(eventId, "can_adjust_event_finances");
   if (!context) return { message: "Manager access is required." };
 
   const { error } = await context.supabase.rpc("void_event_cash_payment", {

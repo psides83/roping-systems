@@ -87,12 +87,16 @@ export function EntryLedger({
   divisions,
   canEdit,
   canOffice = canEdit,
+  canCollect = canOffice,
+  canAdjust = canEdit,
 }: {
   eventId: string;
   contestants: LedgerContestant[];
   divisions: TransferDivision[];
   canEdit: boolean;
   canOffice?: boolean;
+  canCollect?: boolean;
+  canAdjust?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -184,6 +188,8 @@ export function EntryLedger({
                 divisions={divisions}
                 canEdit={canEdit}
                 canOffice={canOffice}
+                canCollect={canCollect}
+                canAdjust={canAdjust}
               />
             ))}
             {!filtered.length ? (
@@ -211,12 +217,16 @@ function ContestantRow({
   divisions,
   canEdit,
   canOffice,
+  canCollect,
+  canAdjust,
 }: {
   eventId: string;
   contestant: LedgerContestant;
   divisions: TransferDivision[];
   canEdit: boolean;
   canOffice: boolean;
+  canCollect: boolean;
+  canAdjust: boolean;
 }) {
   const hasActiveEntries = contestant.entries.some(
     (entry) => entry.competitionStatus === "active",
@@ -330,8 +340,8 @@ function ContestantRow({
           contestantName={contestant.name}
           balanceDueCents={contestant.balanceDueCents}
           payments={contestant.payments}
-          enabled={canOffice && hasActiveEntries}
-          canVoid={canEdit}
+          enabled={canCollect && hasActiveEntries}
+          canVoid={canAdjust}
         />
       </td>
       <td className="px-5 py-4 text-right">
@@ -369,7 +379,7 @@ function ContestantRow({
                   amountCents={charge.amountCents}
                   waived={charge.waived}
                   waiverReason={charge.waiverReason}
-                  enabled={canEdit}
+                  enabled={canAdjust}
                 />
               </div>
             ))}
@@ -383,7 +393,7 @@ function ContestantRow({
         <PaymentForm
           eventId={eventId}
           contestant={contestant}
-          canEdit={canEdit}
+          canEdit={canAdjust}
         />
       </td>
     </tr>

@@ -35,7 +35,7 @@ export default async function FundsPage({ searchParams }: { searchParams: Promis
         <button aria-label="Apply season filter" title="Apply season filter" className="grid h-10 w-10 place-items-center rounded-md border border-[#ccd4d0] bg-white"><Filter size={17} /></button>
       </form>
     </header>
-    <FundAccounts producerId={producer.id} canManage={producer.role !== "viewer"} />
+    <FundAccounts producerId={producer.id} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)} />
     <section className="flex flex-wrap gap-x-12 gap-y-4 border-y border-[#dfe4e1] py-5">
       <div><p className="text-sm text-[#66716b]">Collected contributions</p><p className="mt-1 text-2xl font-bold">{formatCurrency(collected)}</p></div>
       <div><p className="text-sm text-[#66716b]">Unpaid contributions</p><p className="mt-1 text-2xl font-bold">{formatCurrency(pending)}</p></div>

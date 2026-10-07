@@ -549,7 +549,10 @@ export default async function EventEntriesPage({
   }));
 
   const officePermission = await supabase.rpc("can_enter_event", { target_event: eventId });
-  if (officePermission.error) throw new Error("Unable to check entry office access.");
+  const management = await supabase.rpc("can_manage_event", { target_event: eventId });
+  const collection = await supabase.rpc("can_collect_event", { target_event: eventId });
+  const adjustment = await supabase.rpc("can_adjust_event_finances", { target_event: eventId });
+  if (officePermission.error || management.error || collection.error || adjustment.error) throw new Error("Unable to check entry office access.");
   return (
     <EntriesWorkspace
       eventId={eventId}
@@ -559,8 +562,10 @@ export default async function EventEntriesPage({
       contestants={contestants}
       requests={requests}
       totalEntries={entryData?.length ?? 0}
-      canEdit={producer.role !== "viewer"}
+      canEdit={Boolean(management.data)}
       canOffice={Boolean(officePermission.data)}
+      canCollect={Boolean(collection.data)}
+      canAdjust={Boolean(adjustment.data)}
     />
   );
 }
@@ -575,6 +580,8 @@ function EntriesWorkspace({
   totalEntries,
   canEdit,
   canOffice = canEdit,
+  canCollect = canOffice,
+  canAdjust = canEdit,
 }: {
   eventId: string;
   title: string;
@@ -608,6 +615,8 @@ function EntriesWorkspace({
   totalEntries: number;
   canEdit: boolean;
   canOffice?: boolean;
+  canCollect?: boolean;
+  canAdjust?: boolean;
 }) {
   const totalCharges = contestants.reduce(
     (sum, contestant) => sum + contestant.totalCents,
@@ -679,6 +688,8 @@ function EntriesWorkspace({
         divisions={divisions.map(({ id, name }) => ({ id, name }))}
         canEdit={canEdit}
         canOffice={canOffice}
+        canCollect={canCollect}
+        canAdjust={canAdjust}
       />
     </div>
   );

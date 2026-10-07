@@ -260,9 +260,9 @@ export default async function EventPayoutsPage({
       />
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Finalize Roping Payouts</h2>
-        {payoutGroups.map(group => <details key={group[0].ropingDivisionId} className="rounded-md border border-[#dfe4e1]"><summary className="cursor-pointer p-4 font-semibold">{group[0].division}</summary><RopingFundingData ropingId={group[0].ropingDivisionId} canManage={producer.role !== "viewer"}/></details>)}
+        {payoutGroups.map(group => <details key={group[0].ropingDivisionId} className="rounded-md border border-[#dfe4e1]"><summary className="cursor-pointer p-4 font-semibold">{group[0].division}</summary><RopingFundingData ropingId={group[0].ropingDivisionId} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)}/></details>)}
       </section>
-      <PayoutRegisterData eventId={eventId} producerId={producer.id} canManage={producer.role !== "viewer"} />
+      <PayoutRegisterData eventId={eventId} producerId={producer.id} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)} />
       {calculated.length ? (
         <section className="space-y-5">
           {payoutGroups.map((group) => {

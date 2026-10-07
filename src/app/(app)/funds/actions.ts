@@ -6,7 +6,7 @@ import { moneyInputCents } from "@/lib/member-fines";
 
 export async function saveFundChange(operation: string, fundId: string | null, reference: string, form: FormData) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") return { error: "Manager access is required." };
+  if (!producer || (producer.role === "viewer" && !producer.treasurer)) return { error: "Finance access is required." };
   const supabase = await createClient();
   let result;
   if (operation === "create" || operation === "edit") {

@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
+import { eventStaffAccess } from "@/lib/staff-access";
 
 export async function initializePayoutPlans(eventId: string) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") return;
+  if (!producer || (!await eventStaffAccess(eventId, "can_manage_event") && !await eventStaffAccess(eventId, "can_finance_event"))) return;
   const supabase = await createClient();
   await supabase.rpc("initialize_roping_payout_plans", {
     target_roping_id: eventId,
@@ -16,7 +17,7 @@ export async function initializePayoutPlans(eventId: string) {
 
 export async function recordRoperPayout(eventId: string, roperId: string, ropingId: string | null, receiptId: string, form: FormData) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") return { error: "You do not have permission to record payouts." };
+  if (!producer || !await eventStaffAccess(eventId, "can_finance_event")) return { error: "You do not have permission to record payouts." };
   const amount = String(form.get("amount") ?? "");
   if (!/^\d+(\.\d{1,2})?$/.test(amount)) return { error: "Enter an amount with at most two decimal places." };
   const cents = Math.round(Number(amount) * 100);
@@ -39,7 +40,7 @@ export async function recordRoperPayout(eventId: string, roperId: string, roping
 
 export async function updatePayoutReceipt(eventId: string, receiptId: string, action: "confirm" | "reverse", reason: string) {
   const producer = await getActiveProducer();
-  if (!producer || producer.role === "viewer") return { error: "You do not have permission to change payouts." };
+  if (!producer || !await eventStaffAccess(eventId, "can_finance_event")) return { error: "You do not have permission to change payouts." };
   const supabase = await createClient();
   const { data: receipt } = await supabase.from("payout_receipts").select("id")
     .eq("id", receiptId).eq("event_id", eventId).eq("producer_id", producer.id).single();
