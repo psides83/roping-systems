@@ -5,6 +5,10 @@ import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { ManualFinalsAward, RevokeFinalsAward } from "@/components/settings/manual-finals-award";
 import { FinalsDecisionForm } from "@/components/settings/finals-decision-form";
+import { FinalsPositionAssignments, type FinalsTarget } from "@/components/settings/finals-position-assignments";
+import { loadFinalsAssignments } from "@/lib/events/finals-assignment-data";
+import { finalsPositionSlots } from "@/lib/finals-position-assignments";
+import { readAllRows } from "@/lib/supabase/read-all-rows";
 
 export default async function FinalsPositionsPage({ searchParams }: PageProps<"/settings/finals">) {
   const producer = await getActiveProducer();
@@ -34,9 +38,25 @@ export default async function FinalsPositionsPage({ searchParams }: PageProps<"/
   const names = new Map([...memberOptions.map((member) => [member.id, member.name] as const), ...results.profiles.map((member) => [member.memberId, member.name] as const)]);
   const rows = results.totals.sort((a, b) => (classNames.get(a.classId) ?? a.classId).localeCompare(classNames.get(b.classId) ?? b.classId) || (names.get(a.memberId) ?? "").localeCompare(names.get(b.memberId) ?? ""));
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: producer.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const assignments = await loadFinalsAssignments(producer.id, season.id);
+  const targetRows = await readAllRows((first, last) => db.from("event_ropings")
+    .select("id,event_id,name,scheduled_date,classification_id,division_id,competition_format,event_day_status,payouts_finalized_at,events!inner(title,status),divisions!roping_division_discipline_same_organization(name)")
+    .eq("producer_id", producer.id).order("id").range(first, last), "Unable to load target ropings");
+  const checks = await readAllRows((first, last) => db.from("roping_qualification_checks").select("event_roping_id,class_key")
+    .eq("producer_id", producer.id).eq("season_id", season.id).eq("bonus_entries_enabled", true).order("event_roping_id").range(first, last), "Unable to load target qualification setup");
+  const ready = new Map(checks.map((item) => [item.event_roping_id, item.class_key]));
+  const targets: FinalsTarget[] = targetRows.map((item) => {
+    const event = item.events as unknown as { title: string; status: string };
+    const division = item.divisions as unknown as { name: string };
+    const classId = ["handicap", "four_d"].includes(item.competition_format) ? `${item.division_id}:${item.competition_format}` : item.classification_id ?? "";
+    return { id: item.id, classId, eventId: item.event_id, name: `${event.title} · ${item.name} ${division?.name ?? ""}`, date: item.scheduled_date,
+      ready: ready.get(item.id) === classId, locked: item.scheduled_date < today || ["in_progress", "completed"].includes(item.event_day_status) || ["completed", "cancelled"].includes(event.status) || !!item.payouts_finalized_at };
+  });
+  const slots = finalsPositionSlots(results.awards, assignments, season.ends_on, today);
   return <div className="space-y-5"><h1 className="text-2xl font-bold">Finals positions</h1><RopingSetupTabs active="finals" />
     <form className="flex flex-wrap items-end gap-3"><label className="grid gap-2 text-sm font-semibold">Season<select name="season" defaultValue={season.id} className="h-10 max-w-full rounded-md border bg-white px-3">{seasons.data.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label><button className="h-10 rounded-md border bg-white px-3 text-sm font-semibold">View</button></form>
     {producer.role !== "viewer" && <ManualFinalsAward seasonId={season.id} members={memberOptions} classes={classes} date={today < season.starts_on ? season.starts_on : today > season.ends_on ? season.ends_on : today} />}
+    <FinalsPositionAssignments slots={slots} targets={targets} members={Object.fromEntries(names)} classes={Object.fromEntries(classNames)} seasonId={season.id} endsOn={season.ends_on} canEdit={producer.role !== "viewer"} />
     <section><h2 className="mb-3 font-semibold">Earned bonus positions · {rows.length} members and classes</h2><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-[#eef1ef]"><tr><th className="p-3">Member</th><th className="p-3">Finals class</th><th className="p-3 text-right">Positions</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.memberId}:${row.classId}`} className="border-b"><td className="p-3 font-semibold"><Link href={`/members/${row.memberId}`}>{names.get(row.memberId) ?? "Member"}</Link></td><td className="p-3">{classNames.get(row.classId) ?? "Class"}</td><td className="p-3 text-right tabular-nums">{row.positions}</td></tr>)}</tbody></table>{!rows.length && <p className="p-5 text-sm text-[#66716b]">No finals positions earned in this season yet.</p>}</div></section>
     {results.issues.length > 0 && <details className="border-t pt-4"><summary className="cursor-pointer font-semibold">Qualifier review · {results.issues.length} placements</summary><ul className="mt-3 space-y-4 text-sm">{results.issues.map((issue) => {
       const rule = results.rules.find((rule) => rule.id === issue.ruleId);

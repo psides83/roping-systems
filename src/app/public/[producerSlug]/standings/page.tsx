@@ -48,11 +48,10 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
   }
   const qualificationStandings = season && requirement ? calculateSeasonStandings(source.contributions, source.moves, season,
     requirement.cutoff_on ?? season.endsOn).rows : [];
-  const qualifyingFinals = season && requirement && isSupabaseConfigured() ? await loadFinalsQualifications(producerSlug, season.id, requirement.cutoff_on ?? season.endsOn) : finals;
-  const qualificationRows = includeFinalsPositions(qualificationStandings.filter((row) => row.classId === selectedClass?.id), qualifyingFinals?.totals ?? [], qualifyingFinals?.profiles ?? [], selectedClass?.id ?? "");
+  const qualificationRows = qualificationStandings.filter((row) => row.classId === selectedClass?.id);
   const qualified = new Set((requirement ? qualificationRows : []).filter((row) => meetsFinalsEntryRequirements(row, {
     topPlaces: requirement!.top_places, minimumRopings: requirement!.minimum_ropings,
-    earnedPositionPolicy: requirement!.earned_position_policy,
+    earnedPositionPolicy: "none",
   })).map((row) => row.roperId));
   const displayRows = includeFinalsPositions(standings.filter((row) => row.classId === selectedClass?.id), finals?.totals ?? [], finals?.profiles ?? [], selectedClass?.id ?? "");
   const rows = displayRows.map((row) => ({
@@ -81,7 +80,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
           {requirement.top_places ? <span>Top {requirement.top_places} · ties included</span> : null}
           <span>{requirement.minimum_ropings} ropings required</span>
           {requirement.cutoff_on ? <span>Cutoff: {requirement.cutoff_on}</span> : null}
-          {requirement.earned_position_policy !== "none" && <span>{requirement.earned_position_policy === "rank" ? "Earned finals positions bypass rank; attendance required" : "Earned finals positions qualify independently"}</span>}
+          {requirement.earned_position_policy !== "none" && <span>{requirement.earned_position_policy === "rank" ? "Assigned bonus positions bypass rank; attendance required" : "Assigned bonus positions bypass rank and attendance"}</span>}
         </div> : null}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold">{selectedClass ? `${selectedClass.name} ${selectedClass.divisionName}` : "Standings"}</h2>
@@ -91,14 +90,14 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
           <table className="w-full text-sm">
             <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]">
               <tr><th className="px-2 py-3 sm:px-4">Rank</th><th className="px-2 py-3 sm:px-4">Contestant</th>
-                <th className="px-2 py-3 text-right sm:px-4">Ropings</th><th className="px-2 py-3 text-right sm:px-4">Won</th><th className="px-2 py-3 text-right sm:px-4">Finals positions</th></tr>
+                <th className="px-2 py-3 text-right sm:px-4">Ropings</th><th className="px-2 py-3 text-right sm:px-4">Won</th><th className="px-2 py-3 text-right sm:px-4">Earned positions</th></tr>
             </thead>
             <tbody>{rows.map((row) => <tr key={row.roperId} className="border-t border-[#e7ebe8]">
               <td className="px-2 py-4 font-semibold tabular-nums sm:px-4">{row.rank === Number.MAX_SAFE_INTEGER ? "-" : row.rank}</td>
               <td className="min-w-24 px-2 py-4 sm:min-w-44 sm:px-4"><span className="font-semibold">{row.profile?.name ?? row.finalsName ?? "Roper"}</span>
                 <div className="mt-1 text-xs text-[#66716b]">{[row.profile?.city, row.profile?.state].filter(Boolean).join(", ")}</div>
                 {requirement ? <div className={`mt-1 text-xs font-semibold ${qualified.has(row.roperId) ? "text-emerald-700" : "text-[#66716b]"}`}>
-                  {qualified.has(row.roperId) ? "Meets requirements" : "Not qualified"}
+                  {qualified.has(row.roperId) ? "Meets standings requirements" : "Below standings requirements"}
                 </div> : null}
                 {selectedClass?.id.endsWith(":handicap") && row.profile?.handicap ?
                   <div className="mt-1 text-xs text-[#66716b]">{row.profile.handicap} · {Number(row.profile.handicapSeconds) > 0 ? "+" : ""}{Number(row.profile.handicapSeconds).toFixed(2)} sec</div> : null}

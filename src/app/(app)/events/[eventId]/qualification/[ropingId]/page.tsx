@@ -7,6 +7,7 @@ import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { calculateSeasonStandings } from "@/lib/season-standings";
 import { includeFinalsPositions, type EarnedPositionPolicy } from "@/lib/finals-entry-eligibility";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
+import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
 import { qualificationNoticeText } from "@/lib/events/qualification-notice";
 import { formatCurrency } from "@/lib/utils";
 import { reviewFinalsEntry, qualificationCheckIsCurrent } from "@/lib/finals-entry-review";
@@ -54,7 +55,8 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     startsOn: season.data.starts_on, endsOn: season.data.ends_on,
   }, rule.data?.cutoff_on ?? season.data.ends_on).rows.filter((row) => row.classId === classKey);
   const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data?.cutoff_on ?? season.data.ends_on);
-  const rows = includeFinalsPositions(standings, finals.totals, finals.profiles, classKey);
+  const assigned = await loadAssignedFinalsTotals(producer.id, seasonId, ropingId, finals.awards);
+  const rows = includeFinalsPositions(standings, assigned, finals.profiles, classKey);
   const currentKey = ["handicap", "four_d"].includes(roping.data.competition_format)
     ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
   const available = Boolean(rule.data && currentKey === classKey);
@@ -83,7 +85,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <span className={`text-xs font-semibold ${item.qualified ? "text-emerald-700" : "text-[#66716b]"}`}>{!available ? "Setup needs review" : item.qualified ? "Meets requirements" : "Not qualified"}</span>
     {!item.qualified ? <p className="mt-1 text-xs text-[#66716b]">{item.reasons.join(" · ")}</p> : null}
     {item.needsReview && <p className="mt-1 text-xs font-semibold text-amber-800">{item.overAllowance ? "Accepted entries exceed current allowance" : item.exceptions.length === item.accepted.length ? "Accepted by staff exception" : "Accepted entries need review"}</p>}
-    {!!item.row?.finalsPositions && <p className="mt-1 text-xs font-semibold text-emerald-700">{item.row.finalsPositions} earned finals positions</p>}
+    {!!item.row?.finalsPositions && <p className="mt-1 text-xs font-semibold text-emerald-700">{item.row.finalsPositions} assigned bonus positions</p>}
   </>;
   return <section className="space-y-5">
     <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-[#66716b]"><Link href="/events">Events</Link><span>/</span><Link href={back}>Manage event</Link><span>/</span><span>Entry review</span></nav>

@@ -44,6 +44,7 @@ async function renderReview({ manager = true, configured = true, current = false
     if (name.endsWith("/season-standings")) return standings;
     if (name.endsWith("/finals-entry-eligibility")) return eligibility;
     if (name.endsWith("/finals-entry-review")) return review;
+    if (name.endsWith("/finals-assignment-data")) return { loadAssignedFinalsTotals: async () => [{ memberId: "member", classId: "class", positions: 2 }] };
     if (name.endsWith("/finals-qualification-data")) return { loadFinalsQualifications: async () => ({ totals: [{ memberId: "member", classId: "class", positions: 2 }], profiles: [{ memberId: "member", roperId: "roper", name: "Alex Miller" }] }) };
     if (name.endsWith("/qualification-notice")) return { qualificationNoticeText: () => "Top 10, five ropings required" };
     if (name.endsWith("/utils")) return { formatCurrency: (cents) => `$${cents / 100}` };

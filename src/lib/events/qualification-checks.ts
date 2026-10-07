@@ -5,6 +5,7 @@ import { calculateSeasonStandings } from "@/lib/season-standings";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { includeFinalsPositions } from "@/lib/finals-entry-eligibility";
+import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
 
 export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string, bonusEntries?: boolean) {
   const producer = await getActiveProducer();
@@ -22,7 +23,8 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
     { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, rule.data.cutoff_on ?? season.data.ends_on).rows
     .filter((row) => row.classId === classKey);
   const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data.cutoff_on ?? season.data.ends_on);
-  const rows = includeFinalsPositions(standings, finals.totals, finals.profiles, classKey);
+  const assigned = await loadAssignedFinalsTotals(producer.id, seasonId, ropingId, finals.awards);
+  const rows = includeFinalsPositions(standings, assigned, finals.profiles, classKey);
   const current = await db.from("roping_qualification_checks").select("bonus_entries_enabled").eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
   if (current.error) throw new Error("Unable to load bonus entry rules.");
   const result = await db.rpc("save_roping_qualification_check_with_bonus", {
