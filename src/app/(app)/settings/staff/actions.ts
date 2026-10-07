@@ -22,7 +22,7 @@ export async function manageStaff(_: StaffActionState, form: FormData): Promise<
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Staff management requires an owner or administrator." };
   const db = await createClient();
   const role = form.get("role");
-  const validRole = z.enum(["owner", "admin", "operator", "viewer"]).safeParse(role);
+  const validRole = z.enum(["owner", "admin", "operator", "timing_staff", "viewer"]).safeParse(role);
   const operation = form.get("operation");
   let result;
   if (operation === "invite") {

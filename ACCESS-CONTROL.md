@@ -6,12 +6,12 @@ Public signup creates a personal roper login, never a producer or staff assignme
 
 ## Remaining Work
 
-- Specialized Event Manager, Entry Office, Timing Staff, and Treasurer roles. Do not expose these until their database policies and privileged functions enforce their scoped permissions.
+- Specialized Event Manager, Entry Office, and Treasurer roles. Do not expose these until their database policies and privileged functions enforce their scoped permissions.
 - Enforce event-specific assignments for specialized roles and test every write workflow.
 
-Existing roles remain owner, admin, operator, and viewer during this security foundation phase. Operator remains broad event-operating access, not a substitute for a limited timing or entry-office role.
+Roles now include owner, admin, operator, timing_staff, and viewer. Operator remains broad event-operating access, not a substitute for a limited timing or entry-office role.
 
-Owners and administrators can record and remove event assignments in Staff access. Assignments are audited, restricted to the same producer, and automatically removed when staff access or an event is deleted. This is the assignment foundation only: it does not narrow existing Operator access or grant additional permissions to Viewers. Specialized roles remain unavailable until their write workflows enforce these assignments.
+Owners and administrators can record and remove event assignments in Staff access. Assignments are audited, restricted to the same producer, and automatically removed when staff access or an event is deleted. Timing Staff can record times, apply permitted penalties, correct with a reason, and schedule reruns only for assigned events. They retain producer-wide read access, but no entries, funds, payouts, rules, draw building, round completion, or event finalization writes. Existing Operator access stays producer-wide, and Viewers gain no write access from assignments. The producer context intentionally gives specialized roles a read-only base access level; the timing workspace separately checks database permission. Direct scoring internals are not callable by authenticated clients; the penalty-validating workflow calls them internally.
 
 Platform provisioning requires the initial Producer Owner email. Creation and invitation are atomic; the platform account retains bootstrap owner access so it can manage pending invitations. Setup opens the staff page to show delivery status and allow retries. The invited owner receives access only after accepting with a matching verified account.
 

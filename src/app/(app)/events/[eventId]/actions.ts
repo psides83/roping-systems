@@ -745,6 +745,19 @@ function getTimerReadings(formData: FormData, status: string) {
   return { timerReadings, valid };
 }
 
+async function requireTiming(eventId: string, runId: string) {
+  const producer = await getActiveProducer();
+  if (!producer) throw new Error("Staff access is required.");
+  const db = await createClient();
+  const event = await db.from("events").select("id").eq("id", eventId).eq("producer_id", producer.id).maybeSingle();
+  const permission = await db.rpc("can_time_event", { target_event: eventId });
+  if (event.error || !event.data || permission.error || !permission.data) throw new Error("You are not assigned to time this event.");
+  const run = await db.from("competition_runs").select("id,event_ropings!inner(event_id)")
+    .eq("id", runId).eq("producer_id", producer.id).eq("event_ropings.event_id", eventId).maybeSingle();
+  if (run.error || !run.data) throw new Error("Choose a run from this event.");
+  return db;
+}
+
 export async function recordRun(
   eventId: string,
   _state: LiveRunState,
@@ -759,7 +772,7 @@ export async function recordRun(
   );
   if (!valid) return { message: "Enter a valid reading from every timer." };
 
-  const supabase = await requireManager();
+  const supabase = await requireTiming(eventId, parsed.data.runId);
   const { error } = await supabase.rpc("save_run_with_penalties", {
     target_run_id: parsed.data.runId,
     entered_timer_readings:
@@ -790,7 +803,7 @@ export async function correctRun(
   );
   if (!valid) return { message: "Enter a valid reading from every timer." };
 
-  const supabase = await requireManager();
+  const supabase = await requireTiming(eventId, parsed.data.runId);
   const { error } = await supabase.rpc("save_run_with_penalties", {
     target_run_id: parsed.data.runId,
     entered_timer_readings:
@@ -815,7 +828,7 @@ export async function scheduleRerun(
   if (!parsed.success)
     return { message: "Choose when to run again and enter a brief reason." };
 
-  const supabase = await requireManager();
+  const supabase = await requireTiming(eventId, parsed.data.runId);
   const { error } = await supabase.rpc("schedule_run_rerun", {
     target_run_id: parsed.data.runId,
     target_timing: parsed.data.timing,

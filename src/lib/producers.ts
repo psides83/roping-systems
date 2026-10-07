@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { EntryLabelStyle } from "@/lib/entry-labels";
+import { producerAccessRole } from "@/lib/staff-permissions";
 
 export interface ActiveProducer {
   id: string;
@@ -12,6 +13,7 @@ export interface ActiveProducer {
   brandAccent: string;
   entryLabelStyle: EntryLabelStyle;
   role: "owner" | "admin" | "operator" | "viewer";
+  timingStaff?: boolean;
 }
 
 export async function getProducers(): Promise<ActiveProducer[]> {
@@ -29,7 +31,7 @@ export async function getProducers(): Promise<ActiveProducer[]> {
   if (error || !data?.length) return [];
   return data.map((membership) => {
     const producer = membership.producers as unknown as { id: string; name: string; slug: string; timezone: string; brand_primary: string; brand_accent: string; entry_label_style: EntryLabelStyle };
-    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: membership.role as ActiveProducer["role"] };
+    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: producerAccessRole(membership.role), timingStaff: membership.role === "timing_staff" };
   });
 }
 

@@ -11,7 +11,7 @@ export default async function StaffPage() {
   const canManage = ["owner", "admin"].includes(producer.role);
   const platformOwner = await isPlatformOwner();
   const db = await createClient();
-  const events = canManage ? await readAllRows((first,last) => db.from("events").select("id,name")
+  const events = canManage ? await readAllRows((first,last) => db.from("events").select("id,title")
     .eq("producer_id",producer.id).order("id").range(first,last), "Unable to load events") : [];
   const assignments = canManage ? await readAllRows((first,last) => db.from("staff_event_assignments").select("event_id,user_id")
     .eq("producer_id",producer.id).order("event_id").order("user_id").range(first,last), "Unable to load event assignments") : [];
@@ -27,14 +27,14 @@ export default async function StaffPage() {
       <div className="mt-4 divide-y divide-[#dfe4e1]">{staff.map((person) => <div key={person.user_id} className="space-y-3 py-4">
         <p className="break-all text-sm font-semibold">{person.email}</p>
         {assignments.filter((item) => item.user_id === person.user_id).map((item) => <div key={item.event_id} className="flex flex-wrap items-center gap-3 text-sm">
-          <span>{events.find((event) => event.id === item.event_id)?.name ?? "Event"}</span><StaffEventForm userId={person.user_id} eventId={item.event_id} />
+          <span>{events.find((event) => event.id === item.event_id)?.title ?? "Event"}</span><StaffEventForm userId={person.user_id} eventId={item.event_id} />
         </div>)}
-        <StaffEventForm userId={person.user_id} events={events.filter((event) => !assignments.some((item) => item.user_id === person.user_id && item.event_id === event.id))} />
+        <StaffEventForm userId={person.user_id} events={events.filter((event) => !assignments.some((item) => item.user_id === person.user_id && item.event_id === event.id)).map((event) => ({ id: event.id, name: event.title }))} />
       </div>)}</div></details> : null}
     {canManage ? <StaffAccessForm operation="invite" owner={producer.role === "owner"} platformOwner={platformOwner} /> : null}
     <div className="divide-y divide-[#dfe4e1] border-y border-[#dfe4e1]">{staff.map((person) => {
       const editable = canManage && person.role !== "owner" && (producer.role === "owner" || !["owner","admin"].includes(person.role));
-      return <div key={person.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><p className="break-all text-sm font-semibold">{person.email}</p><p className="mt-1 text-xs capitalize text-[#66716b]">{person.role === "admin" ? "Administrator" : person.role}</p></div>
+      return <div key={person.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><p className="break-all text-sm font-semibold">{person.email}</p><p className="mt-1 text-xs capitalize text-[#66716b]">{person.role === "admin" ? "Administrator" : person.role.replaceAll("_", " ")}</p></div>
         {editable ? <div className="flex flex-wrap gap-2"><StaffAccessForm operation="role" id={person.user_id} role={person.role} owner={producer.role === "owner"} /><StaffAccessForm operation="remove" id={person.user_id} /></div> : null}</div>;
     })}</div>
     {canManage ? <section><h2 className="text-lg font-bold">Pending invitations</h2><p className="mt-2 text-sm text-[#66716b]">Acceptance page: <Link href="/staff-invitations" className="underline">{process.env.NEXT_PUBLIC_SITE_URL ?? "https://roping-systems.vercel.app"}/staff-invitations</Link></p>

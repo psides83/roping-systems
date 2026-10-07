@@ -100,6 +100,7 @@ interface LiveDeskProps {
   shortRoundSeeded: boolean;
   mainRoundsComplete: boolean;
   canEdit: boolean;
+  canTime?: boolean;
 }
 
 export function DatabaseLiveDesk({
@@ -119,6 +120,7 @@ export function DatabaseLiveDesk({
   shortRoundSeeded,
   mainRoundsComplete,
   canEdit,
+  canTime = canEdit,
 }: LiveDeskProps) {
   const [orderedRuns, setOrderedRuns] = useState(runs);
   const [search, setSearch] = useState("");
@@ -542,7 +544,7 @@ export function DatabaseLiveDesk({
                                 eventId={eventId}
                                 run={run}
                                 canEdit={
-                                  canEdit && eventStatus === "in_progress"
+                                  canTime && eventStatus === "in_progress"
                                 }
                               />
                             ) : null}
@@ -550,7 +552,7 @@ export function DatabaseLiveDesk({
                               eventId={eventId}
                               run={run}
                               timerCount={timerCount}
-                              canEdit={canEdit && eventStatus === "in_progress"}
+                              canEdit={canTime && eventStatus === "in_progress"}
                             />
                           </div>
                         ) : null}
@@ -654,7 +656,7 @@ export function DatabaseLiveDesk({
             timerCount={timerCount}
             timerResolution={timerResolution}
             isShortRound={isShortRound}
-            canEdit={canEdit}
+            canEdit={canTime}
           />
         ) : (
           <DeskMessage

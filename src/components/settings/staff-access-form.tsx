@@ -10,7 +10,7 @@ export function StaffAccessForm({ operation, id, role = "viewer", owner = false,
     <input type="hidden" name="operation" value={operation} /><input type="hidden" name="id" value={id ?? ""} />
     {operation === "invite" ? <input aria-label="Staff email" name="email" type="email" required placeholder="Staff email" className="h-10 w-64 max-w-full rounded-md border border-[#ccd4d0] px-3 text-sm" /> : null}
     {operation === "invite" || operation === "role" ? <select name="role" aria-label="Staff role" defaultValue={role} className="h-10 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm">
-      {platformOwner ? <option value="owner">Producer Owner</option> : null}{owner ? <option value="admin">Administrator</option> : null}<option value="operator">Operator</option><option value="viewer">Viewer</option>
+      {platformOwner ? <option value="owner">Producer Owner</option> : null}{owner ? <option value="admin">Administrator</option> : null}<option value="operator">Operator</option><option value="timing_staff">Timing Staff</option><option value="viewer">Viewer</option>
     </select> : null}
     <button disabled={pending} title={operation === "role" ? "Save role" : operation === "remove" ? "Revoke staff access" : operation === "cancel" ? "Cancel invitation" : operation === "send" ? "Send invitation email" : "Create invitation"}
       aria-label={operation === "role" ? "Save role" : operation === "remove" ? "Revoke staff access" : operation === "cancel" ? "Cancel invitation" : operation === "send" ? "Send invitation email" : "Create invitation"}

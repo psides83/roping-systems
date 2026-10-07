@@ -117,6 +117,9 @@ export default async function LiveRopingPage({
     .eq("producer_id", producer.id)
     .single();
   if (!roping) notFound();
+  const timingPermission = await supabase.rpc("can_time_event", { target_event: eventId });
+  if (timingPermission.error) throw new Error("Unable to check timing access.");
+  const canTime = Boolean(timingPermission.data);
 
   const divisions = (
     roping.event_ropings as unknown as Array<{
@@ -233,7 +236,7 @@ export default async function LiveRopingPage({
     if (fineError) throw new Error(`Unable to load fine restrictions: ${fineError.message}`);
     const fineBlockedEntries = new Set((fineRestrictions ?? []).filter((restriction: { blocked: boolean }) => restriction.blocked).map((restriction: { entry_id: string }) => restriction.entry_id));
     runs = runs.map((run) => ({ ...run, fineBlocked: fineBlockedEntries.has(run.entryId) }));
-    if (producer.role !== "viewer") {
+    if (canTime) {
       const { data: options, error: penaltyError } = await supabase.rpc("event_run_penalty_options", { target_event_roping_id: selectedDivisionId });
       if (penaltyError) throw new Error(`Unable to load applicable penalties: ${penaltyError.message}`);
       const byRun = new Map((options as Array<{ run_id: string; options: PenaltyOption[] }>).map((row) => [row.run_id, row.options]));
@@ -368,6 +371,7 @@ export default async function LiveRopingPage({
       roundLocked={roundLocked}
       mainRoundsComplete={mainRoundsComplete}
       canEdit={producer.role !== "viewer"}
+      canTime={canTime}
       watchEvidence={<ClassificationWatchEvidence eventId={eventId} compact />}
     />
   );
@@ -389,6 +393,7 @@ function LiveWorkspace({
   roundLocked,
   mainRoundsComplete,
   canEdit,
+  canTime = canEdit,
   watchEvidence,
 }: {
   eventId: string;
@@ -406,6 +411,7 @@ function LiveWorkspace({
   roundLocked: boolean;
   mainRoundsComplete: boolean;
   canEdit: boolean;
+  canTime?: boolean;
   watchEvidence?: ReactNode;
 }) {
   const selectedDivision = divisions.find(
@@ -473,6 +479,7 @@ function LiveWorkspace({
             shortRoundSeeded={selectedDivision.shortRoundSeeded}
             mainRoundsComplete={mainRoundsComplete}
             canEdit={canEdit}
+            canTime={canTime}
           />
         </>
       ) : (
