@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateFinalsQualifications as calculate, validateFinalsQualificationRule } from '../src/lib/finals-qualifications.ts';
+import { calculateFinalsQualifications as calculate, validateFinalsQualificationRule, finalsDecisionContext } from '../src/lib/finals-qualifications.ts';
 
 const rule = (overrides={}) => ({ id:'r1',producerId:'producer',seasonId:'season',classId:'11',ropingId:'roping',stage:'aggregate',round:null,places:[{place:1,positions:1},{place:2,positions:1}],repeatPolicy:'accumulate',tiePolicy:'all',maximumPositions:null,...overrides });
 const finish = (memberId,place,overrides={}) => ({ producerId:'producer',seasonId:'season',classId:'11',ropingId:'roping',stage:'aggregate',round:null,date:'2026-10-01',official:true,entryId:`entry-${memberId}`,memberId,place,...overrides });
@@ -61,6 +61,22 @@ test('staff can revoke positions on a class move without deleting their history'
   assert.equal(result.totals.length,0); assert.equal(result.awards[0].revoked,true);
 });
 test('revoked manual positions do not establish eligibility',()=>assert.equal(calculate([],[],[manual({revoked:true})]).totals.length,0));
+test('staff resolve qualifying ties only for the current tied finish group',()=>{
+  const rules=[rule({tiePolicy:'staff_decision',places:[{place:1,positions:1}]})];
+  const finishes=[finish('a',1),finish('b',1)];
+  const decision={ruleId:'r1',place:1,kind:'tie',entryIds:['entry-b'],context:finalsDecisionContext(finishes)};
+  const result=calculate(rules,finishes,[],[],[decision]);
+  assert.equal(total(result,'a'),0); assert.equal(total(result,'b'),1); assert.equal(result.issues.length,0);
+  const corrected=[finish('a',1),finish('c',1)];
+  assert.equal(calculate(rules,corrected,[],[],[decision]).issues[0].reason,'tie_requires_decision');
+});
+test('automatic revocations exclude the selected award, including after class transfer',()=>{
+  const finishes=[finish('a',1)];
+  const decision={ruleId:'r1',place:1,kind:'revoke',entryIds:['entry-a'],context:finalsDecisionContext(finishes)};
+  const move={id:'move',producerId:'producer',seasonId:'season',memberId:'a',fromClassId:'11',toClassId:'10',date:'2026-10-02',decision:'transfer',reason:'Retain position'};
+  assert.equal(calculate([rule()],finishes,[],[move],[decision]).totals.length,0);
+  assert.equal(total(calculate([rule()],[finish('a',2)],[],[],[decision]),'a'),1);
+});
 test('invalid places, duplicate stages, missing move decisions and duplicate finishes are rejected',()=>{
   assert.ok(validateFinalsQualificationRule(rule({places:[{place:1,positions:0}]})).length);
   assert.throws(()=>calculate([rule(),rule({id:'r2'})],[]),/each qualification stage once/);

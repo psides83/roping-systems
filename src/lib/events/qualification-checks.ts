@@ -3,6 +3,8 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { calculateSeasonStandings } from "@/lib/season-standings";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
+import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
+import { includeFinalsPositions } from "@/lib/finals-entry-eligibility";
 
 export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string) {
   const producer = await getActiveProducer();
@@ -16,9 +18,11 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
     .eq("producer_id", producer.id).eq("season_id", seasonId).eq("class_key", classKey).single();
   if (settings.error || season.error || rule.error) throw new Error("Configure qualification requirements for this class and season first.");
   const source = await loadSeasonStandings(producer.slug, seasonId);
-  const rows = calculateSeasonStandings(source.contributions, source.moves,
+  const standings = calculateSeasonStandings(source.contributions, source.moves,
     { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, rule.data.cutoff_on ?? season.data.ends_on).rows
     .filter((row) => row.classId === classKey);
+  const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data.cutoff_on ?? season.data.ends_on);
+  const rows = includeFinalsPositions(standings, finals.totals, finals.profiles, classKey);
   const result = await db.rpc("save_roping_qualification_check", {
     target_roping_id: ropingId, target_season_id: seasonId, target_class_key: classKey,
     expected_revision: settings.data.standings_revision, target_standings: rows,

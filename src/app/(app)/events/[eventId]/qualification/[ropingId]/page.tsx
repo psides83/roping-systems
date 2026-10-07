@@ -4,7 +4,9 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
-import { calculateSeasonStandings, qualifiesForStandings } from "@/lib/season-standings";
+import { calculateSeasonStandings } from "@/lib/season-standings";
+import { includeFinalsPositions, meetsFinalsEntryRequirements, type EarnedPositionPolicy } from "@/lib/finals-entry-eligibility";
+import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { qualificationNoticeText } from "@/lib/events/qualification-notice";
 import { formatCurrency } from "@/lib/utils";
 
@@ -26,7 +28,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <h1 className="text-2xl font-bold">Qualification</h1><p>This roping has no standings requirement.</p></section>;
   const { season_id: seasonId, class_key: classKey } = check.data;
   const season = await db.from("producer_seasons").select("name,starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
-  const rule = await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on")
+  const rule = await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,earned_position_policy")
     .eq("season_id", seasonId).eq("class_key", classKey).eq("producer_id", producer.id).maybeSingle();
   if (season.error || rule.error) throw new Error("Unable to load qualification requirements.");
   const entries = await readAllRows((first, last) => db.from("roping_entries")
@@ -34,14 +36,16 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     .eq("event_roping_id", ropingId).eq("producer_id", producer.id).eq("competition_status", "active")
     .order("id").range(first, last), "Unable to load accepted entries");
   const source = await loadSeasonStandings(producer.slug, seasonId);
-  const rows = calculateSeasonStandings(source.contributions, source.moves, {
+  const standings = calculateSeasonStandings(source.contributions, source.moves, {
     startsOn: season.data.starts_on, endsOn: season.data.ends_on,
   }, rule.data?.cutoff_on ?? season.data.ends_on).rows.filter((row) => row.classId === classKey);
+  const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data?.cutoff_on ?? season.data.ends_on);
+  const rows = includeFinalsPositions(standings, finals.totals, finals.profiles, classKey);
   const currentKey = ["handicap", "four_d"].includes(roping.data.competition_format)
     ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
   const available = Boolean(rule.data && currentKey === classKey);
   const profiles = new Map(source.ropers.map((roper) => [`${roper.roperId}:${roper.classId}`, roper]));
-  const names = new Map(source.ropers.map((roper) => [roper.roperId, roper.name]));
+  const names = new Map([...source.ropers.map((roper) => [roper.roperId, roper.name] as const), ...finals.profiles.map((profile) => [profile.roperId, profile.name] as const)]);
   const roperIds = new Set([...rows.map((row) => row.roperId), ...entries.map((entry) => entry.roper_id)]);
   const review = [...roperIds].map((id) => {
     const row = rows.find((item) => item.roperId === id);
@@ -51,9 +55,10 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     const profile = profiles.get(`${id}:${classKey}`);
     return { id, row, accepted, exceptions, profile,
       name: profile?.name ?? names.get(id) ?? (person ? `${person.first_name} ${person.last_name}` : "Roper"),
-      qualified: available && Boolean(row && qualifiesForStandings(row, {
+      qualified: available && meetsFinalsEntryRequirements(row, {
         topPlaces: rule.data!.top_places, minimumRopings: rule.data!.minimum_ropings,
-      })),
+        earnedPositionPolicy: rule.data!.earned_position_policy as EarnedPositionPolicy,
+      }),
     };
   }).sort((a, b) => (a.row?.rank ?? Infinity) - (b.row?.rank ?? Infinity) || a.name.localeCompare(b.name));
   const search = typeof query.search === "string" ? query.search.slice(0, 100) : "";
@@ -67,6 +72,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
       item.row.ropingsEntered < rule.data!.minimum_ropings ? `${rule.data!.minimum_ropings - item.row.ropingsEntered} more ropings needed` : null,
     ].filter(Boolean).join(" · ")}</p> : null}
     <p className="mt-1 text-xs text-[#66716b]">{item.accepted.length} accepted entries</p>
+    {!!item.row?.finalsPositions && <p className="mt-1 text-xs font-semibold text-emerald-700">{item.row.finalsPositions} earned finals positions</p>}
   </>;
   return <section className="space-y-5">
     <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-[#66716b]"><Link href="/events">Events</Link><span>/</span><Link href={back}>Manage event</Link><span>/</span><span>Qualifiers</span></nav>
@@ -86,7 +92,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white"><table className="w-full text-sm">
       <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]"><tr><th className="p-2 sm:p-3">Rank</th><th className="p-2 sm:p-3">Roper</th><th className="p-2 text-right sm:p-3">Ropings</th><th className="p-2 text-right sm:p-3">Won</th><th className="hidden p-3 lg:table-cell">Status</th></tr></thead>
       <tbody>{visible.map((item) => <tr key={item.id} className="border-t border-[#e7ebe8] align-top">
-        <td className="p-2 tabular-nums sm:p-3">{item.row?.rank ?? "-"}</td>
+        <td className="p-2 tabular-nums sm:p-3">{item.row?.rank === Number.MAX_SAFE_INTEGER ? "-" : item.row?.rank ?? "-"}</td>
         <td className="min-w-0 p-2 sm:p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#66716b]">{[item.profile?.city, item.profile?.state].filter(Boolean).join(", ")}</p>
           <div className="mt-2 lg:hidden">{qualificationStatus(item)}</div>
           {item.profile?.handicap ? <p className="mt-1 text-xs">{item.profile.handicap} · {Number(item.profile.handicapSeconds).toFixed(2)} sec</p> : null}

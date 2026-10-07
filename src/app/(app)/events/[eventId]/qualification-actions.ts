@@ -14,7 +14,7 @@ export async function loadRopingQualification(ropingId: string) {
   if (roping.error) throw new Error("Roping not found.");
   const classKey = ["handicap", "four_d"].includes(roping.data.competition_format)
     ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
-  const rules = await db.from("standings_qualification_rules").select("season_id,top_places,minimum_ropings,cutoff_on")
+  const rules = await db.from("standings_qualification_rules").select("season_id,top_places,minimum_ropings,cutoff_on,earned_position_policy")
     .eq("producer_id", producer.id).eq("class_key", classKey ?? "");
   const seasons = await db.from("producer_seasons").select("id,name").eq("producer_id", producer.id).order("starts_on", { ascending: false });
   const current = await db.from("roping_qualification_checks").select("season_id,checked_at")

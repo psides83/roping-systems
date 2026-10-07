@@ -4,7 +4,8 @@ import { getPublicData } from "@/lib/events/public-event-data";
 import { getBrandStyle } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { calculateSeasonStandings, qualifiesForStandings } from "@/lib/season-standings";
+import { calculateSeasonStandings } from "@/lib/season-standings";
+import { includeFinalsPositions, meetsFinalsEntryRequirements, type EarnedPositionPolicy } from "@/lib/finals-entry-eligibility";
 import { loadSeasonStandings, type SeasonStandingsSource } from "@/lib/events/season-standings-data";
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { seasonCalendarDate } from "@/lib/seasons";
@@ -36,7 +37,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
   const finals = season && isSupabaseConfigured() ? await loadFinalsQualifications(producerSlug, season.id) : null;
   const finalsProfiles = new Map(finals?.profiles.map((profile) => [profile.memberId, profile]) ?? []);
   const finalsPositions = new Map(finals?.totals.map((row) => [`${finalsProfiles.get(row.memberId)?.roperId}:${row.classId}`, row.positions]) ?? []);
-  let requirement: { top_places: number | null; minimum_ropings: number; cutoff_on: string | null } | undefined;
+  let requirement: { top_places: number | null; minimum_ropings: number; cutoff_on: string | null; earned_position_policy: EarnedPositionPolicy } | undefined;
   if (season && selectedClass && isSupabaseConfigured()) {
     const db = await createClient();
     const result = await db.rpc("public_standings_qualification_rules", {
@@ -45,14 +46,19 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
     if (result.error) throw new Error("Unable to load qualification requirements.");
     requirement = result.data?.find((item: { class_key: string }) => item.class_key === selectedClass.id);
   }
-  const qualificationRows = season && requirement ? calculateSeasonStandings(source.contributions, source.moves, season,
+  const qualificationStandings = season && requirement ? calculateSeasonStandings(source.contributions, source.moves, season,
     requirement.cutoff_on ?? season.endsOn).rows : [];
-  const qualified = new Set(qualificationRows.filter((row) => row.classId === selectedClass?.id && qualifiesForStandings(row, {
+  const qualifyingFinals = season && requirement && isSupabaseConfigured() ? await loadFinalsQualifications(producerSlug, season.id, requirement.cutoff_on ?? season.endsOn) : finals;
+  const qualificationRows = includeFinalsPositions(qualificationStandings.filter((row) => row.classId === selectedClass?.id), qualifyingFinals?.totals ?? [], qualifyingFinals?.profiles ?? [], selectedClass?.id ?? "");
+  const qualified = new Set((requirement ? qualificationRows : []).filter((row) => meetsFinalsEntryRequirements(row, {
     topPlaces: requirement!.top_places, minimumRopings: requirement!.minimum_ropings,
+    earnedPositionPolicy: requirement!.earned_position_policy,
   })).map((row) => row.roperId));
-  const rows = standings.filter((row) => row.classId === selectedClass?.id).map((row) => ({
+  const displayRows = includeFinalsPositions(standings.filter((row) => row.classId === selectedClass?.id), finals?.totals ?? [], finals?.profiles ?? [], selectedClass?.id ?? "");
+  const rows = displayRows.map((row) => ({
     ...row, profile: profiles.get(`${row.roperId}:${row.classId}`) ?? names.get(row.roperId),
-  })).filter((row) => row.profile?.name.toLowerCase().includes(search.toLowerCase()));
+    finalsName: finals?.profiles.find((profile) => profile.roperId === row.roperId)?.name,
+  })).filter((row) => (row.profile?.name ?? row.finalsName ?? "").toLowerCase().includes(search.toLowerCase()));
   const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
   return <main style={getBrandStyle(producer.brandPrimary, producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
     <header className="brand-primary-fill text-white">
@@ -75,6 +81,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
           {requirement.top_places ? <span>Top {requirement.top_places} · ties included</span> : null}
           <span>{requirement.minimum_ropings} ropings required</span>
           {requirement.cutoff_on ? <span>Cutoff: {requirement.cutoff_on}</span> : null}
+          {requirement.earned_position_policy !== "none" && <span>{requirement.earned_position_policy === "rank" ? "Earned finals positions bypass rank; attendance required" : "Earned finals positions qualify independently"}</span>}
         </div> : null}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold">{selectedClass ? `${selectedClass.name} ${selectedClass.divisionName}` : "Standings"}</h2>
@@ -87,8 +94,8 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
                 <th className="px-2 py-3 text-right sm:px-4">Ropings</th><th className="px-2 py-3 text-right sm:px-4">Won</th><th className="px-2 py-3 text-right sm:px-4">Finals positions</th></tr>
             </thead>
             <tbody>{rows.map((row) => <tr key={row.roperId} className="border-t border-[#e7ebe8]">
-              <td className="px-2 py-4 font-semibold tabular-nums sm:px-4">{row.rank}</td>
-              <td className="min-w-24 px-2 py-4 sm:min-w-44 sm:px-4"><span className="font-semibold">{row.profile?.name ?? "Roper"}</span>
+              <td className="px-2 py-4 font-semibold tabular-nums sm:px-4">{row.rank === Number.MAX_SAFE_INTEGER ? "-" : row.rank}</td>
+              <td className="min-w-24 px-2 py-4 sm:min-w-44 sm:px-4"><span className="font-semibold">{row.profile?.name ?? row.finalsName ?? "Roper"}</span>
                 <div className="mt-1 text-xs text-[#66716b]">{[row.profile?.city, row.profile?.state].filter(Boolean).join(", ")}</div>
                 {requirement ? <div className={`mt-1 text-xs font-semibold ${qualified.has(row.roperId) ? "text-emerald-700" : "text-[#66716b]"}`}>
                   {qualified.has(row.roperId) ? "Meets requirements" : "Not qualified"}

@@ -78,6 +78,19 @@ export interface FinalsQualificationIssue {
   entryIds: string[];
 }
 
+export interface FinalsQualificationDecision {
+  ruleId: string;
+  place: number;
+  kind: "tie" | "revoke";
+  entryIds: string[];
+  context: (string | number | null)[][];
+}
+
+export function finalsDecisionContext(finishes: QualifierFinish[]) {
+  return [...finishes].sort((a, b) => a.entryId.localeCompare(b.entryId))
+    .map((finish) => [finish.entryId, finish.memberId, finish.place]);
+}
+
 const accountKey = (producer: string, season: string, member: string, classification: string) =>
   JSON.stringify([producer, season, member, classification]);
 const match = (rule: FinalsQualificationRule, finish: QualifierFinish) =>
@@ -104,6 +117,7 @@ export function validateFinalsQualificationRule(rule: FinalsQualificationRule): 
 export function calculateFinalsQualifications(
   rules: FinalsQualificationRule[], finishes: QualifierFinish[],
   manual: ManualFinalsPosition[] = [], moves: FinalsPositionMove[] = [],
+  decisions: FinalsQualificationDecision[] = [],
 ) {
   const awards: FinalsPositionAward[] = [];
   const issues: FinalsQualificationIssue[] = [];
@@ -182,11 +196,16 @@ export function calculateFinalsQualifications(
       const ranks = rule.repeatPolicy === "pass_down" ? places.filter((place) => place >= allocation.place) : [allocation.place];
       for (const rank of ranks) {
         const group = groups.get(rank) ?? [];
-        const eligible = group.filter((finish) => finish.memberId && !claimed.has(finish.entryId) &&
+        const context = JSON.stringify(finalsDecisionContext(group));
+        const applicable = decisions.filter((decision) => decision.ruleId === rule.id && decision.place === allocation.place && JSON.stringify(decision.context) === context);
+        const resolution = applicable.find((decision) => decision.kind === "tie");
+        const revoked = new Set(applicable.filter((decision) => decision.kind === "revoke").flatMap((decision) => decision.entryIds));
+        const eligible = group.filter((finish) => finish.memberId && !claimed.has(finish.entryId) && !revoked.has(finish.entryId) &&
+          (!resolution || resolution.entryIds.includes(finish.entryId)) &&
           (rule.repeatPolicy === "accumulate" || balance(rule.producerId, rule.seasonId, finish.memberId, rule.classId) === 0) &&
           (rule.maximumPositions === null || balance(rule.producerId, rule.seasonId, finish.memberId, rule.classId) < rule.maximumPositions));
         if (!eligible.length) continue;
-        if (group.length > 1 && rule.tiePolicy === "staff_decision") {
+        if (group.length > 1 && rule.tiePolicy === "staff_decision" && !resolution) {
           issues.push({ ruleId: rule.id, place: allocation.place, reason: "tie_requires_decision", entryIds: group.map((finish) => finish.entryId) });
           held = true;
           break;
@@ -197,7 +216,7 @@ export function calculateFinalsQualifications(
           if (positions <= 0 || (rule.repeatPolicy !== "accumulate" && current > 0)) continue;
           add({ id: `finish:${rule.id}:${finish.entryId}`, producerId: rule.producerId, seasonId: rule.seasonId, classId: rule.classId,
             earnedClassId: rule.classId, memberId: finish.memberId!, positions, source: "finish", ruleId: rule.id,
-            entryId: finish.entryId, ropingId: rule.ropingId, place: finish.place!, moves: [], revoked: false });
+            entryId: finish.entryId, ropingId: rule.ropingId, place: allocation.place, moves: [], revoked: false });
           claimed.add(finish.entryId);
           awarded = true;
         }
