@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
+import { isPlatformOwner } from "@/lib/platform-access";
 
 export interface ProducerState {
   message?: string;
@@ -31,6 +32,7 @@ export async function createProducer(
   _state: ProducerState,
   formData: FormData,
 ): Promise<ProducerState> {
+  if (!await isPlatformOwner()) return { message: "Only the platform owner can create producers." };
   const parsed = producerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 

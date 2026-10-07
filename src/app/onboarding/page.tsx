@@ -4,12 +4,14 @@ import { ProducerForm } from "@/components/producer-form";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveProducer } from "@/lib/producers";
+import { isPlatformOwner } from "@/lib/platform-access";
 
 export default async function OnboardingPage({ searchParams }: PageProps<"/onboarding">) {
   if (!isSupabaseConfigured()) redirect("/dashboard");
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims) redirect("/auth/login");
+  if (!await isPlatformOwner()) return <main className="mx-auto max-w-xl px-5 py-12"><h1 className="text-2xl font-bold">Producer invitation required</h1><p className="mt-3 text-sm text-[#66716b]">Producer accounts are created by the platform owner. Contact your producer for staff access.</p></main>;
   const { new: createAnother } = await searchParams;
   if (await getActiveProducer() && createAnother !== "1") redirect("/dashboard");
 

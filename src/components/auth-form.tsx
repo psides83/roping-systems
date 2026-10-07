@@ -25,7 +25,7 @@ export function AuthForm({ mode, configured }: { mode: "login" | "signup"; confi
       {state.message ? <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">{state.message}</p> : null}
       <button disabled={pending || !configured} className="flex h-12 w-full items-center justify-center gap-2 rounded-md brand-accent-fill text-sm font-bold text-white enabled:hover:bg-[var(--brand-accent-strong)] disabled:cursor-not-allowed disabled:opacity-50">{pending ? <LoaderCircle size={17} className="animate-spin" /> : null}{mode === "login" ? "Sign in" : "Create account"}<ArrowRight size={17} /></button>
       {!configured ? <Link href="/dashboard" className="flex h-11 w-full items-center justify-center rounded-md border border-[#ccd4d0] text-sm font-semibold text-[#334139] hover:bg-[#f5f6f5]">Continue in preview mode</Link> : null}
-      <p className="pt-1 text-center text-sm text-[#66716b]">{mode === "login" ? "New to Roping Systems?" : "Already have an account?"} <Link href={mode === "login" ? "/auth/signup" : "/auth/login"} className="font-bold text-[var(--brand-accent-strong)]">{mode === "login" ? "Create an account" : "Sign in"}</Link></p>
+      <p className="pt-1 text-center text-sm text-[#66716b]">{mode === "login" ? "Roper registration:" : "Already have an account?"} <Link href={mode === "login" ? "/auth/signup" : "/auth/login"} className="font-bold text-[var(--brand-accent-strong)]">{mode === "login" ? "Create a roper account" : "Sign in"}</Link></p>
     </form>
   );
 }

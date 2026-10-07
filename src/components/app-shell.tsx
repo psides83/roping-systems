@@ -52,6 +52,7 @@ export function AppShell({
   brandPrimary,
   brandAccent,
   demo = false,
+  platformOwner = false,
 }: {
   children: React.ReactNode;
   producerName?: string;
@@ -61,6 +62,7 @@ export function AppShell({
   brandPrimary?: string;
   brandAccent?: string;
   demo?: boolean;
+  platformOwner?: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -161,12 +163,12 @@ export function AppShell({
                   </form>
                 ))
               )}
-              <Link
+              {platformOwner ? <Link
                 href="/onboarding?new=1"
                 className="block border-t border-[#e7ebe8] px-3 py-2 text-xs font-semibold text-[var(--brand-accent-strong)]"
               >
                 Create another producer
-              </Link>
+              </Link> : null}
             </div>
           ) : null}
         </div>

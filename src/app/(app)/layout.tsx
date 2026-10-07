@@ -6,6 +6,7 @@ import { getActiveProducer, getProducers } from "@/lib/producers";
 import { Suspense } from "react";
 import { AppBootSkeleton } from "@/components/ui/page-skeleton";
 import { EntryLabelProvider } from "@/components/events/entry-label";
+import { isPlatformOwner } from "@/lib/platform-access";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<AppBootSkeleton />}><AuthenticatedShell>{children}</AuthenticatedShell></Suspense>;
@@ -25,5 +26,5 @@ async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   }
 
   const email = typeof data.claims.email === "string" ? data.claims.email : "Signed-in user";
-  return <EntryLabelProvider style={producer.entryLabelStyle}><AppShell producerName={producer.name} producers={producers.map(({ id, name }) => ({ id, name }))} activeProducerId={producer.id} userLabel={email} brandPrimary={producer.brandPrimary} brandAccent={producer.brandAccent}>{children}</AppShell></EntryLabelProvider>;
+  return <EntryLabelProvider style={producer.entryLabelStyle}><AppShell platformOwner={await isPlatformOwner()} producerName={producer.name} producers={producers.map(({ id, name }) => ({ id, name }))} activeProducerId={producer.id} userLabel={email} brandPrimary={producer.brandPrimary} brandAccent={producer.brandAccent}>{children}</AppShell></EntryLabelProvider>;
 }
