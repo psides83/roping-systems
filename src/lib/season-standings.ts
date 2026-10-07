@@ -32,6 +32,7 @@ export interface CarryoverRecord {
   toClassId: string;
   earnedCents: number;
   carriedCents: number;
+  status?: "transferred" | "retained_at_end";
 }
 
 export interface QualificationRule {
@@ -92,6 +93,12 @@ export function calculateSeasonStandings(
     const targetIndex = move.classLadder.indexOf(move.toClassId);
     // Shift existing lower-number earnings first, without combining balances.
     if (targetIndex >= 0) {
+      const lastClass = move.classLadder.at(-1)!;
+      const terminalCents = before.get(lastClass) ?? 0;
+      if (lastClass !== move.fromClassId && terminalCents > 0) {
+        carryovers.push({ moveId: move.id, fromClassId: lastClass, toClassId: lastClass,
+          earnedCents: terminalCents, carriedCents: terminalCents, status: "retained_at_end" });
+      }
       for (let index = move.classLadder.length - 2; index >= targetIndex; index--) {
         const from = move.classLadder[index];
         const cents = before.get(from) ?? 0;

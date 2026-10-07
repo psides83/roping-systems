@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { StandingsQualificationForm } from "@/components/settings/standings-qualification-form";
+import Link from "next/link";
 
 export default async function StandingsSettings({ searchParams }: PageProps<"/settings/standings">) {
   const producer = await getActiveProducer();
@@ -27,7 +28,7 @@ export default async function StandingsSettings({ searchParams }: PageProps<"/se
     .eq("producer_id", producer.id).eq("season_id", season.id).eq("class_key", selected.id).maybeSingle() : null;
   if (rule?.error) throw new Error("Unable to load qualification requirements.");
   return <div className="space-y-5">
-    <h1 className="text-2xl font-bold">Standings qualification</h1>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Standings qualification</h1><Link href="/settings/standings/carryovers" className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-4 text-sm font-semibold">Carryover review</Link></div>
     <RopingSetupTabs active="standings" />
     {season && selected ? <>
       <StandingsFilters key={`${season.id}:${selected.id}`} seasons={seasons.data} classes={uniqueClasses} seasonId={season.id} classId={selected.id} search="" includeSearch={false} />

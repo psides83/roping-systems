@@ -92,3 +92,31 @@ test('qualification cutoff ignores later earnings and attendance', () => {
   assert.equal(rows[0].ropingsEntered, 1);
   assert.equal(qualifiesForStandings(rows[0], { topPlaces: 5, minimumRopings: 2 }), false);
 });
+
+test('end-of-ladder earnings are retained and flagged rather than lost', () => {
+  const { rows, carryovers } = calculateSeasonStandings([
+    entry('a', '11', 200), entry('a', '10', 100), entry('a', '9', 50),
+  ], [move()], season);
+  assert.equal(rows.find(row => row.classId === '9').winningsCents, 150);
+  assert.equal(rows.find(row => row.classId === '10').winningsCents, 200);
+  const retained = carryovers.find(item => item.status === 'retained_at_end');
+  assert.equal(retained.fromClassId, '9');
+  assert.equal(retained.toClassId, '9');
+  assert.equal(retained.carriedCents, 50);
+  assert.equal(retained.earnedCents, 50);
+});
+
+test('a direct move from the last class does not create a retained review', () => {
+  const { rows, carryovers } = calculateSeasonStandings([entry('a', '9', 50)],
+    [move({ fromClassId: '9', toClassId: '10' })], season);
+  assert.equal(rows.find(row => row.classId === '10').winningsCents, 50);
+  assert.equal(carryovers.filter(item => item.status === 'retained_at_end').length, 0);
+});
+
+test('caps exclude only transferred money, not retained end-of-ladder earnings', () => {
+  const { rows, carryovers } = calculateSeasonStandings([
+    entry('a', '11', 200), entry('a', '9', 50), entry('leader', '10', 100),
+  ], [move({ capAtLeader: true })], season);
+  assert.equal(rows.find(row => row.roperId === 'a' && row.classId === '9').winningsCents, 50);
+  assert.equal(carryovers.reduce((sum, item) => sum + item.earnedCents - item.carriedCents, 0), 100);
+});
