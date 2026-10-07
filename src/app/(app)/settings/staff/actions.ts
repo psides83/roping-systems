@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
-export interface StaffActionState { error?: string; success?: boolean }
+import { sendStaffInvitation } from "@/lib/send-staff-invitation";
+export interface StaffActionState { error?: string; success?: boolean; warning?: string }
 export async function manageStaff(_: StaffActionState, form: FormData): Promise<StaffActionState> {
   const producer = await getActiveProducer();
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Staff management requires an owner or administrator." };
@@ -19,6 +20,11 @@ export async function manageStaff(_: StaffActionState, form: FormData): Promise<
   } else {
     const id = z.uuid().safeParse(form.get("id"));
     if (!id.success) return { error: "Invalid staff record." };
+    if (operation === "send") {
+      const warning = await sendStaffInvitation(id.data);
+      revalidatePath("/settings/staff");
+      return { success: !warning, warning };
+    }
     if (operation === "cancel") result = await db.rpc("cancel_staff_invitation", { target_invitation: id.data });
     else if (operation === "remove" || operation === "role") {
       if (operation === "role" && !validRole.success) return { error: "Choose a valid role." };
@@ -27,6 +33,7 @@ export async function manageStaff(_: StaffActionState, form: FormData): Promise<
     } else return { error: "Unknown staff action." };
   }
   if (result.error) return { error: result.error.message };
+  const warning = operation === "invite" ? await sendStaffInvitation(result.data as string) : undefined;
   revalidatePath("/settings"); revalidatePath("/settings/staff");
-  return { success: true };
+  return { success: true, warning };
 }
