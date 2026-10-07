@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 const styles: Record<string, string> = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
+  accepted: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  declined: "bg-rose-50 text-rose-700 ring-rose-200",
   expired: "bg-rose-50 text-rose-700 ring-rose-200",
   inactive: "bg-stone-100 text-stone-600 ring-stone-200",
   in_progress: "bg-rose-50 text-rose-700 ring-rose-200",

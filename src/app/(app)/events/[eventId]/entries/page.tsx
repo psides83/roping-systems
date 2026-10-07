@@ -18,6 +18,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatPhoneNumber } from "@/lib/utils";
+import { calculateEntryBalance } from "@/lib/entry-balance";
 
 type PaymentStatus = "unpaid" | "paid_cash" | "comped" | "refunded";
 
@@ -473,39 +474,7 @@ export default async function EventEntriesPage({
       const statuses = new Set(
         contestant.entries.map((entry) => entry.paymentStatus),
       );
-      const payableEntryIds = new Set(
-        contestant.entries
-          .filter(
-            (entry) =>
-              entry.competitionStatus === "active" &&
-              !["comped", "refunded"].includes(entry.paymentStatus),
-          )
-          .map((entry) => entry.id),
-      );
-      const amountDueCents = contestant.charges.reduce(
-        (sum, charge) =>
-          sum +
-          (!charge.waived &&
-          (charge.entryId
-            ? payableEntryIds.has(charge.entryId)
-            : payableEntryIds.size > 0)
-            ? charge.amountCents
-            : 0),
-        0,
-      );
-      const recordedPaymentCents = contestant.payments.reduce(
-        (sum, payment) => sum + (payment.voided ? 0 : payment.amountCents),
-        0,
-      );
-      const legacyPaid =
-        !contestant.payments.some((payment) => !payment.voided) &&
-        payableEntryIds.size > 0 &&
-        contestant.entries
-          .filter((entry) => payableEntryIds.has(entry.id))
-          .every((entry) => entry.paymentStatus === "paid_cash");
-      const amountPaidCents = legacyPaid
-        ? amountDueCents
-        : recordedPaymentCents;
+      const { amountPaidCents, balanceDueCents } = calculateEntryBalance(contestant.entries, contestant.charges, contestant.payments);
       return {
         ...contestant,
         paymentStatus:
@@ -515,7 +484,7 @@ export default async function EventEntriesPage({
           0,
         ),
         amountPaidCents,
-        balanceDueCents: Math.max(amountDueCents - amountPaidCents, 0),
+        balanceDueCents,
       } satisfies LedgerContestant;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
