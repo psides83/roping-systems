@@ -778,7 +778,11 @@ export async function recordRun(
   _state: LiveRunState,
   formData: FormData,
 ): Promise<LiveRunState> {
-  const parsed = runSchema.safeParse(Object.fromEntries(formData));
+  const parsed = runSchema.extend({
+    submissionId: z.uuid(),
+    expectedRecordedAt: z.preprocess((value) => value === "" ? null : value, z.iso.datetime({ offset: true }).nullable()),
+    expectedRerunCount: z.coerce.number().int().min(0),
+  }).safeParse(Object.fromEntries(formData));
   if (!parsed.success)
     return { message: "Enter a valid time before saving this run." };
   const { timerReadings, valid } = getTimerReadings(
@@ -789,9 +793,12 @@ export async function recordRun(
 
   const supabase = await requireTiming(eventId, parsed.data.runId);
   if (!supabase) return { message: "Timing access changed. Confirm your event and arena assignment before saving." };
-  const { error } = await supabase.rpc("save_run_with_penalties", {
+  const { data, error } = await supabase.rpc("submit_run_result", {
     target_run_id: parsed.data.runId,
     timing_session_id: parsed.data.timingSessionId,
+    submission_id: parsed.data.submissionId,
+    expected_recorded_at: parsed.data.expectedRecordedAt,
+    expected_rerun_count: parsed.data.expectedRerunCount,
     entered_timer_readings:
       parsed.data.status === "complete" ? timerReadings : [],
     selected_penalty_ids: formData.getAll("penaltyId").map(String),
@@ -801,7 +808,7 @@ export async function recordRun(
   revalidatePath(`/events/${eventId}/live`);
   revalidatePath(`/events/${eventId}/payouts`);
   revalidatePath(`/public`);
-  return { success: true, message: "Run saved." };
+  return { success: true, message: (data as { replayed?: boolean })?.replayed ? "This submission was already saved. Loading current results." : "Saved to server. Loading next roper." };
 }
 
 export async function correctRun(

@@ -3,6 +3,7 @@ import { ClassificationWatchEvidence } from "@/components/members/classification
 import { EventWorkflowNav } from "@/components/events/event-workflow-nav";
 import { EventLifecycleControl } from "@/components/events/event-lifecycle-control";
 import { TimingControl } from "@/components/events/timing-control";
+import { TimerSaveRecovery } from "@/components/events/timer-save-recovery";
 import { notFound } from "next/navigation";
 import {
   DatabaseLiveDesk,
@@ -385,6 +386,7 @@ export default async function LiveRopingPage({
       mainRoundsComplete={mainRoundsComplete}
       canEdit={Boolean(managePermission.data)}
       canTime={canTime}
+      staffUserId={auth.user?.id}
       watchEvidence={<ClassificationWatchEvidence eventId={eventId} compact />}
     />
   );
@@ -408,6 +410,7 @@ function LiveWorkspace({
   canEdit,
   canTime = canEdit,
   watchEvidence,
+  staffUserId,
 }: {
   eventId: string;
   arenaCount: number;
@@ -426,6 +429,7 @@ function LiveWorkspace({
   canEdit: boolean;
   canTime?: boolean;
   watchEvidence?: ReactNode;
+  staffUserId?: string;
 }) {
   const selectedDivision = divisions.find(
     (division) => division.id === selectedDivisionId,
@@ -443,12 +447,13 @@ function LiveWorkspace({
         }
       />
       {watchEvidence}
+      {staffUserId ? <TimerSaveRecovery eventId={eventId} userId={staffUserId} activeRunId={runs.find((run) => run.status === "pending")?.id} activeAttempt={runs.find((run) => run.status === "pending")?.rerunCount} /> : null}
       {selectedDivisionId && selectedDivision ? (
         <>
           {selectedDivision.competitionFormat === "four_d" ? (
             <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
           ) : null}
-          <TimingControl key={selectedDivisionId} ropingId={selectedDivisionId} enabled={canTime && status === "in_progress" && selectedDivision.eventDayStatus !== "completed"} canTakeover={canEdit}>
+          <TimingControl key={selectedDivisionId} ropingId={selectedDivisionId} staffUserId={staffUserId} enabled={canTime && status === "in_progress" && selectedDivision.eventDayStatus !== "completed"} canTakeover={canEdit}>
           {!/^Arena [1-9][0-9]*$/.test(selectedDivision.arenaName ?? "") ? <p role="status" className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold">First Available · An event manager must assign an arena before timing can begin.</p> : null}
           <DatabaseLiveDesk
             key={JSON.stringify([selectedDivisionId, selectedRound, selectedDivision, roundLocked, status, runs])}

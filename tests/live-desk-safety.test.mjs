@@ -40,14 +40,17 @@ test("Desk switching checks unsaved work and refuses to interrupt saving", () =>
   }
 });
 
-function renderTiming({ pending = false, fineBlocked = false, state = {}, asTree = false, times = [], ownsControl = true } = {}) {
+function renderTiming({ pending = false, fineBlocked = false, state = {}, asTree = false, times = [], ownsControl = true, online = true, storageError = "", restored = false, submission } = {}) {
   const { RunEntryForm } = compile("../src/components/events/live-run-entry-form.tsx", (name) => {
     if (name === "react") return { ...React, useActionState: () => [state, () => {}, pending], useState: (value) => { const initial = typeof value === "function" ? value() : value; return [Array.isArray(initial) && initial.length === 2 && times.length ? times : initial, () => {}]; }, useMemo: (fn) => fn(), useRef: () => ({ current: false }), useEffect() {} };
     if (name.endsWith("/actions")) return { recordRun() {} };
+    if (name === "next/navigation") return { useRouter: () => ({ refresh() {} }) };
+    if (name === "./use-network-status") return { useNetworkStatus: () => online };
+    if (name === "./use-timer-draft") return { useTimerDraft: () => ({ ready: true, restored, stale: false, storageError, draft: { times: times.length ? times : ["", ""], penalties: [], submission }, setTimes() {}, setPenalties() {}, prepare() {}, finish() {}, discard() {} }) };
     if (name === "./entry-label") return { EntryLabel: ({ number }) => React.createElement("span", null, number), useEntryLabelStyle: () => "number" };
     if (name === "./penalty-choices") return { PenaltyChoices: () => null };
     if (name === "./use-desk-leave-guard") return { useDeskLeaveGuard() {} };
-    if (name === "./timing-control") return { useTimingControl: () => ({ sessionId: "browser-session", canWrite: ownsControl }) };
+    if (name === "./timing-control") return { useTimingControl: () => ({ sessionId: "browser-session", canWrite: ownsControl, staffUserId: "staff" }) };
     if (name.startsWith("@/lib/")) return compile(`../src/lib/${name.slice(6)}.ts`, require);
     return require(name);
   });
@@ -76,6 +79,26 @@ test("An unpaid fine blocks timer entry without hiding other outcomes", () => {
   assert.match(html, /Turn out/);
 });
 test("Save failures are announced as alerts", () => assert.match(renderTiming({ state: { message: "Connection failed. Try again." } }), /role="alert"/));
+
+test("Recovered drafts and local-only saves are clearly distinguished from server saves", () => {
+  assert.match(renderTiming({ restored: true, times: ["12.20","12.24"] }),/Recovered draft from this device/);
+  assert.match(renderTiming({ times: ["12.20","12.24"] }),/Not yet saved to server/);
+  assert.match(renderTiming({ state: { success: true } }),/Saved to server/);
+});
+test("Losing connectivity prevents submission without erasing displayed readings", () => {
+  const html=renderTiming({ online: false, times: ["12.20","12.24"] });
+  assert.match(html,/Connection lost/); assert.match(html,/value="12.20"/);
+  assert.ok((html.match(/<button[^>]*name="status"[^>]*>/g) ?? []).every((button) => button.includes('disabled=""')));
+});
+test("Unconfirmed saves hold readings unchanged and offer a retry of the original outcome", () => {
+  const html=renderTiming({ times: ["12.20","12.24"], submission: { id: "same-request", outcome: "turned_out", uncertain: true } });
+  assert.match(html,/Retry save &amp; confirm result/);
+  assert.ok((html.match(/<input[^>]*name="timerReading"[^>]*>/g) ?? []).every((input) => input.includes('disabled=""')));
+});
+test("Storage failures never claim the draft was safely saved on the device", () => {
+  const html=renderTiming({ times: ["12.20","12.24"], storageError: "Storage unavailable" });
+  assert.match(html,/only held in this open page/); assert.doesNotMatch(html,/Draft saved on this device/);
+});
 
 test("A view-only timing session cannot edit readings or record an outcome", () => {
   const html = renderTiming({ ownsControl: false });

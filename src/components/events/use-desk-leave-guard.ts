@@ -9,7 +9,7 @@ export function confirmDeskNavigation() {
     window.alert("A save is still in progress. Wait for it to finish before switching views.");
     return false;
   }
-  return window.confirm("You have unsaved timing or order changes. Leave this view and discard them?");
+  return window.confirm("You have timing or order changes not saved to the server. Leave this view? Timing drafts saved on this device can be recovered; other unsaved changes may be lost.");
 }
 
 export function useDeskLeaveGuard(active: boolean) {

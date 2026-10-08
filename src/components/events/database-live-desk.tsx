@@ -678,6 +678,8 @@ export function DatabaseLiveDesk({
             key={currentRun.id}
             eventId={eventId}
             run={currentRun}
+            ropingId={selectedDivisionId}
+            round={selectedRound}
             roundLabel={isShortRound ? "Short round" : `Round ${selectedRound}`}
             ropingName={selectedDivision?.name ?? ""}
             timerCount={timerCount}

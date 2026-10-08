@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { confirmDeskNavigation } from "./use-desk-leave-guard";
 
 type ControlStatus = { ownsControl: boolean; holder: string | null; remainingSeconds: number; allowed: boolean };
-const TimingContext = createContext({ sessionId: "", canWrite: false });
+const TimingContext = createContext({ sessionId: "", canWrite: false, staffUserId: "" });
 export const useTimingControl = () => useContext(TimingContext);
 
-export function TimingControl({ ropingId, enabled, canTakeover, children }: {
-  ropingId: string; enabled: boolean; canTakeover: boolean; children: ReactNode;
+export function TimingControl({ ropingId, enabled, canTakeover, staffUserId = "", children }: {
+  ropingId: string; enabled: boolean; canTakeover: boolean; staffUserId?: string; children: ReactNode;
 }) {
   const [sessionId, setSessionId] = useState("");
   const [status, setStatus] = useState<ControlStatus | null>(null);
@@ -52,6 +52,7 @@ export function TimingControl({ ropingId, enabled, canTakeover, children }: {
       } finally { if (!cancelled) inFlight.current = false; }
     }
     void check();
+    window.addEventListener("online",check);
     const poll = window.setInterval(() => void check(), 20000);
     const expire = window.setInterval(() => {
       if (owns.current && Date.now() >= deadline.current) {
@@ -63,6 +64,7 @@ export function TimingControl({ ropingId, enabled, canTakeover, children }: {
     return () => {
       cancelled = true; alive.current = false; inFlight.current = false;
       window.clearInterval(poll); window.clearInterval(expire);
+      window.removeEventListener("online",check);
       if (owns.current) {
         owns.current = false;
         void db.rpc("manage_roping_timing", { target_roping: ropingId, browser_session: id, operation: "release" });
@@ -71,7 +73,7 @@ export function TimingControl({ ropingId, enabled, canTakeover, children }: {
   }, [ropingId, enabled]);
 
   async function operate(operation: "claim" | "release" | "takeover") {
-    if (inFlight.current || !sessionId || !confirmDeskNavigation()) return;
+    if (inFlight.current || !sessionId || (operation !== "claim" && !confirmDeskNavigation())) return;
     if (operation === "takeover" && !window.confirm("Take over this roping's timing desk? The current timer will no longer be able to save.")) return;
     inFlight.current = true;
     setBusy(true);
@@ -93,7 +95,7 @@ export function TimingControl({ ropingId, enabled, canTakeover, children }: {
   }
 
   const canWrite = enabled && Boolean(status?.ownsControl) && !busy;
-  return <TimingContext.Provider value={{ sessionId, canWrite }}>
+  return <TimingContext.Provider value={{ sessionId, canWrite, staffUserId }}>
     {enabled ? <section aria-label="Timing control" className={`space-y-3 border-l-4 px-4 py-3 ${canWrite ? "border-emerald-600 bg-emerald-50" : "border-amber-500 bg-amber-50"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p role="status" className="flex items-center gap-2 text-sm font-semibold">{busy ? <LoaderCircle size={18} className="animate-spin" /> : canWrite ? <Radio size={18} /> : <LockKeyhole size={18} />}
