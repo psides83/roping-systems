@@ -100,7 +100,7 @@ export function calculateSeasonStandings(
       if (!attendance.has(item.roperId)) attendance.set(item.roperId, new Map());
       const classes = attendance.get(item.roperId)!;
       const count = item.attendanceCount ?? 1;
-      if (!Number.isSafeInteger(count) || count < 1) throw new Error("Roping count must be a positive whole number.");
+      if (!Number.isSafeInteger(count) || count < 0) throw new Error("Roping count must be a nonnegative whole number.");
       if (!classes.has(item.classId)) classes.set(item.classId, new Map());
       classes.get(item.classId)!.set(item.ropingId, count);
       continue;

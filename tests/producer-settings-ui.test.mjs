@@ -27,7 +27,7 @@ test('settings navigation keeps all groups available and marks only the selected
     assert.match(html,/overflow-x-auto/);
     for(const item of producerSettingsTabs) assert.ok(html.includes(item.label));
   }
-  assert.equal(new Set(producerSettingsTabs.map(tab=>tab.href)).size,6);
+  assert.equal(new Set(producerSettingsTabs.map(tab=>tab.href)).size,7);
 });
 
 const {StaffIdentity}=component('../src/components/settings/staff-identity.tsx');

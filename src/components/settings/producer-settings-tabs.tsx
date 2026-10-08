@@ -6,6 +6,7 @@ export const producerSettingsTabs = [
   { id: "seasons", label: "Seasons", href: "/settings?tab=seasons" },
   { id: "membership", label: "Membership", href: "/settings/membership-form" },
   { id: "staff", label: "Staff", href: "/settings/staff" },
+  { id: "migration", label: "Migration", href: "/settings/migration" },
   { id: "activity", label: "Activity", href: "/settings/changelog" },
 ] as const;
 

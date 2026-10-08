@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { StandingContribution, StandingMove } from "@/lib/season-standings";
 
 export interface SeasonStandingsSource {
-  contributions: (StandingContribution & { entryIds: string[]; eventId: string })[];
+  contributions: (StandingContribution & { entryIds: string[]; eventId: string | null; source?: "migration" })[];
   moves: StandingMove[];
   classes: { id: string; name: string; divisionName: string }[];
   ropers: { roperId: string; classId: string; name: string; city: string | null; state: string | null;
@@ -18,7 +18,7 @@ export async function loadSeasonStandings(producerSlug: string, seasonId: string
   if (result.error) throw new Error(`Unable to load standings: ${result.error.message}`);
   const source = result.data as SeasonStandingsSource;
   const winnings = new Map<string, number>();
-  for (const eventId of new Set(source.contributions.map((item) => item.eventId))) {
+  for (const eventId of new Set(source.contributions.map((item) => item.eventId).filter((id): id is string => Boolean(id)))) {
     for (let first = 0; ; first += 500) {
       const awards = await db.rpc("public_event_money_results", { target_event_id: eventId })
         .order("plan_id").order("section_type").order("round_number", { nullsFirst: true })
@@ -30,7 +30,7 @@ export async function loadSeasonStandings(producerSlug: string, seasonId: string
     }
   }
   source.contributions = source.contributions.map((item) => ({ ...item,
-    winningsCents: item.entryIds.reduce((sum, id) => sum + (winnings.get(id) ?? 0), 0),
+    winningsCents: item.source === "migration" ? item.winningsCents : item.entryIds.reduce((sum, id) => sum + (winnings.get(id) ?? 0), 0),
   }));
   return source;
 }
