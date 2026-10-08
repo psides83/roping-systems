@@ -17,21 +17,21 @@ import {
 const operations = [
   {
     icon: UsersRound,
-    title: "Memberships that stay useful",
+    title: "Member management, made simpler",
     description:
-      "Keep contact details, producer-specific member numbers, classification history, and eligibility together.",
+      "Keep member profiles, applications, eligibility, and history in one place, so your team can find what it needs.",
   },
   {
     icon: CalendarDays,
-    title: "Flexible roping schedules",
+    title: "Less work planning each event",
     description:
-      "Build multi-day events across arenas with reusable formats, class-level fees, and clear start sequencing.",
+      "Build schedules, reuse event formats, and accept registrations online or in person without starting from scratch each time.",
   },
   {
     icon: Clock3,
-    title: "A dependable live desk",
+    title: "A more organized event day",
     description:
-      "Take entries, set draws, record timer results, calculate standings, and publish updates while the roping runs.",
+      "Give staff a shared place to manage participants, record results, and track payments while the event is underway.",
   },
 ];
 
@@ -44,7 +44,7 @@ const eventRows = [
 export function LandingPage() {
   return (
     <main className="min-h-screen bg-[#f4f5f3] text-[#17201c]">
-      <section className="relative h-[88svh] min-h-[540px] max-h-[760px] overflow-hidden bg-[#17201c] text-white sm:min-h-[620px]">
+      <section className="relative min-h-[540px] overflow-hidden bg-[#17201c] text-white sm:h-[88svh] sm:min-h-[620px] sm:max-h-[760px]">
         <Image
           src="/roping-arena-hero.jpg"
           alt="A calf roping competition underway in a professionally managed arena"
@@ -55,7 +55,7 @@ export function LandingPage() {
         />
         <div className="absolute inset-0 bg-[#101713]/65" />
 
-        <div className="relative z-10 mx-auto flex h-full max-w-[1240px] flex-col px-5 sm:px-8 lg:px-10">
+        <div className="relative z-10 mx-auto flex min-h-[88svh] max-w-[1240px] flex-col px-5 sm:h-full sm:min-h-0 sm:px-8 lg:px-10">
           <header className="flex h-20 shrink-0 items-center justify-between border-b border-white/20">
             <Link href="/" className="text-base font-black text-white">
               Roping Systems
@@ -65,13 +65,13 @@ export function LandingPage() {
               className="hidden items-center gap-8 text-sm font-semibold text-white/80 md:flex"
             >
               <a href="#operations" className="hover:text-white">
-                Operations
+                Features
               </a>
               <a href="#live-results" className="hover:text-white">
                 Live results
               </a>
               <a href="#producers" className="hover:text-white">
-                For producers
+                For organizations
               </a>
             </nav>
             <Link
@@ -82,17 +82,17 @@ export function LandingPage() {
             </Link>
           </header>
 
-          <div className="flex flex-1 items-center py-10 sm:py-14">
+          <div className="flex flex-1 items-center py-6 sm:py-14">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase text-[#ffd7cd]">
-                Built for calf roping producers
+                For roping organizations and event teams
               </p>
               <h1 className="mt-4 text-5xl font-black leading-[0.98] sm:text-6xl lg:text-7xl">
                 Roping Systems
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-white/85 sm:text-xl">
-                Run memberships, entries, draws, timing, payouts, and live
-                results from one clear event desk.
+              <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-xl sm:leading-8">
+                Bring your members, events, and results together. Spend less
+                time managing spreadsheets and more time running your organization.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -101,20 +101,20 @@ export function LandingPage() {
                 >
                   Sign in to your account <ArrowRight size={17} />
                 </Link>
-                <Link
-                  href="/auth/signup"
+                <a
+                  href="#operations"
                   className="inline-flex h-12 items-center justify-center rounded-md border border-white/45 bg-black/15 px-5 text-sm font-bold text-white hover:bg-white hover:text-[#17201c]"
                 >
-                  Create a producer account
-                </Link>
+                  Explore the features
+                </a>
               </div>
             </div>
           </div>
 
           <div className="grid shrink-0 grid-cols-3 border-t border-white/20 py-5 text-xs font-semibold text-white/75 sm:text-sm">
-            <span>Flexible formats</span>
-            <span className="text-center">Event-day control</span>
-            <span className="text-right">Live public results</span>
+            <span>Connected records</span>
+            <span className="text-center">Organized events</span>
+            <span className="text-right">Live results</span>
           </div>
         </div>
       </section>
@@ -123,22 +123,22 @@ export function LandingPage() {
         <div className="mx-auto grid max-w-[1240px] gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:px-10 lg:py-20">
           <div>
             <p className="text-xs font-bold uppercase text-[#a93420]">
-              One operating system
+              One place for your organization
             </p>
             <h2 className="mt-3 max-w-md text-3xl font-black leading-tight sm:text-4xl">
-              Move the whole production beyond spreadsheets.
+              Less paperwork. A clearer picture.
             </h2>
           </div>
           <div className="grid gap-6 border-l-0 border-[#d8ded9] lg:grid-cols-2 lg:border-l lg:pl-10">
             <p className="text-base leading-7 text-[#59645e]">
-              Roping Systems follows the way producers actually work: an event
-              can contain many separate events, each with its own class,
-              rounds, fees, options, eligibility rules, and payout structure.
+              When member lists, registrations, and results live in separate
+              spreadsheets, keeping everything up to date takes extra work.
+              Roping Systems brings those records together for your team.
             </p>
             <p className="text-base leading-7 text-[#59645e]">
-              Staff get a focused administrative workspace. Members get clean
-              online entry, schedules, and live unofficial results without
-              waiting days for updates.
+              Your staff can work from shared information, and your members
+              can find schedules, enter events, and follow results online.
+              Set things up to suit the way your organization operates.
             </p>
           </div>
         </div>
@@ -149,10 +149,10 @@ export function LandingPage() {
           <div className="grid gap-14 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
             <div>
               <p className="text-xs font-bold uppercase text-[#a93420]">
-                From setup to results
+                Members. Events. Results.
               </p>
               <h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
-                Built around the work at the entry desk.
+                Keep your team and your events connected.
               </h2>
               <div className="mt-9 divide-y divide-[#d6ddd8] border-y border-[#d6ddd8]">
                 {operations.map((operation) => {
@@ -186,7 +186,7 @@ export function LandingPage() {
               <Radio size={15} /> Published as it happens
             </span>
             <h2 className="mt-4 max-w-lg text-3xl font-black leading-tight sm:text-4xl">
-              Keep contestants and spectators current.
+              Keep members and spectators informed.
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2">
@@ -194,16 +194,16 @@ export function LandingPage() {
               <CalendarDays size={21} className="text-[#ff9d87]" />
               <h3 className="mt-4 font-bold">Public event schedules</h3>
               <p className="mt-2 text-sm leading-6 text-white/65">
-                Show dates, arenas, set times, tentative times, and the roping
-                each class follows.
+                Make it easy to find upcoming events, locations, and start
+                times, with schedule changes reflected online.
               </p>
             </div>
             <div className="border-t border-white/25 pt-5">
               <Radio size={21} className="text-[#ff9d87]" />
-              <h3 className="mt-4 font-bold">Live unofficial results</h3>
+              <h3 className="mt-4 font-bold">Results without the wait</h3>
               <p className="mt-2 text-sm leading-6 text-white/65">
-                Publish standings immediately, then mark the final results
-                official when the producer is ready.
+                Let participants follow results as the event progresses,
+                then publish official results after your team has reviewed them.
               </p>
             </div>
           </div>
@@ -214,18 +214,18 @@ export function LandingPage() {
         <div className="mx-auto grid max-w-[1240px] divide-y divide-[#d8ded9] px-5 sm:px-8 md:grid-cols-3 md:divide-x md:divide-y-0 lg:px-10">
           <ValueItem
             icon={ShieldCheck}
-            title="Producer-based access"
-            text="Keep every member, event, and operational record inside the producer that owns it."
+            title="The right access for your team"
+            text="Give staff the permissions they need while keeping your organization's records separate."
           />
           <ValueItem
             icon={ClipboardList}
-            title="Rules that fit the roping"
-            text="Configure divisions, classifications, incentives, timers, short rounds, fees, and payouts."
+            title="Flexible enough for your organization"
+            text="Adapt event formats, eligibility, fees, and payouts to your rules and requirements."
           />
           <ValueItem
             icon={Search}
-            title="A complete change record"
-            text="Review who changed important records and when the update was made."
+            title="Clear records and accountability"
+            text="Track payments and payouts, and see who made changes to important records."
           />
         </div>
       </section>
@@ -234,10 +234,10 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-[1240px] flex-col gap-8 px-5 py-16 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-10">
           <div>
             <p className="text-xs font-bold uppercase text-[#a93420]">
-              Producer access
+              Already part of an organization?
             </p>
             <h2 className="mt-2 text-2xl font-black sm:text-3xl">
-              Your event desk is ready when you are.
+              Your team, members, and events. All together.
             </h2>
           </div>
           <Link
@@ -252,7 +252,7 @@ export function LandingPage() {
       <footer className="bg-white">
         <div className="mx-auto flex max-w-[1240px] flex-col gap-3 px-5 py-7 text-xs text-[#758078] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
           <span className="font-bold text-[#17201c]">Roping Systems</span>
-          <span>Calf roping operations, from entries to official results.</span>
+          <span>Member management, event planning, and live results.</span>
         </div>
       </footer>
     </main>
@@ -271,7 +271,7 @@ function LiveDeskPreview() {
             <p className="text-xs font-bold uppercase text-[#758078]">
               Live event desk
             </p>
-            <p className="text-sm font-bold">Fall Classic · #11</p>
+            <p className="text-sm font-bold">Fall Classic</p>
           </div>
         </div>
         <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
@@ -286,7 +286,7 @@ function LiveDeskPreview() {
       <div className="px-4 py-4 sm:px-5">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-bold uppercase text-[#758078]">
-            Current draw
+            Competition order
           </p>
           <span className="text-xs font-semibold text-[#66716b]">Arena 1</span>
         </div>
@@ -325,7 +325,7 @@ function LiveDeskPreview() {
           </table>
         </div>
         <div className="mt-4 flex items-center justify-between border-t border-[#dfe4e1] pt-4 text-xs text-[#66716b]">
-          <span>Changes saved automatically</span>
+          <span>Results updated during the event</span>
           <span className="inline-flex items-center gap-1 font-bold text-[#17201c]">
             <Check size={13} /> Results live
           </span>

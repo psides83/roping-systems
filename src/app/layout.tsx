@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Roping Systems", template: "%s | Roping Systems" },
-  description: "Calf roping membership, entries, and live event management.",
+  description: "Member management, event planning, and live results for roping organizations.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
