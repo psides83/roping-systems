@@ -16,13 +16,13 @@ export function LiveDeskSelector({ eventId, ropings, selectedId, round, onPendin
   const [pending, startTransition] = useTransition();
   useEffect(() => { onPendingChange(pending); }, [pending, onPendingChange]);
   const selected = ropings.find((roping) => roping.id === selectedId);
-  function navigate(id: string, nextRound: number) {
+  function navigate(id: string, nextRound?: number) {
     if (!confirmDeskNavigation()) return;
-    startTransition(() => router.push(`/events/${eventId}/live?division=${encodeURIComponent(id)}&round=${nextRound}`, { scroll: false }));
+    startTransition(() => router.push(`/events/${eventId}/live?division=${encodeURIComponent(id)}${nextRound === undefined ? "" : `&round=${nextRound}`}`, { scroll: false }));
   }
   return <section aria-label="Active timing desk" aria-busy={pending} className="flex flex-wrap items-end gap-3 border-y border-[#dfe4e1] py-4">
     <label className="grid min-w-0 max-w-full gap-1 text-xs font-semibold text-[#66716b]">Roping
-      <select aria-label="Roping" value={selectedId} disabled={pending} onChange={(event) => navigate(event.target.value, 1)} className="h-11 w-80 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold text-[#17201c]">
+      <select aria-label="Roping" value={selectedId} disabled={pending} onChange={(event) => navigate(event.target.value)} className="h-11 w-80 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold text-[#17201c]">
         {ropings.map((roping) => <option key={roping.id} value={roping.id}>{roping.name} · {roping.arenaName ?? "First Available"}</option>)}
       </select>
     </label>

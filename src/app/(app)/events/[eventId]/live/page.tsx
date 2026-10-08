@@ -21,6 +21,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import type { RunStatus } from "@/lib/run-status";
 import type { RoundOrderMethod } from "@/types/domain";
+import { selectDeskRound } from "@/lib/events/round-selection";
 import type { ClassEventDayStatus } from "@/components/events/class-operations-dialog";
 import type { ShortRoundCandidate } from "@/components/events/short-round-field-dialog";
 import type { PenaltyOption } from "@/lib/penalties";
@@ -88,7 +89,7 @@ export default async function LiveRopingPage({
         resultStatus="unofficial"
         divisions={previewDivisions}
         selectedDivisionId={selectedDivisionId}
-        selectedRound={getSelectedRound(
+        selectedRound={selectDeskRound(
           query.round,
           getTotalRounds(selectedDivision),
         )}
@@ -189,9 +190,15 @@ export default async function LiveRopingPage({
     if (permission.error) throw new Error("Unable to check this roping's timing access.");
     canTime = Boolean(permission.data);
   }
-  const selectedRound = getSelectedRound(
+  const { data: completedRounds, error: completedRoundsError } = selectedDivisionId
+    ? await supabase.from("event_roping_rounds").select("round_number")
+      .eq("event_roping_id", selectedDivisionId).eq("status", "locked")
+    : { data: [], error: null };
+  if (completedRoundsError) throw new Error("Unable to determine the current round.");
+  const selectedRound = selectDeskRound(
     query.round,
     getTotalRounds(selectedDivision),
+    (completedRounds ?? []).map((round) => round.round_number),
   );
   let runs: LiveRunRow[] = [];
   let mainRoundsComplete = false;
@@ -495,15 +502,6 @@ function getSelectedDivisionId(
     ? requestedId
     : (divisions.find((division) => division.eventDayStatus === "in_progress" && /^Arena [1-9][0-9]*$/.test(division.arenaName ?? ""))
       ?? divisions.find((division) => /^Arena [1-9][0-9]*$/.test(division.arenaName ?? "")) ?? divisions[0])?.id;
-}
-
-function getSelectedRound(
-  requested: string | string[] | undefined,
-  numberOfRuns: number,
-) {
-  const parsed = typeof requested === "string" ? Number(requested) : 1;
-  if (!Number.isInteger(parsed)) return 1;
-  return Math.min(Math.max(parsed, 1), Math.max(numberOfRuns, 1));
 }
 
 function getTotalRounds(division: LiveDivision | undefined) {
