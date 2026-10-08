@@ -592,6 +592,19 @@ export async function startRoping(eventId: string) {
   revalidatePath(`/events/${eventId}/live`);
 }
 
+export async function startEventDesk(eventId: string, _state: LiveRunState, _form: FormData): Promise<LiveRunState> {
+  void _state; void _form;
+  if (!z.uuid().safeParse(eventId).success) return { message: "Choose a valid event." };
+  try {
+    await startRoping(eventId);
+    revalidatePath("/events/current");
+    revalidatePath("/public", "layout");
+    return { success: true, message: "Event started. Build the selected roping's order to begin timing." };
+  } catch (error) {
+    return { message: error instanceof Error ? error.message : "Unable to start the event. Please try again." };
+  }
+}
+
 export async function generateDraw(eventId: string, _state: DrawOrderState, formData: FormData): Promise<DrawOrderState> {
   const parsed = z
     .object({ divisionId: z.uuid(), runNumber: z.coerce.number().int().min(1) })

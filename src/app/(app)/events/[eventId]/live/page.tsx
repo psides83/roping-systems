@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { ClassificationWatchEvidence } from "@/components/members/classification-watch-evidence";
-import { ArrowLeft, LockKeyhole } from "lucide-react";
+import { EventWorkflowNav } from "@/components/events/event-workflow-nav";
+import { EventLifecycleControl } from "@/components/events/event-lifecycle-control";
 import { notFound } from "next/navigation";
 import {
   DatabaseLiveDesk,
@@ -22,10 +22,6 @@ import type { RoundOrderMethod } from "@/types/domain";
 import type { ClassEventDayStatus } from "@/components/events/class-operations-dialog";
 import type { ShortRoundCandidate } from "@/components/events/short-round-field-dialog";
 import type { PenaltyOption } from "@/lib/penalties";
-import {
-  finalizeRoping,
-  startRoping,
-} from "@/app/(app)/events/[eventId]/actions";
 
 type TimerResolution = "average" | "best" | "longest";
 type CompetitionFormat = "standard" | "handicap" | "four_d";
@@ -419,42 +415,16 @@ function LiveWorkspace({
   const selectedDivision = divisions.find(
     (division) => division.id === selectedDivisionId,
   );
-  const startAction = startRoping.bind(null, eventId);
-  const finalizeAction = finalizeRoping.bind(null, eventId);
 
   return (
     <div className="space-y-6">
-      <nav aria-label="Event navigation" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-        <Link href="/events/current" className="flex items-center gap-2"><ArrowLeft size={16} /> Event desks</Link>
-        <Link href={`/events/${eventId}`}>Manage event</Link>
-        <Link href={`/events/${eventId}/entries`}>Entries</Link>
-        <Link href={`/events/${eventId}/payouts`}>Payouts</Link>
-      </nav>
+      <EventWorkflowNav eventId={eventId} active="live" />
       <PageHeader
         eyebrow={`Event desk · ${status.replaceAll("_", " ")} · ${resultStatus}`}
         title={title}
         description="Set each round's draw and record times. Saved runs publish to the live results page while results remain unofficial."
         actions={
-          canEdit ? (
-            <div className="flex gap-2">
-              {status !== "in_progress" &&
-              status !== "completed" &&
-              status !== "cancelled" ? (
-                <form action={startAction}>
-                  <button className="h-10 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">
-                    Start event
-                  </button>
-                </form>
-              ) : null}
-              {status === "in_progress" ? (
-                <form action={finalizeAction}>
-                  <button className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">
-                    <LockKeyhole size={16} /> Finalize
-                  </button>
-                </form>
-              ) : null}
-            </div>
-          ) : null
+          <EventLifecycleControl eventId={eventId} status={status} resultStatus={resultStatus} enabled={canEdit} />
         }
       />
       {watchEvidence}
@@ -500,7 +470,7 @@ function getSelectedDivisionId(
   const requestedId = typeof requested === "string" ? requested : undefined;
   return divisions.some((division) => division.id === requestedId)
     ? requestedId
-    : divisions[0]?.id;
+    : (divisions.find((division) => division.eventDayStatus === "in_progress") ?? divisions[0])?.id;
 }
 
 function getSelectedRound(

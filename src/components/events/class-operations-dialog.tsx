@@ -33,6 +33,8 @@ export function ClassOperationsDialog({
   note,
   editable,
   compact = false,
+  actionLabel = "Roping status & schedule",
+  suggestedStatus,
 }: {
   eventId: string;
   divisionId: string;
@@ -44,6 +46,8 @@ export function ClassOperationsDialog({
   note: string | null;
   editable: boolean;
   compact?: boolean;
+  actionLabel?: string;
+  suggestedStatus?: ClassEventDayStatus;
 }) {
   const [open, setOpen] = useState(false);
   const action = updateClassEventDayStatus.bind(null, eventId, divisionId);
@@ -66,7 +70,7 @@ export function ClassOperationsDialog({
         disabled={!editable}
         className={`flex items-center justify-center gap-2 rounded-md border border-[#d7ddda] font-semibold disabled:opacity-50 ${compact ? "h-9 px-3 text-xs" : "h-10 px-4 text-sm"}`}
       >
-        <ClockAlert size={15} /> Update live schedule
+        <ClockAlert size={15} /> {actionLabel}
       </button>
       {open ? (
         <div className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-black/45 p-4">
@@ -85,7 +89,7 @@ export function ClassOperationsDialog({
             <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
               <div>
                 <h2 id={`class-operations-${divisionId}`} className="font-bold">
-                  Update live schedule
+                  {actionLabel}
                 </h2>
                 <p className="mt-1 text-sm text-[#66716b]">{className}</p>
               </div>
@@ -119,7 +123,7 @@ export function ClassOperationsDialog({
                   Status
                   <select
                     name="eventDayStatus"
-                    defaultValue={status}
+                    defaultValue={suggestedStatus ?? status}
                     className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
                   >
                     {Object.entries(classEventDayStatusLabels).map(
@@ -179,7 +183,7 @@ export function ClassOperationsDialog({
                   {pending ? (
                     <LoaderCircle size={16} className="animate-spin" />
                   ) : null}
-                  Publish update
+                  {pending ? "Saving update..." : "Save roping update"}
                 </button>
               </div>
             </form>

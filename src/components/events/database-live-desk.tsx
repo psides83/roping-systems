@@ -1,6 +1,7 @@
 "use client";
 import { EntryLabel, useEntryLabelStyle } from "./entry-label";
 import { formatEntryLabel } from "@/lib/entry-labels";
+import { deskWorkflowState } from "@/lib/events/desk-workflow";
 
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/navigation-pending";
@@ -154,8 +155,15 @@ export function DatabaseLiveDesk({
     canEdit && !drawLocked && !isShortRound && orderedRuns.length > 0;
   const dirty = orderedRuns.some((run, index) => run.id !== runs[index]?.id);
   const pendingRuns = orderedRuns.filter((run) => run.status === "pending");
+  const workflowState = deskWorkflowState({
+    eventStatus, roundLocked, drawReady, dirty, isShortRound,
+    ropingStatus: selectedDivision?.eventDayStatus,
+    shortRoundSeeded, mainRoundsComplete,
+    shortRoundLocked: selectedDivision?.shortRoundLocked ?? false,
+    runs: orderedRuns,
+  });
   const currentRun =
-    eventStatus === "in_progress" && drawReady && !dirty
+    workflowState === null
       ? (pendingRuns[0] ?? null)
       : null;
   const upcomingRuns = currentRun ? pendingRuns.slice(1, 3) : [];
@@ -216,6 +224,38 @@ export function DatabaseLiveDesk({
           <div key={label}><dt className="text-xs font-semibold text-[#66716b]">{label}</dt><dd className="mt-1 text-xl font-bold">{value}</dd></div>
         ))}
       </dl>
+      {selectedDivision && eventStatus === "in_progress" && selectedDivision.eventDayStatus !== "completed" && mainRoundsComplete && orderedRuns.length > 0 && (!selectedDivision.shortRoundEnabled || (isShortRound && roundReadyToLock)) ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-y border-emerald-200 bg-emerald-50 p-4">
+          <div><h2 className="text-sm font-bold">Ready to complete this roping</h2><p className="mt-1 text-xs text-[#66716b]">Mark the roping completed, then finalize its payouts on the Payouts page.</p></div>
+          <ClassOperationsDialog eventId={eventId} divisionId={selectedDivisionId}
+            className={selectedDivision.name} arenaName={selectedDivision.arenaName}
+            arenaCount={arenaCount} status={selectedDivision.eventDayStatus}
+            estimatedStart={selectedDivision.estimatedStart} note={selectedDivision.eventDayNote}
+            editable={canEdit} suggestedStatus="completed" actionLabel="Complete roping" />
+        </div>
+      ) : null}
+      {selectedDivision?.eventDayStatus === "completed" || eventStatus === "completed" ? (
+        <Link href={`/events/${eventId}/payouts`} className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold">Continue to payouts <SkipForward size={16} /></Link>
+      ) : null}
+      {dirty ? (
+        <button type="button" onClick={() => setOrderedRuns(runs)}
+          className="inline-flex min-h-10 items-center rounded-md border px-3 text-sm font-semibold">
+          Discard order changes
+        </button>
+      ) : null}
+      {rerunCount > 0 && eventStatus === "in_progress" ? (
+        <section aria-label="Reruns awaiting scheduling" className="rounded-md border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-sm font-bold">Reruns awaiting scheduling</h2>
+          <div className="mt-2 space-y-2">
+            {orderedRuns.filter((run) => run.status === "rerun").map((run) => (
+              <div key={run.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span>{run.name} · <EntryLabel number={run.entryNumber} /></span>
+                <RerunSchedulingDialog eventId={eventId} run={run} canEdit={canTime} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {roundLocked && selectedRound < totalRounds ? (
         <Link href={`/events/${eventId}/live?division=${selectedDivisionId}&round=${selectedRound + 1}`}
           className="inline-flex items-center gap-2 text-sm font-semibold">
@@ -660,50 +700,12 @@ export function DatabaseLiveDesk({
           />
         ) : (
           <DeskMessage
-            title={
-              !orderedRuns.length
-                ? isShortRound
-                  ? shortRoundSeeded
-                    ? "No qualifiers"
-                    : "Short round not built"
-                  : "Waiting for entries"
-                : !drawReady
-                  ? "Draw required"
-                  : dirty
-                    ? "Save the draw"
-                    : roundLocked
-                      ? "Round locked"
-                      : rerunCount
-                        ? "Reruns required"
-                        : eventStatus !== "in_progress"
-                          ? "Ready to start"
-                          : "Round complete"
-            }
-            message={
-              !orderedRuns.length
-                ? isShortRound
-                  ? shortRoundSeeded
-                    ? "No entry completed every main round with a qualified time."
-                    : mainRoundsComplete
-                      ? "Build the field from the completed main-round aggregate."
-                      : "Complete every main-round run before building the finalist field."
-                  : "Add contestants before generating a draw."
-                : !drawReady
-                  ? "Generate the draw and make any order adjustments before starting this round."
-                  : dirty
-                    ? "Save order changes before recording another result."
-                    : roundLocked
-                      ? "This round is complete. Corrections require a reason and remain available in the changelog."
-                      : rerunCount
-                        ? `${rerunCount} ${rerunCount === 1 ? "run requires" : "runs require"} a rerun before this round can be completed.`
-                        : eventStatus !== "in_progress"
-                          ? "The draw is ready. Start the event when the arena is ready."
-                          : "Every run in this round has a result."
-            }
+            title={workflowState?.title ?? "Review round"}
+            message={workflowState?.message ?? "Review the run results before continuing."}
           />
         )}
         <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-          <p className="text-xs font-bold uppercase text-[#758078]">Classes</p>
+          <p className="text-xs font-bold uppercase text-[#758078]">Ropings</p>
           <div className="mt-3 space-y-1">
             {divisions.map((division) => (
               <Link
@@ -817,11 +819,11 @@ function RunEntryForm({
   }, [times, timerResolution]);
   const adjustedRunTime =
     resolved === null
-      ? "--.---"
+      ? "--.--"
       : calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment).toFixed(2);
   const aggregateTotal =
     resolved === null || run.carryTime === null
-      ? "--.---"
+      ? "--.--"
       : (
           run.carryTime +
           calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment)
@@ -888,7 +890,7 @@ function RunEntryForm({
                     ),
                   )
                 }
-                disabled={!canEdit}
+                disabled={!canEdit || pending}
                 className="h-14 min-w-0 flex-1 bg-transparent font-mono text-2xl font-bold outline-none placeholder:text-[#c9cecb] disabled:opacity-60"
                 placeholder="0.00"
               />
@@ -897,7 +899,7 @@ function RunEntryForm({
           ))}
         </div>
       </div>
-      <PenaltyChoices options={run.penaltyOptions ?? []} selected={selectedPenalties} onChange={setSelectedPenalties} disabled={!canEdit} />
+      <PenaltyChoices options={run.penaltyOptions ?? []} selected={selectedPenalties} onChange={setSelectedPenalties} disabled={!canEdit || pending} />
       <div className="mt-5 flex items-center justify-between border-y border-[#e7ebe8] py-4">
         <span>
           <span className="block text-sm font-semibold text-[#66716b]">
@@ -937,12 +939,13 @@ function RunEntryForm({
         ) : (
           <Save size={18} />
         )}
-        Save & next run
+        {pending ? "Saving result..." : "Save & next run"}
       </button>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button
           name="status"
           value="no_time"
+          formNoValidate
           disabled={!canEdit || pending}
           className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
@@ -951,6 +954,7 @@ function RunEntryForm({
         <button
           name="status"
           value="disqualified"
+          formNoValidate
           disabled={!canEdit || pending}
           className="flex h-10 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
@@ -959,6 +963,7 @@ function RunEntryForm({
         <button
           name="status"
           value="turned_out"
+          formNoValidate
           disabled={!canEdit || pending}
           className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
@@ -967,6 +972,7 @@ function RunEntryForm({
         <button
           name="status"
           value="rerun"
+          formNoValidate
           disabled={!canEdit || pending}
           className="flex h-10 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
         >

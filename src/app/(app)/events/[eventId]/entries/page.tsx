@@ -1,7 +1,6 @@
-import Link from "next/link";
+import { EventWorkflowNav } from "@/components/events/event-workflow-nav";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   Banknote,
   CircleDollarSign,
   ClipboardCheck,
@@ -612,12 +611,7 @@ function EntriesWorkspace({
 
   return (
     <div className="space-y-6">
-      <Link
-        href={`/events/${eventId}`}
-        className="inline-flex items-center gap-2 text-sm font-semibold text-[#66716b]"
-      >
-        <ArrowLeft size={16} /> Back to event
-      </Link>
+      <EventWorkflowNav eventId={eventId} active="entries" />
       <PageHeader
         eyebrow="Event entries"
         title={title}

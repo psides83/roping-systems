@@ -27,6 +27,7 @@ export function PayoutRegister({ eventId, awards, receipts, canManage }: {
     && (status === "all" || (status === "due" ? roper.dueCents > 0 : payoutStatus(roper) === status)));
   const totals = ropers.reduce((sum, roper) => ({ winnings: sum.winnings + roper.totalCents, paid: sum.paid + roper.paidCents, due: sum.due + roper.dueCents }), { winnings: 0, paid: 0, due: 0 });
   function confirm(receipt: PayoutReceipt) {
+    if (!window.confirm(`Record that ${receipt.recipient} acknowledged receiving ${formatCurrency(receipt.amountCents)}?`)) return;
     setError("");
     startTransition(async () => {
       try {
@@ -36,17 +37,17 @@ export function PayoutRegister({ eventId, awards, receipts, canManage }: {
     });
   }
   return <section aria-labelledby="payout-register-title" className="space-y-4">
-    <header className="flex flex-wrap items-center justify-between gap-3"><h2 id="payout-register-title" className="flex items-center gap-2 text-lg font-bold"><Banknote size={20} />Payout register</h2><span className="text-xs font-semibold text-[#66716b]">Completed ropings</span></header>
+    <header className="flex flex-wrap items-center justify-between gap-3"><h2 id="payout-register-title" className="flex items-center gap-2 text-lg font-bold"><Banknote size={20} />Payout register</h2><span className="text-xs font-semibold text-[#66716b]">Finalized payouts</span></header>
     <div className="grid grid-cols-3 gap-3 border-y border-[#dfe4e1] py-4">
       {[["Winnings", totals.winnings], ["Paid", totals.paid], ["Balance due", totals.due]].map(([label, value]) => <div key={label}><p className="text-xs text-[#66716b]">{label}</p><p className="mt-1 break-words text-lg font-bold">{formatCurrency(Number(value))}</p></div>)}
     </div>
     <div className="flex flex-wrap items-end gap-3">
-      <label className="grid max-w-full gap-1 text-xs font-semibold">Roping<select value={scope} onChange={(event) => { setScope(event.target.value); setExpanded([]); }} className="h-10 w-72 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"><option value="">All completed ropings</option>{ropings.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+      <label className="grid max-w-full gap-1 text-xs font-semibold">Roping<select value={scope} onChange={(event) => { setScope(event.target.value); setExpanded([]); }} className="h-10 w-72 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"><option value="">All finalized ropings</option>{ropings.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
       <label className="grid gap-1 text-xs font-semibold">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 w-40 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"><option value="all">All payouts</option><option value="due">Balance due</option><option value="Unpaid">Unpaid</option><option value="Partially paid">Partially paid</option><option value="Paid">Paid</option><option value="Needs review">Needs review</option></select></label>
       <label className="relative max-w-full"><span className="sr-only">Find a roper</span><Search size={16} className="absolute left-3 top-3 text-[#758078]" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a roper" className="h-10 w-40 max-w-full rounded-md border border-[#ccd4d0] pl-9 pr-3 text-sm sm:w-60" /></label>
     </div>
     {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-    {!awards.length ? <p className="border-y border-[#dfe4e1] py-8 text-center text-sm text-[#66716b]">No winnings from completed ropings yet.</p> : <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white">
+    {!awards.length ? <p className="border-y border-[#dfe4e1] py-8 text-center text-sm text-[#66716b]">No finalized payouts yet. Complete each roping, then finalize its payouts above to record payments.</p> : <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white">
       <table className="w-full text-left text-sm"><thead className="bg-[#eef1ef] text-xs text-[#66716b]"><tr><th className="p-3">Roper</th><th className="hidden p-3 text-right sm:table-cell">Winnings</th><th className="hidden p-3 text-right sm:table-cell">Paid</th><th className="p-3 text-right">Due</th><th className="hidden p-3 sm:table-cell">Status</th><th className="p-3"><span className="sr-only">Actions</span></th></tr></thead>
         <tbody className="divide-y divide-[#dfe4e1]">{visible.map((roper) => {
           const open = expanded.includes(roper.id);
