@@ -53,6 +53,8 @@ export interface EventFeeRecord {
 }
 
 export type DuplicableRopingSummary = RopingSummary & {
+  startsOn?: string;
+  endsOn?: string;
   duplicationDraft?: RopingDraft;
 };
 
@@ -168,6 +170,8 @@ export function buildDuplicableRopingSummary({
 
   return {
     id: event.id,
+    startsOn: toLocalDateTimeInput(event.starts_at, timeZone).slice(0, 10),
+    endsOn: toLocalDateTimeInput(event.ends_at ?? event.starts_at, timeZone).slice(0, 10),
     title: event.title,
     date: dateFormatter.format(new Date(event.starts_at)),
     location:

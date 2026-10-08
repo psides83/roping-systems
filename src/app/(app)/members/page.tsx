@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Download, Filter, Search, Settings2 } from "lucide-react";
+import { MemberList } from "@/components/members/member-list";
+import { Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { members as demoMembers } from "@/data/demo";
@@ -183,29 +184,7 @@ export default async function MembersPage() {
           </p>
         </div>
       </div>
-      <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
-        <div className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] p-4">
-          <label className="flex h-10 w-80 max-w-full items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
-            <Search size={17} />
-            <input
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#99a19d]"
-              placeholder="Search name, member number, or phone"
-            />
-          </label>
-          <div className="flex gap-2">
-            <button className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-sm font-semibold">
-              <Filter size={16} /> Filter
-            </button>
-            <button
-              aria-label="Export members"
-              className="grid h-10 w-10 place-items-center rounded-md border border-[#d7ddda]"
-            >
-              <Download size={17} />
-            </button>
-          </div>
-        </div>
-        <div className="overflow-x-auto scrollbar-subtle">
-          <table className="w-full min-w-[860px] text-left">
+      <MemberList members={members} head={
             <thead className="bg-[#f7f8f7] text-[11px] font-bold uppercase text-[#758078]">
               <tr>
                 <th className="px-5 py-3">Member</th>
@@ -219,8 +198,7 @@ export default async function MembersPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#e7ebe8]">
-              {members.map((member) => (
+      } rows={members.map((member) => (
                 <tr key={member.id} className="hover:bg-[#fafbfa]">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -282,24 +260,7 @@ export default async function MembersPage() {
                     </Link>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-between border-t border-[#e7ebe8] px-5 py-4 text-xs text-[#758078]">
-          <span>
-            Showing {members.length} member{members.length === 1 ? "" : "s"}
-          </span>
-          <div className="flex gap-2">
-            <button className="rounded border border-[#d7ddda] px-3 py-1.5">
-              Previous
-            </button>
-            <button className="rounded border border-[#d7ddda] px-3 py-1.5">
-              Next
-            </button>
-          </div>
-        </div>
-      </section>
+              ))} />
     </div>
   );
 }

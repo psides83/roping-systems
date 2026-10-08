@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   CalendarDays,
   ChevronDown,
   ClipboardSignature,
@@ -257,13 +256,6 @@ export function AppShell({
             >
               <span className="h-2 w-2 rounded-full bg-white" /> Live event
             </Link>
-            <button
-              aria-label="Notifications"
-              className="relative grid h-9 w-9 place-items-center rounded-md border border-[#dfe4e1] bg-white text-[#4d5952]"
-            >
-              <Bell size={18} />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full brand-accent-fill" />
-            </button>
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">

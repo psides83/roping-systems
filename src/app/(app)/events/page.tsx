@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Calendar, CalendarDays, List, MapPin, Users } from "lucide-react";
+import { EventBrowser } from "@/components/events/event-browser";
+import { CalendarDays, MapPin, Users } from "lucide-react";
 import {
   CreateRopingDialog,
   type RopingDraft,
@@ -225,23 +226,7 @@ export default async function RopingsPage() {
           />
         }
       />
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex w-fit rounded-md border border-[#d7ddda] bg-white p-1">
-          <button className="flex h-8 items-center gap-2 rounded bg-[#eef1ef] px-3 text-xs font-semibold">
-            <List size={15} /> List
-          </button>
-          <button className="flex h-8 items-center gap-2 px-3 text-xs font-semibold text-[#66716b]">
-            <Calendar size={15} /> Calendar
-          </button>
-        </div>
-        <select className="h-10 rounded-md border border-[#d7ddda] bg-white px-3 text-sm outline-none">
-          <option>All statuses</option>
-          <option>Upcoming</option>
-          <option>Completed</option>
-        </select>
-      </div>
-      <section className="space-y-3">
-        {events.map((roping) => (
+      <EventBrowser events={events} rows={events.map((roping) => (
           <article
             key={roping.id}
             className="rounded-md border border-[#dfe4e1] bg-white p-5"
@@ -280,7 +265,7 @@ export default async function RopingsPage() {
                   <span className="flex items-center gap-1.5">
                     <Users size={15} />
                     {roping.entries} entries · {roping.divisions} scheduled
-                    events
+                    ropings
                   </span>
                 </div>
               </div>
@@ -310,16 +295,7 @@ export default async function RopingsPage() {
               </div>
             </div>
           </article>
-        ))}
-      </section>
-      {!events.length ? (
-        <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center">
-          <p className="font-semibold">No events scheduled yet</p>
-          <p className="mt-2 text-sm text-[#758078]">
-            Create an event from your producer’s roping templates.
-          </p>
-        </div>
-      ) : null}
+        ))} />
     </div>
   );
 }
