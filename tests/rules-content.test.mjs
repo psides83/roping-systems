@@ -5,17 +5,19 @@ import { createRequire } from "node:module";
 import { transpileModule, ModuleKind, JsxEmit } from "typescript";
 import React from "react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { ruleTextStyle } from "../src/lib/rule-text-style.ts";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as rules from "../src/lib/producer-rules.ts";
 
 const require = createRequire(import.meta.url);
 function load(path, overrides) {
-  const module = { exports: {} };
+  const compiled = { exports: {} };
   const source = transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), { compilerOptions: { module: ModuleKind.CommonJS, jsx: JsxEmit.ReactJSX } }).outputText;
-  new Function("require", "module", "exports", source)((name) => overrides[name] ?? require(name), module, module.exports);
-  return module.exports;
+  new Function("require", "module", "exports", source)((name) => overrides[name] ?? require(name), compiled, compiled.exports);
+  return compiled.exports;
 }
-const { RuleText } = load("../src/components/rules/rule-text.tsx", { "react-markdown": { default: Markdown } });
+const { RuleText } = load("../src/components/rules/rule-text.tsx", { "react-markdown": { default: Markdown }, "remark-gfm": { default: remarkGfm }, "@/lib/rule-text-style": { ruleTextStyle } });
 const { RulesContent } = load("../src/components/rules/rules-content.tsx", { "@/lib/producer-rules": rules, "./rule-text": { RuleText } });
 test("rule formatting renders basic lists and bold without executable HTML or unsafe links", () => {
   const html = renderToStaticMarkup(React.createElement(RuleText, { text: "**Bold**\n\n1. First\n2. Second\n\n<script>alert(1)</script>\n\n[Unsafe](javascript:alert%281%29)\n\n[Safe](https://example.com)" }));
@@ -32,4 +34,8 @@ test("rules show headings, date, section navigation and safe PDF documents", () 
   assert.match(html, /<details/);
   assert.doesNotMatch(html, /href="javascript:/);
   assert.match(html, /Search rules/);
+});
+test("expanded formatting appears in the public renderer", () => {
+  const html = renderToStaticMarkup(React.createElement(RuleText, { text: "## Eligibility\n\n~~Removed rule~~\n\n> Important note\n\n---\n\n`Code`\n\n```\nExample\n```" }));
+  for (const tag of ["h2", "del", "blockquote", "hr", "code", "pre"]) assert.ok(html.includes(`<${tag}`));
 });

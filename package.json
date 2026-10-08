@@ -16,6 +16,13 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/extension-link": "^3.31.4",
+    "@tiptap/extension-placeholder": "^3.31.4",
+    "@tiptap/markdown": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
     "clsx": "^2.1.1",
     "lucide-react": "^1.48.0",
     "next": "^16.3.6",
@@ -24,6 +31,7 @@
     "react-dom": "19.2.8",
     "react-markdown": "^10.1.0",
     "read-excel-file": "^9.3.10",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.5"
   },

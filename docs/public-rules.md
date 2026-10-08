@@ -1,8 +1,11 @@
 # Producer Public Rules
 
 Owners and administrators manage rules under Settings > Public Rules. Sections
-and subsections can be edited, removed and reordered. Formatting supports bold,
-italic, lists and links; raw HTML and embedded media are not rendered. Optional
+and subsections can be edited, removed and reordered. The visual editor displays
+formatting directly while editing; an optional Markdown mode exposes the source.
+Formatting supports headings, bold, italic, strikethrough, lists, quotes, dividers,
+links and code. Undo, redo and clear-formatting controls are available. Raw HTML
+and embedded media are not rendered on the public page. Optional
 named PDF documents use external HTTPS links, not file uploads.
 
 Save draft retains incomplete sections without changing the published version.
