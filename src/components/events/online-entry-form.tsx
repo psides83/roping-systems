@@ -8,6 +8,7 @@ import {
   type OnlineEntryFormState,
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
+import { summarizeOnlineEntryOptions } from "@/lib/online-entry-summary";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { qualificationNoticeText, type QualificationNotice } from "@/lib/events/qualification-notice";
 
@@ -58,6 +59,9 @@ export function OnlineEntryForm({
   >(action, {});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>({});
+  const summary = summarizeOnlineEntryOptions(divisions, selected, quantities, selectedOptions);
+  const optionalTotal = summary.reduce((total, roping) => total + roping.options.reduce((sum, option) => sum + option.amountCents, 0), 0);
   const formRef = useRef<HTMLFormElement>(null);
   const [checkingAllowance, startAllowanceCheck] = useTransition();
   const [allowances, setAllowances] = useState<Awaited<ReturnType<typeof loadOnlineFinalsAllowance>>["allowances"]>([]);
@@ -77,7 +81,7 @@ export function OnlineEntryForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-7" onChange={(event) => {
+    <form ref={formRef} action={formAction} aria-busy={pending} className="space-y-7" onChange={(event) => {
       const name = event.target instanceof HTMLInputElement ? event.target.name : null;
       if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); }
     }}>
@@ -170,7 +174,7 @@ export function OnlineEntryForm({
       </section>
 
       <fieldset>
-        <legend className="text-lg font-bold">Classes</legend>
+        <legend className="text-lg font-bold">Ropings</legend>
         <p className="mt-1 text-sm text-[#66716b]">
           Select each division and classification you want to enter, then choose
           the number of entries.
@@ -199,11 +203,10 @@ export function OnlineEntryForm({
                     }
                     className="mt-1 h-4 w-4 accent-[var(--brand-accent)]"
                   />
-                  <label
-                    htmlFor={`division-${division.id}`}
+                  <div
                     className="min-w-0 flex-1"
                   >
-                    <span className="font-bold">{division.name}</span>
+                    <label htmlFor={`division-${division.id}`} className="font-bold">{division.name}</label>
                     {division.qualification ? <span className="mt-2 block text-xs font-semibold leading-5 text-amber-800">{qualificationNoticeText(division.qualification)}</span> : null}
                     {allowance && <span className="mt-1 block text-xs font-semibold text-emerald-700">{allowance.normal_entries === null ? "Unlimited entries" : `${allowance.normal_entries} regular + ${allowance.bonus_entries} bonus · ${allowance.remaining_entries} available`}</span>}
                     {division.description ? (
@@ -220,7 +223,7 @@ export function OnlineEntryForm({
                     </span>
                     <span className="mt-1 block text-xs font-semibold text-[var(--brand-accent-strong)]">
                       {division.eligibilityType === "open"
-                        ? division.qualification ? "Open classification" : "Open to any contestant"
+                        ? "Open classification · Other eligibility rules still apply"
                         : division.eligibilityType === "age"
                           ? division.minimumAge !== null &&
                             division.maximumAge !== null
@@ -259,6 +262,8 @@ export function OnlineEntryForm({
                               value={option.id}
                               type="checkbox"
                               disabled={!isSelected}
+                              checked={selectedOptions[`${division.id}:${option.id}`] ?? false}
+                              onChange={(event) => setSelectedOptions((current) => ({ ...current, [`${division.id}:${option.id}`]: event.target.checked }))}
                               className="h-4 w-4 accent-[var(--brand-accent)]"
                             />
                             <span className="min-w-0 flex-1">
@@ -277,7 +282,7 @@ export function OnlineEntryForm({
                         ))}
                       </span>
                     ) : null}
-                  </label>
+                  </div>
                   <div className="flex h-9 shrink-0 items-center rounded-md border border-[#ccd4d0] bg-white">
                     <button
                       type="button"
@@ -328,6 +333,18 @@ export function OnlineEntryForm({
         ) : null}
       </fieldset>
 
+      {summary.length > 0 && <section aria-label="Review entry request" className="border-y border-[#dfe4e1] py-5">
+        <h2 className="text-lg font-bold">Review entry request</h2>
+        <ul className="mt-3 divide-y divide-[#e7ebe8]">
+          {summary.map((roping) => <li key={roping.id} className="py-3 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">{roping.name}</span><span>{roping.quantity} {roping.quantity === 1 ? "entry" : "entries"}</span></div>
+            {roping.options.length ? <ul className="mt-2 space-y-1 text-[#66716b]">{roping.options.map((option, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{option.title}</span><span>{option.units === 0 ? "Included above" : formatCurrency(option.amountCents)}</span></li>)}</ul> : <p className="mt-1 text-[#66716b]">No optional pots selected</p>}
+          </li>)}
+        </ul>
+        <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm font-bold"><span>Optional fees subtotal</span><span>{formatCurrency(optionalTotal)}</span></div>
+        <p className="mt-2 text-xs leading-5 text-[#66716b]">Base entry fees and required charges are additional. The producer confirms the final amount, including any event charge already paid.</p>
+      </section>}
+
       <label className="block text-sm font-semibold">
         Note for the event office
         <textarea
@@ -358,7 +375,7 @@ export function OnlineEntryForm({
           className="flex h-11 w-full items-center justify-center gap-2 rounded-md brand-accent-fill px-5 text-sm font-bold text-white disabled:opacity-50 sm:w-auto"
         >
           {pending ? <LoaderCircle size={17} className="animate-spin" /> : null}
-          Submit entry request
+          {pending ? "Submitting request..." : "Submit entry request"}
         </button>
         <p className="mt-3 text-xs leading-5 text-[#758078]">
           Submitting does not guarantee entry. The event office will review
