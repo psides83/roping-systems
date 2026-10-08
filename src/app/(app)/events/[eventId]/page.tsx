@@ -752,7 +752,7 @@ export default async function RopingDetailPage({
                 : `/public/${producerSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold sm:w-10 sm:justify-center sm:px-0"
+              className="flex h-10 shrink-0 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"
               aria-label="View public page (opens in a new tab)"
               title={event.publicationState === "published" ? "View this event's public results" : "View producer page; publish this event to display its results"}
             >
