@@ -1,0 +1,52 @@
+begin;
+do $$
+declare staff uuid; claimant uuid:=gen_random_uuid(); target uuid; producer uuid; roper uuid; profile jsonb; original jsonb; q uuid; blocked boolean;
+begin
+  select id into strict staff from auth.users where lower(email)='psides83@hotmail.com';
+  perform set_config('request.jwt.claim.sub',staff::text,true);
+  select m.id,m.producer_id,m.roper_id into strict target,producer,roper from public.memberships m where public.can_manage_organization(m.producer_id) limit 1;
+  insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values(claimant,'profile-test-'||claimant::text||'@example.com',now(),'{}');
+  update public.ropers set auth_user_id=null where auth_user_id=claimant;
+  update public.ropers set auth_user_id=claimant where id=roper;
+  select jsonb_build_object('birthDate',r.birth_date,'gender',r.competition_gender,'firstName',r.first_name,'lastName',r.last_name)
+    into original from public.ropers r where id=roper;
+  perform set_config('request.jwt.claim.sub',claimant::text,true);
+  profile:=public.my_member_profile(target);
+  perform public.update_my_member_contact(target,'updated-'||claimant::text||'@example.com','(940) 555-0123','Fort Worth','TX',
+    (profile->>'profileRevision')::timestamptz,(profile->>'membershipRevision')::timestamptz);
+  if exists(select 1 from public.memberships where roper_id=roper and (profile_fields->>'city'<>'Fort Worth' or profile_fields->>'state'<>'TX')) then raise exception 'Shared contact city/state not synchronized'; end if;
+  if original is distinct from (select jsonb_build_object('birthDate',r.birth_date,'gender',r.competition_gender,'firstName',r.first_name,'lastName',r.last_name) from public.ropers r where id=roper) then raise exception 'Contact update changed protected fields'; end if;
+  blocked:=false;
+  begin perform public.update_my_member_contact(target,'','', '', '',(profile->>'profileRevision')::timestamptz,(profile->>'membershipRevision')::timestamptz);
+  exception when raise_exception then blocked:=true; end;
+  if not blocked then raise exception 'Stale profile update accepted'; end if;
+  perform set_config('role','authenticated',true);
+  update public.ropers set birth_date=date '1990-01-01' where id=roper;
+  if found then raise exception 'Direct self-service eligibility update allowed'; end if;
+  perform set_config('role','postgres',true);
+  perform public.request_member_profile_correction(target,date '1985-06-15',null,'Birth date entered incorrectly');
+  select id into strict q from public.member_profile_corrections where membership_id=target and status='pending';
+  blocked:=false;
+  begin perform public.review_member_profile_correction(q,'approved','Verified using member documentation'); exception when raise_exception then blocked:=true; end;
+  if not blocked then raise exception 'Roper self-approved correction'; end if;
+  perform set_config('request.jwt.claim.sub',staff::text,true);
+  perform public.review_member_profile_correction(q,'approved','Verified using member documentation');
+  if (select birth_date from public.ropers where id=roper)<>date '1985-06-15' then raise exception 'Approved correction not applied'; end if;
+  perform set_config('request.jwt.claim.sub',claimant::text,true);
+  perform public.request_member_profile_correction(target,date '1986-06-15',null,'Second correction for stale review check');
+  select id into strict q from public.member_profile_corrections where membership_id=target and status='pending';
+  update public.ropers set birth_date=date '1987-06-15' where id=roper;
+  perform set_config('request.jwt.claim.sub',staff::text,true);
+  blocked:=false;
+  begin perform public.review_member_profile_correction(q,'approved','Verified using member documentation'); exception when raise_exception then blocked:=true; end;
+  if not blocked then raise exception 'Stale eligibility request applied'; end if;
+  perform public.review_member_profile_correction(q,'declined','Record changed; request a fresh correction');
+  perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+  blocked:=false;
+  begin perform public.my_member_profile(target); exception when raise_exception then blocked:=true; end;
+  if not blocked then raise exception 'Unlinked profile access'; end if;
+  if has_function_privilege('anon','public.update_my_member_contact(uuid,text,text,text,text,timestamptz,timestamptz)','EXECUTE') then raise exception 'Anonymous profile update granted'; end if;
+  if not exists(select 1 from public.producer_audit_log where producer_id=producer and entity_id=roper and after_data->>'source'='roper_portal') then raise exception 'Missing contact audit'; end if;
+end;
+$$;
+rollback;
