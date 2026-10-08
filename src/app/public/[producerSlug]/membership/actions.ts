@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import {
   getStandardMembershipField,
   type CustomMembershipSection,
@@ -105,13 +106,18 @@ export async function submitMembershipApplication(
     return { message: "Complete the required fields.", errors };
   }
 
-  const { error } = await supabase.rpc("submit_membership_application", {
+  const memberId = formData.get("membershipId");
+  if (memberId && !z.uuid().safeParse(memberId).success) return { message: "Check the renewal membership." };
+  const { error } = await supabase.rpc(memberId ? "submit_membership_renewal" : "submit_membership_application", {
     target_form_id: form.id,
     application_responses: responses,
     accepted_release: acceptedRelease,
     entered_signature_name: signatureName || null,
+    ...(memberId ? { target_membership_id: memberId } : {}),
   });
   if (error) return { message: error.message };
+  revalidatePath("/roper/memberships");
+  revalidatePath("/settings/membership-form");
   return {
     success: true,
     message: "Your membership application has been submitted.",

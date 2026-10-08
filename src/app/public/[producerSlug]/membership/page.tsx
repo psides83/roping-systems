@@ -12,8 +12,10 @@ import { notFound } from "next/navigation";
 
 export default async function PublicMembershipPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ producerSlug: string }>;
+  searchParams: Promise<{ member?: string }>;
 }) {
   const { producerSlug } = await params;
   const supabase = await createClient();
@@ -25,6 +27,14 @@ export default async function PublicMembershipPage({
     .eq("producer_slug", producerSlug)
     .maybeSingle();
   if (error || !form) notFound();
+  const query = await searchParams;
+  const { data: claims } = await supabase.auth.getClaims();
+  let initialResponses: Record<string, string | boolean> = {};
+  if (query.member) {
+    const { data: prefill, error: prefillError } = await supabase.rpc("membership_application_prefill", { target_membership: query.member, target_form: form.id });
+    if (prefillError) notFound();
+    initialResponses = prefill;
+  }
 
   const logoUrl = form.logo_path
     ? supabase.storage.from("organization-logos").getPublicUrl(form.logo_path)
@@ -65,13 +75,14 @@ export default async function PublicMembershipPage({
         </div>
       </header>
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+        {!claims?.claims ? <p className="mb-4 text-sm text-[#66716b]"><Link href="/auth/login" className="font-semibold underline">Sign in</Link> before applying to track your application in the roper portal.</p> : null}
         <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
           <div className="px-5 py-6 sm:px-8 sm:py-8">
             <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
               Online membership
             </p>
             <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
-              {form.title}
+              {query.member ? "Membership renewal" : form.title}
             </h1>
             {form.introduction ? (
               <p className="mt-3 max-w-2xl text-sm leading-6 whitespace-pre-wrap text-[#66716b]">
@@ -89,6 +100,10 @@ export default async function PublicMembershipPage({
             }
             releaseText={form.release_text}
             requireSignature={form.require_signature}
+            initialResponses={initialResponses}
+            renewal={Boolean(query.member)}
+            portal={Boolean(claims?.claims)}
+            membershipId={query.member}
           />
         </section>
       </div>

@@ -117,29 +117,28 @@ export async function saveMembershipForm(
   return { success: true, message: "Membership form saved." };
 }
 
-export async function reviewMembershipApplication(formData: FormData) {
+export async function reviewMembershipApplication(_state: { error?: string }, formData: FormData): Promise<{ error?: string }> {
   const parsed = z
     .object({
       applicationId: z.uuid(),
       status: z.enum(["approved", "declined"]),
       reviewNote: z.string().trim().max(500),
+      membershipId: z.union([z.literal(""), z.uuid()]).optional(),
+      expiresOn: z.string().optional(),
     })
     .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) throw new Error("Check the application review.");
+  if (!parsed.success) return { error: "Check the application review." };
   const context = await requireManager();
-  if (!context) throw new Error("Manager access is required.");
-  const { data: claims } = await context.supabase.auth.getClaims();
-  const userId = claims?.claims?.sub;
-  const { error } = await context.supabase
-    .from("membership_applications")
-    .update({
-      status: parsed.data.status,
-      review_note: parsed.data.reviewNote || null,
-      reviewed_by: userId ?? null,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", parsed.data.applicationId)
-    .eq("producer_id", context.producer.id);
-  if (error) throw new Error(error.message);
+  if (!context) return { error: "Manager access is required." };
+  const { error } = await context.supabase.rpc("review_member_application", {
+    target_application: parsed.data.applicationId, decision: parsed.data.status,
+    selected_membership: parsed.data.membershipId || null, expires_on: parsed.data.expiresOn || null,
+    staff_note: parsed.data.reviewNote,
+  });
+  if (error) return { error: error.message };
   revalidatePath("/settings/membership-form");
+  revalidatePath("/members");
+  revalidatePath("/roper/memberships");
+  revalidatePath("/roper");
+  return {};
 }

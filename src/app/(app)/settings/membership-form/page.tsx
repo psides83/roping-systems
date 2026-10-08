@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Check, ClipboardList, ExternalLink, X } from "lucide-react";
-import { reviewMembershipApplication } from "./actions";
+import { ClipboardList, ExternalLink } from "lucide-react";
+import { ReviewMembershipApplication } from "@/components/members/review-membership-application";
 import {
   MembershipFormBuilder,
   type MembershipFormDraft,
@@ -43,6 +43,8 @@ interface MembershipApplication {
   status: "pending" | "approved" | "declined";
   review_note: string | null;
   submitted_at: string;
+  membership_id: string | null;
+  application_kind: string;
 }
 
 async function getMembershipFormData() {
@@ -53,6 +55,7 @@ async function getMembershipFormData() {
       role: producer?.role ?? "viewer",
       form: null,
       applications: [] as MembershipApplication[],
+      members: [] as { id: string; label: string }[],
     };
   }
 
@@ -71,7 +74,7 @@ async function getMembershipFormData() {
     supabase
       .from("membership_applications")
       .select(
-        "id, applicant_name, applicant_email, responses, form_snapshot, release_accepted, signature_name, status, review_note, submitted_at",
+        "id, applicant_name, applicant_email, responses, form_snapshot, release_accepted, signature_name, status, review_note, submitted_at, membership_id, application_kind",
       )
       .eq("producer_id", producer.id)
       .order("submitted_at", { ascending: false }),
@@ -82,12 +85,15 @@ async function getMembershipFormData() {
       `Unable to load membership forms: ${formError?.message ?? applicationError?.message}`,
     );
   }
+  const { data: memberRows, error: memberError } = await supabase.from("memberships").select("id,member_number,ropers(first_name,last_name)").eq("producer_id", producer.id).order("member_number");
+  if (memberError) throw new Error("Unable to load membership review records.");
 
   return {
     producer,
     role: producer.role,
     form,
     applications: (applications ?? []) as MembershipApplication[],
+    members: (memberRows ?? []).map((m) => { const r = m.ropers as unknown as { first_name: string; last_name: string }; return { id: m.id, label: `#${m.member_number} · ${r.first_name} ${r.last_name}` }; }),
   };
 }
 
@@ -238,38 +244,7 @@ export default async function MembershipFormSettingsPage() {
                   </details>
                 ) : null}
                 {enabled && application.status === "pending" ? (
-                  <form
-                    action={reviewMembershipApplication}
-                    className="mt-5 flex flex-col gap-3 border-t border-[#edf0ee] pt-4 sm:flex-row sm:items-end"
-                  >
-                    <input
-                      type="hidden"
-                      name="applicationId"
-                      value={application.id}
-                    />
-                    <label className="min-w-0 flex-1 text-xs font-semibold">
-                      Review note
-                      <input
-                        name="reviewNote"
-                        className="mt-2 h-10 w-full rounded-md border border-[#ccd4d0] px-3 text-sm"
-                        placeholder="Optional internal note"
-                      />
-                    </label>
-                    <button
-                      name="status"
-                      value="declined"
-                      className="flex h-10 items-center justify-center gap-2 rounded-md border border-rose-200 px-4 text-xs font-bold text-rose-700"
-                    >
-                      <X size={15} /> Decline
-                    </button>
-                    <button
-                      name="status"
-                      value="approved"
-                      className="flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-xs font-bold text-white"
-                    >
-                      <Check size={15} /> Approve
-                    </button>
-                  </form>
+                  <ReviewMembershipApplication id={application.id} kind={application.application_kind} membershipId={application.membership_id} members={data.members} />
                 ) : application.review_note ? (
                   <p className="mt-4 text-xs text-[#66716b]">
                     Review note: {application.review_note}

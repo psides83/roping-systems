@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
 import {
   submitMembershipApplication,
@@ -15,7 +16,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 
 const inputClass =
-  "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm outline-none focus:border-[var(--brand-accent)]";
+  "mt-2 block h-11 w-64 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm outline-none focus:border-[var(--brand-accent)]";
 
 export function PublicMembershipForm({
   formId,
@@ -23,12 +24,20 @@ export function PublicMembershipForm({
   customSections,
   releaseText,
   requireSignature,
+  initialResponses = {},
+  renewal = false,
+  portal = false,
+  membershipId,
 }: {
   formId: string;
   standardFields: SelectedMembershipField[];
   customSections: CustomMembershipSection[];
   releaseText: string | null;
   requireSignature: boolean;
+  initialResponses?: Record<string, string | boolean>;
+  renewal?: boolean;
+  portal?: boolean;
+  membershipId?: string;
 }) {
   const [state, action, pending] = useActionState<
     MembershipApplicationState,
@@ -43,11 +52,12 @@ export function PublicMembershipForm({
           className="mx-auto text-emerald-700"
           strokeWidth={1.7}
         />
-        <h2 className="mt-4 text-xl font-bold">Application submitted</h2>
+        <h2 className="mt-4 text-xl font-bold">{renewal ? "Renewal submitted" : "Application submitted"}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66716b]">
           The producer can now review your application. Keep an eye on the email
           or phone number you provided for any follow-up.
         </p>
+        {portal ? <Link href="/roper/memberships" className="mt-4 inline-block text-sm font-semibold">View application status</Link> : null}
       </div>
     );
   }
@@ -58,6 +68,7 @@ export function PublicMembershipForm({
       className="border-t border-[#e7ebe8] px-5 py-6 sm:px-8"
     >
       <input type="hidden" name="formId" value={formId} />
+      {membershipId ? <input type="hidden" name="membershipId" value={membershipId} /> : null}
       <section>
         <h2 className="text-base font-bold">Member information</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -73,6 +84,7 @@ export function PublicMembershipForm({
                 options={field.options}
                 required={selected.required}
                 error={state.errors?.[`standard_${selected.key}`]}
+                value={initialResponses[selected.key]}
               />
             );
           })}
@@ -100,6 +112,7 @@ export function PublicMembershipForm({
                 options={field.options}
                 required={field.required}
                 error={state.errors?.[`custom_${field.id}`]}
+                value={initialResponses[`custom_${field.id}`]}
               />
             ))}
           </div>
@@ -154,7 +167,7 @@ export function PublicMembershipForm({
           className="flex h-11 items-center gap-2 rounded-md brand-accent-fill px-5 text-sm font-bold text-white disabled:opacity-50"
         >
           {pending ? <LoaderCircle size={17} className="animate-spin" /> : null}
-          Submit application
+          {renewal ? "Submit renewal" : "Submit application"}
         </button>
       </div>
     </form>
@@ -168,6 +181,7 @@ function MembershipField({
   options,
   required,
   error,
+  value,
 }: {
   name: string;
   label: string;
@@ -175,6 +189,7 @@ function MembershipField({
   options?: string[];
   required: boolean;
   error?: string;
+  value?: string | boolean;
 }) {
   if (type === "checkbox") {
     return (
@@ -182,6 +197,7 @@ function MembershipField({
         <input
           name={name}
           type="checkbox"
+          defaultChecked={value === true}
           className="h-4 w-4 accent-[var(--brand-accent)]"
         />
         {label}
@@ -199,7 +215,7 @@ function MembershipField({
     >
       {label} {required ? <span className="text-rose-700">*</span> : null}
       {type === "select" ? (
-        <select name={name} className={inputClass} defaultValue="">
+        <select name={name} className={inputClass} defaultValue={typeof value === "string" ? value : ""}>
           <option value="">Select</option>
           {(options ?? []).map((option) => (
             <option key={option} value={option}>
@@ -211,14 +227,16 @@ function MembershipField({
         <textarea
           name={name}
           rows={4}
+          defaultValue={typeof value === "string" ? value : ""}
           className="mt-2 w-full rounded-md border border-[#ccd4d0] bg-white p-3 text-sm outline-none focus:border-[var(--brand-accent)]"
         />
       ) : type === "phone" ? (
-        <PhoneInput name={name} className={inputClass} />
+        <PhoneInput name={name} defaultValue={typeof value === "string" ? value : ""} className={inputClass} />
       ) : (
         <input
           name={name}
           type={type}
+          defaultValue={typeof value === "string" ? value : ""}
           autoCapitalize={type === "text" ? "words" : undefined}
           className={inputClass}
           aria-invalid={Boolean(error)}
