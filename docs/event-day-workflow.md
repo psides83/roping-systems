@@ -28,3 +28,13 @@ Payment fields are disabled while saving. Confirming a previously unconfirmed re
 `tests/desk-workflow.test.mjs` covers timing readiness, missing entries/draws, unsaved orders, short-round locking, unresolved reruns, and completed event/roping states. Existing draw, scoring, payout, funding, permission, and receipt tests remain part of the full test suite.
 
 Browser inspection is read-only against retained test events. This pass does not issue payments or alter their competition results.
+
+## Busy-desk safeguards
+
+The active desk selector keeps the roping, arena, and round together at the top. While a selection is loading, the previous desk is inert so staff cannot inadvertently save against the old selection. Roping operations are collapsed beneath timing; draw and round-completion controls move ahead of the draw table when action is needed.
+
+Timing has its own component and repeats the roping/round context beside the active contestant. Enter in a timer field moves focus to the next timer or save button rather than immediately submitting. Pending saves disable editing and prevent repeated submissions. Turn outs, disqualifications, rerun requests, and replacing entered readings with No time require confirmation. A qualified zero-second reading requires explicit confirmation.
+
+Unsaved time and order edits prompt before app/sidebar link navigation or desk-selector changes. Refreshing or closing the tab uses the browser's unsaved-work warning. This is not an offline persistence or browser-history interception system; staff should save work before using the browser Back/Forward controls.
+
+The last recorded result is derived from the saved run timestamp, not the draw position. It identifies the contestant and entry and offers the existing reason-required correction workflow to authorized staff. Payment status adjustments are collapsed separately from cash collection and require confirmation.

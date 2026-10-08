@@ -34,7 +34,7 @@ for (const [overrides, title] of [
 test("Locked short-round field accepts pending times", () => assert.equal(deskWorkflowState({ ...ready, isShortRound: true, shortRoundLocked: true }), null));
 test("Completed event takes precedence over a missing draw", () => assert.equal(deskWorkflowState({ ...ready, eventStatus: "completed", drawReady: false, runs: [] }).title, "Competition completed"));
 test("No-time outcomes bypass timer input validation, but qualified times do not", () => {
-  const ui = readFileSync(new URL("../src/components/events/database-live-desk.tsx", import.meta.url), "utf8");
+  const ui = readFileSync(new URL("../src/components/events/live-run-entry-form.tsx", import.meta.url), "utf8");
   for (const outcome of ["no_time", "disqualified", "turned_out", "rerun"]) assert.match(ui, new RegExp(`value="${outcome}"\\s+formNoValidate`));
   assert.doesNotMatch(ui, /value="complete"\s+formNoValidate/);
 });

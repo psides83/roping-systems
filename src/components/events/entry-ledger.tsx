@@ -175,11 +175,11 @@ export function EntryLedger({
             <tr>
               <th className="px-5 py-3">Contestant</th>
               <th className="px-5 py-3">Entries</th>
-              <th className="px-5 py-3">Classes</th>
+              <th className="px-5 py-3">Ropings</th>
               <th className="px-5 py-3">Arrival</th>
               <th className="px-5 py-3">Payment</th>
               <th className="px-5 py-3 text-right">Total</th>
-              <th className="px-5 py-3 text-right">Update</th>
+              <th className="px-5 py-3 text-right">Adjustments</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e7ebe8]">
@@ -394,11 +394,10 @@ function ContestantRow({
         </details>
       </td>
       <td className="px-5 py-4 text-right">
-        <PaymentForm
-          eventId={eventId}
-          contestant={contestant}
-          canEdit={canAdjust}
-        />
+        {canAdjust ? <details className="group">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-semibold text-[#66716b]">Adjust payment status<ChevronDown size={15} className="transition-transform group-open:rotate-180" /></summary>
+          <PaymentForm eventId={eventId} contestant={contestant} canEdit={canAdjust} />
+        </details> : <span className="text-xs text-[#758078]">-</span>}
       </td>
     </tr>
   );
@@ -420,7 +419,11 @@ function PaymentForm({
   );
 
   return (
-    <form action={action} className="inline-flex flex-col items-end gap-1.5">
+    <form action={action} onSubmit={(event) => {
+      const form = new FormData(event.currentTarget);
+      const status = paymentLabels[String(form.get("paymentStatus")) as PaymentStatus];
+      if (!window.confirm(`Set all entries for ${contestant.name} to ${status}? This changes payment status, not a cash receipt.`)) event.preventDefault();
+    }} className="inline-flex flex-col items-end gap-1.5">
       <input type="hidden" name="personId" value={contestant.personId} />
       <div className="flex items-center gap-2">
         <select

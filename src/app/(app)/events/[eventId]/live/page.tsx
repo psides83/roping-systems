@@ -189,7 +189,7 @@ export default async function LiveRopingPage({
     const { data: runData, error } = await supabase
       .from("competition_runs")
       .select(
-        "id, entry_id, draw_position, raw_time_seconds, penalty_seconds, applied_penalties, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), entries:roping_entries!inner(entry_number, handicap_time_credit_seconds, ropers!inner(first_name, last_name))",
+        "id, recorded_at, entry_id, draw_position, raw_time_seconds, penalty_seconds, applied_penalties, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), entries:roping_entries!inner(entry_number, handicap_time_credit_seconds, ropers!inner(first_name, last_name))",
       )
       .eq("event_roping_id", selectedDivisionId)
       .eq("round_number", selectedRound)
@@ -204,6 +204,7 @@ export default async function LiveRopingPage({
       };
       return {
         id: run.id,
+        recordedAt: run.recorded_at,
         entryId: run.entry_id,
         drawPosition: run.draw_position,
         name: `${entry.ropers.first_name} ${entry.ropers.last_name}`,
@@ -422,7 +423,7 @@ function LiveWorkspace({
       <PageHeader
         eyebrow={`Event desk · ${status.replaceAll("_", " ")} · ${resultStatus}`}
         title={title}
-        description="Set each round's draw and record times. Saved runs publish to the live results page while results remain unofficial."
+        description=""
         actions={
           <EventLifecycleControl eventId={eventId} status={status} resultStatus={resultStatus} enabled={canEdit} />
         }

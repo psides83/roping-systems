@@ -2,14 +2,18 @@
 import { EntryLabel, useEntryLabelStyle } from "./entry-label";
 import { formatEntryLabel } from "@/lib/entry-labels";
 import { deskWorkflowState } from "@/lib/events/desk-workflow";
+import { LiveDeskSelector } from "./live-desk-selector";
+import { RunEntryForm } from "./live-run-entry-form";
+import { LastRecordedRun } from "./last-recorded-run";
+import { useDeskLeaveGuard } from "./use-desk-leave-guard";
 
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/navigation-pending";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useState } from "react";
 import {
-  AlertCircle,
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ListOrdered,
   LockKeyhole,
   LoaderCircle,
@@ -21,14 +25,13 @@ import {
 import {
   generateDraw,
   completeRound,
-  recordRun,
   saveDrawOrder,
   seedShortRound,
   type DrawOrderState,
   type LiveRunState,
 } from "@/app/(app)/events/[eventId]/actions";
 import { cn } from "@/lib/utils";
-import { calculateFinalRunTime, resolveTimerReadings, formatFinalTimeAdjustment } from "@/lib/scoring";
+import { calculateFinalRunTime, formatFinalTimeAdjustment } from "@/lib/scoring";
 import {
   isResolvedRunStatus,
   runStatusAbbreviations,
@@ -48,10 +51,10 @@ import {
   type ShortRoundCandidate,
 } from "@/components/events/short-round-field-dialog";
 import type { RoundOrderMethod } from "@/types/domain";
-import { PenaltyChoices } from "@/components/events/penalty-choices";
-import { penaltyTotal, type PenaltyOption } from "@/lib/penalties";
+import type { PenaltyOption } from "@/lib/penalties";
 
 export interface LiveRunRow {
+  recordedAt?: string | null;
   fineBlocked?: boolean;
   id: string;
   entryId: string;
@@ -125,6 +128,7 @@ export function DatabaseLiveDesk({
 }: LiveDeskProps) {
   const [orderedRuns, setOrderedRuns] = useState(runs);
   const [search, setSearch] = useState("");
+  const [deskChanging, setDeskChanging] = useState(false);
   const drawAction = generateDraw.bind(null, eventId);
   const [drawState, drawFormAction, drawPending] = useActionState<DrawOrderState, FormData>(drawAction, {});
   const orderAction = saveDrawOrder.bind(null, eventId);
@@ -152,8 +156,9 @@ export function DatabaseLiveDesk({
     orderedRuns.every((run) => run.drawPosition !== null);
   const drawLocked = orderedRuns.some((run) => run.status !== "pending");
   const canManageDraw =
-    canEdit && !drawLocked && !isShortRound && orderedRuns.length > 0;
+    canEdit && !roundLocked && eventStatus !== "completed" && eventStatus !== "cancelled" && selectedDivision?.eventDayStatus !== "completed" && !drawLocked && !isShortRound && orderedRuns.length > 0;
   const dirty = orderedRuns.some((run, index) => run.id !== runs[index]?.id);
+  useDeskLeaveGuard(dirty || orderPending);
   const pendingRuns = orderedRuns.filter((run) => run.status === "pending");
   const workflowState = deskWorkflowState({
     eventStatus, roundLocked, drawReady, dirty, isShortRound,
@@ -167,6 +172,8 @@ export function DatabaseLiveDesk({
       ? (pendingRuns[0] ?? null)
       : null;
   const upcomingRuns = currentRun ? pendingRuns.slice(1, 3) : [];
+  const lastRecordedRun = orderedRuns.filter((run) => run.recordedAt && run.status !== "pending")
+    .toSorted((a, b) => (b.recordedAt ?? "").localeCompare(a.recordedAt ?? ""))[0];
   const completeCount = orderedRuns.filter((run) =>
     isResolvedRunStatus(run.status),
   ).length;
@@ -213,13 +220,14 @@ export function DatabaseLiveDesk({
   }
 
   return (
-    <div className="space-y-5">
-      <dl className="grid grid-cols-2 gap-4 border-y border-[#dfe4e1] py-4 sm:grid-cols-4">
+    <div className="space-y-5" data-desk-unsaved={dirty || orderPending ? "order" : undefined} data-desk-saving={orderPending}>
+      <LiveDeskSelector eventId={eventId} ropings={divisions} selectedId={selectedDivisionId} round={selectedRound} onPendingChange={setDeskChanging} />
+      <div inert={deskChanging} aria-busy={deskChanging} className={`space-y-5 ${deskChanging ? "pointer-events-none opacity-50" : ""}`}>
+      <dl className="grid grid-cols-3 gap-3 border-y border-[#dfe4e1] py-3">
         {[
           ["Runs resolved", `${completeCount} of ${orderedRuns.length}`],
           ["Remaining", String(pendingRuns.length)],
           ["Reruns required", String(rerunCount)],
-          ["Round", `${selectedRound} of ${totalRounds}`],
         ].map(([label, value]) => (
           <div key={label}><dt className="text-xs font-semibold text-[#66716b]">{label}</dt><dd className="mt-1 text-xl font-bold">{value}</dd></div>
         ))}
@@ -262,73 +270,7 @@ export function DatabaseLiveDesk({
           {selectedRound === selectedDivision?.numberOfRuns ? "Go to short round" : `Go to round ${selectedRound + 1}`} <SkipForward size={16} />
         </Link>
       ) : null}
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
-      <section className="order-2 overflow-hidden rounded-md border border-[#dfe4e1] bg-white xl:order-1">
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#e7ebe8] p-4">
-          <div>
-            <h2 className="font-bold">{selectedDivision?.name}</h2>
-            <p className="mt-1 text-xs text-[#758078]">
-              {isShortRound ? "Short round" : `Round ${selectedRound}`} ·{" "}
-              {orderedRuns.length} entries
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase">
-              {selectedDivision?.arenaName ? (
-                <span className="rounded-md bg-[#eef1ef] px-2 py-1 text-[#526059]">
-                  {selectedDivision.arenaName}
-                </span>
-              ) : null}
-              {selectedDivision?.eventDayStatus !== "scheduled" ? (
-                <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">
-                  {
-                    classEventDayStatusLabels[
-                      selectedDivision?.eventDayStatus ?? "scheduled"
-                    ]
-                  }
-                </span>
-              ) : null}
-              {selectedDivision?.eventDayNote ? (
-                <span className="normal-case text-amber-800">
-                  {selectedDivision.eventDayNote}
-                </span>
-              ) : null}
-            </div>
-          </div>
-          <label className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
-            <Search size={15} />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              aria-label="Search draw"
-              className="w-40 bg-transparent text-xs text-[#17201c] outline-none"
-              placeholder="Find contestant"
-            />
-          </label>
-        </div>
-
-        {totalRounds > 1 ? (
-          <nav className="flex gap-1 overflow-x-auto border-b border-[#e7ebe8] px-4 pt-3">
-            {Array.from({ length: totalRounds }, (_, index) => index + 1).map(
-              (round) => (
-                <Link
-                  key={round}
-                  href={`/events/${eventId}/live?division=${selectedDivisionId}&round=${round}`}
-                  className={cn(
-                    "inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-xs font-bold",
-                    round === selectedRound
-                      ? "border-[var(--brand-accent)] text-[#17201c]"
-                      : "border-transparent text-[#758078]",
-                  )}
-                >
-                  {round > (selectedDivision?.numberOfRuns ?? 0)
-                    ? "Short round"
-                    : `Round ${round}`}
-                  <NavigationPending label="Loading round" />
-                </Link>
-              ),
-            )}
-          </nav>
-        ) : null}
-
+      {workflowState !== null || canManageDraw ? (
         <div className="border-b border-[#e7ebe8] bg-[#fafbfa] px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-[#758078]">
@@ -348,7 +290,9 @@ export function DatabaseLiveDesk({
                   <LockKeyhole size={14} /> Round locked
                 </span>
               ) : roundReadyToLock && drawReady ? (
-                <form action={roundFormAction}>
+                <form action={roundFormAction} onSubmit={(event) => {
+                  if (!window.confirm(`Complete ${isShortRound ? "the short round" : `round ${selectedRound}`} for ${selectedDivision?.name}? All results will be locked; corrections will require a reason.`)) event.preventDefault();
+                }}>
                   <input
                     type="hidden"
                     name="divisionId"
@@ -366,7 +310,7 @@ export function DatabaseLiveDesk({
                     ) : (
                       <LockKeyhole size={14} />
                     )}
-                    Complete round
+                    {roundPending ? "Completing round..." : "Complete round"}
                   </button>
                 </form>
               ) : null}
@@ -488,6 +432,74 @@ export function DatabaseLiveDesk({
             </p>
           ) : null}
         </div>
+
+      ) : null}
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <section className="order-2 overflow-hidden rounded-md border border-[#dfe4e1] bg-white xl:order-1">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#e7ebe8] p-4">
+          <div>
+            <h2 className="font-bold">{selectedDivision?.name}</h2>
+            <p className="mt-1 text-xs text-[#758078]">
+              {isShortRound ? "Short round" : `Round ${selectedRound}`} ·{" "}
+              {orderedRuns.length} entries
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase">
+              {selectedDivision?.arenaName ? (
+                <span className="rounded-md bg-[#eef1ef] px-2 py-1 text-[#526059]">
+                  {selectedDivision.arenaName}
+                </span>
+              ) : null}
+              {selectedDivision?.eventDayStatus !== "scheduled" ? (
+                <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">
+                  {
+                    classEventDayStatusLabels[
+                      selectedDivision?.eventDayStatus ?? "scheduled"
+                    ]
+                  }
+                </span>
+              ) : null}
+              {selectedDivision?.eventDayNote ? (
+                <span className="normal-case text-amber-800">
+                  {selectedDivision.eventDayNote}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <label className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
+            <Search size={15} />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Search draw"
+              className="w-40 bg-transparent text-xs text-[#17201c] outline-none"
+              placeholder="Find contestant"
+            />
+          </label>
+        </div>
+
+        {totalRounds > 1 ? (
+          <nav className="flex gap-1 overflow-x-auto border-b border-[#e7ebe8] px-4 pt-3">
+            {Array.from({ length: totalRounds }, (_, index) => index + 1).map(
+              (round) => (
+                <Link
+                  key={round}
+                  href={`/events/${eventId}/live?division=${selectedDivisionId}&round=${round}`}
+                  className={cn(
+                    "inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-xs font-bold",
+                    round === selectedRound
+                      ? "border-[var(--brand-accent)] text-[#17201c]"
+                      : "border-transparent text-[#758078]",
+                  )}
+                >
+                  {round > (selectedDivision?.numberOfRuns ?? 0)
+                    ? "Short round"
+                    : `Round ${round}`}
+                  <NavigationPending label="Loading round" />
+                </Link>
+              ),
+            )}
+          </nav>
+        ) : null}
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left">
@@ -658,6 +670,29 @@ export function DatabaseLiveDesk({
       </section>
 
       <aside className="order-1 space-y-4 xl:order-2">
+        {currentRun ? (
+          <RunEntryForm
+            key={currentRun.id}
+            eventId={eventId}
+            run={currentRun}
+            roundLabel={isShortRound ? "Short round" : `Round ${selectedRound}`}
+            ropingName={selectedDivision?.name ?? ""}
+            timerCount={timerCount}
+            timerResolution={timerResolution}
+            isShortRound={isShortRound}
+            canEdit={canTime}
+          />
+        ) : (
+          <DeskMessage
+            title={workflowState?.title ?? "Review round"}
+            message={workflowState?.message ?? "Review the run results before continuing."}
+          />
+        )}
+        {lastRecordedRun ? <LastRecordedRun eventId={eventId} run={lastRecordedRun} timerCount={timerCount} canEdit={canTime && eventStatus === "in_progress"} /> : null}
+        {drawReady && !dirty ? <ArenaQueue upcoming={upcomingRuns} /> : null}
+        <details className="group border-y border-[#dfe4e1] py-3">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold">Roping operations <ChevronDown size={17} className="transition-transform group-open:rotate-180" /></summary>
+          <div className="mt-3 space-y-3">
         {selectedDivision ? (
           <ClassOperationsDialog
             eventId={eventId}
@@ -685,77 +720,23 @@ export function DatabaseLiveDesk({
             )}
           />
         ) : null}
-        {drawReady && !dirty ? (
-          <ArenaQueue current={currentRun} upcoming={upcomingRuns} />
-        ) : null}
-        {currentRun ? (
-          <RunEntryForm
-            key={currentRun.id}
-            eventId={eventId}
-            run={currentRun}
-            timerCount={timerCount}
-            timerResolution={timerResolution}
-            isShortRound={isShortRound}
-            canEdit={canTime}
-          />
-        ) : (
-          <DeskMessage
-            title={workflowState?.title ?? "Review round"}
-            message={workflowState?.message ?? "Review the run results before continuing."}
-          />
-        )}
-        <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-          <p className="text-xs font-bold uppercase text-[#758078]">Ropings</p>
-          <div className="mt-3 space-y-1">
-            {divisions.map((division) => (
-              <Link
-                key={division.id}
-                href={`/events/${eventId}/live?division=${division.id}&round=1`}
-                className={cn(
-                  "flex items-center justify-between rounded-md px-3 py-2 text-sm font-semibold",
-                  division.id === selectedDivisionId
-                    ? "brand-primary-fill text-white"
-                    : "hover:bg-[#f1f3f2]",
-                )}
-              >
-                <span className="flex min-w-0 items-center gap-2">{division.name}<NavigationPending label="Loading roping" /></span>
-                <span className="text-[10px] opacity-75">
-                  {division.numberOfRuns}R
-                  {division.shortRoundEnabled ? " + Final" : ""}
-                </span>
-              </Link>
-            ))}
           </div>
-        </div>
+        </details>
       </aside>
+    </div>
     </div>
     </div>
   );
 }
 
 function ArenaQueue({
-  current,
   upcoming,
 }: {
-  current: LiveRunRow | null;
   upcoming: LiveRunRow[];
 }) {
-  if (!current && !upcoming.length) return null;
+  if (!upcoming.length) return null;
   return (
     <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
-      <div className="brand-primary-fill px-4 py-3 text-white">
-        <p className="text-[10px] font-bold uppercase opacity-75">In the box</p>
-        <p className="mt-1 truncate text-lg font-bold">
-          {current?.name ?? "Round complete"}
-        </p>
-        {current ? (
-          <p className="mt-1 text-xs opacity-80">
-            Draw {current.drawPosition} · Entry <EntryLabel number={current.entryNumber} />
-            {current.cattleTag ? ` · Cattle ${current.cattleTag}` : ""}
-            {current.rerunCount ? ` · Rerun ${current.rerunCount}` : ""}
-          </p>
-        ) : null}
-      </div>
       {upcoming.length ? (
         <div className="divide-y divide-[#e7ebe8]">
           {upcoming.map((run, index) => (
@@ -786,199 +767,5 @@ function DeskMessage({ title, message }: { title: string; message: string }) {
       <p className="font-bold">{title}</p>
       <p className="mt-2 text-sm leading-6 text-[#758078]">{message}</p>
     </div>
-  );
-}
-
-function RunEntryForm({
-  eventId,
-  run,
-  timerCount,
-  timerResolution,
-  isShortRound,
-  canEdit,
-}: {
-  eventId: string;
-  run: LiveRunRow;
-  timerCount: number;
-  timerResolution: "average" | "best" | "longest";
-  isShortRound: boolean;
-  canEdit: boolean;
-}) {
-  const action = recordRun.bind(null, eventId);
-  const [state, formAction, pending] = useActionState<LiveRunState, FormData>(
-    action,
-    {},
-  );
-  const [times, setTimes] = useState<string[]>(() =>
-    Array.from({ length: timerCount }, () => ""),
-  );
-  const [selectedPenalties, setSelectedPenalties] = useState<string[]>([]);
-  const penalty = penaltyTotal(run.penaltyOptions ?? [], selectedPenalties);
-  const resolved = useMemo(() => {
-    return resolveTimerReadings(times, timerResolution);
-  }, [times, timerResolution]);
-  const adjustedRunTime =
-    resolved === null
-      ? "--.--"
-      : calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment).toFixed(2);
-  const aggregateTotal =
-    resolved === null || run.carryTime === null
-      ? "--.--"
-      : (
-          run.carryTime +
-          calculateFinalRunTime(resolved, Number(penalty), run.incentiveAdjustment)
-        ).toFixed(2);
-  const methodLabel =
-    timerResolution === "best"
-      ? "Fastest reading"
-      : timerResolution === "longest"
-        ? "Longest reading"
-        : "Average reading";
-
-  return (
-    <form
-      action={formAction}
-      className="rounded-md border border-[#e0c2b9] bg-white p-5"
-    >
-      <input type="hidden" name="runId" value={run.id} />
-      <input type="hidden" name="penalty" value={penalty} />
-      <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
-        Draw {run.drawPosition ?? "-"} · Entry <EntryLabel number={run.entryNumber} />
-        {run.cattleTag ? ` · Cattle ${run.cattleTag}` : ""}
-        {run.rerunCount ? ` · Rerun ${run.rerunCount}` : ""}
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mt-1 text-xl font-bold">{run.name}</h2>
-        {run.incentiveAdjustment ? (
-          <span className="mt-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
-            {formatFinalTimeAdjustment(run.incentiveAdjustment)} sec handicap
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-5">
-        {run.fineBlocked ? <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">Competition blocked by an unpaid member fine. Record payment or approve a fine exception before this roper competes.</p> : null}
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase text-[#66716b]">
-            Timer readings
-          </p>
-          <p className="text-[10px] font-semibold text-[#758078]">
-            {methodLabel}
-          </p>
-        </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-          {times.map((time, index) => (
-            <label
-              key={index}
-              className="flex items-center gap-3 rounded-md border-2 border-[#bec7c2] px-3 focus-within:border-[var(--brand-accent)]"
-            >
-              <span className="text-xs font-bold text-[#758078]">
-                T{index + 1}
-              </span>
-              <input
-                name="timerReading"
-                type="number"
-                min="0"
-                step="0.01"
-                aria-label={`Timer ${index + 1}`}
-                autoFocus={index === 0 && canEdit}
-                inputMode="decimal"
-                value={time}
-                onChange={(event) =>
-                  setTimes((current) =>
-                    current.map((value, timerIndex) =>
-                      timerIndex === index ? event.target.value : value,
-                    ),
-                  )
-                }
-                disabled={!canEdit || pending}
-                className="h-14 min-w-0 flex-1 bg-transparent font-mono text-2xl font-bold outline-none placeholder:text-[#c9cecb] disabled:opacity-60"
-                placeholder="0.00"
-              />
-              <span className="text-xs font-semibold text-[#758078]">sec</span>
-            </label>
-          ))}
-        </div>
-      </div>
-      <PenaltyChoices options={run.penaltyOptions ?? []} selected={selectedPenalties} onChange={setSelectedPenalties} disabled={!canEdit || pending} />
-      <div className="mt-5 flex items-center justify-between border-y border-[#e7ebe8] py-4">
-        <span>
-          <span className="block text-sm font-semibold text-[#66716b]">
-            {isShortRound ? "Projected aggregate" : "Final run time"}
-          </span>
-          {isShortRound && run.carryTime !== null ? (
-            <span className="mt-1 block text-[10px] font-semibold text-[#758078]">
-              {run.carryTime.toFixed(2)} carry + {adjustedRunTime} run
-            </span>
-          ) : null}
-          {run.incentiveAdjustment ? (
-            <span className="mt-1 block text-[10px] font-semibold text-emerald-700">
-              Includes {formatFinalTimeAdjustment(run.incentiveAdjustment)} sec
-              handicap
-            </span>
-          ) : null}
-        </span>
-        <span className="font-mono text-2xl font-bold">
-          {isShortRound ? aggregateTotal : adjustedRunTime}
-        </span>
-      </div>
-      {state.message ? (
-        <p
-          className={`mt-3 rounded-md p-3 text-xs ${state.success ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
-        >
-          {state.message}
-        </p>
-      ) : null}
-      <button
-        name="status"
-        value="complete"
-        disabled={!canEdit || pending || resolved === null || run.fineBlocked}
-        className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-md brand-accent-fill text-sm font-bold text-white disabled:opacity-40"
-      >
-        {pending ? (
-          <LoaderCircle size={17} className="animate-spin" />
-        ) : (
-          <Save size={18} />
-        )}
-        {pending ? "Saving result..." : "Save & next run"}
-      </button>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <button
-          name="status"
-          value="no_time"
-          formNoValidate
-          disabled={!canEdit || pending}
-          className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
-        >
-          <AlertCircle size={15} /> No time
-        </button>
-        <button
-          name="status"
-          value="disqualified"
-          formNoValidate
-          disabled={!canEdit || pending}
-          className="flex h-10 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
-        >
-          Disqualified
-        </button>
-        <button
-          name="status"
-          value="turned_out"
-          formNoValidate
-          disabled={!canEdit || pending}
-          className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
-        >
-          <SkipForward size={15} /> Turn out
-        </button>
-        <button
-          name="status"
-          value="rerun"
-          formNoValidate
-          disabled={!canEdit || pending}
-          className="flex h-10 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
-        >
-          Rerun required
-        </button>
-      </div>
-    </form>
   );
 }
