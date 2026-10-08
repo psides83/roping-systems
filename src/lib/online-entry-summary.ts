@@ -1,4 +1,4 @@
-interface EntryOption {
+export interface EntryOption {
   id: string;
   title: string;
   amountCents: number;
@@ -9,6 +9,7 @@ interface SelectedRoping {
   id: string;
   name: string;
   options: EntryOption[];
+  requiredFees?: EntryOption[];
 }
 
 export function summarizeOnlineEntryOptions(
@@ -20,11 +21,14 @@ export function summarizeOnlineEntryOptions(
   const charged = new Set<string>();
   return ropings.filter((roping) => selected[roping.id]).map((roping) => {
     const quantity = quantities[roping.id] ?? 1;
-    const options = roping.options.filter((option) => selectedOptions[`${roping.id}:${option.id}`]).map((option) => {
-      const units = option.scope === "entry" ? quantity : charged.has(option.id) ? 0 : 1;
-      charged.add(option.id);
+    const price = (option: EntryOption) => {
+      const key = option.scope === "contestant_division" ? `${roping.id}:${option.id}` : option.id;
+      const units = option.scope === "entry" ? quantity : charged.has(key) ? 0 : 1;
+      charged.add(key);
       return { title: option.title, units, amountCents: option.amountCents * units };
-    });
-    return { id: roping.id, name: roping.name, quantity, options };
+    };
+    const requiredFees = (roping.requiredFees ?? []).map(price);
+    const options = roping.options.filter((option) => selectedOptions[`${roping.id}:${option.id}`]).map(price);
+    return { id: roping.id, name: roping.name, quantity, requiredFees, options };
   });
 }

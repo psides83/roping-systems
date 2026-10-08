@@ -9,6 +9,16 @@ import { createClient } from "@/lib/supabase/server";
 import { loadPublicQualificationNotices } from "@/lib/events/public-qualification-data";
 import { ropingDisplayName } from "@/lib/events/roping-display-name";
 
+interface PublicEntryFee {
+  event_roping_id: string;
+  event_fee_id: string;
+  title: string;
+  amount_cents: number;
+  kind: string;
+  scope: string;
+  is_required: boolean;
+}
+
 export default async function PublicOnlineEntryPage({
   params,
 }: PageProps<"/public/[producerSlug]/[eventSlug]/enter">) {
@@ -18,7 +28,7 @@ export default async function PublicOnlineEntryPage({
   const supabase = await createClient();
   const [
     { data: rows, error },
-    { data: optionalFees, error: feeError },
+    { data: feeRows, error: feeError },
     { data: location, error: locationError },
   ] = await Promise.all([
     supabase
@@ -29,11 +39,10 @@ export default async function PublicOnlineEntryPage({
       .eq("producer_slug", producerSlug)
       .eq("event_slug", eventSlug)
       .order("sort_order"),
-    supabase
-      .from("public_event_optional_fees")
-      .select("event_roping_id, event_fee_id, title, amount_cents, kind, scope")
-      .eq("producer_slug", producerSlug)
-      .eq("event_slug", eventSlug),
+    supabase.rpc("public_online_entry_fees", {
+      target_producer_slug: producerSlug,
+      target_event_slug: eventSlug,
+    }),
     supabase
       .from("public_event_schedule")
       .select("venue_name, address, venue_city, venue_state, venue_postal_code")
@@ -50,6 +59,7 @@ export default async function PublicOnlineEntryPage({
   if (!rows?.length) notFound();
 
   const event = rows[0];
+  const fees = (feeRows ?? []) as PublicEntryFee[];
   const notices = await loadPublicQualificationNotices(producerSlug, event.event_id);
   const logoUrl = event.logo_path
     ? supabase.storage.from("organization-logos").getPublicUrl(event.logo_path)
@@ -104,8 +114,11 @@ export default async function PublicOnlineEntryPage({
     eligibilityType: row.eligibility_type ?? "skill",
     minimumAge: row.minimum_age,
     maximumAge: row.maximum_age,
-    options: (optionalFees ?? [])
-      .filter((fee) => fee.event_roping_id === row.event_roping_id)
+    requiredFees: fees
+      .filter((fee) => fee.event_roping_id === row.event_roping_id && fee.is_required)
+      .map((fee) => ({ id: fee.event_fee_id, title: fee.title, amountCents: fee.amount_cents, scope: fee.scope })),
+    options: fees
+      .filter((fee) => fee.event_roping_id === row.event_roping_id && !fee.is_required)
       .map((fee) => ({
         id: fee.event_fee_id,
         title: fee.title,

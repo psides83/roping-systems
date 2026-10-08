@@ -8,7 +8,7 @@ import {
   type OnlineEntryFormState,
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
-import { summarizeOnlineEntryOptions } from "@/lib/online-entry-summary";
+import { summarizeOnlineEntryOptions, type EntryOption } from "@/lib/online-entry-summary";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { qualificationNoticeText, type QualificationNotice } from "@/lib/events/qualification-notice";
 
@@ -23,6 +23,7 @@ interface EntryDivision {
   maximumEntries: number | null;
   allowGuests: boolean;
   estimatedFirstEntryCents: number;
+  requiredFees: EntryOption[];
   startsAt: string | null;
   scheduledDate: string;
   scheduleType: "fixed" | "tentative" | "follows_previous";
@@ -62,6 +63,7 @@ export function OnlineEntryForm({
   const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>({});
   const summary = summarizeOnlineEntryOptions(divisions, selected, quantities, selectedOptions);
   const optionalTotal = summary.reduce((total, roping) => total + roping.options.reduce((sum, option) => sum + option.amountCents, 0), 0);
+  const requiredTotal = summary.reduce((total, roping) => total + roping.requiredFees.reduce((sum, fee) => sum + fee.amountCents, 0), 0);
   const formRef = useRef<HTMLFormElement>(null);
   const [checkingAllowance, startAllowanceCheck] = useTransition();
   const [allowances, setAllowances] = useState<Awaited<ReturnType<typeof loadOnlineFinalsAllowance>>["allowances"]>([]);
@@ -338,11 +340,16 @@ export function OnlineEntryForm({
         <ul className="mt-3 divide-y divide-[#e7ebe8]">
           {summary.map((roping) => <li key={roping.id} className="py-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">{roping.name}</span><span>{roping.quantity} {roping.quantity === 1 ? "entry" : "entries"}</span></div>
+            <ul className="mt-2 space-y-1 text-[#66716b]">{roping.requiredFees.map((fee, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{fee.title}</span><span>{fee.units === 0 ? "Included above" : formatCurrency(fee.amountCents)}</span></li>)}</ul>
             {roping.options.length ? <ul className="mt-2 space-y-1 text-[#66716b]">{roping.options.map((option, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{option.title}</span><span>{option.units === 0 ? "Included above" : formatCurrency(option.amountCents)}</span></li>)}</ul> : <p className="mt-1 text-[#66716b]">No optional pots selected</p>}
           </li>)}
         </ul>
-        <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm font-bold"><span>Optional fees subtotal</span><span>{formatCurrency(optionalTotal)}</span></div>
-        <p className="mt-2 text-xs leading-5 text-[#66716b]">Base entry fees and required charges are additional. The producer confirms the final amount, including any event charge already paid.</p>
+        <dl className="mt-3 space-y-2 text-sm">
+          <div className="flex flex-wrap justify-between gap-2"><dt>Required fees</dt><dd>{formatCurrency(requiredTotal)}</dd></div>
+          <div className="flex flex-wrap justify-between gap-2"><dt>Optional fees</dt><dd>{formatCurrency(optionalTotal)}</dd></div>
+          <div className="flex flex-wrap justify-between gap-2 border-t border-[#dfe4e1] pt-3 font-bold"><dt>Estimated total</dt><dd>{formatCurrency(requiredTotal + optionalTotal)}</dd></div>
+        </dl>
+        <p className="mt-2 text-xs leading-5 text-[#66716b]">This estimate includes the selected entries and charges, not your existing balance. The producer confirms the amount due and credits any once-per-roping or event charges already applied.</p>
       </section>}
 
       <label className="block text-sm font-semibold">
