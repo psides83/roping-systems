@@ -1,4 +1,5 @@
 "use client";
+import { NumberStepper } from "@/components/ui/number-stepper";
 
 import { useState } from "react";
 import { Plus, Trash2, Trophy } from "lucide-react";
@@ -154,8 +155,7 @@ export function ShortRoundFields({
               </label>
               <label className="col-span-2 text-[10px] font-bold uppercase text-[#66716b] sm:col-span-1">
                 Come back
-                <input
-                  type="number"
+                <NumberStepper label="Short-round comeback count"
                   min="1"
                   value={bracket.comebackCount}
                   onChange={(event) =>

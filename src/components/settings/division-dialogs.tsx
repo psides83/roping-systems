@@ -1,4 +1,5 @@
 "use client";
+import { NumberStepper } from "@/components/ui/number-stepper";
 
 import {
   useActionState,
@@ -331,10 +332,9 @@ function EventTemplateDialog({
               </label>
               <label className="block text-sm font-semibold">
                 Main rounds
-                <input
+                <NumberStepper label="Main rounds"
                   name="numberOfRuns"
                   defaultValue={template?.numberOfRuns ?? 1}
-                  type="number"
                   min="1"
                   max="20"
                   className={inputClass}
@@ -343,10 +343,9 @@ function EventTemplateDialog({
               </label>
               <label className="block text-sm font-semibold">
                 Maximum entries per contestant
-                <input
+                <NumberStepper label="Maximum entries per contestant"
                   name="maximumEntries"
                   defaultValue={template?.maximumEntriesPerPerson ?? ""}
-                  type="number"
                   min="1"
                   max="100"
                   className={inputClass}
@@ -355,10 +354,9 @@ function EventTemplateDialog({
               </label>
               <label className="block text-sm font-semibold">
                 Minimum runs between entries
-                <input
+                <NumberStepper label="Minimum runs between entries"
                   name="minimumRunsBetweenEntries"
                   defaultValue={template?.minimumRunsBetweenEntries ?? 0}
-                  type="number"
                   min="0"
                   max="100"
                   className={inputClass}
@@ -390,10 +388,9 @@ function EventTemplateDialog({
               </label>
               <label className="block text-sm font-semibold">
                 Number of timers
-                <input
+                <NumberStepper label="Number of timers"
                   name="timerCount"
                   defaultValue={template?.timerCount ?? 1}
-                  type="number"
                   min="1"
                   max="10"
                   className={inputClass}

@@ -1,4 +1,5 @@
 "use client";
+import { NumberStepper } from "@/components/ui/number-stepper";
 
 import { useActionState, useEffect, useState } from "react";
 import { Pencil, Plus, Save, Trash2 } from "lucide-react";
@@ -57,7 +58,7 @@ function RuleForm({ rule, classifications, onClose }: { rule?: WatchRule; classi
         <label className="text-sm font-semibold">Member classification<select className={field} name="classificationId" value={classification} onChange={(e) => setClassification(e.target.value)}>{classifications.map((c) => <option key={c.id} value={c.id}>{c.divisions.name} · {c.name}</option>)}</select></label>
         <label className="text-sm font-semibold">Fast-time threshold<input className={`${field} w-28`} name="threshold" type="number" step="0.01" min="0.01" required defaultValue={rule?.threshold_seconds} /></label>
         <label className="text-sm font-semibold">Time basis<select className={field} name="timeBasis" defaultValue={rule?.time_basis ?? "final"}><option value="final">Final time</option><option value="raw">Timer time, before penalties</option></select></label>
-        <label className="text-sm font-semibold">Review after runs<input className={`${field} w-24`} name="reviewCount" type="number" min="1" max="100" required defaultValue={rule?.review_count ?? 3} /></label>
+        <label className="text-sm font-semibold">Review after runs<NumberStepper label="Review after runs" className={`${field} w-24`} name="reviewCount" min="1" max="100" required defaultValue={rule?.review_count ?? 3} /></label>
         <label className="text-sm font-semibold">Suggested classification<select key={division} className={field} name="proposedId" defaultValue={rule?.division_id === division ? rule?.proposed_classification_id ?? "" : ""}><option value="">Staff decides</option>{classifications.filter((c) => c.division_id === division).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       </div>
       <div className="flex flex-wrap gap-5 text-sm"><label className="flex items-center gap-2"><input name="inclusive" type="checkbox" defaultChecked={rule?.inclusive ?? true} />Include times equal to the threshold</label>

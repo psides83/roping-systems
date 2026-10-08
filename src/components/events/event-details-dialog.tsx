@@ -1,4 +1,5 @@
 "use client";
+import { NumberStepper } from "@/components/ui/number-stepper";
 
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -264,9 +265,8 @@ export function EventDetailsDialog({
                     label="Number of arenas"
                     error={state.errors?.arenaCount?.[0]}
                   >
-                    <input
+                    <NumberStepper label="Number of arenas"
                       name="arenaCount"
-                      type="number"
                       min="1"
                       max="20"
                       defaultValue={event.arenaCount}

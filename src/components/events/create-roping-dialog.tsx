@@ -1,4 +1,5 @@
 "use client";
+import { NumberStepper } from "@/components/ui/number-stepper";
 
 import { useActionState, useEffect, useState } from "react";
 import {
@@ -247,9 +248,8 @@ export function CreateRopingDialog({
                   </label>
                   <label className="block text-sm font-semibold">
                     Number of arenas
-                    <input
+                    <NumberStepper label="Number of arenas"
                       name="arenaCount"
-                      type="number"
                       min="1"
                       max="20"
                       value={arenaCount}
