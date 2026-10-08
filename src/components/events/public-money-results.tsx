@@ -29,7 +29,7 @@ export function PublicMoneyResults({ awards, contestantQuery }: { awards: Public
   return <section className="space-y-5">
     <label className="block w-fit max-w-full sm:hidden">
       <span className="sr-only">Money results section</span>
-      <select value={active ?? ""} onChange={(event) => setSelected(event.target.value)} className="h-9 w-auto min-w-[160px] max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">
+      <select value={active ?? ""} onChange={(event) => setSelected(event.target.value)} className="h-11 w-auto min-w-[160px] max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">
         {sections.map((section) => <option key={section.key} value={section.key}>{sectionLabel(section)}</option>)}
         <option value="totals">Total winnings</option>
       </select>
@@ -50,8 +50,8 @@ export function PublicMoneyResults({ awards, contestantQuery }: { awards: Public
         .sort((a, b) => (a.dNumber ?? 0) - (b.dNumber ?? 0) || a.place - b.place || a.name.localeCompare(b.name));
       return <section key={pool.planId} className="border-t border-[#dfe4e1] pt-4">
         <h3 className="mb-3 font-bold">{pool.poolType === "main" ? "Main pot" : pool.poolName}</h3>
-        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-[#eef1ef] text-xs text-[#66716b]"><tr><th className="p-3">Place</th><th className="p-3">Contestant</th><th className="p-3 text-right">Time</th><th className="p-3 text-right">Winnings</th></tr></thead>
-          <tbody className="divide-y divide-[#dfe4e1]">{rows.map((award) => <tr key={`${award.dNumber ?? 0}:${award.entryId}`}><td className="p-3 whitespace-nowrap">{award.dNumber ? `${moneySectionLabel(award)} · ` : ""}{award.place}</td><td className="p-3 font-semibold">{award.name}</td><td className="p-3 text-right font-mono">{award.time.toFixed(2)}</td><td className="p-3 text-right font-bold">{currency(award.payoutCents)}</td></tr>)}</tbody>
+        <div className="overflow-x-auto"><table className="w-full table-fixed text-left text-sm sm:table-auto"><thead className="bg-[#eef1ef] text-xs text-[#66716b]"><tr><th scope="col" className="w-14 p-2 sm:w-auto sm:p-3">Place</th><th scope="col" className="p-2 sm:p-3">Contestant</th><th scope="col" className="hidden p-3 text-right sm:table-cell">Time</th><th scope="col" className="w-24 p-2 text-right sm:w-auto sm:p-3">Winnings</th></tr></thead>
+          <tbody className="divide-y divide-[#dfe4e1]">{rows.map((award) => <tr key={`${award.dNumber ?? 0}:${award.entryId}`}><td className="p-2 sm:p-3">{award.dNumber ? <span className="block text-xs text-[#66716b]">{moneySectionLabel(award)}</span> : null}{award.place}</td><td className="break-words p-2 font-semibold sm:p-3">{award.name}<span className="mt-1 block font-mono text-xs font-normal text-[#66716b] sm:hidden">{award.time.toFixed(2)} sec</span></td><td className="hidden p-3 text-right font-mono sm:table-cell">{award.time.toFixed(2)}</td><td className="whitespace-nowrap p-2 text-right font-bold tabular-nums sm:p-3">{currency(award.payoutCents)}</td></tr>)}</tbody>
         </table></div>{!rows.length ? <p className="py-6 text-center text-sm text-[#66716b]">No matching money winners in this pot.</p> : null}
       </section>;
     })}

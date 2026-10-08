@@ -42,17 +42,17 @@ export function PublicClassSchedule({
         return (
           <li
             key={roping.id}
-            className="flex items-start justify-between gap-3 py-3 text-xs"
+            className="space-y-1 py-3 text-sm"
           >
-            <span className="min-w-0 flex-1 font-semibold">
+            <span className="block min-w-0 font-semibold">
               <span className="block break-words">{roping.name}</span>
               {roping.qualification ? <span className="mt-1 block font-normal leading-5 text-[#66716b]">{qualificationNoticeText(roping.qualification)}</span> : null}
             </span>
-            <span className="max-w-[60%] shrink-0 break-words text-right text-[#66716b]">
+            <span className="block min-w-0 break-words text-xs leading-5 text-[#66716b]">
               <span className="block">
                 {displayStart
                   ? `${roping.estimatedStartsAt ? "Updated " : ""}${startLabel}`
-                  : `Follows ${roping.followsRopingName ?? "previous roping"}`}
+                  : roping.scheduleType === "follows_previous" ? `Follows ${roping.followsRopingName ?? "previous roping"}` : "Start time to be announced"}
                 {!roping.estimatedStartsAt &&
                 roping.scheduleType === "tentative"
                   ? " tentative"

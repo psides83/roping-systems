@@ -20,3 +20,24 @@ test('standings loader preserves migration money and only reads real event award
   assert.equal(result.contributions[1].winningsCents,700);
   assert.deepEqual(calls.filter(c=>c.name==='public_event_money_results').map(c=>c.params.target_event_id),['event']);
 });
+test('cached public standings use an anonymous client, not staff cookies',async()=>{
+  let options;
+  const db={rpc:async()=>({data:{contributions:[],moves:[],classes:[],ropers:[]}})};
+  const compiled={exports:{}};
+  new Function('require','module','exports',code)(name=>{
+    if(name==='server-only')return{};
+    if(name==='@supabase/supabase-js')return{createClient:(url,key,config)=>{
+      assert.equal(url,'https://public.example');assert.equal(key,'public-key');options=config;return db;
+    }};
+    if(name==='@/lib/supabase/config')return{getSupabaseConfig:()=>({url:'https://public.example',key:'public-key'})};
+    return{createClient:()=>{throw new Error('Staff cookies must not be read');}};
+  },compiled,compiled.exports);
+  await compiled.exports.loadSeasonStandings('producer','season',true);
+  assert.equal(options.auth.persistSession,false);
+  assert.equal(options.auth.detectSessionInUrl,false);
+  const original=globalThis.fetch;
+  try{
+    globalThis.fetch=async(input,init)=>{assert.equal(init.cache,'force-cache');assert.equal(init.next.revalidate,30);return new Response('{}');};
+    await options.global.fetch('https://public.example/rest/v1/rpc/public_season_standings_source',{method:'POST'});
+  }finally{globalThis.fetch=original;}
+});

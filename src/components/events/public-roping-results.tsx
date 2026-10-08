@@ -9,7 +9,8 @@ import {
   type PublicResult, type PublicRoundResult,
 } from "@/lib/events/public-standings";
 
-export function PublicRopingResults({ results, runs, awards = [], shortRoundEnabled = false, contestantQuery = "" }: {
+export function PublicRopingResults({ results, runs, awards = [], shortRoundEnabled = false, contestantQuery = "", title }: {
+  title?: string;
   results: PublicResult[];
   runs: PublicRoundResult[];
   awards?: PublicMoneyResult[];
@@ -33,14 +34,14 @@ export function PublicRopingResults({ results, runs, awards = [], shortRoundEnab
   return (
     <div className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-[#e7ebe8] px-4 py-4 sm:px-5">
-        <h3 className="font-bold">{roping.divisionName}</h3>
-        <span className="text-xs font-semibold text-[#758078]">
+        <h3 className="min-w-0 break-words font-bold">{title ?? roping.divisionName}</h3>
+        <span className="shrink-0 text-xs font-semibold text-[#758078]">
           {roping.resultStatus === "official" ? "Official" : "Unofficial"}
         </span>
       </div>
       <label className="block border-b border-[#e7ebe8] p-3 sm:hidden">
         <span className="sr-only">Results round</span>
-        <select value={selected} onChange={(event) => setSelected(event.target.value)} className="h-9 w-auto min-w-[140px] max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">
+        <select value={selected} onChange={(event) => setSelected(event.target.value)} className="h-11 w-auto min-w-[140px] max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">
           {tabs.map((tab) => <option key={tab.value} value={tab.value}>{tab.label}</option>)}
         </select>
       </label>
@@ -67,30 +68,31 @@ export function PublicRopingResults({ results, runs, awards = [], shortRoundEnab
       </div>
       <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${selected}`} tabIndex={0} className="overflow-x-auto">
         {rows.length ? (
-          <table className="w-full min-w-[520px] text-left">
+          <table className="w-full table-fixed text-left sm:table-auto">
             <thead className="bg-[#f0f2f1] text-[10px] font-bold uppercase text-[#66716b] sm:text-[11px]">
               <tr>
-                <th scope="col" className="w-14 px-3 py-3 sm:w-20 sm:px-5">Place</th>
+                <th scope="col" className="w-11 px-2 py-3 sm:w-20 sm:px-5">Place</th>
                 <th scope="col" className="px-2 py-3 sm:px-5">Contestant</th>
-                <th scope="col" className="w-14 px-2 py-3 sm:w-auto sm:px-5">Entry</th>
-                <th scope="col" className="w-20 px-3 py-3 text-right sm:w-auto sm:px-5">{selected === "average" ? "Aggregate" : "Time"}</th>
-                <th scope="col" className="w-24 px-2 py-3 text-right sm:w-auto">Winnings</th>
+                <th scope="col" className="hidden px-2 py-3 sm:table-cell sm:px-5">Entry</th>
+                <th scope="col" className="w-[68px] px-2 py-3 text-right sm:w-auto sm:px-5">{selected === "average" ? "Aggregate" : "Time"}</th>
+                <th scope="col" className="w-[88px] px-2 py-3 text-right sm:w-auto">Winnings</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e7ebe8]">
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td className="px-3 py-4 sm:px-5"><span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${row.place === 1 ? "bg-[#e0a458] text-[#38220c]" : "bg-[#eef1ef] text-[#526058]"}`}>{row.place ?? "-"}</span></td>
+                  <td className="px-2 py-4 align-top sm:px-5"><span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${row.place === 1 ? "bg-[#e0a458] text-[#38220c]" : "bg-[#eef1ef] text-[#526058]"}`}>{row.place ?? "-"}</span></td>
                   <td className="break-words px-2 py-4 text-sm font-semibold leading-5 sm:px-5">
                     {row.name}
+                    <span className="mt-1 block text-xs font-normal text-[#66716b] sm:hidden">Entry <EntryLabel number={row.entryNumber} /></span>
                     {row.adjustment ? <span className="mt-1 block text-[10px] font-bold text-emerald-700">{formatFinalTimeAdjustment(row.adjustment)} sec handicap</span> : null}
                     {row.progress ? <span className="mt-1 block text-[10px] font-semibold text-[#758078]">{row.progress}</span> : null}
                   </td>
-                  <td className="px-2 py-4 text-sm text-[#66716b] sm:px-5"><EntryLabel number={row.entryNumber} /></td>
-                  <td className="px-3 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" || row.status === "turned_out" ? "TO" : row.status === "rerun" ? "Rerun" : "-"}</td>
+                  <td className="hidden px-2 py-4 text-sm text-[#66716b] sm:table-cell sm:px-5"><EntryLabel number={row.entryNumber} /></td>
+                  <td className="px-2 py-4 text-right font-mono text-sm font-bold sm:px-5 sm:text-base">{row.time !== null ? row.time.toFixed(2) : row.status === "no_time" ? "NT" : row.status === "scratch" || row.status === "turned_out" ? "TO" : row.status === "rerun" ? "Rerun" : "-"}</td>
                   <td className="px-2 py-4 text-right text-xs">
                     {awards.filter((award) => award.entryId === row.entryId && (selected === "average" ? award.sectionType === "aggregate" : award.roundNumber === Number(selected))).sort(compareMoneyPools).map((award) => <span className="mb-1 block" key={award.planId}>
-                      <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong><span className="block text-[10px] text-[#66716b]">{award.poolType === "main" ? "Main" : award.poolName}</span>
+                      <strong className="whitespace-nowrap">{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(award.payoutCents / 100)}</strong><span className="block break-words text-[10px] text-[#66716b]">{award.poolType === "main" ? "Main" : award.poolName}</span>
                     </span>)}
                   </td>
                 </tr>

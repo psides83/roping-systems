@@ -1,5 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createPublicClient } from "@supabase/supabase-js";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 import type { StandingContribution, StandingMove } from "@/lib/season-standings";
 
 export interface SeasonStandingsSource {
@@ -10,8 +12,13 @@ export interface SeasonStandingsSource {
     handicap: string | null; handicapSeconds: number | null }[];
 }
 
-export async function loadSeasonStandings(producerSlug: string, seasonId: string) {
-  const db = await createClient();
+export async function loadSeasonStandings(producerSlug: string, seasonId: string, cachePublicReads = false) {
+  const { url, key } = cachePublicReads ? getSupabaseConfig() : { url: "", key: "" };
+  // Only anonymous public RPCs use this short cache; live results and staff reads stay uncached.
+  const db = cachePublicReads ? createPublicClient(url!, key!, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: "force-cache", next: { revalidate: 30 } }) },
+  }) : await createClient();
   const result = await db.rpc("public_season_standings_source", {
     target_producer_slug: producerSlug, target_season_id: seasonId,
   });

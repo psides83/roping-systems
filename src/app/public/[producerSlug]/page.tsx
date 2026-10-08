@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EntryLabelProvider } from "@/components/events/entry-label";
-import Image from "next/image";
+import { PublicProducerHeader } from "@/components/events/public-producer-header";
 import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, Radio } from "lucide-react";
 import { PublicResultsRefresh } from "@/components/public-results-refresh";
@@ -25,32 +25,10 @@ export default async function ProducerPublicPage({ params, searchParams }: PageP
   return (
     <EntryLabelProvider style={data.producer.entryLabelStyle}><main style={getBrandStyle(data.producer.brandPrimary, data.producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
       {isSupabaseConfigured() ? <PublicResultsRefresh live={selectedEvent?.status === "in_progress"} /> : null}
-      <header className="border-b border-[#dfe4e1] brand-primary-fill text-white">
-        <div className="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link href={`/public/${producerSlug}`} className="flex min-w-0 items-center gap-3">
-            {data.producer.logoUrl ? (
-              <span className="grid h-11 w-14 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-1">
-                <Image src={data.producer.logoUrl} alt={`${data.producer.name} logo`} width={48} height={36} unoptimized className="h-full w-full object-contain" />
-              </span>
-            ) : (
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md brand-accent-fill text-sm font-black">
-                {data.producer.name.split(" ").slice(0, 2).map((word: string) => word[0]).join("")}
-              </span>
-            )}
-            <h1 className="break-words text-lg font-bold sm:text-xl">{data.producer.name}</h1>
-          </Link>
-          <nav aria-label="Producer public pages" className="flex flex-wrap items-center gap-5 text-sm font-semibold brand-muted">
-            <Link href={`/public/${producerSlug}`} aria-current="page" className="text-white underline underline-offset-8">Results</Link>
-            <Link href={`/public/${producerSlug}/schedule`} className="brand-hover">Schedule</Link>
-            <Link href={`/public/${producerSlug}/standings`} className="brand-hover">Standings</Link>
-            {data.membershipFormPublished ? <Link href={`/public/${producerSlug}/membership`} className="brand-hover">Membership</Link> : null}
-            <Link href="/roper" className="brand-hover">Roper portal</Link>
-          </nav>
-        </div>
-      </header>
+      <PublicProducerHeader slug={producerSlug} name={data.producer.name} logoUrl={data.producer.logoUrl} active="results" membershipPublished={data.membershipFormPublished} />
       <div className="mx-auto max-w-6xl space-y-10 px-4 py-6 sm:px-6 sm:py-8">
         <section id="results" className="scroll-mt-4">
-          <h2 className="mb-5 text-xl font-bold">Roping results</h2>
+          <h1 className="mb-5 text-xl font-bold">Roping results</h1>
           <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
             <PublicEventBrowser events={data.events} selectedSlug={selectedEvent?.slug} producerSlug={producerSlug} seasons={data.seasons} timezone={data.producer.timezone} />
             <div className="min-w-0 space-y-5">

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { PublicProducerHeader } from "@/components/events/public-producer-header";
 import { notFound } from "next/navigation";
 import { ArrowRight, CalendarDays, ChevronDown, MapPin, Radio } from "lucide-react";
 import type { PublicEvent } from "@/lib/events/public-event-data";
@@ -35,30 +35,16 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
   return (
     <main style={getBrandStyle(producer.brandPrimary, producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
       {isSupabaseConfigured() ? <PublicResultsRefresh live={events.some((event) => event.status === "in_progress")} /> : null}
-      <header className="border-b border-[#dfe4e1] brand-primary-fill text-white">
-        <div className="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link href={`/public/${producerSlug}`} className="flex min-w-0 items-center gap-3">
-            {producer.logoUrl ? <span className="grid h-11 w-14 shrink-0 place-items-center rounded-md bg-white p-1"><Image src={producer.logoUrl} alt={`${producer.name} logo`} width={48} height={36} unoptimized className="max-h-full w-auto object-contain" /></span> : null}
-            <span className="break-words text-lg font-bold sm:text-xl">{producer.name}</span>
-          </Link>
-          <nav aria-label="Producer public pages" className="flex flex-wrap items-center gap-5 text-sm font-semibold brand-muted">
-            <Link href={`/public/${producerSlug}`} className="brand-hover">Results</Link>
-            <Link href={`/public/${producerSlug}/schedule`} aria-current="page" className="text-white underline underline-offset-8">Schedule</Link>
-            <Link href={`/public/${producerSlug}/standings`} className="brand-hover">Standings</Link>
-            {data.membershipFormPublished ? <Link href={`/public/${producerSlug}/membership`} className="brand-hover">Membership</Link> : null}
-            <Link href="/roper" className="brand-hover">Roper portal</Link>
-          </nav>
-        </div>
-      </header>
+      <PublicProducerHeader slug={producerSlug} name={producer.name} logoUrl={producer.logoUrl} active="schedule" membershipPublished={data.membershipFormPublished} />
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="text-2xl font-bold">Event schedule</h1>
-        {events.length > 1 ? <PublicScheduleJump events={events.map((event) => ({
+        {events.length > 1 ? <PublicScheduleJump months={Array.from(months, ([id, month]) => ({ id, label: month.label }))} events={events.map((event) => ({
           id: event.id,
           label: `${eventDateRange(event.startsAt, event.endsAt, producer.timezone)} · ${event.title}${event.status === "in_progress" ? " · Live" : ""}`,
         }))} /> : null}
         <div className="mt-6 space-y-10">
           {Array.from(months).sort(([a], [b]) => a.localeCompare(b)).map(([key, month]) => (
-            <section key={key} className="space-y-5">
+            <section id={`month-${key}`} key={key} className="scroll-mt-6 space-y-5">
               <h2 className="text-xl font-bold">{month.label}</h2>
           {month.events.map((event) => {
             const open = event.status !== "entries_closed" && (!event.entriesOpenAt || Date.parse(event.entriesOpenAt) <= now) && (!event.entriesCloseAt || Date.parse(event.entriesCloseAt) > now);
@@ -83,7 +69,7 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
                 </div>
               </header>
               <details className="group/schedule mt-4">
-                <summary className="flex w-fit cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-semibold text-[var(--brand-accent-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-semibold text-[var(--brand-accent-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
                   Roping schedule
                   <span className="text-xs font-normal text-[#66716b]">{event.scheduledRopings.length} {event.scheduledRopings.length === 1 ? "roping" : "ropings"}</span>
                   <ChevronDown size={16} className="transition-transform group-open/schedule:rotate-180 motion-reduce:transition-none" />
