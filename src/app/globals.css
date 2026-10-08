@@ -248,10 +248,13 @@ textarea:focus-visible {
     visibility: hidden;
   }
   .print-receipt,
-  .print-receipt * {
+  .print-receipt *,
+  .print-rules,
+  .print-rules * {
     visibility: visible;
   }
-  .print-receipt {
+  .print-receipt,
+  .print-rules {
     position: absolute;
     inset: 0;
     width: 100%;

@@ -20,6 +20,7 @@ const entityLabels: Record<string, string> = {
   member_fine_transactions: "Fine payment or adjustment",
   member_fine_exceptions: "Fine exception",
   roping_templates: "Roping template",
+  producer_rules: "Public rules",
   roping_template_fees: "Fee template",
   divisions: "Division",
   classifications: "Classification",

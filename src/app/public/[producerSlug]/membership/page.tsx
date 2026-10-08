@@ -84,6 +84,7 @@ export default async function PublicMembershipPage({
             <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
               {query.member ? "Membership renewal" : form.title}
             </h1>
+            <Link href={`/public/${producerSlug}/rules`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[var(--brand-accent-strong)] underline">Read producer rules</Link>
             {form.introduction ? (
               <p className="mt-3 max-w-2xl text-sm leading-6 whitespace-pre-wrap text-[#66716b]">
                 {form.introduction}

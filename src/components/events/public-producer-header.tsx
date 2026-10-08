@@ -5,13 +5,14 @@ import { UserRound } from "lucide-react";
 
 export function PublicProducerHeader({ slug, name, logoUrl, active, membershipPublished = false }: {
   slug: string; name: string; logoUrl?: string | null;
-  active: "results" | "schedule" | "standings"; membershipPublished?: boolean;
+  active: "results" | "schedule" | "standings" | "rules"; membershipPublished?: boolean;
 }) {
   const base = `/public/${slug}`;
   const links = [
     { key: "results", label: "Results", href: base },
     { key: "schedule", label: "Schedule", href: `${base}/schedule` },
     { key: "standings", label: "Standings", href: `${base}/standings` },
+    { key: "rules", label: "Rules", href: `${base}/rules` },
     ...(membershipPublished ? [{ key: "membership", label: "Membership", href: `${base}/membership` }] : []),
   ];
   return <header className="border-b border-[#dfe4e1] brand-primary-fill text-white">

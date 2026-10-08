@@ -177,6 +177,7 @@ export default async function PublicOnlineEntryPage({
             Entry request
           </p>
           <h1 className="mt-2 text-3xl font-bold">{event.title}</h1>
+          <Link href={`/public/${producerSlug}/rules`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[var(--brand-accent-strong)] underline">Read producer rules</Link>
           <div className="mt-4 flex flex-col gap-2 text-sm text-[#66716b] sm:flex-row sm:flex-wrap sm:gap-x-6">
             <span className="flex items-center gap-2">
               <CalendarDays size={16} /> {eventDate}

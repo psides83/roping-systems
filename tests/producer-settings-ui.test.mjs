@@ -27,7 +27,8 @@ test('settings navigation keeps all groups available and marks only the selected
     assert.match(html,/overflow-x-auto/);
     for(const item of producerSettingsTabs) assert.ok(html.includes(item.label));
   }
-  assert.equal(new Set(producerSettingsTabs.map(tab=>tab.href)).size,7);
+  assert.equal(new Set(producerSettingsTabs.map(tab=>tab.href)).size,producerSettingsTabs.length);
+  assert.ok(producerSettingsTabs.some(tab=>tab.id==='rules' && tab.href==='/settings/rules'));
 });
 
 const {StaffIdentity}=component('../src/components/settings/staff-identity.tsx');
