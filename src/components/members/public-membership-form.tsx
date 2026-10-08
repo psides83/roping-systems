@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
 import {
@@ -14,6 +14,7 @@ import {
   type SelectedMembershipField,
 } from "@/lib/membership-forms";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { PrivateReceiptCode } from "./private-receipt-code";
 
 const inputClass =
   "mt-2 block h-11 w-64 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm outline-none focus:border-[var(--brand-accent)]";
@@ -26,7 +27,6 @@ export function PublicMembershipForm({
   requireSignature,
   initialResponses = {},
   renewal = false,
-  portal = false,
   membershipId,
 }: {
   formId: string;
@@ -43,6 +43,11 @@ export function PublicMembershipForm({
     MembershipApplicationState,
     FormData
   >(submitMembershipApplication, {});
+  useEffect(() => {
+    if (state.receiptCode) {
+      try { sessionStorage.setItem("membership-application-receipt", state.receiptCode); } catch { /* The displayed receipt remains available. */ }
+    }
+  }, [state.receiptCode]);
 
   if (state.success) {
     return (
@@ -54,10 +59,13 @@ export function PublicMembershipForm({
         />
         <h2 className="mt-4 text-xl font-bold">{renewal ? "Renewal submitted" : "Application submitted"}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#66716b]">
-          The producer can now review your application. Keep an eye on the email
-          or phone number you provided for any follow-up.
+          The producer can now review your application. Approval is required before your membership becomes active.
         </p>
-        {portal ? <Link href="/roper/memberships" className="mt-4 inline-block text-sm font-semibold">View application status</Link> : null}
+        {state.receiptCode ? <div className="mx-auto mt-5 max-w-md space-y-3 text-left">
+          <p className="text-sm text-[#66716b]">Keep this private receipt code. Sign in or create an account with the email on your application to link it and view its status. The code expires after 90 days.</p>
+          <PrivateReceiptCode code={state.receiptCode} />
+          <Link href="/auth/login?next=/roper/memberships" className="inline-flex h-10 items-center rounded-md brand-accent-fill px-4 text-sm font-semibold text-white">Sign in to link application</Link>
+        </div> : <Link href="/roper/memberships" className="mt-4 inline-block text-sm font-semibold">View application status</Link>}
       </div>
     );
   }

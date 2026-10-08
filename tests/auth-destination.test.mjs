@@ -10,6 +10,10 @@ test("request management sign-in returns to the roper request list", () => {
   assert.equal(authDestination("/roper/requests"), "/roper/requests");
 });
 
+test("membership application sign-in returns to receipt linking", () => {
+  assert.equal(authDestination("/roper/memberships"), "/roper/memberships");
+});
+
 test("authentication cannot redirect to external URLs or arbitrary paths", () => {
   for (const value of [undefined, null, "https://evil.example", "//evil.example", "/\\evil.example", "/auth/callback", ["/staff-invitations"]]) {
     assert.equal(authDestination(value), "/dashboard");

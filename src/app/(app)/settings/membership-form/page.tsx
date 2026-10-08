@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ClipboardList, ExternalLink } from "lucide-react";
 import { ReviewMembershipApplication } from "@/components/members/review-membership-application";
+import { ApplicationReceiptCode } from "@/components/members/application-receipt-code";
 import {
   MembershipFormBuilder,
   type MembershipFormDraft,
@@ -45,6 +46,7 @@ interface MembershipApplication {
   submitted_at: string;
   membership_id: string | null;
   application_kind: string;
+  applicant_user_id: string | null;
 }
 
 async function getMembershipFormData() {
@@ -56,6 +58,7 @@ async function getMembershipFormData() {
       form: null,
       applications: [] as MembershipApplication[],
       members: [] as { id: string; label: string }[],
+      divisions: [] as { id: string; name: string; classifications: { id: string; name: string }[] }[],
     };
   }
 
@@ -74,7 +77,7 @@ async function getMembershipFormData() {
     supabase
       .from("membership_applications")
       .select(
-        "id, applicant_name, applicant_email, responses, form_snapshot, release_accepted, signature_name, status, review_note, submitted_at, membership_id, application_kind",
+        "id, applicant_name, applicant_email, responses, form_snapshot, release_accepted, signature_name, status, review_note, submitted_at, membership_id, application_kind, applicant_user_id",
       )
       .eq("producer_id", producer.id)
       .order("submitted_at", { ascending: false }),
@@ -87,12 +90,20 @@ async function getMembershipFormData() {
   }
   const { data: memberRows, error: memberError } = await supabase.from("memberships").select("id,member_number,ropers(first_name,last_name)").eq("producer_id", producer.id).order("member_number");
   if (memberError) throw new Error("Unable to load membership review records.");
+  const { data: classifications, error: classError } = await supabase.from("classifications").select("id,name,division_id,divisions(name)").eq("producer_id", producer.id).eq("is_active", true).eq("eligibility_type", "skill").order("rank", { ascending: false });
+  if (classError) throw new Error("Unable to load membership classification choices.");
+  const divisions = new Map<string, { id: string; name: string; classifications: { id: string; name: string }[] }>();
+  for (const c of classifications ?? []) {
+    const group: { id: string; name: string; classifications: { id: string; name: string }[] } = divisions.get(c.division_id) ?? { id: c.division_id, name: (c.divisions as unknown as { name: string }).name, classifications: [] };
+    group.classifications.push({ id: c.id, name: c.name }); divisions.set(c.division_id, group);
+  }
 
   return {
     producer,
     role: producer.role,
     form,
     applications: (applications ?? []) as MembershipApplication[],
+    divisions: [...divisions.values()],
     members: (memberRows ?? []).map((m) => { const r = m.ropers as unknown as { first_name: string; last_name: string }; return { id: m.id, label: `#${m.member_number} · ${r.first_name} ${r.last_name}` }; }),
   };
 }
@@ -244,12 +255,13 @@ export default async function MembershipFormSettingsPage() {
                   </details>
                 ) : null}
                 {enabled && application.status === "pending" ? (
-                  <ReviewMembershipApplication id={application.id} kind={application.application_kind} membershipId={application.membership_id} members={data.members} />
+                  <ReviewMembershipApplication id={application.id} kind={application.application_kind} membershipId={application.membership_id} members={data.members} responses={application.responses} divisions={data.divisions} />
                 ) : application.review_note ? (
                   <p className="mt-4 text-xs text-[#66716b]">
                     Review note: {application.review_note}
                   </p>
                 ) : null}
+                {enabled && !application.applicant_user_id && application.status !== "declined" && <ApplicationReceiptCode applicationId={application.id} />}
               </div>
             </details>
           ))}

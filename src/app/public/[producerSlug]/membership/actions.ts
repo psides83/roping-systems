@@ -14,6 +14,7 @@ export interface MembershipApplicationState {
   success?: boolean;
   message?: string;
   errors?: Record<string, string>;
+  receiptCode?: string;
 }
 
 const identityFields = new Set([
@@ -108,7 +109,7 @@ export async function submitMembershipApplication(
 
   const memberId = formData.get("membershipId");
   if (memberId && !z.uuid().safeParse(memberId).success) return { message: "Check the renewal membership." };
-  const { error } = await supabase.rpc(memberId ? "submit_membership_renewal" : "submit_membership_application", {
+  const { data, error } = await supabase.rpc(memberId ? "submit_membership_renewal" : "submit_membership_application_with_receipt", {
     target_form_id: form.id,
     application_responses: responses,
     accepted_release: acceptedRelease,
@@ -121,5 +122,6 @@ export async function submitMembershipApplication(
   return {
     success: true,
     message: "Your membership application has been submitted.",
+    receiptCode: !memberId ? (data as { receiptCode?: string | null })?.receiptCode ?? undefined : undefined,
   };
 }
