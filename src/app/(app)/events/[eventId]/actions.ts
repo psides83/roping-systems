@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveProducer } from "@/lib/producers";
 import { eventStaffAccess } from "@/lib/staff-access";
 import { formatProperNoun } from "@/lib/utils";
+import { getFinalReadiness } from "./readiness-actions";
 
 export interface LiveRunState {
   success?: boolean;
@@ -507,6 +508,11 @@ export async function updateClassEventDayStatus(
       return {
         message: "A follows roping needs an earlier roping in the same arena.",
       };
+  }
+  if (parsed.data.eventDayStatus === "completed") {
+    const readiness = await getFinalReadiness(eventId, divisionId);
+    if (!readiness.summary) return { message: readiness.message };
+    if (readiness.summary.blocked) return { message: "Resolve the outstanding runs, reruns, and short-round setup before completing this roping. Refresh the readiness check for details." };
   }
   const { error } = await supabase.rpc("update_class_event_day_status", {
     target_roping_division_id: divisionId,

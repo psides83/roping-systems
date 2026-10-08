@@ -19,6 +19,8 @@ Completed events, completed ropings, locked rounds, and unlocked short-round fie
 
 Mark results official is explicitly named and confirmed. It completes the event and publishes official results; it is not a payout acknowledgment.
 
+Before completing a roping or publishing official results, a readiness panel checks unresolved runs, reruns, and required short-round setup. Completion is disabled until these are resolved, and both server actions repeat the check before writing. Existing database completion safeguards still apply. The panel separately lists missing payout plans, payout calculation warnings, unfinalized payouts, winnings awaiting payment, and receipts awaiting acknowledgment, with links to the timing desk and payout register. Payment warnings do not prevent competition completion or official publication. Refresh the check if another staff member changes the event while the dialog is open.
+
 On Payouts, finalize each completed roping's payouts before recording payments. Finalization and receipt recording remain separate: finalization establishes awards and fund debits, while a receipt records the amount paid and who received it. Acknowledgment records staff confirmation that the recipient received that payment; it does not collect a signature.
 
 Payment fields are disabled while saving. Confirming a previously unconfirmed receipt asks staff to verify the recipient and amount. Reversals retain their reason and audit requirements.

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { ClockAlert, LoaderCircle, X } from "lucide-react";
+import { FinalReadinessCheck } from "./final-readiness-check";
 import {
   updateClassEventDayStatus,
   type EventDayFormState,
@@ -50,6 +51,8 @@ export function ClassOperationsDialog({
   suggestedStatus?: ClassEventDayStatus;
 }) {
   const [open, setOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(suggestedStatus ?? status);
+  const [ready, setReady] = useState(false);
   const action = updateClassEventDayStatus.bind(null, eventId, divisionId);
   const [state, formAction, pending] = useActionState<
     EventDayFormState,
@@ -66,7 +69,7 @@ export function ClassOperationsDialog({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setSelectedStatus(suggestedStatus ?? status); setReady(false); setOpen(true); }}
         disabled={!editable}
         className={`flex items-center justify-center gap-2 rounded-md border border-[#d7ddda] font-semibold disabled:opacity-50 ${compact ? "h-9 px-3 text-xs" : "h-10 px-4 text-sm"}`}
       >
@@ -123,7 +126,8 @@ export function ClassOperationsDialog({
                   Status
                   <select
                     name="eventDayStatus"
-                    defaultValue={suggestedStatus ?? status}
+                    value={selectedStatus}
+                    onChange={(event) => { setReady(false); setSelectedStatus(event.target.value as ClassEventDayStatus); }}
                     className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
                   >
                     {Object.entries(classEventDayStatusLabels).map(
@@ -160,6 +164,7 @@ export function ClassOperationsDialog({
                   className="mt-2 w-full resize-y rounded-md border border-[#ccd4d0] px-3 py-2"
                 />
               </label>
+              {selectedStatus === "completed" ? <FinalReadinessCheck eventId={eventId} ropingId={divisionId} onReady={setReady} /> : null}
               {state.message ? (
                 <p
                   className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
@@ -177,7 +182,7 @@ export function ClassOperationsDialog({
                   Cancel
                 </button>
                 <button
-                  disabled={pending}
+                  disabled={pending || (selectedStatus === "completed" && !ready)}
                   className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {pending ? (

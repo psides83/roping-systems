@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { eventStaffAccess } from "@/lib/staff-access";
 import { createClient } from "@/lib/supabase/server";
+import { getFinalReadiness } from "./readiness-actions";
 
 export interface OfficialResultState { success?: boolean; message?: string }
 
@@ -18,6 +19,9 @@ export async function markEventResultsOfficial(eventId: string, _state: Official
     .eq("id", eventId).eq("producer_id", producer.id).maybeSingle();
   if (lookupError) return { message: lookupError.message };
   if (!event || !["in_progress", "completed"].includes(event.status)) return { message: "Results can be marked official after competition has started." };
+  const readiness = await getFinalReadiness(eventId);
+  if (!readiness.summary) return { message: readiness.message };
+  if (readiness.summary.blocked) return { message: "Resolve the outstanding runs, reruns, and short-round setup before publishing. Refresh the readiness check for details." };
   const { error } = await supabase.rpc("finalize_roping_results", { target_roping_id: event.id });
   if (error) return { message: error.message };
   revalidatePath(`/events/${eventId}`);
