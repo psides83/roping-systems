@@ -29,7 +29,8 @@ import { MobileActionMenu } from "@/components/ui/mobile-action-menu";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { ShortRoundTiePolicy } from "@/components/events/short-round-settings";
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
-import { RopingQualificationDialog } from "@/components/events/roping-qualification-dialog";
+import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
+import { effectiveQualificationRuleSet, type QualificationOverride } from "@/lib/qualification-rule-sets";
 import { FinalsQualifierDialog } from "@/components/events/finals-qualifier-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
@@ -664,6 +665,10 @@ export default async function RopingDetailPage({
       .eq("event_ropings.event_id", event.id);
     if (checks.error) throw new Error("Unable to load roping qualification settings.");
     for (const check of checks.data) qualificationRopings.add(check.event_roping_id);
+    const assignment = await db.from("events").select("qualification_rule_set_id").eq("id", event.id).single();
+    const ropingAssignments = await db.from("event_ropings").select("id,qualification_override,qualification_rule_set_id").eq("event_id", event.id);
+    if (assignment.error || ropingAssignments.error) throw new Error("Unable to load event qualification assignments.");
+    for (const roping of ropingAssignments.data) if (effectiveQualificationRuleSet(assignment.data.qualification_rule_set_id, roping.qualification_override as QualificationOverride, roping.qualification_rule_set_id)) qualificationRopings.add(roping.id);
   }
   const totalEntries = event.divisions.reduce(
     (sum, division) => sum + division.entries,
@@ -784,6 +789,7 @@ export default async function RopingDetailPage({
                   }}
                   editable={setupEditable}
                 />
+                <QualificationAssignmentDialog eventId={event.id} editable={setupEditable} />
                 <Link
                   href={`/events/${event.id}/entries`}
                   className="flex h-10 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"
@@ -964,7 +970,7 @@ export default async function RopingDetailPage({
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <RopingQualificationDialog ropingId={division.id} name={division.name} required={qualificationRopings.has(division.id)} editable={roundsEditable && isSupabaseConfigured()} />
+                    <QualificationAssignmentDialog eventId={event.id} ropingId={division.id} name={division.name} editable={roundsEditable && isSupabaseConfigured()} />
                     <FinalsQualifierDialog ropingId={division.id} name={division.name} editable={event.canManage && isSupabaseConfigured()} />
                     {qualificationRopings.has(division.id) ? <Link href={`/events/${event.id}/qualification/${division.id}`} className="inline-flex h-9 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Entry review</Link> : null}
                     <ClassScheduleDialog

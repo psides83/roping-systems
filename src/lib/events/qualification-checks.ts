@@ -6,6 +6,7 @@ import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { includeFinalsPositions } from "@/lib/finals-entry-eligibility";
 import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
+import { loadEffectiveRuleSet, buildRuleSetQualificationCheck } from "@/lib/events/rule-set-qualification";
 
 export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string, bonusEntries?: boolean) {
   const producer = await getActiveProducer();
@@ -13,6 +14,8 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
   const db = await createClient();
   const scope = await db.rpc("can_manage_event_roping", { target_roping: ropingId });
   if (scope.error || !scope.data) throw new Error("Management access for this roping is required.");
+  const ruleSet = await loadEffectiveRuleSet(ropingId, producer.id);
+  if (ruleSet) return buildRuleSetQualificationCheck(ropingId, classKey, producer, ruleSet);
   const settings = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
   const season = await db.from("producer_seasons").select("starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
   const rule = await db.from("standings_qualification_rules").select("cutoff_on,updated_at")
@@ -41,6 +44,28 @@ export async function refreshEventQualificationChecks(eventId: string, ropingId?
     const producer = await getActiveProducer();
     if (!producer || (producer.role === "viewer" && !producer.entryOffice && !producer.eventManager)) return "Manager access is required.";
     const db = await createClient();
+    let assignedQuery = db.from("event_ropings").select("id,classification_id,division_id,competition_format,qualification_override")
+      .eq("event_id", eventId).eq("producer_id", producer.id);
+    if (ropingId) assignedQuery = assignedQuery.eq("id", ropingId);
+    const assignedRopings = await assignedQuery;
+    if (assignedRopings.error) return "Unable to load event qualification assignments.";
+    const handled = new Set<string>();
+    for (const roping of assignedRopings.data) {
+      if (roping.qualification_override === "none") { handled.add(roping.id); continue; }
+      const ruleSet = await loadEffectiveRuleSet(roping.id, producer.id);
+      if (!ruleSet) continue;
+      const classKey = ["handicap", "four_d"].includes(roping.competition_format) ? `${roping.division_id}:${roping.competition_format}` : roping.classification_id;
+      if (!classKey) return "Select a classification for this qualified roping.";
+      const saved = await db.from("roping_qualification_checks").select("source_revision,rule_updated_at,rule_set_id,class_key")
+        .eq("event_roping_id", roping.id).eq("producer_id", producer.id).maybeSingle();
+      const revision = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
+      if (saved.error || revision.error) return "Unable to refresh qualification information.";
+      if (!saved.data || saved.data.rule_set_id !== ruleSet.id || saved.data.class_key !== classKey || saved.data.rule_updated_at !== ruleSet.updated_at || String(saved.data.source_revision) !== String(revision.data.standings_revision)) {
+        if (producer.entryOffice) return "A manager must refresh qualification information before accepting entries.";
+        await buildRuleSetQualificationCheck(roping.id, classKey, producer, ruleSet);
+      }
+      handled.add(roping.id);
+    }
     let query = db.from("roping_qualification_checks")
       .select("event_roping_id,season_id,class_key,source_revision,rule_updated_at,event_ropings!inner(event_id,classification_id,division_id,competition_format)")
       .eq("producer_id", producer.id).eq("event_ropings.event_id", eventId);
@@ -49,6 +74,7 @@ export async function refreshEventQualificationChecks(eventId: string, ropingId?
     if (checks.error) return checks.error.message;
     if (!checks.data.length) return null;
     for (const check of checks.data) {
+      if (handled.has(check.event_roping_id)) continue;
       const roping = check.event_ropings as unknown as { classification_id: string | null; division_id: string; competition_format: string };
       const classKey = ["handicap", "four_d"].includes(roping.competition_format)
         ? `${roping.division_id}:${roping.competition_format}` : roping.classification_id;

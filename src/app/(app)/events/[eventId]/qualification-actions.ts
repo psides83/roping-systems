@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { buildQualificationCheck } from "@/lib/events/qualification-checks";
+import { loadEffectiveRuleSet } from "@/lib/events/rule-set-qualification";
 
 export async function loadRopingQualification(ropingId: string) {
   const producer = await getActiveProducer();
@@ -62,11 +63,13 @@ export async function refreshRopingQualification(ropingId: string): Promise<{ er
       .eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
     const roping = await db.from("event_ropings").select("event_id,classification_id,division_id,competition_format")
       .eq("id", ropingId).eq("producer_id", producer.id).maybeSingle();
-    if (check.error || roping.error || !check.data || !roping.data) return { error: "Configure qualification for this roping first." };
+    if (check.error || roping.error || !roping.data) return { error: "Configure qualification for this roping first." };
+    const ruleSet = await loadEffectiveRuleSet(ropingId, producer.id);
+    if (!check.data && !ruleSet) return { error: "Configure qualification for this roping first." };
     const classKey = ["handicap", "four_d"].includes(roping.data.competition_format)
       ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
-    if (!classKey || classKey !== check.data.class_key) return { error: "This roping's classification changed. Update its qualification setup first." };
-    await buildQualificationCheck(ropingId, check.data.season_id, classKey);
+    if (!classKey || (!ruleSet && classKey !== check.data?.class_key)) return { error: "This roping's classification changed. Update its qualification setup first." };
+    await buildQualificationCheck(ropingId, ruleSet?.season_id ?? check.data!.season_id, classKey);
     revalidatePath(`/events/${roping.data.event_id}/qualification/${ropingId}`);
     revalidatePath(`/events/${roping.data.event_id}/entries`);
     revalidatePath(`/events/${roping.data.event_id}`);

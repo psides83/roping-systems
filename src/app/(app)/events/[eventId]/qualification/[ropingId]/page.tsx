@@ -11,7 +11,8 @@ import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
 import { qualificationNoticeText } from "@/lib/events/qualification-notice";
 import { formatCurrency } from "@/lib/utils";
 import { reviewFinalsEntry, qualificationCheckIsCurrent } from "@/lib/finals-entry-review";
-import { RopingQualificationDialog } from "@/components/events/roping-qualification-dialog";
+import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
+import { loadEffectiveRuleSet } from "@/lib/events/rule-set-qualification";
 import { QualificationRefreshButton } from "@/components/events/qualification-refresh-button";
 
 export default async function QualificationPage({ params, searchParams }: PageProps<"/events/[eventId]/qualification/[ropingId]">) {
@@ -31,17 +32,19 @@ export default async function QualificationPage({ params, searchParams }: PagePr
   const editable = canManage && !["in_progress", "completed"].includes(roping.data.event_day_status) && !["completed", "cancelled"].includes(eventStatus);
   const divisionName = (roping.data.divisions as unknown as { name: string } | null)?.name ?? "";
   const title = `${roping.data.name} ${divisionName}`.trim();
-  const check = await db.from("roping_qualification_checks").select("season_id,class_key,bonus_entries_enabled,source_revision,rule_updated_at,checked_at")
+  const check = await db.from("roping_qualification_checks").select("season_id,class_key,bonus_entries_enabled,source_revision,rule_updated_at,checked_at,rule_set_id")
     .eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
   if (check.error) throw new Error("Unable to load qualification setup.");
+  const ruleSet = await loadEffectiveRuleSet(ropingId, producer.id);
   const back = `/events/${eventId}`;
   if (!check.data) return <section className="space-y-4"><Link href={back}>Back to event</Link>
-    <h1 className="text-2xl font-bold">{title} · Entry review</h1><p>This roping has no qualification requirements.</p>
-    {editable && <RopingQualificationDialog ropingId={ropingId} name={title} editable required={false} />}
+    <h1 className="text-2xl font-bold">{title} · Entry review</h1><p>{ruleSet ? `Qualification required: ${ruleSet.name}. Refresh qualification information before accepting entries.` : "This roping has no qualification requirements."}</p>
+    {ruleSet && canManage && <QualificationRefreshButton ropingId={ropingId} />}
+    {editable && <QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable />}
     <Link href="/settings/standings" className="inline-block text-sm font-semibold underline">Class qualification settings</Link></section>;
   const { season_id: seasonId, class_key: classKey } = check.data;
   const season = await db.from("producer_seasons").select("name,starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
-  const rule = await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,earned_position_policy,updated_at")
+  const rule = ruleSet ? { data: ruleSet, error: null } : await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,earned_position_policy,updated_at")
     .eq("season_id", seasonId).eq("class_key", classKey).eq("producer_id", producer.id).maybeSingle();
   if (season.error || rule.error) throw new Error("Unable to load qualification requirements.");
   const revision = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
@@ -60,9 +63,9 @@ export default async function QualificationPage({ params, searchParams }: PagePr
   const currentKey = ["handicap", "four_d"].includes(roping.data.competition_format)
     ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
   const available = Boolean(rule.data && currentKey === classKey);
-  const current = available && qualificationCheckIsCurrent(check.data, revision.data.standings_revision, rule.data?.updated_at);
+  const current = available && (!ruleSet || check.data.rule_set_id === ruleSet.id) && qualificationCheckIsCurrent(check.data, revision.data.standings_revision, rule.data?.updated_at);
   const requirements = available ? { topPlaces: rule.data!.top_places, minimumRopings: rule.data!.minimum_ropings,
-    earnedPositionPolicy: rule.data!.earned_position_policy as EarnedPositionPolicy } : null;
+    earnedPositionPolicy: rule.data!.earned_position_policy as EarnedPositionPolicy, requirementMatch: ruleSet?.requirement_match } : null;
   const profiles = new Map(source.ropers.map((roper) => [`${roper.roperId}:${roper.classId}`, roper]));
   const names = new Map([...source.ropers.map((roper) => [roper.roperId, roper.name] as const), ...finals.profiles.map((profile) => [profile.roperId, profile.name] as const)]);
   const roperIds = new Set([...rows.map((row) => row.roperId), ...entries.map((entry) => entry.roper_id)]);
@@ -92,9 +95,9 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-bold">{title} · Entry review</h1>
       <p className="mt-2 text-sm text-[#66716b]">{qualificationNoticeText({ event_roping_id: ropingId, season_name: season.data.name,
         top_places: rule.data?.top_places ?? null, minimum_ropings: rule.data?.minimum_ropings ?? null,
-        cutoff_on: rule.data?.cutoff_on ?? null, requirements_available: available })}</p></div>
+        cutoff_on: rule.data?.cutoff_on ?? null, requirements_available: available, requirement_match: ruleSet?.requirement_match })}</p></div>
       <div className="flex flex-wrap items-start gap-2">
-        {editable && <RopingQualificationDialog ropingId={ropingId} name={title} editable required />}
+        {editable && <QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable />}
         {canManage && available && <QualificationRefreshButton ropingId={ropingId} />}
         <Link href={`/events/${eventId}/entries`} className="inline-flex h-9 items-center rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">Manage entries</Link>
       </div></div>

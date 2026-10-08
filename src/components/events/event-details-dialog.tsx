@@ -7,6 +7,7 @@ import {
   updateEventDetails,
   type EventDetailsFormState,
 } from "@/app/(app)/events/[eventId]/actions";
+import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
 
 export interface EditableEventDetails {
   id: string;
@@ -313,6 +314,7 @@ export function EventDetailsDialog({
                 </div>
               </section>
 
+              <section className="border-y border-[#dfe4e1] py-4"><QualificationAssignmentDialog eventId={event.id} editable={editable} /></section>
               <label className="block text-sm font-semibold">
                 Publication state
                 <select

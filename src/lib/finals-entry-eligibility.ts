@@ -1,12 +1,17 @@
 export type EarnedPositionPolicy = "none" | "rank" | "rank_and_attendance";
 
 export function meetsFinalsEntryRequirements(row: { rank: number; ropingsEntered: number; finalsPositions?: number } | undefined,
-  requirements: { topPlaces: number | null; minimumRopings: number; earnedPositionPolicy: EarnedPositionPolicy }) {
-  if (!row) return false;
+  requirements: { topPlaces: number | null; minimumRopings: number; earnedPositionPolicy: EarnedPositionPolicy; requirementMatch?: "all" | "any" }) {
+  if (!row) return requirements.requirementMatch !== undefined && requirements.minimumRopings === 0 && requirements.topPlaces === null;
   const attendance = row.ropingsEntered >= requirements.minimumRopings;
   const earned = (row.finalsPositions ?? 0) > 0;
   if (earned && requirements.earnedPositionPolicy === "rank_and_attendance") return true;
-  if (earned && requirements.earnedPositionPolicy === "rank") return attendance;
+  if (earned && requirements.earnedPositionPolicy === "rank" && attendance) return true;
+  if (requirements.requirementMatch === "any") {
+    return (requirements.minimumRopings > 0 && attendance)
+      || (requirements.topPlaces !== null && row.rank <= requirements.topPlaces)
+      || (requirements.minimumRopings === 0 && requirements.topPlaces === null);
+  }
   return attendance && (requirements.topPlaces === null || row.rank <= requirements.topPlaces);
 }
 

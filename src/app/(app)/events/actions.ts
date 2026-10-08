@@ -6,6 +6,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
+import { refreshEventQualificationChecks } from "@/lib/events/qualification-checks";
 
 export interface RopingFormState {
   success?: boolean;
@@ -312,10 +313,10 @@ export async function createRoping(
         "One or more Handicap classifications no longer have a time adjustment.",
     };
 
-  const { data: newRopingId, error } = await supabase.rpc(
-    "create_roping_with_short_round_policy",
-    {
-      target_organization_id: producer.id,
+  const requiresQualification = formData.get("requiresQualification") === "on";
+  const qualificationRuleSetId = requiresQualification ? String(formData.get("qualificationRuleSetId") ?? "") : null;
+  if (requiresQualification && !z.uuid().safeParse(qualificationRuleSetId).success) return { message: "Choose a qualification rule set." };
+  const eventSetup = {
       event_title: parsed.data.title,
       event_slug: parsed.data.slug,
       event_venue_name: parsed.data.venueName,
@@ -336,8 +337,11 @@ export async function createRoping(
       event_fee_amount_cents: parsed.data.eventFeeAmount
         ? Math.round(Number(parsed.data.eventFeeAmount) * 100)
         : null,
-    },
-  );
+      arena_count: parsed.data.arenaCount,
+  };
+  const { data: newRopingId, error } = await supabase.rpc("create_event_with_qualification", {
+    target_producer_id: producer.id, event_setup: eventSetup, target_rule_set_id: qualificationRuleSetId,
+  });
 
   if (error)
     return {
@@ -347,15 +351,11 @@ export async function createRoping(
           : error.message,
     };
 
-  const { error: arenaError } = await supabase.rpc("set_event_arena_count", {
-    target_roping_id: newRopingId,
-    new_arena_count: parsed.data.arenaCount,
-  });
-  if (arenaError) return { message: arenaError.message };
+  const qualificationError = requiresQualification ? await refreshEventQualificationChecks(newRopingId) : null;
 
   revalidatePath("/events");
   return {
     success: true,
-    message: "Event created with its scheduled events, fees, and options.",
+    message: qualificationError ? `Event created. Qualification needs a manager refresh before entries can be accepted: ${qualificationError}` : "Event created with its scheduled ropings, fees, and options.",
   };
 }

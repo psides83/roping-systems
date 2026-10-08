@@ -17,3 +17,6 @@ test('missing or mismatched rules never advertise stale requirements', () => {
   assert.ok(text.includes('Contact the producer'));
   assert.ok(!text.includes('Top 10'));
 });
+test('alternative qualification paths clearly say OR instead of implying both are required', () => {
+  assert.match(qualificationNoticeText({ ...notice, requirement_match: 'any' }), /Top 10 OR 5 ropings attended/);
+});

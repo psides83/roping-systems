@@ -4,6 +4,7 @@ export interface FinalsReviewRequirements {
   topPlaces: number | null;
   minimumRopings: number;
   earnedPositionPolicy: EarnedPositionPolicy;
+  requirementMatch?: "all" | "any";
 }
 
 export function reviewFinalsEntry(
@@ -23,8 +24,8 @@ export function reviewFinalsEntry(
   else if (!row) reasons.push("No qualifying standings or earned positions");
   else {
     const policy = earned > 0 ? requirements.earnedPositionPolicy : "none";
-    if (policy === "none" && requirements.topPlaces !== null && row.rank > requirements.topPlaces) reasons.push(`Outside top ${requirements.topPlaces}`);
-    if (policy !== "rank_and_attendance" && row.ropingsEntered < requirements.minimumRopings) reasons.push(`${requirements.minimumRopings - row.ropingsEntered} more ropings needed`);
+    if (!qualified && policy === "none" && requirements.topPlaces !== null && row.rank > requirements.topPlaces) reasons.push(`Outside top ${requirements.topPlaces}`);
+    if (!qualified && policy !== "rank_and_attendance" && row.ropingsEntered < requirements.minimumRopings) reasons.push(`${requirements.minimumRopings - row.ropingsEntered} more ropings needed`);
   }
   const overAllowance = allowance !== null && acceptedEntries > allowance;
   const needsReview = acceptedEntries > 0 && (!qualified || overAllowance);

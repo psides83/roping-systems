@@ -19,6 +19,7 @@ import {
   type IncentiveClassification,
   type ScheduledOccurrenceDraft,
 } from "@/components/events/scheduled-class-fields";
+import { EventQualificationFields } from "@/components/events/event-qualification-fields";
 
 const initialState: RopingFormState = {};
 const inputClass =
@@ -404,6 +405,7 @@ export function CreateRopingDialog({
                 ) : null}
               </section>
 
+              <EventQualificationFields />
               <label className="block text-sm font-semibold">
                 Publication state
                 <select

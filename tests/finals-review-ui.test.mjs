@@ -48,7 +48,8 @@ async function renderReview({ manager = true, configured = true, current = false
     if (name.endsWith("/finals-qualification-data")) return { loadFinalsQualifications: async () => ({ totals: [{ memberId: "member", classId: "class", positions: 2 }], profiles: [{ memberId: "member", roperId: "roper", name: "Alex Miller" }] }) };
     if (name.endsWith("/qualification-notice")) return { qualificationNoticeText: () => "Top 10, five ropings required" };
     if (name.endsWith("/utils")) return { formatCurrency: (cents) => `$${cents / 100}` };
-    if (name.endsWith("/roping-qualification-dialog")) return { RopingQualificationDialog: () => React.createElement("button", null, "Qualification setup") };
+    if (name.endsWith("/qualification-assignment-dialog")) return { QualificationAssignmentDialog: () => React.createElement("button", null, "Qualification setup") };
+    if (name.endsWith("/rule-set-qualification")) return { loadEffectiveRuleSet: async () => null };
     if (name.endsWith("/qualification-refresh-button")) return { QualificationRefreshButton: () => React.createElement("button", null, "Refresh check") };
     return require(name);
   };
