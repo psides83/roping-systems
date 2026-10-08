@@ -107,6 +107,7 @@ const guestEntrySchema = z
 const reviewRequestSchema = z
   .object({
     requestId: z.uuid(),
+    requestRevision: z.coerce.number().int().positive(),
     decision: z.enum(["accepted", "declined"]),
     reviewNote: z
       .string()
@@ -328,9 +329,10 @@ export async function reviewOnlineEntryRequest(
     if (qualificationError) return { message: qualificationError };
   }
   const { data, error } = await context.supabase.rpc(
-    "review_online_entry_request_with_eligibility_override",
+    "review_online_entry_at_revision",
     {
       target_request_id: parsed.data.requestId,
+      expected_revision: parsed.data.requestRevision,
       review_decision: parsed.data.decision,
       entered_review_note: parsed.data.reviewNote,
       override_eligibility: parsed.data.eligibilityOverride === "on",
@@ -340,6 +342,8 @@ export async function reviewOnlineEntryRequest(
 
   revalidatePath(`/events/${eventId}/entries`);
   revalidatePath(`/events/${eventId}/live`);
+  revalidatePath("/roper");
+  revalidatePath("/roper/requests");
   return {
     success: true,
     message:

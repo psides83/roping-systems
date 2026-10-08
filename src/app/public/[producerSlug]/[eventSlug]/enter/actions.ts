@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 
@@ -8,6 +9,21 @@ export interface OnlineEntryFormState {
   success?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
+}
+
+export async function updateOnlineEntryRequest(requestId: string, revision: number, _state: OnlineEntryFormState, form: FormData): Promise<OnlineEntryFormState> {
+  const selections = z.array(z.object({ divisionId: z.uuid(), quantity: z.number().int().min(1).max(1000), optionIds: z.array(z.uuid()) })).min(1).max(100).safeParse(
+    form.getAll("divisionIds").map(String).map((id) => ({ divisionId: id, quantity: Number(form.get(`quantity-${id}`)), optionIds: form.getAll(`option-${id}`).map(String) })),
+  );
+  const note = z.string().trim().max(500).safeParse(form.get("note") ?? "");
+  if (!selections.success || !note.success) return { message: "Select at least one roping with valid entry counts and keep the note under 500 characters." };
+  const db = await createClient();
+  const { error } = await db.rpc("update_my_online_entry", { target_submission_id: requestId, expected_revision: revision, requested_ropings: selections.data, contestant_note: note.data });
+  if (error) return { message: error.message };
+  revalidatePath("/roper");
+  revalidatePath("/roper/requests");
+  revalidatePath("/events", "layout");
+  return { success: true, message: "Your changes were saved. The producer will review the updated request." };
 }
 
 export async function loadOnlineFinalsAllowance(producerSlug: string, eventSlug: string, form: FormData) {

@@ -17,6 +17,7 @@ import {
 import { formatPhoneNumber } from "@/lib/utils";
 
 interface EntryRequest {
+  revision: number;
   id: string;
   name: string;
   email: string;
@@ -86,6 +87,7 @@ function RequestRow({
   return (
     <form action={formAction} className="p-5">
       <input type="hidden" name="requestId" value={request.id} />
+      <input type="hidden" name="requestRevision" value={request.revision} />
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

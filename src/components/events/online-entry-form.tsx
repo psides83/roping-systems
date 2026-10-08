@@ -4,12 +4,15 @@ import { useActionState, useState, useRef, useTransition } from "react";
 import { CheckCircle2, LoaderCircle, Minus, Plus } from "lucide-react";
 import {
   submitOnlineEntry,
+  updateOnlineEntryRequest,
   loadOnlineFinalsAllowance,
   type OnlineEntryFormState,
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
 import { summarizeOnlineEntryOptions, type EntryOption } from "@/lib/online-entry-summary";
 import { PhoneInput } from "@/components/ui/phone-input";
+import Link from "next/link";
+import type { OnlineEntryRequest } from "@/lib/online-entry-requests";
 import { qualificationNoticeText, type QualificationNotice } from "@/lib/events/qualification-notice";
 
 const inputClass =
@@ -47,20 +50,22 @@ export function OnlineEntryForm({
   eventSlug,
   allowGuests,
   divisions,
+  existingRequest,
 }: {
   producerSlug: string;
   eventSlug: string;
   allowGuests: boolean;
   divisions: EntryDivision[];
+  existingRequest?: OnlineEntryRequest;
 }) {
-  const action = submitOnlineEntry.bind(null, producerSlug, eventSlug);
+  const action = existingRequest ? updateOnlineEntryRequest.bind(null, existingRequest.id, existingRequest.revision) : submitOnlineEntry.bind(null, producerSlug, eventSlug);
   const [state, formAction, pending] = useActionState<
     OnlineEntryFormState,
     FormData
   >(action, {});
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>(() => Object.fromEntries(existingRequest?.items.map((item) => [item.id, true]) ?? []));
+  const [quantities, setQuantities] = useState<Record<string, number>>(() => Object.fromEntries(existingRequest?.items.map((item) => [item.id, item.quantity]) ?? []));
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>(() => Object.fromEntries(existingRequest?.items.flatMap((item) => item.optionIds.map((id) => [`${item.id}:${id}`, true])) ?? []));
   const summary = summarizeOnlineEntryOptions(divisions, selected, quantities, selectedOptions);
   const optionalTotal = summary.reduce((total, roping) => total + roping.options.reduce((sum, option) => sum + option.amountCents, 0), 0);
   const requiredTotal = summary.reduce((total, roping) => total + roping.requiredFees.reduce((sum, fee) => sum + fee.amountCents, 0), 0);
@@ -76,8 +81,9 @@ export function OnlineEntryForm({
     return (
       <div className="rounded-md border border-emerald-200 bg-emerald-50 p-6 text-emerald-900">
         <CheckCircle2 size={24} />
-        <h2 className="mt-3 text-lg font-bold">Entry request received</h2>
+        <h2 className="mt-3 text-lg font-bold">{existingRequest ? "Entry request updated" : "Entry request received"}</h2>
         <p className="mt-2 text-sm leading-6">{state.message}</p>
+        <Link href="/roper/requests" className="mt-4 inline-block text-sm font-semibold underline">My entry requests</Link>
       </div>
     );
   }
@@ -89,25 +95,26 @@ export function OnlineEntryForm({
     }}>
       <section>
         <h2 className="text-lg font-bold">Contestant information</h2>
-        <p className="mt-1 text-sm text-[#66716b]">
-          Use the email address associated with your membership when applicable.
-        </p>
-        <fieldset disabled={checkingAllowance} className="mt-4 grid gap-4 sm:grid-cols-2">
+        <p className="mt-1 text-sm text-[#66716b]">{existingRequest ? "Contestant details stay with the original request. Contact the producer if they need correcting." : "Use the email address associated with your membership when applicable."}</p>
+        <fieldset disabled={checkingAllowance || !!existingRequest} className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field
             label="First name"
             name="firstName"
+            defaultValue={existingRequest?.firstName}
             required
             error={state.errors?.firstName?.[0]}
           />
           <Field
             label="Last name"
             name="lastName"
+            defaultValue={existingRequest?.lastName}
             required
             error={state.errors?.lastName?.[0]}
           />
           <Field
             label="Email"
             name="email"
+            defaultValue={existingRequest?.email}
             type="email"
             required
             error={state.errors?.email?.[0]}
@@ -115,6 +122,7 @@ export function OnlineEntryForm({
           <Field
             label="Phone"
             name="phone"
+            defaultValue={existingRequest?.phone ?? ""}
             type="tel"
             error={state.errors?.phone?.[0]}
           />
@@ -125,6 +133,7 @@ export function OnlineEntryForm({
                 : "Birth date (required for age classes)"
             }
             name="birthDate"
+            defaultValue={existingRequest?.birthDate ?? ""}
             type="date"
             required={requiresBirthDate}
             error={state.errors?.birthDate?.[0]}
@@ -133,7 +142,7 @@ export function OnlineEntryForm({
             Competition gender
             <select
               name="competitionGender"
-              defaultValue=""
+              defaultValue={existingRequest?.competitionGender ?? ""}
               className={inputClass}
               required
             >
@@ -154,6 +163,7 @@ export function OnlineEntryForm({
               allowGuests ? "Member number (if applicable)" : "Member number"
             }
             name="memberNumber"
+            defaultValue={existingRequest?.memberNumber ?? ""}
             required={!allowGuests}
             error={state.errors?.memberNumber?.[0]}
           />
@@ -161,7 +171,9 @@ export function OnlineEntryForm({
         {divisions.some((division) => division.qualification) && <div className="mt-4">
           <button type="button" disabled={checkingAllowance || pending} onClick={() => startAllowanceCheck(async () => {
             if (!formRef.current) return;
-            const result = await loadOnlineFinalsAllowance(producerSlug, eventSlug, new FormData(formRef.current));
+            const details = new FormData(formRef.current);
+            if (existingRequest) { details.set("email", existingRequest.email); details.set("memberNumber", existingRequest.memberNumber ?? ""); }
+            const result = await loadOnlineFinalsAllowance(producerSlug, eventSlug, details);
             setAllowances(result.allowances ?? []);
             setSelected((current) => Object.fromEntries(Object.entries(current).map(([id, selected]) => [id, result.allowances?.some((item) => item.event_roping_id === id && item.remaining_entries === 0) ? false : selected])));
             setAllowanceMessage(result.error ?? (result.allowances?.length ? "Finals entry allowances updated." : "No bonus entry allowance found for these membership details."));
@@ -175,7 +187,7 @@ export function OnlineEntryForm({
         </label>
       </section>
 
-      <fieldset>
+      <fieldset disabled={pending}>
         <legend className="text-lg font-bold">Ropings</legend>
         <p className="mt-1 text-sm text-[#66716b]">
           Select each division and classification you want to enter, then choose
@@ -186,7 +198,7 @@ export function OnlineEntryForm({
             const isSelected = selected[division.id] ?? false;
             const quantity = quantities[division.id] ?? 1;
             const allowance = allowances?.find((item) => item.event_roping_id === division.id);
-            const maximum = allowance ? allowance.remaining_entries ?? 20 : division.maximumEntries ?? 20;
+            const maximum = allowance ? allowance.remaining_entries ?? 20 : Math.max(division.maximumEntries ?? 20, existingRequest?.items.find((item) => item.id === division.id)?.quantity ?? 0);
             return (
               <div key={division.id} className="p-4 sm:p-5">
                 <div className="flex items-start gap-3">
@@ -356,6 +368,7 @@ export function OnlineEntryForm({
         Note for the event office
         <textarea
           name="note"
+          defaultValue={existingRequest?.note ?? ""}
           rows={4}
           maxLength={500}
           className="mt-2 w-full rounded-md border border-[#ccd4d0] bg-white p-3 outline-none focus:border-[var(--brand-accent)]"
@@ -382,7 +395,7 @@ export function OnlineEntryForm({
           className="flex h-11 w-full items-center justify-center gap-2 rounded-md brand-accent-fill px-5 text-sm font-bold text-white disabled:opacity-50 sm:w-auto"
         >
           {pending ? <LoaderCircle size={17} className="animate-spin" /> : null}
-          {pending ? "Submitting request..." : "Submit entry request"}
+          {pending ? "Saving request..." : existingRequest ? "Save changes" : "Submit entry request"}
         </button>
         <p className="mt-3 text-xs leading-5 text-[#758078]">
           Submitting does not guarantee entry. The event office will review
@@ -399,23 +412,26 @@ function Field({
   type = "text",
   required = false,
   error,
+  defaultValue,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
   error?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="block text-sm font-semibold">
       {label}
       {type === "tel" ? (
-        <PhoneInput name={name} required={required} className={inputClass} />
+        <PhoneInput name={name} defaultValue={defaultValue} required={required} className={inputClass} />
       ) : (
         <input
           name={name}
           type={type}
           required={required}
+          defaultValue={defaultValue}
           className={inputClass}
         />
       )}

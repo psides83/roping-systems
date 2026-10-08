@@ -234,7 +234,7 @@ export default async function EventEntriesPage({
     supabase
       .from("online_entry_submissions")
       .select(
-        "id, first_name, last_name, email, phone, birth_date, competition_gender, member_number, membership_id, contestant_note, created_at, online_entry_submission_ropings(quantity, event_ropings!inner(name, scheduled_date))",
+        "id, revision, first_name, last_name, email, phone, birth_date, competition_gender, member_number, membership_id, contestant_note, created_at, online_entry_submission_ropings(quantity, event_ropings!inner(name, scheduled_date))",
       )
       .eq("event_id", eventId)
       .eq("status", "pending")
@@ -491,6 +491,7 @@ export default async function EventEntriesPage({
 
   const requests = (requestData ?? []).map((request) => ({
     id: request.id,
+    revision: request.revision,
     name: `${request.first_name} ${request.last_name}`,
     email: request.email,
     phone: formatPhoneNumber(request.phone) || null,
@@ -574,6 +575,7 @@ function EntriesWorkspace({
   contestants: LedgerContestant[];
   requests: Array<{
     id: string;
+    revision: number;
     name: string;
     email: string;
     phone: string | null;

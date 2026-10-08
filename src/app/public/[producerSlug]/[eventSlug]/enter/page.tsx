@@ -8,6 +8,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { loadPublicQualificationNotices } from "@/lib/events/public-qualification-data";
 import { ropingDisplayName } from "@/lib/events/roping-display-name";
+import type { OnlineEntryRequest } from "@/lib/online-entry-requests";
+import { z } from "zod";
 
 interface PublicEntryFee {
   event_roping_id: string;
@@ -21,11 +23,21 @@ interface PublicEntryFee {
 
 export default async function PublicOnlineEntryPage({
   params,
+  searchParams,
 }: PageProps<"/public/[producerSlug]/[eventSlug]/enter">) {
   const { producerSlug, eventSlug } = await params;
   if (!isSupabaseConfigured()) notFound();
 
   const supabase = await createClient();
+  const query = await searchParams;
+  let existingRequest: OnlineEntryRequest | undefined;
+  if (query.request !== undefined) {
+    if (!z.uuid().safeParse(query.request).success) notFound();
+    const result = await supabase.rpc("my_online_entry_submission", { target_submission_id: query.request });
+    if (result.error || !result.data) notFound();
+    existingRequest = result.data as OnlineEntryRequest;
+    if (existingRequest.producerSlug !== producerSlug || existingRequest.eventSlug !== eventSlug) notFound();
+  }
   const [
     { data: rows, error },
     { data: feeRows, error: feeError },
@@ -190,8 +202,9 @@ export default async function PublicOnlineEntryPage({
           </div>
         </section>
         <div className="mt-7 max-w-3xl">
-          {event.entries_are_open ? (
+          {event.entries_are_open && (!existingRequest || existingRequest.canModify) ? (
             <OnlineEntryForm
+              existingRequest={existingRequest}
               producerSlug={producerSlug}
               eventSlug={eventSlug}
               allowGuests={event.allow_non_member_entries}

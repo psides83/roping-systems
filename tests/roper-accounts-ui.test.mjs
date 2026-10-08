@@ -20,6 +20,7 @@ function component(file, name) {
     if (path.endsWith("entry-labels")) return { formatEntryLabel };
     if (path.endsWith("roper-accounts")) return { formatAccountMoney };
     if (path.endsWith("status-pill")) return { StatusPill: ({ status }) => React.createElement("span", null, status) };
+    if (path.endsWith("online-entry-request-actions")) return { OnlineEntryRequestActions: () => React.createElement("button", null, "Edit request") };
     return require(path);
   }, compiled, compiled.exports);
   return compiled.exports[name];
@@ -48,4 +49,17 @@ test("online requests distinguish pending from confirmed entries and charges", (
 test("payment and submission views have usable empty states", () => {
   assert.match(renderToStaticMarkup(React.createElement(Balances, { events: [], style: "number", timezone: "UTC" })), /No event charges or payments yet/);
   assert.match(renderToStaticMarkup(React.createElement(Submissions, { submissions: [], timezone: "UTC" })), /No linked online entry requests yet/);
+});
+
+test("only owned pending requests inside the change window expose editing", () => {
+  const request = { id: "request", revision: 2, canModify: true, producerSlug: "producer", eventSlug: "event", status: "pending", submittedAt: "2026-10-07T12:00:00Z", eventTitle: "Fall Roping", items: [], changes: [{ action: "edited", changedAt: "2026-10-07T13:00:00Z" }] };
+  const render = (overrides) => renderToStaticMarkup(React.createElement(Submissions, { timezone: "UTC", submissions: [{ ...request, ...overrides }] }));
+  assert.match(render({}), /Edit request/);
+  assert.match(render({}), /Selections updated/);
+  assert.doesNotMatch(render({ status: "accepted" }), /Edit request/);
+  assert.doesNotMatch(render({ status: "withdrawn" }), /Edit request/);
+  assert.match(render({ status: "withdrawn" }), /cannot be accepted/);
+  assert.match(render({ canModify: false }), /Changes are closed/);
+  assert.doesNotMatch(render({ canModify: false }), /Edit request/);
+  assert.doesNotMatch(render({ revision: undefined }), /Edit request/);
 });
