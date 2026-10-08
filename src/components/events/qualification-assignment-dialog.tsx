@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ShieldCheck, LoaderCircle, X } from "lucide-react";
 import { loadQualificationAssignment, saveQualificationAssignment } from "@/app/(app)/events/[eventId]/rule-set-actions";
+import { qualificationCutoffText } from "@/lib/qualification-rule-sets";
 
 export function QualificationAssignmentDialog({ eventId, ropingId, name, editable }: { eventId: string; ropingId?: string; name?: string; editable: boolean }) {
   const [open, setOpen] = useState(false);
@@ -32,7 +33,7 @@ export function QualificationAssignmentDialog({ eventId, ropingId, name, editabl
             : <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={mode === "custom"} disabled={pending} onChange={(e) => setMode(e.target.checked ? "custom" : "none")} />Requires qualification</label>}
           {mode === "custom" && <label className="block text-sm font-semibold">Qualification rule set<select value={ruleId} onChange={(e) => setRuleId(e.target.value)} disabled={pending} className="mt-2 block h-10 max-w-full rounded-md border border-[#ccd4d0] px-3"><option value="">Choose a rule set</option>{data.rules.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>}
           {mode === "inherit" && <p className="text-sm text-[#66716b]">{rule ? `Event rules: ${rule.name}` : "No event qualification required"}</p>}
-          {rule && mode !== "none" && <p className="text-sm leading-6 text-[#66716b]">{rule.minimum_ropings > 0 ? `${rule.minimum_ropings} ropings attended` : ""}{rule.minimum_ropings > 0 && rule.top_places ? (rule.requirement_match === "all" ? " AND " : " OR ") : ""}{rule.top_places ? `Top ${rule.top_places} in class standings` : ""}{rule.cutoff_on ? ` · Through ${rule.cutoff_on}` : ""}</p>}
+          {rule && mode !== "none" && <p className="text-sm leading-6 text-[#66716b]">{rule.minimum_ropings > 0 ? `${rule.minimum_ropings} ropings attended` : ""}{rule.minimum_ropings > 0 && rule.top_places ? (rule.requirement_match === "all" ? " AND " : " OR ") : ""}{rule.top_places ? `Top ${rule.top_places} in class standings` : ""} · {qualificationCutoffText(rule)}</p>}
           <Link href="/settings/qualifications" className="inline-block text-sm font-semibold underline">Manage qualification rule sets</Link>
         </div>}
         {error && <p role="alert" className="my-4 text-sm text-rose-700">{error}</p>}

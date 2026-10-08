@@ -4,7 +4,7 @@ import { getPublicData } from "@/lib/events/public-event-data";
 import { getBrandStyle } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { calculateSeasonStandings } from "@/lib/season-standings";
+import { calculateSeasonStandings, calculateQualificationStandings } from "@/lib/season-standings";
 import { includeFinalsPositions, meetsFinalsEntryRequirements, type EarnedPositionPolicy } from "@/lib/finals-entry-eligibility";
 import { loadSeasonStandings, type SeasonStandingsSource } from "@/lib/events/season-standings-data";
 import { StandingsFilters } from "@/components/events/standings-filters";
@@ -37,7 +37,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
   const finals = season && isSupabaseConfigured() ? await loadFinalsQualifications(producerSlug, season.id) : null;
   const finalsProfiles = new Map(finals?.profiles.map((profile) => [profile.memberId, profile]) ?? []);
   const finalsPositions = new Map(finals?.totals.map((row) => [`${finalsProfiles.get(row.memberId)?.roperId}:${row.classId}`, row.positions]) ?? []);
-  let requirement: { top_places: number | null; minimum_ropings: number; cutoff_on: string | null; earned_position_policy: EarnedPositionPolicy } | undefined;
+  let requirement: { top_places: number | null; minimum_ropings: number; cutoff_on: string | null; attendance_cutoff_on: string | null; earned_position_policy: EarnedPositionPolicy } | undefined;
   if (season && selectedClass && isSupabaseConfigured()) {
     const db = await createClient();
     const result = await db.rpc("public_standings_qualification_rules", {
@@ -46,8 +46,8 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
     if (result.error) throw new Error("Unable to load qualification requirements.");
     requirement = result.data?.find((item: { class_key: string }) => item.class_key === selectedClass.id);
   }
-  const qualificationStandings = season && requirement ? calculateSeasonStandings(source.contributions, source.moves, season,
-    requirement.cutoff_on ?? season.endsOn).rows : [];
+  const qualificationStandings = season && requirement ? calculateQualificationStandings(source.contributions, source.moves, season,
+    requirement.cutoff_on ?? season.endsOn, requirement.attendance_cutoff_on ?? season.endsOn).rows : [];
   const qualificationRows = qualificationStandings.filter((row) => row.classId === selectedClass?.id);
   const qualified = new Set((requirement ? qualificationRows : []).filter((row) => meetsFinalsEntryRequirements(row, {
     topPlaces: requirement!.top_places, minimumRopings: requirement!.minimum_ropings,
@@ -79,7 +79,8 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
         {requirement ? <div className="mb-4 flex flex-wrap gap-3 text-xs text-[#66716b]">
           {requirement.top_places ? <span>Top {requirement.top_places} · ties included</span> : null}
           <span>{requirement.minimum_ropings} ropings required</span>
-          {requirement.cutoff_on ? <span>Cutoff: {requirement.cutoff_on}</span> : null}
+          <span>Standings through {requirement.cutoff_on ?? season?.endsOn}</span>
+          <span>Attendance through {requirement.attendance_cutoff_on ?? season?.endsOn}</span>
           {requirement.earned_position_policy !== "none" && <span>{requirement.earned_position_policy === "rank" ? "Assigned bonus positions bypass rank; attendance required" : "Assigned bonus positions bypass rank and attendance"}</span>}
         </div> : null}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

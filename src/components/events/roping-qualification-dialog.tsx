@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ShieldCheck, X, LoaderCircle } from "lucide-react";
 import { loadRopingQualification, saveRopingQualification } from "@/app/(app)/events/[eventId]/qualification-actions";
+import { qualificationCutoffText } from "@/lib/qualification-rule-sets";
 
 export function RopingQualificationDialog({ ropingId, name, editable, required }: { ropingId: string; name: string; editable: boolean; required: boolean }) {
   const [open, setOpen] = useState(false);
@@ -42,7 +43,7 @@ export function RopingQualificationDialog({ ropingId, name, editable, required }
           {rule ? <div className="flex flex-wrap gap-3 text-sm text-[#66716b]">
             {rule.top_places ? <span>Top {rule.top_places} · ties included</span> : null}
             <span>{rule.minimum_ropings} ropings required</span>
-            {rule.cutoff_on ? <span>Through {rule.cutoff_on}</span> : <span>Live standings</span>}
+            <span>{qualificationCutoffText(rule)}</span>
             {rule.earned_position_policy !== "none" && <span>{rule.earned_position_policy === "rank" ? "Earned positions bypass rank only" : "Earned positions bypass rank and attendance"}</span>}
           </div> : null}
           {!data.seasons.length ? <Link href="/settings/standings" className="text-sm font-semibold underline">Set up class qualification requirements</Link> : null}

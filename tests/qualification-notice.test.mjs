@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { qualificationNoticeText } from '../src/lib/events/qualification-notice.ts';
 
 const notice = { event_roping_id: 'roping', season_name: '2026', top_places: 10,
-  minimum_ropings: 5, cutoff_on: '2026-10-01', requirements_available: true };
+  minimum_ropings: 5, cutoff_on: '2026-10-01', attendance_cutoff_on: '2026-10-15', requirements_available: true };
 test('qualification notice includes placing, attendance, season and cutoff', () => {
-  assert.equal(qualificationNoticeText(notice), '2026 qualification · Top 10, including ties · 5 ropings required · Through 2026-10-01');
+  assert.equal(qualificationNoticeText(notice), '2026 qualification · Top 10, including ties · 5 ropings required · Standings through 2026-10-01 · Attendance through 2026-10-15');
 });
 test('attendance-only qualification does not invent a placing limit', () => {
   const text = qualificationNoticeText({ ...notice, top_places: null, cutoff_on: null });
   assert.ok(!text.includes('Top'));
-  assert.ok(text.includes('Live standings'));
+  assert.ok(text.includes('Standings through season end'));
+  assert.ok(text.includes('Attendance through 2026-10-15'));
 });
 test('missing or mismatched rules never advertise stale requirements', () => {
   const text = qualificationNoticeText({ ...notice, requirements_available: false });

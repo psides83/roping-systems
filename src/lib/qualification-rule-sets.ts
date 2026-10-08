@@ -1,6 +1,10 @@
 export type RequirementMatch = "all" | "any";
 export type QualificationOverride = "inherit" | "none" | "custom";
 
+export function qualificationCutoffText(rule: { cutoff_on: string | null; attendance_cutoff_on?: string | null }) {
+  return `Standings through ${rule.cutoff_on ?? "season end"} · Attendance through ${rule.attendance_cutoff_on ?? "season end"}`;
+}
+
 export interface QualificationRuleSet {
   id: string;
   name: string;
@@ -8,6 +12,7 @@ export interface QualificationRuleSet {
   top_places: number | null;
   minimum_ropings: number;
   cutoff_on: string | null;
+  attendance_cutoff_on: string | null;
   requirement_match: RequirementMatch;
   earned_position_policy: "none" | "rank" | "rank_and_attendance";
   bonus_entries_enabled: boolean;

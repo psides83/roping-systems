@@ -1,7 +1,7 @@
 import "server-only";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
-import { calculateSeasonStandings } from "@/lib/season-standings";
+import { calculateQualificationStandings } from "@/lib/season-standings";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { includeFinalsPositions } from "@/lib/finals-entry-eligibility";
@@ -18,12 +18,12 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
   if (ruleSet) return buildRuleSetQualificationCheck(ropingId, classKey, producer, ruleSet);
   const settings = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
   const season = await db.from("producer_seasons").select("starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
-  const rule = await db.from("standings_qualification_rules").select("cutoff_on,updated_at")
+  const rule = await db.from("standings_qualification_rules").select("cutoff_on,attendance_cutoff_on,updated_at")
     .eq("producer_id", producer.id).eq("season_id", seasonId).eq("class_key", classKey).single();
   if (settings.error || season.error || rule.error) throw new Error("Configure qualification requirements for this class and season first.");
   const source = await loadSeasonStandings(producer.slug, seasonId);
-  const standings = calculateSeasonStandings(source.contributions, source.moves,
-    { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, rule.data.cutoff_on ?? season.data.ends_on).rows
+  const standings = calculateQualificationStandings(source.contributions, source.moves,
+    { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, rule.data.cutoff_on ?? season.data.ends_on, rule.data.attendance_cutoff_on ?? season.data.ends_on).rows
     .filter((row) => row.classId === classKey);
   const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data.cutoff_on ?? season.data.ends_on);
   const assigned = await loadAssignedFinalsTotals(producer.id, seasonId, ropingId, finals.awards);

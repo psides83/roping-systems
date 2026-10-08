@@ -4,7 +4,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
-import { calculateSeasonStandings } from "@/lib/season-standings";
+import { calculateQualificationStandings, UNRANKED_QUALIFICATION } from "@/lib/season-standings";
 import { includeFinalsPositions, type EarnedPositionPolicy } from "@/lib/finals-entry-eligibility";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
@@ -44,7 +44,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <Link href="/settings/standings" className="inline-block text-sm font-semibold underline">Class qualification settings</Link></section>;
   const { season_id: seasonId, class_key: classKey } = check.data;
   const season = await db.from("producer_seasons").select("name,starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
-  const rule = ruleSet ? { data: ruleSet, error: null } : await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,earned_position_policy,updated_at")
+  const rule = ruleSet ? { data: ruleSet, error: null } : await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,attendance_cutoff_on,earned_position_policy,updated_at")
     .eq("season_id", seasonId).eq("class_key", classKey).eq("producer_id", producer.id).maybeSingle();
   if (season.error || rule.error) throw new Error("Unable to load qualification requirements.");
   const revision = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
@@ -54,9 +54,9 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     .eq("event_roping_id", ropingId).eq("producer_id", producer.id).eq("competition_status", "active")
     .order("id").range(first, last), "Unable to load accepted entries");
   const source = await loadSeasonStandings(producer.slug, seasonId);
-  const standings = calculateSeasonStandings(source.contributions, source.moves, {
+  const standings = calculateQualificationStandings(source.contributions, source.moves, {
     startsOn: season.data.starts_on, endsOn: season.data.ends_on,
-  }, rule.data?.cutoff_on ?? season.data.ends_on).rows.filter((row) => row.classId === classKey);
+  }, rule.data?.cutoff_on ?? season.data.ends_on, rule.data?.attendance_cutoff_on ?? season.data.ends_on).rows.filter((row) => row.classId === classKey);
   const finals = await loadFinalsQualifications(producer.slug, seasonId, rule.data?.cutoff_on ?? season.data.ends_on);
   const assigned = await loadAssignedFinalsTotals(producer.id, seasonId, ropingId, finals.awards);
   const rows = includeFinalsPositions(standings, assigned, finals.profiles, classKey);
@@ -95,7 +95,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-bold">{title} · Entry review</h1>
       <p className="mt-2 text-sm text-[#66716b]">{qualificationNoticeText({ event_roping_id: ropingId, season_name: season.data.name,
         top_places: rule.data?.top_places ?? null, minimum_ropings: rule.data?.minimum_ropings ?? null,
-        cutoff_on: rule.data?.cutoff_on ?? null, requirements_available: available, requirement_match: ruleSet?.requirement_match })}</p></div>
+        cutoff_on: rule.data?.cutoff_on ?? null, attendance_cutoff_on: rule.data?.attendance_cutoff_on ?? null, requirements_available: available, requirement_match: ruleSet?.requirement_match })}</p></div>
       <div className="flex flex-wrap items-start gap-2">
         {editable && <QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable />}
         {canManage && available && <QualificationRefreshButton ropingId={ropingId} />}
@@ -122,7 +122,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <div className="overflow-x-auto rounded-md border border-[#dfe4e1] bg-white"><table className="w-full text-sm">
       <thead className="bg-[#eef1ef] text-left text-xs uppercase text-[#66716b]"><tr><th className="p-2 sm:p-3">Rank</th><th className="p-2 sm:p-3">Roper</th><th className="p-2 text-right sm:p-3">Ropings</th><th className="hidden p-3 text-right sm:table-cell">Won</th><th className="p-2 text-right sm:p-3">Entries</th><th className="hidden p-3 lg:table-cell">Status</th></tr></thead>
       <tbody>{visible.map((item) => <tr key={item.id} className="border-t border-[#e7ebe8] align-top">
-        <td className="p-2 tabular-nums sm:p-3">{item.row?.rank === Number.MAX_SAFE_INTEGER ? "-" : item.row?.rank ?? "-"}</td>
+        <td className="p-2 tabular-nums sm:p-3">{(item.row?.rank ?? UNRANKED_QUALIFICATION) >= UNRANKED_QUALIFICATION ? "-" : item.row?.rank}</td>
         <td className="min-w-0 p-2 sm:p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#66716b]">{[item.profile?.city, item.profile?.state].filter(Boolean).join(", ")}</p>
           <div className="mt-2 lg:hidden">{qualificationStatus(item)}</div>
           {item.profile?.handicap ? <p className="mt-1 text-xs">{item.profile.handicap} · {Number(item.profile.handicapSeconds).toFixed(2)} sec</p> : null}

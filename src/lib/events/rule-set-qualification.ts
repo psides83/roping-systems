@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { effectiveQualificationRuleSet, type QualificationOverride, type QualificationRuleSet } from "@/lib/qualification-rule-sets";
-import { calculateSeasonStandings } from "@/lib/season-standings";
+import { calculateQualificationStandings } from "@/lib/season-standings";
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
 import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
@@ -28,7 +28,7 @@ export async function buildRuleSetQualificationCheck(ropingId: string, classKey:
   if (settings.error || season.error) throw new Error("Unable to load qualification season.");
   const cutoff = rule.cutoff_on ?? season.data.ends_on;
   const source = await loadSeasonStandings(producer.slug, rule.season_id);
-  const standings = calculateSeasonStandings(source.contributions, source.moves, { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, cutoff).rows.filter((row) => row.classId === classKey);
+  const standings = calculateQualificationStandings(source.contributions, source.moves, { startsOn: season.data.starts_on, endsOn: season.data.ends_on }, cutoff, rule.attendance_cutoff_on ?? season.data.ends_on).rows.filter((row) => row.classId === classKey);
   const finals = await loadFinalsQualifications(producer.slug, rule.season_id, cutoff);
   const assigned = await loadAssignedFinalsTotals(producer.id, rule.season_id, ropingId, finals.awards);
   const rows = includeFinalsPositions(standings, assigned, finals.profiles, classKey);

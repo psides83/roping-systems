@@ -24,7 +24,7 @@ export default async function StandingsSettings({ searchParams }: PageProps<"/se
   const uniqueClasses = classes.filter((item) => !classes.some((other) => other.id.includes(":") && item.id !== other.id && item.name === other.name && item.divisionName === other.divisionName));
   const season = seasons.data.find((item) => item.id === query.season) ?? seasons.data[0];
   const selected = uniqueClasses.find((item) => item.id === query.class) ?? uniqueClasses[0];
-  const rule = season && selected ? await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,earned_position_policy")
+  const rule = season && selected ? await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,attendance_cutoff_on,earned_position_policy")
     .eq("producer_id", producer.id).eq("season_id", season.id).eq("class_key", selected.id).maybeSingle() : null;
   if (rule?.error) throw new Error("Unable to load qualification requirements.");
   return <div className="space-y-5">

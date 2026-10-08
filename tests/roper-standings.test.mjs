@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { transpileModule, ModuleKind, JsxEmit, ScriptTarget } from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { calculateSeasonStandings, qualifiesForStandings } from "../src/lib/season-standings.ts";
+import { calculateSeasonStandings, calculateQualificationStandings, UNRANKED_QUALIFICATION, qualifiesForStandings } from "../src/lib/season-standings.ts";
 import { formatAccountMoney } from "../src/lib/roper-accounts.ts";
 const require = createRequire(import.meta.url);
 function load(path, imports) {
@@ -14,7 +14,7 @@ function load(path, imports) {
   new Function("require", "module", "exports", source)((name) => imports[name] ?? require(name), compiled, compiled.exports);
   return compiled.exports;
 }
-const { personalStandings } = load("../src/lib/roper-standings.ts", { "./season-standings": { calculateSeasonStandings, qualifiesForStandings } });
+const { personalStandings } = load("../src/lib/roper-standings.ts", { "./season-standings": { calculateSeasonStandings, calculateQualificationStandings, UNRANKED_QUALIFICATION, qualifiesForStandings } });
 const link = { default: ({ children, ...props }) => React.createElement("a", props, children) };
 const { PortalStandings } = load("../src/components/roper/portal-standings.tsx", { "next/link": link, "@/lib/roper-accounts": { formatAccountMoney } });
 const { PortalNavigation } = load("../src/components/roper/portal-navigation.tsx", { "next/link": link, "@/components/ui/navigation-pending": { NavigationPending: () => null } });
@@ -27,7 +27,7 @@ test("personal rows retain full-field rank and weighted attendance, but not othe
   assert.equal(rows.length, 1); assert.equal(rows[0].rank, 2); assert.equal(rows[0].ropingsEntered, 4); assert.equal(rows[0].winningsCents, 5000);
 });
 test("requirements use cutoff attendance rather than the season total", () => {
-  const member = context(); member.requirements = [{ classId: "11", topPlaces: 2, minimumRopings: 2, cutoffOn: "2026-06-30" }];
+  const member = context(); member.requirements = [{ classId: "11", topPlaces: 2, minimumRopings: 2, cutoffOn: "2026-06-30", attendanceCutoffOn: "2026-06-30" }];
   const data = source(); data.contributions = [contribution("own", "first", 100), contribution("own", "second", 100, { date: "2026-07-01" })];
   const row = personalStandings(member, data)[0];
   assert.equal(row.ropingsEntered, 2); assert.equal(row.qualifyingCount, 1); assert.equal(row.remainingRopings, 1); assert.equal(row.meetsRequirements, false);
@@ -40,6 +40,15 @@ test("class-move caps apply to earnings while attendance stays with the class en
   assert.equal(rows.find(x => x.classId === "10").ropingsEntered, 0);
   assert.equal(rows.find(x => x.classId === "11").ropingsEntered, 1);
   assert.equal(rows.find(x => x.classId === "10").hasCarryover, true);
+});
+
+test("portal progress uses independent attendance and standings deadlines", () => {
+  const member = context(); member.requirements = [{ classId: "11", topPlaces: 1, minimumRopings: 2, cutoffOn: "2026-06-30", attendanceCutoffOn: "2026-07-01" }];
+  const data = source(); data.contributions = [contribution("own", "first", 100), contribution("own", "second", 0, { date: "2026-07-01" }), contribution("leader", "second", 10000, { date: "2026-07-01" })];
+  const row = personalStandings(member, data)[0];
+  assert.equal(row.rank, 2); assert.equal(row.qualifyingRank, 1); assert.equal(row.qualifyingCount, 2); assert.equal(row.meetsRequirements, true);
+  const html = renderToStaticMarkup(React.createElement(PortalStandings, { context: member, rows: [row] }));
+  assert.match(html, /Standings through 2026-06-30/); assert.match(html, /Attendance through 2026-07-01/);
 });
 test("a current class without official results is unranked, not automatically qualified", () => {
   const member = context(); member.requirements = [{ classId: "11", topPlaces: null, minimumRopings: 0, cutoffOn: null }];

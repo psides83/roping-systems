@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import { qualificationCutoffText } from "../src/lib/qualification-rule-sets.ts";
 
 const require = createRequire(import.meta.url);
 const rule = { id: "rule", name: "Finals", season_id: "season", minimum_ropings: 10, top_places: 15, requirement_match: "any", cutoff_on: null };
@@ -17,6 +18,7 @@ function renderAssignment(ropingId) {
     if (name === "react") return { ...React, useState: () => [states.shift(), () => {}], useTransition: () => [false, () => {}] };
     if (name === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
     if (name.includes("rule-set-actions")) return {};
+    if (name.endsWith("qualification-rule-sets")) return { qualificationCutoffText };
     return require(name);
   }, compiled, compiled.exports);
   return renderToStaticMarkup(React.createElement(compiled.exports.QualificationAssignmentDialog, { eventId: "event", ropingId, editable: true }));

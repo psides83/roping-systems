@@ -22,4 +22,9 @@ test("cutoff tooltip explains inclusion and is available on hover and keyboard f
   assert.ok(html.includes(`id="${id}"`));
   assert.match(html, /group-hover:block/);
   assert.match(html, /group-focus-within:block/);
+  const attendance = renderToStaticMarkup(createElement(compiled.exports.CutoffDateLabel, { kind: "attendance" }));
+  assert.match(attendance, /Attendance cutoff/);
+  assert.match(attendance, /qualifying ropings dated on this day count toward the attendance requirement/);
+  assert.match(attendance, /Leave blank to use the end of the season/);
+  assert.doesNotMatch(attendance, /official winnings/);
 });

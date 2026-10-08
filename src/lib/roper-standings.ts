@@ -1,10 +1,10 @@
-import { calculateSeasonStandings, qualifiesForStandings, type StandingContribution, type StandingMove } from "./season-standings";
+import { calculateSeasonStandings, calculateQualificationStandings, UNRANKED_QUALIFICATION, qualifiesForStandings, type StandingContribution, type StandingMove } from "./season-standings";
 
 export interface RoperStandingsContext {
   roperId: string; producerSlug: string;
   season: { id: string; name: string; startsOn: string; endsOn: string } | null;
   seasons: { id: string; name: string }[]; currentClasses: string[];
-  requirements: { classId: string; topPlaces: number | null; minimumRopings: number; cutoffOn: string | null }[];
+  requirements: { classId: string; topPlaces: number | null; minimumRopings: number; cutoffOn: string | null; attendanceCutoffOn: string | null }[];
 }
 export interface PortalStanding {
   classId: string; name: string; winningsCents: number; ropingsEntered: number; rank: number | null;
@@ -31,8 +31,10 @@ export function personalStandings(context: RoperStandingsContext, source: Source
     const row = own.find((row) => row.classId === item.id);
     const requirement = context.requirements.find((rule) => rule.classId === item.id);
     const cutoff = requirement?.cutoffOn ?? season.endsOn;
-    if (!cutoffRows.has(cutoff)) cutoffRows.set(cutoff, calculateSeasonStandings(source.contributions, source.moves, season, cutoff).rows);
-    const qualifying = cutoffRows.get(cutoff)!.find((candidate) => candidate.roperId === context.roperId && candidate.classId === item.id);
+    const attendanceCutoff = requirement?.attendanceCutoffOn ?? season.endsOn;
+    const cutoffKey = `${cutoff}:${attendanceCutoff}`;
+    if (!cutoffRows.has(cutoffKey)) cutoffRows.set(cutoffKey, calculateQualificationStandings(source.contributions, source.moves, season, cutoff, attendanceCutoff).rows);
+    const qualifying = cutoffRows.get(cutoffKey)!.find((candidate) => candidate.roperId === context.roperId && candidate.classId === item.id);
     const profile = source.ropers.find((profile) => profile.roperId === context.roperId && profile.classId === item.id);
     return { classId: item.id, name: `${item.name} ${item.divisionName}`, winningsCents: row?.winningsCents ?? 0,
       ropingsEntered: row?.ropingsEntered ?? 0, rank: row?.rank ?? null,
@@ -40,7 +42,7 @@ export function personalStandings(context: RoperStandingsContext, source: Source
       handicapSeconds: item.id.endsWith(":handicap") ? profile?.handicapSeconds ?? null : null,
       hasCarryover: result.carryovers.some((record) => ownMoves.has(record.moveId) && [record.fromClassId, record.toClassId].includes(item.id)),
       requirement, meetsRequirements: Boolean(requirement && qualifying && qualifiesForStandings(qualifying, requirement)),
-      qualifyingCount: qualifying?.ropingsEntered ?? 0, qualifyingRank: qualifying?.rank ?? null,
+      qualifyingCount: qualifying?.ropingsEntered ?? 0, qualifyingRank: (qualifying?.rank ?? UNRANKED_QUALIFICATION) >= UNRANKED_QUALIFICATION ? null : qualifying!.rank,
       remainingRopings: requirement ? Math.max(requirement.minimumRopings - (qualifying?.ropingsEntered ?? 0), 0) : 0 };
   });
 }

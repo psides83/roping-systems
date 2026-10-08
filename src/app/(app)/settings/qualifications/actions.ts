@@ -11,6 +11,7 @@ const schema = z.object({
   top_places: z.number().int().positive().nullable(),
   minimum_ropings: z.number().int().min(0).max(10000),
   cutoff_on: z.iso.date().nullable(),
+  attendance_cutoff_on: z.iso.date().nullable(),
   requirement_match: z.enum(["all", "any"]),
   earned_position_policy: z.enum(["none", "rank", "rank_and_attendance"]),
   bonus_entries_enabled: z.boolean(),
@@ -24,6 +25,7 @@ export async function saveQualificationRuleSet(id: string | null, form: FormData
     name: form.get("name"), season_id: form.get("season_id"),
     top_places: form.get("top_places") ? Number(form.get("top_places")) : null,
     minimum_ropings: Number(form.get("minimum_ropings") ?? 0), cutoff_on: form.get("cutoff_on") || null,
+    attendance_cutoff_on: form.get("attendance_cutoff_on") || null,
     requirement_match: form.get("requirement_match"), earned_position_policy: form.get("earned_position_policy"),
     bonus_entries_enabled: form.get("bonus_entries_enabled") === "on",
   });

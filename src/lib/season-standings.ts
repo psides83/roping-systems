@@ -46,6 +46,24 @@ export function qualifiesForStandings(row: StandingRow, rule: QualificationRule)
     && row.ropingsEntered >= rule.minimumRopings;
 }
 
+export const UNRANKED_QUALIFICATION = 2147483647;
+
+export function calculateQualificationStandings(
+  contributions: StandingContribution[], moves: StandingMove[],
+  season: { startsOn: string; endsOn: string }, standingsCutoff = season.endsOn, attendanceCutoff = season.endsOn,
+): { rows: StandingRow[]; carryovers: CarryoverRecord[] } {
+  const standings = calculateSeasonStandings(contributions, moves, season, standingsCutoff);
+  const attendance = calculateSeasonStandings(contributions, moves, season, attendanceCutoff).rows;
+  const counts = new Map(attendance.map((row) => [`${row.roperId}:${row.classId}`, row.ropingsEntered]));
+  const rows = standings.rows.map((row) => ({ ...row, ropingsEntered: counts.get(`${row.roperId}:${row.classId}`) ?? 0 }));
+  const ranked = new Set(rows.map((row) => `${row.roperId}:${row.classId}`));
+  // Attendance after the standings deadline does not earn a qualifying rank.
+  for (const row of attendance) if (row.ropingsEntered > 0 && !ranked.has(`${row.roperId}:${row.classId}`)) {
+    rows.push({ ...row, winningsCents: 0, rank: UNRANKED_QUALIFICATION });
+  }
+  return { rows, carryovers: standings.carryovers };
+}
+
 /** Rebuild from official awards so corrections never accumulate duplicate credits. */
 export function calculateSeasonStandings(
   contributions: StandingContribution[],
