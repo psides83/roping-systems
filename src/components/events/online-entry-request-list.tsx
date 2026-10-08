@@ -150,8 +150,11 @@ function RequestRow({
           ) : null}
         </div>
         <div className="w-full shrink-0 lg:w-72">
+          <label className="mb-3 block text-xs font-semibold text-[#66716b]">Message to roper
+            <textarea name="producerResponse" maxLength={1000} rows={2} disabled={!enabled || pending} placeholder="Visible in the roper portal" className="mt-1.5 w-full rounded-md border border-[#ccd4d0] p-2 text-sm outline-none focus:border-[var(--brand-accent)]" />
+          </label>
           <label className="text-xs font-semibold text-[#66716b]">
-            Office note
+            Office note (staff only)
             <input
               name="reviewNote"
               disabled={!enabled || pending}

@@ -19,6 +19,7 @@ function load(file, name, { state = {}, confirming = false } = {}) {
     if (id.endsWith("utils")) return { formatCurrency: (cents) => `$${(cents / 100).toFixed(2)}` };
     if (id.endsWith("phone-input")) return { PhoneInput: ({ defaultValue, name }) => React.createElement("input", { name, defaultValue }) };
     if (id.endsWith("qualification-notice")) return { qualificationNoticeText: () => "Qualification required" };
+    if (id.endsWith("entry-eligibility-feedback")) return { EntryEligibilityFeedback: () => null };
     return require(id);
   }, loaded, loaded.exports);
   return loaded.exports[name];

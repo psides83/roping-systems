@@ -59,5 +59,7 @@ test("Read-only online request controls are disabled", () => {
     eventId: "event", enabled: false, manager: false,
     requests: [{ id: "request", name: "Test Roper", email: "test@example.com", membershipVerified: true, items: [] }],
   }));
-  assert.equal((html.match(/disabled=""/g) ?? []).length, 3);
+  assert.equal((html.match(/disabled=""/g) ?? []).length, 4);
+  assert.match(html, /Message to roper/);
+  assert.match(html, /Office note \(staff only\)/);
 });

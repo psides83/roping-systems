@@ -4,6 +4,24 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
+import type { OnlineEntryEligibility } from "@/lib/online-entry-eligibility";
+import { calculateEntryBalance } from "@/lib/entry-balance";
+import type { RoperAccountEvent } from "@/lib/roper-accounts";
+
+export async function loadOnlineEntryEligibility(producerSlug: string, eventSlug: string, form: FormData): Promise<{ checks?: OnlineEntryEligibility[]; coveredFeeKeys?: string[]; balanceDueCents?: number; creditCents?: number; feeError?: string; error?: string }> {
+  const parsed = z.object({ email: z.email(), memberNumber: z.string().trim().min(1).max(50) }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "Enter your membership email and member number first." };
+  const db = await createClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) return { error: "Sign in and connect your membership in the roper portal to check eligibility. The producer can still review your entry request." };
+  const { data, error } = await db.rpc("my_online_entry_eligibility", { target_producer_slug: producerSlug, target_event_slug: eventSlug, target_member_number: parsed.data.memberNumber, target_email: parsed.data.email });
+  if (error) return { error: error.message };
+  const fees = await db.rpc("my_online_entry_fee_context", { target_producer_slug: producerSlug, target_event_slug: eventSlug, target_member_number: parsed.data.memberNumber, target_email: parsed.data.email });
+  if (fees.error) return { checks: data as OnlineEntryEligibility[], feeError: "Current charges could not be checked. Fee totals remain an estimate." };
+  const context = fees.data as { account: RoperAccountEvent | null; coveredFeeKeys: string[] };
+  const balance = calculateEntryBalance(context.account?.entries ?? [], context.account?.charges ?? [], context.account?.payments ?? []);
+  return { checks: data as OnlineEntryEligibility[], coveredFeeKeys: context.coveredFeeKeys, balanceDueCents: balance.balanceDueCents, creditCents: balance.creditCents };
+}
 
 export interface OnlineEntryFormState {
   success?: boolean;

@@ -11,6 +11,7 @@ export interface RoperSubmission {
   revision?: number; canModify?: boolean; producerSlug?: string; eventSlug?: string;
   changes?: { action: "edited" | "withdrawn"; changedAt: string }[];
   submittedAt: string; reviewedAt: string | null; eventTitle: string;
+  producerResponse?: string | null;
   items: { name: string; division: string | null; date: string; quantity: number }[];
 }
 export interface RoperAccounts { timezone: string; events: RoperAccountEvent[]; submissions: RoperSubmission[] }

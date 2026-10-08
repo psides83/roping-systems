@@ -5,6 +5,7 @@ export interface OnlineEntryRequest {
   submittedAt: string;
   updatedAt: string;
   reviewedAt: string | null;
+  producerResponse?: string | null;
   withdrawnAt: string | null;
   eventTitle: string;
   eventId: string;

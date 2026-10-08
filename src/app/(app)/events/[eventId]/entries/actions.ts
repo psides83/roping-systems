@@ -114,6 +114,7 @@ const reviewRequestSchema = z
       .trim()
       .max(500, "Keep the note under 500 characters."),
     eligibilityOverride: z.string().optional(),
+    producerResponse: z.string().trim().max(1000, "Keep the roper message under 1000 characters.").optional().default(""),
   })
   .superRefine((data, context) => {
     if (
@@ -329,13 +330,14 @@ export async function reviewOnlineEntryRequest(
     if (qualificationError) return { message: qualificationError };
   }
   const { data, error } = await context.supabase.rpc(
-    "review_online_entry_at_revision",
+    "review_online_entry_with_response",
     {
       target_request_id: parsed.data.requestId,
       expected_revision: parsed.data.requestRevision,
       review_decision: parsed.data.decision,
       entered_review_note: parsed.data.reviewNote,
       override_eligibility: parsed.data.eligibilityOverride === "on",
+      roper_response: parsed.data.producerResponse,
     },
   );
   if (error) return { message: error.message };

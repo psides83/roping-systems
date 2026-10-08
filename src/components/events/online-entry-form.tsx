@@ -6,6 +6,7 @@ import {
   submitOnlineEntry,
   updateOnlineEntryRequest,
   loadOnlineFinalsAllowance,
+  loadOnlineEntryEligibility,
   type OnlineEntryFormState,
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
@@ -14,6 +15,8 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import Link from "next/link";
 import type { OnlineEntryRequest } from "@/lib/online-entry-requests";
 import { qualificationNoticeText, type QualificationNotice } from "@/lib/events/qualification-notice";
+import type { OnlineEntryEligibility } from "@/lib/online-entry-eligibility";
+import { EntryEligibilityFeedback } from "@/components/events/entry-eligibility-feedback";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
@@ -66,13 +69,17 @@ export function OnlineEntryForm({
   const [selected, setSelected] = useState<Record<string, boolean>>(() => Object.fromEntries(existingRequest?.items.map((item) => [item.id, true]) ?? []));
   const [quantities, setQuantities] = useState<Record<string, number>>(() => Object.fromEntries(existingRequest?.items.map((item) => [item.id, item.quantity]) ?? []));
   const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>(() => Object.fromEntries(existingRequest?.items.flatMap((item) => item.optionIds.map((id) => [`${item.id}:${id}`, true])) ?? []));
-  const summary = summarizeOnlineEntryOptions(divisions, selected, quantities, selectedOptions);
+  const [feeContext, setFeeContext] = useState<{ coveredFeeKeys: string[]; balanceDueCents: number; creditCents: number } | null>(null);
+  const summary = summarizeOnlineEntryOptions(divisions, selected, quantities, selectedOptions, feeContext?.coveredFeeKeys);
   const optionalTotal = summary.reduce((total, roping) => total + roping.options.reduce((sum, option) => sum + option.amountCents, 0), 0);
   const requiredTotal = summary.reduce((total, roping) => total + roping.requiredFees.reduce((sum, fee) => sum + fee.amountCents, 0), 0);
   const formRef = useRef<HTMLFormElement>(null);
   const [checkingAllowance, startAllowanceCheck] = useTransition();
   const [allowances, setAllowances] = useState<Awaited<ReturnType<typeof loadOnlineFinalsAllowance>>["allowances"]>([]);
   const [allowanceMessage, setAllowanceMessage] = useState("");
+  const [eligibility, setEligibility] = useState<OnlineEntryEligibility[]>([]);
+  const [eligibilityMessage, setEligibilityMessage] = useState("");
+  const [checkingEligibility, startEligibilityCheck] = useTransition();
   const requiresBirthDate = divisions.some(
     (division) => selected[division.id] && division.eligibilityType === "age",
   );
@@ -91,12 +98,12 @@ export function OnlineEntryForm({
   return (
     <form ref={formRef} action={formAction} aria-busy={pending} className="space-y-7" onChange={(event) => {
       const name = event.target instanceof HTMLInputElement ? event.target.name : null;
-      if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); }
+      if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); setEligibility([]); setEligibilityMessage(""); setFeeContext(null); }
     }}>
       <section>
         <h2 className="text-lg font-bold">Contestant information</h2>
         <p className="mt-1 text-sm text-[#66716b]">{existingRequest ? "Contestant details stay with the original request. Contact the producer if they need correcting." : "Use the email address associated with your membership when applicable."}</p>
-        <fieldset disabled={checkingAllowance || !!existingRequest} className="mt-4 grid gap-4 sm:grid-cols-2">
+        <fieldset disabled={checkingAllowance || checkingEligibility || !!existingRequest} className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field
             label="First name"
             name="firstName"
@@ -168,6 +175,24 @@ export function OnlineEntryForm({
             error={state.errors?.memberNumber?.[0]}
           />
         </fieldset>
+        <div className="mt-4" aria-busy={checkingEligibility}>
+          <button type="button" disabled={checkingEligibility || checkingAllowance || pending} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold" onClick={() => startEligibilityCheck(async () => {
+            if (!formRef.current) return;
+            const details = new FormData(formRef.current);
+            if (existingRequest) { details.set("email", existingRequest.email); details.set("memberNumber", existingRequest.memberNumber ?? ""); }
+            try {
+              const result = await loadOnlineEntryEligibility(producerSlug, eventSlug, details);
+              setEligibility(result.checks ?? []);
+              setFeeContext(result.coveredFeeKeys ? { coveredFeeKeys: result.coveredFeeKeys, balanceDueCents: result.balanceDueCents ?? 0, creditCents: result.creditCents ?? 0 } : null);
+              setEligibilityMessage(result.error ?? result.feeError ?? "Eligibility and current charges checked against your connected membership. The producer rechecks before accepting entries.");
+            } catch {
+              setEligibility([]);
+              setFeeContext(null);
+              setEligibilityMessage("Unable to check eligibility right now. Try again or contact the producer.");
+            }
+          })}>{checkingEligibility ? <LoaderCircle size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}{checkingEligibility ? "Checking eligibility…" : "Check eligibility"}</button>
+          {eligibilityMessage && <p role="status" className="mt-2 text-xs leading-5 text-[#66716b]">{eligibilityMessage}</p>}
+        </div>
         {divisions.some((division) => division.qualification) && <div className="mt-4">
           <button type="button" disabled={checkingAllowance || pending} onClick={() => startAllowanceCheck(async () => {
             if (!formRef.current) return;
@@ -198,7 +223,8 @@ export function OnlineEntryForm({
             const isSelected = selected[division.id] ?? false;
             const quantity = quantities[division.id] ?? 1;
             const allowance = allowances?.find((item) => item.event_roping_id === division.id);
-            const maximum = allowance ? allowance.remaining_entries ?? 20 : Math.max(division.maximumEntries ?? 20, existingRequest?.items.find((item) => item.id === division.id)?.quantity ?? 0);
+            const eligibilityCheck = eligibility.find((item) => item.event_roping_id === division.id);
+            const maximum = eligibilityCheck ? eligibilityCheck.remaining_entries ?? 20 : allowance ? allowance.remaining_entries ?? 20 : Math.max(division.maximumEntries ?? 20, existingRequest?.items.find((item) => item.id === division.id)?.quantity ?? 0);
             return (
               <div key={division.id} className="p-4 sm:p-5">
                 <div className="flex items-start gap-3">
@@ -221,6 +247,7 @@ export function OnlineEntryForm({
                     className="min-w-0 flex-1"
                   >
                     <label htmlFor={`division-${division.id}`} className="font-bold">{division.name}</label>
+                    {eligibilityCheck && <EntryEligibilityFeedback check={eligibilityCheck} />}
                     {division.qualification ? <span className="mt-2 block text-xs font-semibold leading-5 text-amber-800">{qualificationNoticeText(division.qualification)}</span> : null}
                     {allowance && <span className="mt-1 block text-xs font-semibold text-emerald-700">{allowance.normal_entries === null ? "Unlimited entries" : `${allowance.normal_entries} regular + ${allowance.bonus_entries} bonus · ${allowance.remaining_entries} available`}</span>}
                     {division.description ? (
@@ -352,16 +379,17 @@ export function OnlineEntryForm({
         <ul className="mt-3 divide-y divide-[#e7ebe8]">
           {summary.map((roping) => <li key={roping.id} className="py-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">{roping.name}</span><span>{roping.quantity} {roping.quantity === 1 ? "entry" : "entries"}</span></div>
-            <ul className="mt-2 space-y-1 text-[#66716b]">{roping.requiredFees.map((fee, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{fee.title}</span><span>{fee.units === 0 ? "Included above" : formatCurrency(fee.amountCents)}</span></li>)}</ul>
-            {roping.options.length ? <ul className="mt-2 space-y-1 text-[#66716b]">{roping.options.map((option, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{option.title}</span><span>{option.units === 0 ? "Included above" : formatCurrency(option.amountCents)}</span></li>)}</ul> : <p className="mt-1 text-[#66716b]">No optional pots selected</p>}
+            <ul className="mt-2 space-y-1 text-[#66716b]">{roping.requiredFees.map((fee, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{fee.title}</span><span>{fee.alreadyApplied ? "Already applied" : fee.units === 0 ? "Included above" : formatCurrency(fee.amountCents)}</span></li>)}</ul>
+            {roping.options.length ? <ul className="mt-2 space-y-1 text-[#66716b]">{roping.options.map((option, index) => <li key={index} className="flex flex-wrap justify-between gap-2"><span>{option.title}</span><span>{option.alreadyApplied ? "Already applied" : option.units === 0 ? "Included above" : formatCurrency(option.amountCents)}</span></li>)}</ul> : <p className="mt-1 text-[#66716b]">No optional pots selected</p>}
           </li>)}
         </ul>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex flex-wrap justify-between gap-2"><dt>Required fees</dt><dd>{formatCurrency(requiredTotal)}</dd></div>
           <div className="flex flex-wrap justify-between gap-2"><dt>Optional fees</dt><dd>{formatCurrency(optionalTotal)}</dd></div>
-          <div className="flex flex-wrap justify-between gap-2 border-t border-[#dfe4e1] pt-3 font-bold"><dt>Estimated total</dt><dd>{formatCurrency(requiredTotal + optionalTotal)}</dd></div>
+          {feeContext && <><div className="flex flex-wrap justify-between gap-2"><dt>Existing balance due</dt><dd>{formatCurrency(feeContext.balanceDueCents)}</dd></div>{feeContext.creditCents > 0 && <div className="flex flex-wrap justify-between gap-2"><dt>Available credit</dt><dd>{formatCurrency(feeContext.creditCents)}</dd></div>}</>}
+          <div className="flex flex-wrap justify-between gap-2 border-t border-[#dfe4e1] pt-3 font-bold"><dt>Estimated {feeContext ? "amount due" : "total"}</dt><dd>{formatCurrency(Math.max(0,requiredTotal + optionalTotal + (feeContext?.balanceDueCents ?? 0) - (feeContext?.creditCents ?? 0)))}</dd></div>
         </dl>
-        <p className="mt-2 text-xs leading-5 text-[#66716b]">This estimate includes the selected entries and charges, not your existing balance. The producer confirms the amount due and credits any once-per-roping or event charges already applied.</p>
+        <p className="mt-2 text-xs leading-5 text-[#66716b]">{feeContext ? "Existing once-per-roping and event charges are not charged again. This includes your current event balance and available credit. The producer confirms the final amount." : "This estimate includes the selected entries and charges, not your existing balance. Check eligibility to include current charges from your connected membership."}</p>
       </section>}
 
       <label className="block text-sm font-semibold">

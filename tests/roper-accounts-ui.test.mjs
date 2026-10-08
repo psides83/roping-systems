@@ -63,3 +63,14 @@ test("only owned pending requests inside the change window expose editing", () =
   assert.doesNotMatch(render({ canModify: false }), /Edit request/);
   assert.doesNotMatch(render({ revision: undefined }), /Edit request/);
 });
+
+test("reviewed requests show the producer response without private office notes", () => {
+  const html = renderToStaticMarkup(React.createElement(Submissions, { timezone: "UTC", submissions: [{
+    id: "request", status: "declined", submittedAt: "2026-10-07T12:00:00Z", reviewedAt: "2026-10-08T12:00:00Z", eventTitle: "Fall Roping", items: [],
+    producerResponse: "Please renew your membership. <script>unsafe</script>", reviewNote: "Private office note",
+  }] }));
+  assert.match(html, /Message from the producer/);
+  assert.match(html, /Please renew your membership/);
+  assert.match(html, /Reviewed/);
+  assert.doesNotMatch(html, /Private office note|<script>/);
+});
