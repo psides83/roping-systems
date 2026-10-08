@@ -1,12 +1,12 @@
-import Link from "next/link";
+import { PublicScheduleViews } from "@/components/events/public-schedule-views";
+import { PublicScheduledEvent } from "@/components/events/public-scheduled-event";
+import { calendarDate } from "@/lib/events/calendar-export";
 import { PublicProducerHeader } from "@/components/events/public-producer-header";
 import { notFound } from "next/navigation";
-import { ArrowRight, CalendarDays, ChevronDown, MapPin, Radio } from "lucide-react";
 import type { PublicEvent } from "@/lib/events/public-event-data";
 import { getPublicData } from "@/lib/events/public-event-data";
 import { getBrandStyle } from "@/lib/branding";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { PublicClassSchedule } from "@/components/events/public-class-schedule";
 import { PublicResultsRefresh } from "@/components/public-results-refresh";
 import { PublicScheduleJump } from "@/components/events/public-schedule-jump";
 import { eventDateRange } from "@/lib/events/event-date-range";
@@ -18,7 +18,6 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
   const { producer } = data;
   const events = data.events.filter((event) => ["scheduled", "entries_open", "entries_closed", "in_progress"].includes(event.status))
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-  const dateLabel = (value: string) => new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`));
   const now = new Date().getTime();
   const months = new Map<string, { label: string; events: PublicEvent[] }>();
   for (const event of events) {
@@ -32,12 +31,15 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
     months.set(key, month);
   }
 
+  const eventCard = (event: PublicEvent) => <PublicScheduledEvent event={event} producerSlug={producerSlug} timezone={producer.timezone} configured={isSupabaseConfigured()} now={now} />;
+
   return (
     <main style={getBrandStyle(producer.brandPrimary, producer.brandAccent)} className="min-h-screen bg-[#f5f6f7]">
       {isSupabaseConfigured() ? <PublicResultsRefresh live={events.some((event) => event.status === "in_progress")} /> : null}
       <PublicProducerHeader slug={producerSlug} name={producer.name} logoUrl={producer.logoUrl} active="schedule" membershipPublished={data.membershipFormPublished} />
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="text-2xl font-bold">Event schedule</h1>
+        <PublicScheduleViews today={calendarDate(new Date().toISOString(), producer.timezone)} events={events.map((event) => ({ id: event.id, title: event.title, start: calendarDate(event.startsAt, producer.timezone), end: calendarDate(event.endsAt ?? event.startsAt, producer.timezone), card: eventCard(event) }))}>
         {events.length > 1 ? <PublicScheduleJump months={Array.from(months, ([id, month]) => ({ id, label: month.label }))} events={events.map((event) => ({
           id: event.id,
           label: `${eventDateRange(event.startsAt, event.endsAt, producer.timezone)} · ${event.title}${event.status === "in_progress" ? " · Live" : ""}`,
@@ -46,46 +48,12 @@ export default async function PublicSchedulePage({ params }: PageProps<"/public/
           {Array.from(months).sort(([a], [b]) => a.localeCompare(b)).map(([key, month]) => (
             <section id={`month-${key}`} key={key} className="scroll-mt-6 space-y-5">
               <h2 className="text-xl font-bold">{month.label}</h2>
-          {month.events.map((event) => {
-            const open = event.status !== "entries_closed" && (!event.entriesOpenAt || Date.parse(event.entriesOpenAt) <= now) && (!event.entriesCloseAt || Date.parse(event.entriesCloseAt) > now);
-            const days = Array.from(new Set(event.scheduledRopings.map((roping) => roping.scheduledDate))).sort();
-            const entryStatus = open ? "Entries open" : event.entriesOpenAt && Date.parse(event.entriesOpenAt) > now ? "Entries opening soon" : "Entries closed";
-            return <section id={`event-${event.id}`} key={event.id} className="scroll-mt-6 border-t border-[#d7ddda] pt-6">
-              <header className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                    {event.status === "in_progress" ? <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-emerald-800"><Radio size={13} />In progress</span> : null}
-                    <span className={open ? "text-emerald-700" : "text-[#66716b]"}>{entryStatus}</span>
-                  </div>
-                  <h3 className="mt-2 break-words text-lg font-bold">{event.title}</h3>
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]">
-                    <span className="flex items-center gap-2"><CalendarDays size={16} />{eventDateRange(event.startsAt, event.endsAt, producer.timezone)}</span>
-                    <span className="flex items-start gap-2"><MapPin size={16} className="mt-0.5 shrink-0" />{[event.venue, event.address].filter(Boolean).join(", ")}</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {event.status === "in_progress" ? <Link href={`/public/${producerSlug}?event=${event.slug}`} className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Live results<ArrowRight size={15} /></Link> : null}
-                  {open && isSupabaseConfigured() ? <Link href={`/public/${producerSlug}/${event.slug}/enter`} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-bold text-white">Enter online<ArrowRight size={15} /></Link> : null}
-                </div>
-              </header>
-              <details className="group/schedule mt-4">
-                <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-semibold text-[var(--brand-accent-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
-                  Roping schedule
-                  <span className="text-xs font-normal text-[#66716b]">{event.scheduledRopings.length} {event.scheduledRopings.length === 1 ? "roping" : "ropings"}</span>
-                  <ChevronDown size={16} className="transition-transform group-open/schedule:rotate-180 motion-reduce:transition-none" />
-                </summary>
-              {days.map((day) => <div key={day} className="mt-6">
-                <h4 className="border-b border-[#d7ddda] pb-2 text-sm font-bold">{dateLabel(day)}</h4>
-                <PublicClassSchedule events={event.scheduledRopings.filter((roping) => roping.scheduledDate === day)} columns timeOnly timezone={producer.timezone} />
-              </div>)}
-              {!days.length ? <p className="mt-6 text-sm text-[#66716b]">Roping schedule to be announced.</p> : null}
-              </details>
-            </section>;
-          })}
+          {month.events.map(eventCard)}
             </section>
           ))}
           {!events.length ? <p className="border-t border-[#d7ddda] py-10 text-sm text-[#66716b]">No upcoming events are published.</p> : null}
         </div>
+        </PublicScheduleViews>
       </div>
     </main>
   );
