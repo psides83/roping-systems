@@ -211,6 +211,8 @@ async function getRopingData() {
 
 export default async function RopingsPage() {
   const configured = isSupabaseConfigured();
+  const producer = await getActiveProducer();
+  const canCreate = configured && Boolean(producer && producer.role !== "viewer");
   const { events, divisions, incentiveClassifications } =
     await getRopingData();
   return (
@@ -220,7 +222,7 @@ export default async function RopingsPage() {
         description="Schedule events, open entries, prepare draws, and manage results from one place."
         actions={
           <CreateRopingDialog
-            configured={configured}
+            configured={canCreate}
             divisions={divisions}
             incentiveClassifications={incentiveClassifications}
           />
@@ -270,7 +272,7 @@ export default async function RopingsPage() {
                 </div>
               </div>
               <div className="flex shrink-0 gap-2">
-                {roping.duplicationDraft ? (
+                {canCreate && roping.duplicationDraft ? (
                   <CreateRopingDialog
                     configured={configured}
                     divisions={divisions}

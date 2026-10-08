@@ -9,6 +9,7 @@ declare platform_user uuid; manager_user uuid:=gen_random_uuid(); treasurer_user
   foreign_producer uuid;
   finalist uuid;
   transfer_destination uuid:=gen_random_uuid();
+  browser_session uuid:=gen_random_uuid();
 begin
   select id into strict platform_user from auth.users where lower(email)='psides83@hotmail.com';
   select chosen.id,chosen.producer_id,chosen.event_id,chosen.scheduled_date,chosen.arena_name into strict target
@@ -22,6 +23,8 @@ begin
   insert into public.event_ropings select (jsonb_populate_record(null::public.event_ropings,to_jsonb(original)||jsonb_build_object('id',transfer_destination,'name','Rollback transfer destination'))).* from public.event_ropings original where original.id=target.id;
   insert into public.event_fees select (jsonb_populate_record(null::public.event_fees,to_jsonb(original)||jsonb_build_object('id',gen_random_uuid(),'event_roping_id',transfer_destination))).* from public.event_fees original where original.event_roping_id=target.id;
   perform public.apply_short_round_settings(target.producer_id,target.id,true,'[{"minimumEntries":1,"maximumEntries":null,"comebackCount":1}]');
+  update public.event_ropings set arena_name='Arena 1',event_day_status='scheduled' where event_id=target.event_id;
+  delete from public.roping_timing_sessions where event_roping_id in (select id from public.event_ropings where event_id=target.event_id);
   insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values
     (manager_user,'manager-'||manager_user::text||'@example.com',now(),'{}'),
     (treasurer_user,'treasurer-'||treasurer_user::text||'@example.com',now(),'{}');
@@ -71,11 +74,12 @@ begin
   perform public.set_roping_in_progress(target.event_id);
   for r in select er.* from public.event_ropings er where er.event_id=target.event_id
     and exists(select 1 from public.roping_entries e where e.event_roping_id=er.id and e.competition_status='active') loop
+    perform public.manage_roping_timing(r.id,browser_session,'claim');
     for round_index in 1..r.main_round_count loop
       perform public.generate_division_draw(r.id,round_index);
       for run in select cr.id from public.competition_runs cr where cr.event_roping_id=r.id and cr.round_number=round_index loop
         select array_agg((12.34+round_index)::numeric) into readings from generate_series(1,r.timer_count);
-        perform public.save_run_with_penalties(run.id,readings,'{}','complete');
+        perform public.save_run_with_penalties(run.id,readings,'{}','complete',null,browser_session);
       end loop;
       perform public.complete_roping_round(r.id,round_index);
     end loop;
@@ -98,7 +102,7 @@ begin
       end if;
       for run in select cr.id from public.competition_runs cr where cr.event_roping_id=r.id and cr.round_number>r.main_round_count loop
         select array_agg(12.34::numeric) into readings from generate_series(1,r.timer_count);
-        perform public.save_run_with_penalties(run.id,readings,'{}','complete');
+        perform public.save_run_with_penalties(run.id,readings,'{}','complete',null,browser_session);
       end loop;
     end if;
     perform public.update_class_event_day_status(r.id,r.arena_name,'completed',null,'Permission test completed');
@@ -142,8 +146,10 @@ begin
   perform public.update_payout_receipt(receipt_id,'reverse','Permission test reversal');
   update public.classifications set id=id where producer_id=target.producer_id;
   if found then raise exception 'Treasurer edited classifications'; end if;
-  update public.competition_runs set id=id where producer_id=target.producer_id;
-  if found then raise exception 'Treasurer edited competition'; end if;
+  begin
+    update public.competition_runs set id=id where producer_id=target.producer_id;
+    if found then raise exception 'Treasurer edited competition'; end if;
+  exception when insufficient_privilege then null; end;
   perform set_config('request.jwt.claim.sub',platform_user::text,true);
   perform public.assign_staff_event(target.producer_id,target.event_id,manager_user,false);
   perform set_config('request.jwt.claim.sub',manager_user::text,true);

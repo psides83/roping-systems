@@ -91,8 +91,10 @@ begin
   if found then raise exception 'Office edited classifications'; end if;
   update public.producer_funds set id=id where producer_id=target.producer_id;
   if found then raise exception 'Office edited funds'; end if;
-  update public.competition_runs set id=id where producer_id=target.producer_id;
-  if found then raise exception 'Office edited runs'; end if;
+  begin
+    update public.competition_runs set id=id where producer_id=target.producer_id;
+    if found then raise exception 'Office edited runs'; end if;
+  exception when insufficient_privilege then null; end;
   perform set_config('request.jwt.claim.sub',platform_user::text,true);
   perform public.assign_staff_event(target.producer_id,target.event_id,office_user,false);
   perform set_config('request.jwt.claim.sub',office_user::text,true);
