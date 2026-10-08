@@ -5,10 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
-  ClipboardSignature,
   CircleDollarSign,
   Gauge,
-  History,
   Menu,
   PiggyBank,
   Settings,
@@ -26,11 +24,6 @@ import { NavigationPending } from "@/components/ui/navigation-pending";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Gauge },
   { name: "Members", href: "/members", icon: Users },
-  {
-    name: "Membership form",
-    href: "/settings/membership-form",
-    icon: ClipboardSignature,
-  },
   { name: "Ropings", href: "/events", icon: CalendarDays },
   { name: "Live event", href: "/events/current", icon: CircleDollarSign },
   { name: "Added-money funds", href: "/funds", icon: PiggyBank },
@@ -39,7 +32,6 @@ const navigation = [
     href: "/settings/classifications",
     icon: SlidersHorizontal,
   },
-  { name: "Changelog", href: "/settings/changelog", icon: History },
 ];
 
 export function AppShell({
