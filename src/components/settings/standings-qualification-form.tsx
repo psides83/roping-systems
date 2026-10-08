@@ -1,6 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { saveQualificationRule } from "@/app/(app)/settings/standings/actions";
+import { CutoffDateLabel } from "@/components/settings/cutoff-date-label";
 
 export function StandingsQualificationForm({ season, classId, rule, canEdit }: {
   season: { id: string; startsOn: string; endsOn: string }; classId: string; canEdit: boolean;
@@ -15,7 +16,7 @@ export function StandingsQualificationForm({ season, classId, rule, canEdit }: {
       <div className="flex flex-wrap gap-4">
         <label className="text-xs font-semibold">Top places<input name="topPlaces" type="number" min={1} max={10000} defaultValue={rule?.top_places ?? ""} placeholder="No placing limit" className={input} /></label>
         <label className="text-xs font-semibold">Minimum ropings<input name="minimumRopings" type="number" min={0} max={10000} defaultValue={rule?.minimum_ropings ?? 0} required className={input} /></label>
-        <label className="text-xs font-semibold">Cutoff date<input name="cutoff" type="date" min={season.startsOn} max={season.endsOn} defaultValue={rule?.cutoff_on ?? ""} className={input} /></label>
+        <label className="text-xs font-semibold"><CutoffDateLabel /><input name="cutoff" type="date" min={season.startsOn} max={season.endsOn} defaultValue={rule?.cutoff_on ?? ""} className={input} /></label>
       </div>
       <label className="grid gap-2 text-xs font-semibold">Bonus entry requirements<select name="earnedPositionPolicy" defaultValue={rule?.earned_position_policy ?? "none"} className="h-10 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm"><option value="none">Rank and minimum attendance required</option><option value="rank">Minimum attendance required; rank limit waived</option><option value="rank_and_attendance">No rank or minimum attendance requirement</option></select></label>
       <button className="h-10 rounded-md brand-accent-fill px-4 text-sm font-semibold text-white">{pending ? "Saving..." : "Save requirements"}</button>
