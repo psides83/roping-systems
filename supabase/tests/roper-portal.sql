@@ -2,7 +2,7 @@ begin;
 do $$
 declare
   account uuid; roper uuid; payload jsonb; member jsonb; entry jsonb;
-  accounts jsonb; event jsonb; item jsonb; membership_id uuid; rejected boolean; bonus jsonb;
+  accounts jsonb; event jsonb; item jsonb; membership_id uuid; rejected boolean; bonus jsonb; standings jsonb;
 begin
   select id into strict account from auth.users where lower(email)='psides83@hotmail.com';
   select r.id into strict roper from public.ropers r where exists(select 1 from public.memberships m join public.roping_entries e on e.roper_id=m.roper_id and e.producer_id=m.producer_id where m.roper_id=r.id) limit 1;
@@ -19,6 +19,8 @@ begin
     end loop;
     accounts:=public.my_roper_accounts(membership_id);
     bonus:=public.my_roper_bonus_positions(membership_id);
+    standings:=public.my_roper_standings_context(membership_id);
+    if standings->>'roperId' <> roper::text then raise exception 'Standings ownership mismatch'; end if;
     if bonus->>'memberId' <> membership_id::text then raise exception 'Bonus ownership mismatch'; end if;
     if jsonb_array_length(coalesce(bonus->'source'->'profiles','[]'::jsonb))<>0 then raise exception 'Bonus competitor profiles leaked'; end if;
     for item in select value from jsonb_array_elements(bonus->'assignments') loop
@@ -58,6 +60,12 @@ begin
     if sqlerrm not like '%not linked%' then raise; end if; rejected:=true;
   end;
   if not rejected then raise exception 'Unlinked user accessed bonus positions'; end if;
+  rejected:=false;
+  begin perform public.my_roper_standings_context(membership_id); exception when raise_exception then
+    if sqlerrm not like '%not linked%' then raise; end if; rejected:=true;
+  end;
+  if not rejected then raise exception 'Unlinked user accessed standings context'; end if;
+  if has_function_privilege('anon','public.my_roper_standings_context(uuid,uuid)','EXECUTE') then raise exception 'Anonymous standings context access granted'; end if;
   if has_function_privilege('anon','public.my_roper_portal()','EXECUTE') then raise exception 'Anonymous portal access granted'; end if;
   if has_function_privilege('anon','public.my_roper_accounts(uuid)','EXECUTE') then raise exception 'Anonymous balance access granted'; end if;
   if has_function_privilege('anon','public.my_roper_bonus_positions(uuid,uuid)','EXECUTE')
