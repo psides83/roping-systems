@@ -725,6 +725,7 @@ export async function lockShortRoundField(
 }
 
 const runSchema = z.object({
+  timingSessionId: z.uuid(),
   runId: z.uuid(),
   penalty: z.coerce.number().min(0).max(999),
   status: z.enum([
@@ -742,6 +743,7 @@ const correctionSchema = runSchema.extend({
 });
 
 const rerunScheduleSchema = z.object({
+  timingSessionId: z.uuid(),
   runId: z.uuid(),
   timing: z.enum(["immediate", "end_of_round"]),
   reason: z.string().trim().min(5).max(300),
@@ -760,14 +762,14 @@ function getTimerReadings(formData: FormData, status: string) {
 
 async function requireTiming(eventId: string, runId: string) {
   const producer = await getActiveProducer();
-  if (!producer) throw new Error("Staff access is required.");
+  if (!producer) return null;
   const db = await createClient();
   const event = await db.from("events").select("id").eq("id", eventId).eq("producer_id", producer.id).maybeSingle();
-  const permission = await db.rpc("can_time_event", { target_event: eventId });
-  if (event.error || !event.data || permission.error || !permission.data) throw new Error("You are not assigned to time this event.");
+  const permission = await db.rpc("can_time_run", { target_run: runId });
+  if (event.error || !event.data || permission.error || !permission.data) return null;
   const run = await db.from("competition_runs").select("id,event_ropings!inner(event_id)")
     .eq("id", runId).eq("producer_id", producer.id).eq("event_ropings.event_id", eventId).maybeSingle();
-  if (run.error || !run.data) throw new Error("Choose a run from this event.");
+  if (run.error || !run.data) return null;
   return db;
 }
 
@@ -786,8 +788,10 @@ export async function recordRun(
   if (!valid) return { message: "Enter a valid reading from every timer." };
 
   const supabase = await requireTiming(eventId, parsed.data.runId);
+  if (!supabase) return { message: "Timing access changed. Confirm your event and arena assignment before saving." };
   const { error } = await supabase.rpc("save_run_with_penalties", {
     target_run_id: parsed.data.runId,
+    timing_session_id: parsed.data.timingSessionId,
     entered_timer_readings:
       parsed.data.status === "complete" ? timerReadings : [],
     selected_penalty_ids: formData.getAll("penaltyId").map(String),
@@ -817,6 +821,7 @@ export async function correctRun(
   if (!valid) return { message: "Enter a valid reading from every timer." };
 
   const supabase = await requireTiming(eventId, parsed.data.runId);
+  if (!supabase) return { message: "Timing access changed. Confirm your event and arena assignment before saving." };
   const { error } = await supabase.rpc("save_run_with_penalties", {
     target_run_id: parsed.data.runId,
     entered_timer_readings:
@@ -824,6 +829,7 @@ export async function correctRun(
     selected_penalty_ids: formData.getAll("penaltyId").map(String),
     entered_status: parsed.data.status,
     entered_reason: parsed.data.reason,
+    timing_session_id: parsed.data.timingSessionId,
   });
   if (error) return { message: error.message };
   revalidatePath(`/events/${eventId}/live`);
@@ -842,10 +848,12 @@ export async function scheduleRerun(
     return { message: "Choose when to run again and enter a brief reason." };
 
   const supabase = await requireTiming(eventId, parsed.data.runId);
+  if (!supabase) return { message: "Timing access changed. Confirm your event and arena assignment before saving." };
   const { error } = await supabase.rpc("schedule_run_rerun", {
     target_run_id: parsed.data.runId,
     target_timing: parsed.data.timing,
     entered_reason: parsed.data.reason,
+    timing_session_id: parsed.data.timingSessionId,
   });
   if (error) return { message: error.message };
   revalidatePath(`/events/${eventId}/live`);

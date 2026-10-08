@@ -38,3 +38,15 @@ Timing has its own component and repeats the roping/round context beside the act
 Unsaved time and order edits prompt before app/sidebar link navigation or desk-selector changes. Refreshing or closing the tab uses the browser's unsaved-work warning. This is not an offline persistence or browser-history interception system; staff should save work before using the browser Back/Forward controls.
 
 The last recorded result is derived from the saved run timestamp, not the draw position. It identifies the contestant and entry and offers the existing reason-required correction workflow to authorized staff. Payment status adjustments are collapsed separately from cash collection and require confirmation.
+
+## Arena assignments and timing control
+
+Owners and administrators assign timing staff to an event under Settings > Staff > Event assignments, then select an arena or All arenas. Each timing staff member sees their assigned arena's ropings and the shared First Available waiting list. Managers retain all-arena access. Entry-office access is not restricted by timing arenas.
+
+First Available ropings must receive an actual arena before timing. The initial desk prefers an active roping in the assigned arena; a requested roping outside the assignment cannot override that scope.
+
+Take timing control explicitly before saving times, correcting results, or scheduling reruns. Control belongs to one browser session for one roping, across all its rounds. Another tab, even for the same account, cannot acquire it while that session is active. Different ropings can be timed simultaneously. Other staff can inspect the desk without acquiring control.
+
+The holder renews a 90-second lease every 20 seconds. A failed check or local expiry disables saving without clearing entered readings; Supabase rechecks ownership and arena access during every write. Release control explicitly when handing off. Leaving the desk attempts a release; if a browser closes or loses its connection, the lease expires automatically. Managers can take over with confirmation and a stated reason. The changelog records claims, releases, and takeovers, but not every heartbeat or private browser-session token.
+
+The canonical scoring and rerun workflows require the session token. Direct run/timer writes and the legacy scoring entry point are not available to signed-in clients. SQL tests in `supabase/tests/arena-timing-control.sql` exercise concurrent session claims, separate arenas, manager takeover, expiry, assignment changes, corrections, reruns, and First Available restrictions, entirely within a rollback transaction.

@@ -5,6 +5,7 @@ import { StaffAccessForm } from "@/components/settings/staff-access-form";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { isPlatformOwner } from "@/lib/platform-access";
 import { StaffEventForm } from "@/components/settings/staff-event-form";
+import { StaffArenaForm } from "@/components/settings/staff-arena-form";
 import { ProducerSettingsTabs } from "@/components/settings/producer-settings-tabs";
 import { StaffIdentity } from "@/components/settings/staff-identity";
 import { PageHeader } from "@/components/ui/page-header";
@@ -14,9 +15,9 @@ export default async function StaffPage() {
   const canManage = ["owner", "admin"].includes(producer.role);
   const platformOwner = await isPlatformOwner();
   const db = await createClient();
-  const events = canManage ? await readAllRows((first,last) => db.from("events").select("id,title")
+  const events = canManage ? await readAllRows((first,last) => db.from("events").select("id,title,arena_count")
     .eq("producer_id",producer.id).order("id").range(first,last), "Unable to load events") : [];
-  const assignments = canManage ? await readAllRows((first,last) => db.from("staff_event_assignments").select("event_id,user_id")
+  const assignments = canManage ? await readAllRows((first,last) => db.from("staff_event_assignments").select("event_id,user_id,arena_number")
     .eq("producer_id",producer.id).order("event_id").order("user_id").range(first,last), "Unable to load event assignments") : [];
   const staff = await readAllRows((first,last) => db.from("producer_staff_directory").select("user_id,email,role,display_name")
     .eq("producer_id",producer.id).order("display_name", { nullsFirst: false }).order("user_id").range(first,last), "Unable to load staff");
@@ -27,11 +28,12 @@ export default async function StaffPage() {
     <PageHeader title="Producer settings" description="Staff access" />
     <ProducerSettingsTabs active="staff" />
     {canManage ? <details className="border-y border-[#dfe4e1] py-4"><summary className="cursor-pointer text-lg font-bold">Event assignments</summary>
-      <p className="mt-2 text-sm text-[#66716b]">Operator access: producer-wide</p>
+      <p className="mt-2 text-sm text-[#66716b]">Timing staff use their assigned arena. Event managers retain access to all arenas; entry-office assignments cover the whole event.</p>
       <div className="mt-4 divide-y divide-[#dfe4e1]">{staff.map((person) => <div key={person.user_id} className="space-y-3 py-4">
         <StaffIdentity name={person.display_name} email={person.email} />
         {assignments.filter((item) => item.user_id === person.user_id).map((item) => <div key={item.event_id} className="flex flex-wrap items-center gap-3 text-sm">
           <span>{events.find((event) => event.id === item.event_id)?.title ?? "Event"}</span><StaffEventForm userId={person.user_id} eventId={item.event_id} />
+          {person.role === "timing_staff" ? <StaffArenaForm userId={person.user_id} eventId={item.event_id} arenaNumber={item.arena_number} arenaCount={events.find((event) => event.id === item.event_id)?.arena_count ?? 1} /> : null}
         </div>)}
         <StaffEventForm userId={person.user_id} events={events.filter((event) => !assignments.some((item) => item.user_id === person.user_id && item.event_id === event.id)).map((event) => ({ id: event.id, name: event.title }))} />
       </div>)}</div></details> : null}

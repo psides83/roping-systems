@@ -1,4 +1,5 @@
 "use client";
+import { useTimingControl } from "./timing-control";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, LoaderCircle, Save, SkipForward } from "lucide-react";
@@ -17,7 +18,7 @@ export function RunEntryForm({
   timerCount,
   timerResolution,
   isShortRound,
-  canEdit,
+  canEdit: permitted,
   roundLabel,
   ropingName,
 }: {
@@ -32,6 +33,8 @@ export function RunEntryForm({
 }) {
   const action = recordRun.bind(null, eventId);
   const entryLabelStyle = useEntryLabelStyle();
+  const timing = useTimingControl();
+  const canEdit = permitted && timing.canWrite;
   const [state, formAction, pending] = useActionState<LiveRunState, FormData>(
     action,
     {},
@@ -73,7 +76,7 @@ export function RunEntryForm({
       data-desk-unsaved={unsaved || pending ? "time" : undefined}
       data-desk-saving={pending}
       onSubmit={(event) => {
-        if (submitting.current || pending) { event.preventDefault(); return; }
+        if (!canEdit || submitting.current || pending) { event.preventDefault(); return; }
         const submitter = (event.nativeEvent as SubmitEvent).submitter;
         const outcome = submitter instanceof HTMLButtonElement ? submitter.value : "complete";
         if (outcome === "complete" && resolved === 0 && !window.confirm(`The timer readings resolve to 0.00 seconds. Record a qualified time for ${run.name}?`)) { event.preventDefault(); return; }
@@ -85,6 +88,7 @@ export function RunEntryForm({
       }}
       className="rounded-md border border-[#e0c2b9] bg-white p-5"
     >
+      <input type="hidden" name="timingSessionId" value={timing.sessionId} />
       <input type="hidden" name="runId" value={run.id} />
       <input type="hidden" name="penalty" value={penalty} />
       <p className="mb-3 text-sm font-semibold text-[#526059]">{ropingName} · {roundLabel}</p>

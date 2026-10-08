@@ -1,4 +1,5 @@
 "use client";
+import { useTimingControl } from "./timing-control";
 import { EntryLabel } from "./entry-label";
 
 import { LoaderCircle, Pencil, X } from "lucide-react";
@@ -34,13 +35,15 @@ export function RunCorrectionDialog({
   eventId,
   run,
   timerCount,
-  canEdit,
+  canEdit: permitted,
 }: {
   eventId: string;
   run: CorrectableRun;
   timerCount: number;
   canEdit: boolean;
 }) {
+  const timing = useTimingControl();
+  const canEdit = permitted && timing.canWrite;
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<RunStatus>(
     run.status === "scratch" ? "turned_out" : run.status,
@@ -48,11 +51,12 @@ export function RunCorrectionDialog({
   const [selectedPenalties, setSelectedPenalties] = useState(run.selectedPenaltyIds ?? []);
   const penalty = penaltyTotal(run.penaltyOptions ?? [], selectedPenalties);
   const action = correctRun.bind(null, eventId);
-  const [state, formAction, pending] = useActionState<LiveRunState, FormData>(
+  const [state, formAction, actionPending] = useActionState<LiveRunState, FormData>(
     action,
     {},
   );
 
+  const pending = actionPending;
   useEffect(() => {
     if (!state.success) return;
     const timeoutId = window.setTimeout(() => setOpen(false), 0);
@@ -100,7 +104,9 @@ export function RunCorrectionDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={formAction} className="space-y-4 p-5">
+            <form action={formAction} onSubmit={(event) => { if (!canEdit) event.preventDefault(); }} className="space-y-4 p-5">
+              {!canEdit ? <p role="alert" className="text-sm font-semibold text-rose-700">Timing control was lost. Your correction has not been saved.</p> : null}
+              <input type="hidden" name="timingSessionId" value={timing.sessionId} />
               <input type="hidden" name="runId" value={run.id} />
               <input type="hidden" name="penalty" value={penalty} />
               <label className="block text-sm font-semibold">
@@ -184,7 +190,7 @@ export function RunCorrectionDialog({
                   Cancel
                 </button>
                 <button
-                  disabled={pending}
+                  disabled={pending || !canEdit}
                   className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {pending ? (

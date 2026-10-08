@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ClassificationWatchEvidence } from "@/components/members/classification-watch-evidence";
 import { EventWorkflowNav } from "@/components/events/event-workflow-nav";
 import { EventLifecycleControl } from "@/components/events/event-lifecycle-control";
+import { TimingControl } from "@/components/events/timing-control";
 import { notFound } from "next/navigation";
 import {
   DatabaseLiveDesk,
@@ -115,9 +116,16 @@ export default async function LiveRopingPage({
   if (!roping) notFound();
   const timingPermission = await supabase.rpc("can_time_event", { target_event: eventId });
   if (timingPermission.error) throw new Error("Unable to check timing access.");
-  const canTime = Boolean(timingPermission.data);
+  let canTime = Boolean(timingPermission.data);
   const managePermission = await supabase.rpc("can_manage_event", { target_event: eventId });
   if (managePermission.error) throw new Error("Unable to check event management access.");
+
+  const { data: auth } = await supabase.auth.getUser();
+  const assignment = await supabase.from("staff_event_assignments").select("arena_number")
+    .eq("event_id", eventId).eq("user_id", auth.user?.id ?? "00000000-0000-0000-0000-000000000000").maybeSingle();
+  if (assignment.error) throw new Error("Unable to load your arena assignment.");
+  const assignedArena = !managePermission.data && assignment.data?.arena_number
+    ? `Arena ${assignment.data.arena_number}` : null;
 
   const divisions = (
     roping.event_ropings as unknown as Array<{
@@ -141,6 +149,7 @@ export default async function LiveRopingPage({
       event_day_note: string | null;
     }>
   )
+    .filter((division) => !assignedArena || division.arena_name === assignedArena || !division.arena_name || division.arena_name === "First Available")
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((division) => ({
       id: division.id,
@@ -174,6 +183,11 @@ export default async function LiveRopingPage({
   const selectedDivision = divisions.find(
     (division) => division.id === selectedDivisionId,
   );
+  if (selectedDivisionId) {
+    const permission = await supabase.rpc("can_time_roping", { target_roping: selectedDivisionId });
+    if (permission.error) throw new Error("Unable to check this roping's timing access.");
+    canTime = Boolean(permission.data);
+  }
   const selectedRound = getSelectedRound(
     query.round,
     getTotalRounds(selectedDivision),
@@ -434,6 +448,8 @@ function LiveWorkspace({
           {selectedDivision.competitionFormat === "four_d" ? (
             <FourDStandings rows={fourDResults} resultStatus={resultStatus} />
           ) : null}
+          <TimingControl key={selectedDivisionId} ropingId={selectedDivisionId} enabled={canTime && status === "in_progress" && selectedDivision.eventDayStatus !== "completed"} canTakeover={canEdit}>
+          {!/^Arena [1-9][0-9]*$/.test(selectedDivision.arenaName ?? "") ? <p role="status" className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold">First Available · An event manager must assign an arena before timing can begin.</p> : null}
           <DatabaseLiveDesk
             key={JSON.stringify([selectedDivisionId, selectedRound, selectedDivision, roundLocked, status, runs])}
             eventId={eventId}
@@ -454,6 +470,7 @@ function LiveWorkspace({
             canEdit={canEdit}
             canTime={canTime}
           />
+          </TimingControl>
         </>
       ) : (
         <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-12 text-center">
@@ -471,7 +488,8 @@ function getSelectedDivisionId(
   const requestedId = typeof requested === "string" ? requested : undefined;
   return divisions.some((division) => division.id === requestedId)
     ? requestedId
-    : (divisions.find((division) => division.eventDayStatus === "in_progress") ?? divisions[0])?.id;
+    : (divisions.find((division) => division.eventDayStatus === "in_progress" && /^Arena [1-9][0-9]*$/.test(division.arenaName ?? ""))
+      ?? divisions.find((division) => /^Arena [1-9][0-9]*$/.test(division.arenaName ?? "")) ?? divisions[0])?.id;
 }
 
 function getSelectedRound(

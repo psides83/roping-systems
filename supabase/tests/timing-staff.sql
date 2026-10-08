@@ -1,7 +1,7 @@
 begin;
 do $$
 declare platform_user uuid; timing_user uuid := gen_random_uuid(); target record;
-  other_run uuid; readings numeric[]; invitation uuid;
+  other_run uuid; readings numeric[]; invitation uuid; browser_session uuid:=gen_random_uuid();
 begin
   select id into strict platform_user from auth.users where lower(email)='psides83@hotmail.com';
   select run.id,run.producer_id,r.event_id,r.timer_count into strict target
@@ -19,6 +19,8 @@ begin
   if public.can_time_run(target.id) then raise exception 'Unassigned timing staff can time run'; end if;
   perform set_config('request.jwt.claim.sub',platform_user::text,true);
   perform public.assign_staff_event(target.producer_id,target.event_id,timing_user,true);
+  update public.event_ropings set arena_name='Arena 1' where id=(select event_roping_id from public.competition_runs where id=target.id);
+  delete from public.roping_timing_sessions where event_roping_id=(select event_roping_id from public.competition_runs where id=target.id);
   -- Prepare an existing run for rollback-only recording and correction checks.
   update public.competition_runs set status='pending' where id=target.id;
   delete from public.event_roping_rounds where event_roping_id=(select event_roping_id from public.competition_runs where id=target.id);
@@ -32,10 +34,13 @@ begin
   if has_function_privilege('authenticated','public.record_run_result_multi(uuid,numeric[],numeric,public.run_status)','execute') then
     raise exception 'Scoring internals still exposed';
   end if;
-  perform public.save_run_with_penalties(target.id,readings,'{}','complete');
-  perform public.save_run_with_penalties(target.id,readings,'{}','complete','Timing test correction');
-  update public.competition_runs set raw_time_seconds=999 where id=target.id;
-  if found then raise exception 'Timing staff can bypass scoring workflow'; end if;
+  perform public.manage_roping_timing((select event_roping_id from public.competition_runs where id=target.id),browser_session,'claim');
+  perform public.save_run_with_penalties(target.id,readings,'{}','complete',null,browser_session);
+  perform public.save_run_with_penalties(target.id,readings,'{}','complete','Timing test correction',browser_session);
+  begin
+    update public.competition_runs set raw_time_seconds=999 where id=target.id;
+    raise exception 'Timing staff can bypass scoring workflow';
+  exception when insufficient_privilege then null; end;
   update public.roping_templates set id=id where producer_id=target.producer_id;
   if found then raise exception 'Timing staff can edit templates'; end if;
   update public.roping_entries set id=id where producer_id=target.producer_id;
@@ -44,13 +49,13 @@ begin
   if found then raise exception 'Timing staff can edit funds'; end if;
   update public.roping_funding set id=id where producer_id=target.producer_id;
   if found then raise exception 'Timing staff can change added money'; end if;
-  perform public.save_run_with_penalties(target.id,'{}','{}','rerun','Timing test rerun');
-  perform public.schedule_run_rerun(target.id,'immediate','Timing test reschedule');
+  perform public.save_run_with_penalties(target.id,'{}','{}','rerun','Timing test rerun',browser_session);
+  perform public.schedule_run_rerun(target.id,'immediate','Timing test reschedule',browser_session);
   begin
     perform public.save_run_with_penalties(other_run,readings,'{}','complete');
     raise exception 'Unassigned event run changed';
   exception when others then
-    if sqlerrm <> 'You do not have permission to access run penalties' then raise; end if;
+    if sqlerrm not like 'Take timing control%' then raise; end if;
   end;
   perform set_config('request.jwt.claim.sub',platform_user::text,true);
   perform public.assign_staff_event(target.producer_id,target.event_id,timing_user,false);

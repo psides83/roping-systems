@@ -5,6 +5,19 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { sendStaffInvitation } from "@/lib/send-staff-invitation";
 export interface StaffActionState { error?: string; success?: boolean; warning?: string }
+export async function assignStaffArena(_: StaffActionState, form: FormData): Promise<StaffActionState> {
+  const producer = await getActiveProducer();
+  if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Arena assignments require an owner or administrator." };
+  const parsed = z.object({ userId: z.uuid(), eventId: z.uuid(), arena: z.union([z.literal("all"), z.coerce.number().int().positive()]) }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "Choose a valid staff member, event, and arena." };
+  const db = await createClient();
+  const { error } = await db.rpc("assign_staff_arena", { target_producer: producer.id, target_event: parsed.data.eventId,
+    target_user: parsed.data.userId, target_arena: parsed.data.arena === "all" ? null : parsed.data.arena });
+  if (error) return { error: error.message };
+  revalidatePath("/settings/staff");
+  revalidatePath(`/events/${parsed.data.eventId}/live`);
+  return { success: true };
+}
 export async function assignStaffEvent(_: StaffActionState, form: FormData): Promise<StaffActionState> {
   const producer = await getActiveProducer();
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Event assignments require an owner or administrator." };

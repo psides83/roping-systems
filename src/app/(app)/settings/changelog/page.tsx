@@ -9,6 +9,8 @@ const entityLabels: Record<string, string> = {
   producer_seasons: "Season",
   producer_penalty_rules: "Penalty rule",
   producer_staff: "Team access",
+  staff_event_assignments: "Staff event and arena assignment",
+  roping_timing_sessions: "Timing control",
   memberships: "Membership",
   member_fines: "Member fine",
   membership_suspensions: "Membership suspension",

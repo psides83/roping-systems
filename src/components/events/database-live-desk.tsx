@@ -2,6 +2,7 @@
 import { EntryLabel, useEntryLabelStyle } from "./entry-label";
 import { formatEntryLabel } from "@/lib/entry-labels";
 import { deskWorkflowState } from "@/lib/events/desk-workflow";
+import { useTimingControl } from "./timing-control";
 import { LiveDeskSelector } from "./live-desk-selector";
 import { RunEntryForm } from "./live-run-entry-form";
 import { LastRecordedRun } from "./last-recorded-run";
@@ -124,8 +125,10 @@ export function DatabaseLiveDesk({
   shortRoundSeeded,
   mainRoundsComplete,
   canEdit,
-  canTime = canEdit,
+  canTime: timingAllowed = canEdit,
 }: LiveDeskProps) {
+  const timing = useTimingControl();
+  const canTime = timingAllowed && timing.canWrite;
   const [orderedRuns, setOrderedRuns] = useState(runs);
   const [search, setSearch] = useState("");
   const [deskChanging, setDeskChanging] = useState(false);

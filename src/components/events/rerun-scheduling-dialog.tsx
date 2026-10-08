@@ -1,4 +1,5 @@
 "use client";
+import { useTimingControl } from "./timing-control";
 import { EntryLabel } from "./entry-label";
 
 import { LoaderCircle, RotateCcw, X } from "lucide-react";
@@ -37,20 +38,23 @@ const timingOptions: Array<{
 export function RerunSchedulingDialog({
   eventId,
   run,
-  canEdit,
+  canEdit: permitted,
 }: {
   eventId: string;
   run: RerunRun;
   canEdit: boolean;
 }) {
+  const control = useTimingControl();
+  const canEdit = permitted && control.canWrite;
   const [open, setOpen] = useState(false);
   const [timing, setTiming] = useState<RerunTiming>("immediate");
   const action = scheduleRerun.bind(null, eventId);
-  const [state, formAction, pending] = useActionState<LiveRunState, FormData>(
+  const [state, formAction, actionPending] = useActionState<LiveRunState, FormData>(
     action,
     {},
   );
 
+  const pending = actionPending;
   useEffect(() => {
     if (!state.success) return;
     const timeoutId = window.setTimeout(() => setOpen(false), 0);
@@ -96,7 +100,9 @@ export function RerunSchedulingDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={formAction} className="space-y-5 p-5">
+            <form action={formAction} onSubmit={(event) => { if (!canEdit) event.preventDefault(); }} className="space-y-5 p-5">
+              {!canEdit ? <p role="alert" className="text-sm font-semibold text-rose-700">Timing control was lost. This rerun has not been scheduled.</p> : null}
+              <input type="hidden" name="timingSessionId" value={control.sessionId} />
               <input type="hidden" name="runId" value={run.id} />
               <fieldset>
                 <legend className="text-sm font-semibold">When to rerun</legend>
@@ -165,7 +171,7 @@ export function RerunSchedulingDialog({
                   Cancel
                 </button>
                 <button
-                  disabled={pending}
+                  disabled={pending || !canEdit}
                   className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {pending ? (

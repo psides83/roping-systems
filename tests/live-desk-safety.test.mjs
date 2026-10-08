@@ -40,13 +40,14 @@ test("Desk switching checks unsaved work and refuses to interrupt saving", () =>
   }
 });
 
-function renderTiming({ pending = false, fineBlocked = false, state = {}, asTree = false, times = [] } = {}) {
+function renderTiming({ pending = false, fineBlocked = false, state = {}, asTree = false, times = [], ownsControl = true } = {}) {
   const { RunEntryForm } = compile("../src/components/events/live-run-entry-form.tsx", (name) => {
     if (name === "react") return { ...React, useActionState: () => [state, () => {}, pending], useState: (value) => { const initial = typeof value === "function" ? value() : value; return [Array.isArray(initial) && initial.length === 2 && times.length ? times : initial, () => {}]; }, useMemo: (fn) => fn(), useRef: () => ({ current: false }), useEffect() {} };
     if (name.endsWith("/actions")) return { recordRun() {} };
     if (name === "./entry-label") return { EntryLabel: ({ number }) => React.createElement("span", null, number), useEntryLabelStyle: () => "number" };
     if (name === "./penalty-choices") return { PenaltyChoices: () => null };
     if (name === "./use-desk-leave-guard") return { useDeskLeaveGuard() {} };
+    if (name === "./timing-control") return { useTimingControl: () => ({ sessionId: "browser-session", canWrite: ownsControl }) };
     if (name.startsWith("@/lib/")) return compile(`../src/lib/${name.slice(6)}.ts`, require);
     return require(name);
   });
@@ -75,6 +76,16 @@ test("An unpaid fine blocks timer entry without hiding other outcomes", () => {
   assert.match(html, /Turn out/);
 });
 test("Save failures are announced as alerts", () => assert.match(renderTiming({ state: { message: "Connection failed. Try again." } }), /role="alert"/));
+
+test("A view-only timing session cannot edit readings or record an outcome", () => {
+  const html = renderTiming({ ownsControl: false });
+  assert.match(html, /name="timingSessionId" value="browser-session"/);
+  const inputs = (html.match(/<input[^>]*>/g) ?? []).filter((input) => input.includes('name="timerReading"'));
+  assert.equal(inputs.length, 2);
+  assert.ok(inputs.every((input) => input.includes('disabled=""')));
+  const buttons = (html.match(/<button[^>]*>/g) ?? []).filter((button) => button.includes('name="status"'));
+  assert.ok(buttons.length > 0 && buttons.every((button) => button.includes('disabled=""')));
+});
 
 test("Repeated submissions cannot enqueue another result", () => {
   const tree = renderTiming({ asTree: true });
