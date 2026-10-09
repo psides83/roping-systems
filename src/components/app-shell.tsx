@@ -4,6 +4,7 @@ import { NavigationGuardLink as Link } from "nextjs-nav-guard";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
+  ChartNoAxesCombined,
   ChevronDown,
   CircleDollarSign,
   Gauge,
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Ropings", href: "/events", icon: CalendarDays },
   { name: "Live event", href: "/events/current", icon: CircleDollarSign },
   { name: "Added-money funds", href: "/funds", icon: PiggyBank },
+  { name: "Reports & exports", href: "/reports", icon: ChartNoAxesCombined },
   {
     name: "Roping setup",
     href: "/settings/classifications",

@@ -14,8 +14,8 @@ export interface PublicMoneyResult {
   payoutCents: number;
 }
 
-export function compareMoneyPools(a: PublicMoneyResult, b: PublicMoneyResult) {
-  const order = (pool: PublicMoneyResult) => pool.poolType === "main" ? 0
+export function compareMoneyPools(a: Pick<PublicMoneyResult, "poolType" | "poolName">, b: Pick<PublicMoneyResult, "poolType" | "poolName">) {
+  const order = (pool: Pick<PublicMoneyResult, "poolType" | "poolName">) => pool.poolType === "main" ? 0
     : pool.poolType === "insurance" || /\binsurance\b/i.test(pool.poolName) ? 2 : 1;
   return order(a) - order(b) || a.poolName.localeCompare(b.poolName);
 }
