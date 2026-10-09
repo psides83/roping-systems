@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SlidersHorizontal } from "lucide-react";
+import { ClipboardList, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProducerSettingsForm } from "@/components/settings/producer-settings-form";
 import { ProducerSeasons } from "@/components/settings/producer-seasons";
@@ -17,7 +17,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const canEdit = configured && ["owner", "admin"].includes(data.role);
   return <div className="space-y-5">
     <PageHeader title="Producer settings" description={data.producer.publicName || data.producer.name}
-      actions={<Link href="/settings/classifications" className="inline-flex h-10 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold"><SlidersHorizontal size={16} />Roping setup</Link>} />
+      actions={<><Link href="/settings/setup" className="inline-flex h-10 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold"><ClipboardList size={16} />Setup checklist</Link><Link href="/settings/classifications" className="inline-flex h-10 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold"><SlidersHorizontal size={16} />Roping setup</Link></>} />
     <ProducerSettingsTabs active={tab} />
     <section aria-label={`${tab === "general" ? "General" : tab === "appearance" ? "Appearance" : "Season"} settings`} className="max-w-3xl py-2">
       {tab === "general" && <ProducerSettingsForm producer={data.producer} canEdit={canEdit} />}

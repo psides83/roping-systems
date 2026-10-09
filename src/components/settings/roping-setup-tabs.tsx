@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const tabs = [
+  { id: "setup", label: "Setup checklist", href: "/settings/setup" },
   {
     id: "classifications",
     label: "Divisions & classifications",

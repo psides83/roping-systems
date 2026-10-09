@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 export const producerSettingsTabs = [
+  { id: "setup", label: "Setup checklist", href: "/settings/setup" },
   { id: "general", label: "General", href: "/settings" },
   { id: "appearance", label: "Appearance", href: "/settings?tab=appearance" },
   { id: "seasons", label: "Seasons", href: "/settings?tab=seasons" },
