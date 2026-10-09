@@ -18,6 +18,7 @@ import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { MemberFinesData } from "@/components/members/member-fines-data";
 import { MemberSuspensionsData } from "@/components/members/member-suspensions-data";
 import { MemberFinalsPositions } from "@/components/members/member-finals-positions";
+import { MemberActivityTimeline } from "@/components/members/member-activity";
 import { ClassificationMoveBackProgress } from "@/components/members/classification-move-back-progress";
 import type { MoveBackProgress, MoveBackException, MoveBackDetails } from "@/lib/classification-move-back";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -301,8 +302,12 @@ async function getMemberDetail(
 
 export default async function MemberDetailPage({
   params,
+  searchParams,
 }: PageProps<"/members/[membershipId]">) {
   const { membershipId } = await params;
+  const query = await searchParams;
+  const value = (key: string) => typeof query[key] === "string" ? query[key] as string : undefined;
+  const activity = value("tab") === "activity";
   const member = await getMemberDetail(membershipId);
   const producer = isSupabaseConfigured() ? await getActiveProducer() : null;
   if (!member) notFound();
@@ -387,6 +392,11 @@ export default async function MemberDetailPage({
           </div>
         </div>
       </div>
+      <nav aria-label="Member record" className="flex gap-6 border-b border-[#dfe4e1] text-sm font-semibold">
+        <Link href={`/members/${member.id}`} aria-current={!activity ? "page" : undefined} className={`pb-3 ${!activity ? "border-b-2 border-[var(--brand-accent)]" : "text-[#66716b]"}`}>Details</Link>
+        <Link href={`/members/${member.id}?tab=activity`} aria-current={activity ? "page" : undefined} className={`pb-3 ${activity ? "border-b-2 border-[var(--brand-accent)]" : "text-[#66716b]"}`}>Activity</Link>
+      </nav>
+      {activity ? <MemberActivityTimeline memberId={member.id} query={{ type: value("type"), season: value("season"), from: value("from"), to: value("to"), page: value("page") }} /> : <>
       {isSupabaseConfigured() ? <MemberFinesData membershipId={member.id} canManage={member.canEdit} /> : null}
       {isSupabaseConfigured() ? <MemberSuspensionsData membershipId={member.id} canManage={member.canEdit} /> : null}
       {producer && <MemberFinalsPositions producerId={producer.id} producerSlug={producer.slug} memberId={member.id} />}
@@ -595,6 +605,7 @@ export default async function MemberDetailPage({
           </table>
         </div>
       </section>
+      </>}
     </div>
   );
 }
