@@ -29,7 +29,7 @@ function load(path) {
 const helpers = load('lib/events/print-documents.ts');
 const data = load('lib/events/print-document-data.ts');
 const sheets = load('components/events/print-document-sheet.tsx');
-const run = overrides => ({ id: 'run', position: 1, name: 'Morgan Reed', entryNumber: 2, cattle: '104', readings: [], raw: null, penalty: 0, adjustment: 0, status: 'pending', attempts: 0, ...overrides });
+const run = overrides => ({ id: 'run', round: 1, position: 1, name: 'Morgan Reed', entryNumber: 2, cattle: '104', readings: [], raw: null, penalty: 0, adjustment: 0, status: 'pending', attempts: 0, ...overrides });
 const roping = { id: 'roping', name: '#11.5 Tie-down', scheduled_date: '2026-10-09', arena_name: 'Arena 1', main_round_count: 3, short_round_enabled: true, timer_count: 3, timer_resolution: 'average' };
 const award = overrides => ({ planId: 'plan', ropingId: 'roping', ropingName: '#11.5 Tie-down', poolName: 'Main', poolType: 'main', entryId: 'entry', roperId: 'person', name: 'Morgan Reed', memberNumber: '144', sectionType: 'aggregate', round: null, dNumber: null, place: 1, awardKey: 'award', amountCents: 12345, paidCents: 2345, ...overrides });
 
@@ -60,6 +60,40 @@ test('large documents fetch every page and surface database errors', async () =>
   assert.equal(calls.length, 3);
   await assert.rejects(data.allPrintRows(() => Promise.resolve({ data: null, error: { message: 'Denied' } })), /Denied/);
 });
+test('roping document groups every configured round, including an unbuilt short round', () => {
+  const rows = [run({ id: 'second', round: 2, position: 2 }), run({ id: 'first', round: 2, position: 1 }), run({ id: 'r1' }), run({ id: 'r3', round: 3, position: null })];
+  const rounds = helpers.printRoundSheets(roping, rows);
+  assert.deepEqual(rounds.map(sheet => sheet.round), [1, 2, 3, 4]);
+  assert.deepEqual(rounds[1].runs.map(row => row.id), ['first', 'second']);
+  assert.deepEqual(rounds.map(sheet => sheet.ready), [true, true, false, false]);
+  assert.deepEqual(rounds[3].runs, []);
+  assert.equal(rows[0].id, 'second');
+  assert.equal(helpers.printRoundSheets({ ...roping, short_round_enabled: false }, rows).length, 3);
+});
+test('all-round loader scopes reads and retains round numbers across pagination', async () => {
+  const calls = [];
+  const rows = Array.from({ length: 501 }, (_, i) => ({ id: String(i), round_number: i < 300 ? 1 : 2, draw_position: i + 1, raw_time_seconds: null, penalty_seconds: 0, status: 'pending', rerun_count: 0, event_cattle: null, run_timer_readings: [], roping_entries: { entry_number: 1, competition_status: i === 500 ? 'moved' : 'active', handicap_time_credit_seconds: 0, ropers: { first_name: 'Morgan', last_name: 'Reed' } } }));
+  const db = { from(table) {
+    assert.equal(table, 'competition_runs');
+    let start = 0, end = 499;
+    return { select() { return this; }, eq(field, value) { calls.push([field, value]); return this; }, order() { return this; }, range(a, b) { start = a; end = b; calls.push(['range', a]); return this; }, then(resolve) { return Promise.resolve({ data: rows.slice(start, end + 1), error: null }).then(resolve); } };
+  } };
+  const result = await data.loadPrintRuns(db, 'producer', 'roping');
+  assert.equal(result.length, 500);
+  assert.equal(result.filter(row => row.round === 2).length, 200);
+  assert.ok(calls.some(([field, value]) => field === 'producer_id' && value === 'producer'));
+  assert.ok(calls.some(([field, value]) => field === 'event_roping_id' && value === 'roping'));
+  assert.ok(calls.some(([field, value]) => field === 'range' && value === 500));
+  assert.ok(!calls.some(([field]) => field === 'round_number'));
+  await data.loadPrintRuns(db, 'producer', 'roping', 2);
+  assert.ok(calls.some(([field, value]) => field === 'round_number' && value === 2));
+});
+test('one document renders every round heading and warns about incomplete orders', () => {
+  const rounds = helpers.printRoundSheets(roping, [run(), run({ id: 'r2', round: 2, position: null })]);
+  const html = renderToStaticMarkup(React.createElement('article', null, rounds.map(sheet => React.createElement('section', { key: sheet.round, className: 'round-sheet' }, React.createElement(sheets.RunSheet, { roping, round: sheet.round, runs: sheet.runs, timer: true, style: 'number' })))));
+  for (const heading of ['Round 1', 'Round 2', 'Round 3', 'Short round', 'Provisional round']) assert.ok(html.includes(heading));
+  assert.equal((html.match(/class="round-sheet"/g) ?? []).length, 4);
+});
 test('timer worksheet renders all timers, saved readings, NT, and reruns', () => {
   const html = renderToStaticMarkup(React.createElement(sheets.RunSheet, { roping, round: 4, timer: true, style: 'letter', runs: [run({ readings: [{ timer: 2, seconds: 12.45 }], attempts: 1 }), run({ id: 'nt', status: 'no_time' })] }));
   for (const text of ['Short round', 'Timer 3', '12.45', 'No time', 'Rerun attempt 2', '>B<']) assert.ok(html.includes(text), text);
@@ -79,5 +113,5 @@ export function printPreviewHtml() {
   const rows = Array.from({ length: 65 }, (_, i) => run({ id: String(i), position: i + 1, name: `Morgan Reed ${i + 1}`, entryNumber: i % 3 + 1 }));
   return renderToStaticMarkup(React.createElement('article', { className: 'event-print-document timer-document print-active-document' },
     React.createElement('header', null, React.createElement('h1', null, 'Arena Weekend'), React.createElement('p', null, 'Ultimate Calf Roping · Timer sheet')),
-    React.createElement(sheets.RunSheet, { roping, round: 1, timer: true, style: 'letter', runs: rows })));
+    ...helpers.printRoundSheets(roping, rows).map(sheet => React.createElement('section', { key: sheet.round, className: 'round-sheet' }, React.createElement(sheets.RunSheet, { roping, round: sheet.round, timer: true, style: 'letter', runs: sheet.runs })))));
 }

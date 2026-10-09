@@ -10,9 +10,18 @@ export interface PrintRoping {
   timer_resolution: string; payouts_finalized_at: string | null;
 }
 export interface PrintRun {
+  round: number;
   id: string; position: number | null; name: string; entryNumber: number; cattle: string | null;
   readings: { timer: number; seconds: number }[]; raw: number | null; penalty: number;
   adjustment: number; status: string; attempts: number;
+}
+export function printRoundSheets(roping: PrintRoping, runs: PrintRun[]) {
+  const count = roping.main_round_count + (roping.short_round_enabled ? 1 : 0);
+  return Array.from({ length: count }, (_, index) => {
+    const round = index + 1;
+    const rows = sortPrintRuns(runs.filter(run => run.round === round));
+    return { round, runs: rows, ready: rows.length > 0 && rows.every(run => run.position !== null) };
+  });
 }
 export interface PrintEntrySummary {
   id: string; name: string;

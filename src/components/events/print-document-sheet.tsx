@@ -10,8 +10,8 @@ export function RunSheet({ runs, roping, round, timer, style }: { runs: PrintRun
     <h2>{roping.name} · {round > roping.main_round_count ? 'Short round' : `Round ${round}`}</h2>
     <p>{roping.scheduled_date} · {roping.arena_name || 'First Available'} · {runs.length} runs</p>
     {timer && <p>{roping.timer_count} {roping.timer_count === 1 ? 'timer' : 'timers'} · {roping.timer_resolution === 'best' ? 'Fastest' : roping.timer_resolution === 'longest' ? 'Longest' : 'Average'} time · Timer staff: ____________________</p>}
-    {missing && <p className="print-warning">Order not fully built. Unassigned runs are shown last; do not use this as a final draw.</p>}
-    {!runs.length ? <p>No runs available for this round. Entries or the short-round field may not be built yet.</p> : <table>
+    {missing && <p className="print-warning">Provisional round: order not fully built. Unassigned runs are shown last; do not use this as a final draw.</p>}
+    {!runs.length ? <p className="print-warning">Provisional round: no runs available. Entries or the short-round field may not be built yet.</p> : <table>
       <thead><tr><th>Draw</th><th>Contestant</th><th>Entry</th><th>Cattle</th>
         {timer ? <>{Array.from({ length: roping.timer_count }, (_, i) => <th key={i}>Timer {i + 1}</th>)}<th>Penalty</th><th>Handicap</th><th>Final time / status</th></> : <th>Status</th>}
       </tr></thead><tbody>{runs.map(r => <tr key={r.id}>

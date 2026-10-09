@@ -6,8 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { getActiveProducer } from '@/lib/producers';
 import { createClient } from '@/lib/supabase/server';
 import { allPrintRows, loadPrintAwards, loadPrintEntries, loadPrintRuns } from '@/lib/events/print-document-data';
-import { documentNames, printKinds, printRound, type EventDocumentKind, type PrintRoping } from '@/lib/events/print-documents';
-import { selectDeskRound } from '@/lib/events/round-selection';
+import { documentNames, printKinds, printRoundSheets, type EventDocumentKind, type PrintRoping } from '@/lib/events/print-documents';
 
 export default async function EventDocumentsPage({ params, searchParams }: {
   params: Promise<{ eventId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -46,11 +45,8 @@ export default async function EventDocumentsPage({ params, searchParams }: {
   if (selectedId && selectedId !== 'all' && !ropings.some(r => r.id === selectedId)) notFound();
   const selected = ropings.find(r => r.id === selectedId) ?? ropings[0];
   const runKind = kind === 'draw' || kind === 'timer';
-  const locked = runKind && selected ? await db.from('event_roping_rounds').select('round_number').eq('event_roping_id', selected.id).eq('status', 'locked') : { data: [], error: null };
-  if (locked.error) throw new Error('Unable to determine the current round.');
-  const round = value('round') ? printRound(value('round'), selected) : selectDeskRound(undefined,
-    (selected?.main_round_count ?? 1) + (selected?.short_round_enabled ? 1 : 0), (locked.data ?? []).map(r => r.round_number));
-  const runs = runKind && selected ? await loadPrintRuns(db, producer.id, selected.id, round) : [];
+  const runs = runKind && selected ? await loadPrintRuns(db, producer.id, selected.id) : [];
+  const roundSheets = runKind && selected ? printRoundSheets(selected, runs) : [];
   const entries = kind === 'entries' ? await loadPrintEntries(db, producer.id, eventId, producer.entryLabelStyle) : [];
   const roper = value('roper');
   if (kind === 'entries' && roper && roper !== 'all' && !entries.some(p => p.id === roper)) notFound();
@@ -63,24 +59,24 @@ export default async function EventDocumentsPage({ params, searchParams }: {
     .map(r => ({ id: String(r.id), roperId: String(r.roper_id), recipient: String(r.received_by), confirmed: Boolean(r.receipt_confirmed), staff: String(r.paid_by_label), date: dateFormat.format(new Date(r.paid_at)) }));
   const summaries = entries.filter(p => !roper || roper === 'all' || p.id === roper);
   const generated = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: producer.timezone }).format(new Date());
-  const printable = runKind ? runs.length > 0 && runs.every(r => r.position !== null) : kind === 'entries' ? summaries.length > 0 : awards.length > 0;
+  const printable = runKind ? roundSheets.some(sheet => sheet.ready) : kind === 'entries' ? summaries.length > 0 : awards.length > 0;
   return <div className="space-y-6">
     <div className="no-print space-y-6"><EventWorkflowNav eventId={eventId} active="documents" />
       <PageHeader title="Print documents" eyebrow={event.title} description="" actions={<EventDocumentControls printable={printable} />} />
-      <form className="flex flex-wrap items-end gap-3" key={`${kind}-${selectedId}-${round}-${roper}`}>
+      <form className="flex flex-wrap items-end gap-3" key={`${kind}-${selectedId}-${roper}`}>
         <label className="text-sm font-semibold">Document<select name="type" defaultValue={kind} className="mt-1 block h-10 max-w-full rounded-md border bg-white pl-3 pr-9">{kinds.map(k => <option key={k} value={k}>{documentNames[k]}</option>)}</select></label>
         {kind !== 'entries' && <label className="text-sm font-semibold">Roping<select name="roping" defaultValue={kind === 'payouts' ? selectedId ?? 'all' : selected?.id} className="mt-1 block h-10 max-w-[min(26rem,85vw)] rounded-md border bg-white pl-3 pr-9">
           {kind === 'payouts' && <option value="all">All finalized ropings</option>}{ropings.map(r => <option key={r.id} value={r.id}>{r.name} · {r.scheduled_date} · {r.arena_name || 'First Available'}</option>)}
         </select></label>}
-        {runKind && <label className="text-sm font-semibold">Round<select name="round" defaultValue={round} className="mt-1 block h-10 rounded-md border bg-white pl-3 pr-9">{Array.from({ length: (selected?.main_round_count ?? 1) + (selected?.short_round_enabled ? 1 : 0) }, (_, i) => <option key={i} value={i + 1}>{i < (selected?.main_round_count ?? 1) ? `Round ${i + 1}` : 'Short round'}</option>)}</select></label>}
         {kind === 'entries' && <label className="text-sm font-semibold">Contestant<select name="roper" defaultValue={roper ?? 'all'} className="mt-1 block h-10 max-w-[85vw] rounded-md border bg-white pl-3 pr-9"><option value="all">All contestants</option>{entries.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
         <button className="h-10 rounded-md border bg-white px-4 text-sm font-semibold">View document</button>
       </form>
-      {runKind && !printable && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm font-semibold">Build the round order in the live desk before printing a competition sheet.</p>}
+      {runKind && !printable && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm font-semibold">Build at least one round order in the live desk before printing the roping document.</p>}
+      {runKind && printable && roundSheets.some(sheet => !sheet.ready) && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">All rounds are included. Rounds without a complete order are labeled provisional; refresh and reprint after their orders are built.</p>}
     </div>
     <article className={`print-active-document event-print-document ${kind === 'timer' ? 'timer-document' : ''} overflow-x-auto rounded-md border bg-white p-5 sm:p-8`}>
       <header><p>{producer.name}</p><h1>{event.title}</h1><h2>{documentNames[kind]}</h2><p className="sheet-note">Generated {generated} ({producer.timezone}) · Snapshot of recorded data</p></header>
-      {runKind ? selected ? <RunSheet runs={runs} roping={selected} round={round} timer={kind === 'timer'} style={producer.entryLabelStyle} /> : <p>No ropings scheduled.</p>
+      {runKind ? selected ? roundSheets.map(sheet => <section key={sheet.round} className="round-sheet"><RunSheet runs={sheet.runs} roping={selected} round={sheet.round} timer={kind === 'timer'} style={producer.entryLabelStyle} /></section>) : <p>No ropings scheduled.</p>
         : kind === 'entries' ? <EntrySummarySheets summaries={summaries} eventTitle={event.title} /> : <PayoutAcknowledgmentSheet awards={awards} acknowledgments={acknowledgments} />}
     </article>
   </div>;

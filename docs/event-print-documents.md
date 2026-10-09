@@ -1,17 +1,23 @@
 # Event-Day Print Documents
 
 Open **Print documents** from the event workflow navigation. From the live desk,
-the current roping and round are selected; from Entries or Payouts, the matching
+the current roping is selected; from Entries or Payouts, the matching
 document is selected. Use the document filters and **View document**, then
 **Print / save PDF**. Refresh data before reprinting after changes.
 
 ## Documents
 
 - Draw sheet: built draw positions, contestants, configured entry labels, cattle,
-  and recorded run statuses. Incomplete orders cannot be printed with the print button.
-- Timer sheet: one round, all configured timer columns, penalties, signed handicap
+  and recorded run statuses. All main rounds and the short round are included in
+  one document, with each round starting a new printed page. At least one round
+  must have a complete order to enable printing; other rounds are explicitly
+  labeled provisional when their orders or fields are not built yet.
+- Timer sheet: all rounds, all configured timer columns, penalties, signed handicap
   adjustments, and final times/statuses. Previously saved readings are prefilled;
-  unresolved runs provide writing space. The default is the first unlocked round.
+  unresolved runs provide writing space. One print/save action covers the whole
+  roping, including its short round. Refresh and reprint when subsequent draws
+  or short-round qualifiers become available. Old round-specific links now show
+  the entire document rather than limiting it to that round.
 - Contestant entry summaries: all contestants or one contestant, including each
   entered roping, entry options/charges, event-wide fees, paid amount, balance,
   and credit. Each contestant starts a new printed page. Balances use the same

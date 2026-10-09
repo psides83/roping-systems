@@ -260,6 +260,7 @@ textarea:focus-visible {
 .event-print-document .sheet-note { font-size: 10px; color: #555; }
 .event-print-document .totals { font-weight: 700; margin-top: 12px; }
 .event-print-document .contestant-sheet + .contestant-sheet { margin-top: 32px; border-top: 1px solid #aaa; padding-top: 20px; }
+.event-print-document .round-sheet + .round-sheet { margin-top: 32px; border-top: 1px solid #aaa; padding-top: 20px; }
 @page event-document { size: letter portrait; margin: 12mm; }
 @page event-timer { size: letter landscape; margin: 12mm; }
 
@@ -274,6 +275,7 @@ textarea:focus-visible {
   .event-print-document thead { display: table-header-group; }
   .event-print-document tr { break-inside: avoid; }
   .event-print-document .contestant-sheet + .contestant-sheet { break-before: page; margin-top: 0; border: 0; padding-top: 0; }
+  .event-print-document .round-sheet + .round-sheet { break-before: page; margin-top: 0; border: 0; padding-top: 0; }
   .event-print-document h2, .event-print-document h3 { break-after: avoid; }
   body * {
     visibility: hidden;

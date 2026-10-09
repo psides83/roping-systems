@@ -15,15 +15,19 @@ export async function allPrintRows<T>(fetch: (from: number, to: number) => Promi
   }
 }
 
-export async function loadPrintRuns(db: SupabaseClient, producer: string, roping: string, round: number): Promise<PrintRun[]> {
-  const data = await allPrintRows((from, to) => db.from('competition_runs')
-    .select('id, draw_position, raw_time_seconds, penalty_seconds, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), roping_entries!inner(entry_number, competition_status, handicap_time_credit_seconds, ropers!inner(first_name, last_name))')
-    .eq('producer_id', producer).eq('event_roping_id', roping).eq('round_number', round).order('id').range(from, to));
-  type Row = { id: string; draw_position: number | null; raw_time_seconds: number | null; penalty_seconds: number; status: string; rerun_count: number;
+export async function loadPrintRuns(db: SupabaseClient, producer: string, roping: string, round?: number): Promise<PrintRun[]> {
+  const data = await allPrintRows((from, to) => {
+    let query = db.from('competition_runs')
+      .select('id, round_number, draw_position, raw_time_seconds, penalty_seconds, status, rerun_count, event_cattle(tag_number), run_timer_readings(timer_number, time_seconds), roping_entries!inner(entry_number, competition_status, handicap_time_credit_seconds, ropers!inner(first_name, last_name))')
+      .eq('producer_id', producer).eq('event_roping_id', roping);
+    if (round !== undefined) query = query.eq('round_number', round);
+    return query.order('round_number').order('id').range(from, to);
+  });
+  type Row = { id: string; round_number: number; draw_position: number | null; raw_time_seconds: number | null; penalty_seconds: number; status: string; rerun_count: number;
     event_cattle: { tag_number: string } | null; run_timer_readings: { timer_number: number; time_seconds: number }[];
     roping_entries: { entry_number: number; competition_status: string; handicap_time_credit_seconds: number; ropers: { first_name: string; last_name: string } } };
   return sortPrintRuns((data as unknown as Row[]).filter(row => row.roping_entries.competition_status === 'active').map(row => ({
-    id: row.id, position: row.draw_position, name: `${row.roping_entries.ropers.first_name} ${row.roping_entries.ropers.last_name}`,
+    id: row.id, round: row.round_number, position: row.draw_position, name: `${row.roping_entries.ropers.first_name} ${row.roping_entries.ropers.last_name}`,
     entryNumber: row.roping_entries.entry_number, cattle: row.event_cattle?.tag_number ?? null,
     readings: row.run_timer_readings.map(r => ({ timer: r.timer_number, seconds: Number(r.time_seconds) })),
     raw: row.raw_time_seconds === null ? null : Number(row.raw_time_seconds), penalty: Number(row.penalty_seconds),
