@@ -20,6 +20,7 @@ import { signOut } from "@/app/auth/actions";
 import { switchProducer } from "@/app/actions/producers";
 import { getBrandStyle } from "@/lib/branding";
 import { NavigationPending } from "@/components/ui/navigation-pending";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Gauge },
@@ -242,6 +243,7 @@ export function AppShell({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!demo && <NotificationBell key={activeProducerId} scope="staff" producerId={activeProducerId} />}
             <Link
               href="/events/current"
               className="hidden h-9 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white hover:bg-[var(--brand-accent-strong)] sm:flex"

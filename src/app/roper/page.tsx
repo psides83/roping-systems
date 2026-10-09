@@ -19,6 +19,7 @@ import { personalStandings, type PortalStanding, type RoperStandingsContext } fr
 import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { PersonalResultsView } from "@/components/roper/personal-results";
 import type { PersonalResults } from "@/lib/roper-results";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default async function RoperPortal({ searchParams }: { searchParams: Promise<{ producer?: string; view?: string; season?: string; page?: string }> }) {
   const supabase = await createClient();
@@ -60,7 +61,7 @@ export default async function RoperPortal({ searchParams }: { searchParams: Prom
     bonus = result.data as RoperBonusSource;
   }
   return <main className="min-h-screen bg-[#f5f6f7] text-[#19231d]">
-    <header className="border-b border-[#dfe4e1] bg-white"><div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-4"><Link href="/" className="font-bold">Roping Systems</Link><form action={signOut}><button className="h-9 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold">Sign out</button></form></div></header>
+    <header className="border-b border-[#dfe4e1] bg-white"><div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-4"><Link href="/" className="font-bold">Roping Systems</Link><div className="flex items-center gap-2"><NotificationBell scope="roper" /><form action={signOut}><button className="h-9 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold">Sign out</button></form></div></div></header>
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-7"><h1 className="flex items-center gap-2 text-2xl font-bold"><UserRound size={24} />Roper portal</h1>
       <div className="flex flex-wrap gap-5 text-sm font-semibold"><Link href="/roper/profile">My profile</Link><Link href="/roper/requests">Entry requests</Link><Link href="/roper/memberships">Applications & renewals</Link><Link href="/roper/connections">Connect an existing membership</Link></div>
       {!member ? <p className="text-sm text-[#66716b]">No producer memberships are linked to your account yet. Request a connection to your existing membership.</p> : <>
