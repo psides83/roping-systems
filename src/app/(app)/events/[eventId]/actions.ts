@@ -590,6 +590,10 @@ export async function updateClassSchedule(
 
 export async function startRoping(eventId: string) {
   const supabase = await requireManager(eventId);
+  const { getSetupReadiness } = await import("./setup-readiness-actions");
+  const review = await getSetupReadiness(eventId, "start");
+  if (review.message) throw new Error(review.message);
+  if (review.issues?.some((issue) => issue.severity === "blocker")) throw new Error("Resolve the setup blockers before starting. Review the event setup again.");
   const { error } = await supabase.rpc("set_roping_in_progress", {
     target_roping_id: eventId,
   });

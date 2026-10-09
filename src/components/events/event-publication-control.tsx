@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { LoaderCircle, Save } from "lucide-react";
 import { updateEventPublication, type PublicationState } from "@/app/(app)/events/[eventId]/publication-actions";
+import { SetupReadinessForm } from "./setup-readiness-form";
 
 export function EventPublicationControl({ eventId, publicationState, enabled }: {
   eventId: string;
@@ -12,9 +13,7 @@ export function EventPublicationControl({ eventId, publicationState, enabled }: 
   const [selected, setSelected] = useState(publicationState);
   const [state, action, pending] = useActionState(updateEventPublication.bind(null, eventId), {} as PublicationState);
   return (
-    <form action={action} onSubmit={(event) => {
-      if (selected === "published" && publicationState !== "published" && !window.confirm("Publish this event's schedule and contestant results for everyone to view?")) event.preventDefault();
-    }} className="flex flex-wrap items-center gap-2">
+    <SetupReadinessForm eventId={eventId} mode={selected === "published" && publicationState !== "published" ? "publish" : null} action={action} pending={pending} success={state.success} message={state.message} className="flex flex-wrap items-center gap-2">
       <label className="flex items-center gap-2 text-xs font-semibold text-[#66716b]">
         Public visibility
         <select name="publicationState" value={selected} disabled={!enabled || pending} onChange={(event) => setSelected(event.target.value as typeof selected)} className="h-9 rounded-md border border-[#ccd4d0] bg-white px-2 text-xs">
@@ -27,6 +26,6 @@ export function EventPublicationControl({ eventId, publicationState, enabled }: 
         {pending ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
       </button>
       {state.message ? <p role="status" className={`w-full text-xs ${state.success ? "text-emerald-700" : "text-rose-700"}`}>{state.message}</p> : null}
-    </form>
+    </SetupReadinessForm>
   );
 }
