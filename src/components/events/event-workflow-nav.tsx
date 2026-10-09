@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { ArrowLeft, Banknote, ClipboardList, LayoutDashboard, Radio } from "lucide-react";
+import { ArrowLeft, Banknote, ClipboardList, LayoutDashboard, Printer, Radio } from "lucide-react";
 import { NavigationPending } from "@/components/ui/navigation-pending";
 
-export function EventWorkflowNav({ eventId, active }: { eventId: string; active: "event" | "entries" | "live" | "payouts" }) {
+export function EventWorkflowNav({ eventId, active, documentRopingId, documentRound }: { eventId: string; active: "event" | "entries" | "live" | "payouts" | "documents"; documentRopingId?: string; documentRound?: number }) {
+  const documentQuery = new URLSearchParams();
+  if (active === "live") { documentQuery.set("type", "timer"); if (documentRopingId) documentQuery.set("roping", documentRopingId); if (documentRound) documentQuery.set("round", String(documentRound)); }
+  if (active === "entries") documentQuery.set("type", "entries");
+  if (active === "payouts") documentQuery.set("type", "payouts");
   const steps = [
     { id: "event", label: "Event", path: "", icon: LayoutDashboard },
     { id: "entries", label: "Entries", path: "/entries", icon: ClipboardList },
     { id: "live", label: "Live desk", path: "/live", icon: Radio },
     { id: "payouts", label: "Payouts", path: "/payouts", icon: Banknote },
+    { id: "documents", label: "Print documents", path: `/documents${documentQuery.size ? `?${documentQuery}` : ""}`, icon: Printer },
   ];
   return <nav aria-label="Event workflow" className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#dfe4e1] pb-3 text-sm font-semibold">
     <Link href="/events" className="inline-flex min-h-10 items-center gap-2 text-[#66716b]"><ArrowLeft size={16} />Events</Link>

@@ -243,7 +243,38 @@ textarea:focus-visible {
   }
 }
 
+.event-print-document { color: #111; }
+.event-print-document header { border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 20px; }
+.event-print-document h1 { font-size: 24px; font-weight: 700; }
+.event-print-document h2 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; }
+.event-print-document h3 { font-size: 14px; font-weight: 700; margin: 16px 0 6px; }
+.event-print-document p { font-size: 12px; margin-bottom: 10px; }
+.event-print-document table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 12px 0; }
+.event-print-document th, .event-print-document td { border: 1px solid #aaa; padding: 8px; text-align: left; vertical-align: top; }
+.event-print-document th { background: #f0f0f0; font-weight: 700; }
+.event-print-document small { display: block; font-size: 10px; margin-top: 3px; }
+.event-print-document .writing-cell { min-width: 62px; height: 42px; }
+.event-print-document .ack-cell { min-width: 180px; }
+.event-print-document .ack-cell span { display: block; margin-bottom: 12px; }
+.event-print-document .print-warning { font-weight: 700; border: 2px solid #222; padding: 10px; }
+.event-print-document .sheet-note { font-size: 10px; color: #555; }
+.event-print-document .totals { font-weight: 700; margin-top: 12px; }
+.event-print-document .contestant-sheet + .contestant-sheet { margin-top: 32px; border-top: 1px solid #aaa; padding-top: 20px; }
+@page event-document { size: letter portrait; margin: 12mm; }
+@page event-timer { size: letter landscape; margin: 12mm; }
+
 @media print {
+  /* Keep event sheets in normal flow so page sizes and long tables paginate correctly. */
+  body:has(.event-print-document) *:not(:has(.event-print-document)):not(.event-print-document):not(.event-print-document *) { display: none !important; }
+  body:has(.event-print-document) *:has(.event-print-document) { display: block !important; position: static !important; margin: 0 !important; padding: 0 !important; width: auto !important; max-width: none !important; min-height: 0 !important; height: auto !important; overflow: visible !important; }
+  body:has(.event-print-document) .event-print-document { position: static; inset: auto; width: auto; }
+  .event-print-document { overflow: visible; padding: 0; }
+  .event-print-document { page: event-document; }
+  .event-print-document.timer-document { page: event-timer; }
+  .event-print-document thead { display: table-header-group; }
+  .event-print-document tr { break-inside: avoid; }
+  .event-print-document .contestant-sheet + .contestant-sheet { break-before: page; margin-top: 0; border: 0; padding-top: 0; }
+  .event-print-document h2, .event-print-document h3 { break-after: avoid; }
   body * {
     visibility: hidden;
   }

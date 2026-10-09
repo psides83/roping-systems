@@ -444,7 +444,7 @@ function LiveWorkspace({
 
   return (
     <div className="space-y-6">
-      <EventWorkflowNav eventId={eventId} active="live" />
+      <EventWorkflowNav eventId={eventId} active="live" documentRopingId={selectedDivisionId} documentRound={selectedRound} />
       <PageHeader
         eyebrow={`Event desk · ${status.replaceAll("_", " ")} · ${resultStatus}`}
         title={title}
