@@ -6,6 +6,7 @@ import { saveRules } from "@/app/(app)/settings/rules/actions";
 import { rulesPublishErrors, type RulesDocument } from "@/lib/producer-rules";
 import { RuleTextEditor } from "./rule-text-editor";
 import { RulesContent } from "./rules-content";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes-guard";
 
 type Section = RulesDocument["sections"][number];
 const field = "mt-2 block h-10 w-full max-w-md rounded-md border border-[#ccd4d0] bg-white px-3 text-sm";
@@ -27,12 +28,6 @@ export function RulesEditor({ initial, initialRevision, initialPublished }: { in
   const [preview, setPreview] = useState(false);
   const [confirmation, setConfirmation] = useState<"publish" | "unpublish" | null>(null);
   const dirty = JSON.stringify(document) !== saved;
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
   function update(patch: Partial<RulesDocument>) { setDocument((current) => ({ ...current, ...patch })); setStatus(""); }
   function sectionChange(id: string, patch: Partial<Section>) { update({ sections: document.sections.map((item) => item.id === id ? { ...item, ...patch } : item) }); }
   function act(operation: "save" | "publish" | "unpublish") {
@@ -51,6 +46,7 @@ export function RulesEditor({ initial, initialRevision, initialPublished }: { in
   }
   const issues = rulesPublishErrors(document);
   return <div className="space-y-5">
+    <UnsavedChangesGuard dirty={dirty} saving={pending} onSave={() => act("save")} />
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-[#d7ddda] bg-[#f5f6f7] py-3">
       <span className={`mr-2 rounded-md px-2 py-1 text-xs font-semibold ${published ? "bg-emerald-50 text-emerald-800" : "bg-[#e7ebe8]"}`}>{published ? "Published" : "Not published"}</span>
       <span className="mr-auto text-xs text-[#66716b]">{dirty ? "Unsaved changes" : revision ? "Draft saved" : "New draft"}</span>

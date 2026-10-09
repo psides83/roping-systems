@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { NavigationGuardLink as Link } from "nextjs-nav-guard";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,

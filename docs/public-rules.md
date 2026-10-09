@@ -13,6 +13,11 @@ Preview shows the current unsaved draft. Publish requires complete headings and
 rule text and replaces the published snapshot after confirmation. Unpublish
 hides the public document while preserving the draft. Concurrent saves are
 rejected using a revision check; editors retain their unsaved changes on errors.
+Unsaved edits also prompt before in-app links, router navigation and browser
+Back/Forward. The prompt offers Keep editing, Save draft and stay, or Leave
+without saving. Account-switch/sign-out forms request confirmation separately.
+Closing or refreshing a tab uses the browser's own unload warning; mobile and
+Safari browser limitations mean unload prompts cannot guarantee recovery.
 
 The public Rules page provides section navigation, search, collapsible
 subsections, print output and effective/updated dates. Membership and online
