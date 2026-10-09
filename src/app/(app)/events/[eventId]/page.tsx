@@ -805,6 +805,7 @@ export default async function RopingDetailPage({
                   Payouts
                 </Link>
                 <Link href={`/events/${event.id}/documents`} className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"><Printer size={16} />Print documents</Link>
+                {event.canFinance ? <Link href={`/events/${event.id}/reconciliation`} className="flex h-10 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Financial closeout</Link> : null}
                 <Link href={`/events/${event.id}/arenas`} className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"><PanelsTopLeft size={16} />Arena overview</Link>
               </>
             ) : null}
