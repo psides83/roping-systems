@@ -5,6 +5,7 @@ export const producerSettingsTabs = [
   { id: "appearance", label: "Appearance", href: "/settings?tab=appearance" },
   { id: "seasons", label: "Seasons", href: "/settings?tab=seasons" },
   { id: "membership", label: "Membership", href: "/settings/membership-form" },
+  { id: "dues", label: "Membership Dues", href: "/settings/dues" },
   { id: "rules", label: "Public Rules", href: "/settings/rules" },
   { id: "news", label: "News Bulletin", href: "/settings/news" },
   { id: "staff", label: "Staff", href: "/settings/staff" },

@@ -153,6 +153,7 @@ export default async function MembersPage() {
         description="Manage memberships, division-specific classifications, and review history while each roper keeps one shared profile."
         actions={
           <div className="flex flex-wrap items-center gap-3">
+          <Link href="/members/dues" className="inline-flex items-center gap-2 rounded-md border border-[#dfe4e1] bg-white px-3 py-2 text-sm font-semibold">Membership dues</Link>
           {canEdit && <Link href="/members/account-links" className="inline-flex items-center gap-2 rounded-md border border-[#dfe4e1] bg-white px-3 py-2 text-sm font-semibold">Account connections</Link>}
           {canEdit && <Link href="/members/profile-requests" className="inline-flex items-center gap-2 rounded-md border border-[#dfe4e1] bg-white px-3 py-2 text-sm font-semibold">Profile corrections</Link>}
           {canEdit && <Link href="/members/import" className="inline-flex items-center gap-2 rounded-md border border-[#dfe4e1] bg-white px-3 py-2 text-sm font-semibold">Import members</Link>}

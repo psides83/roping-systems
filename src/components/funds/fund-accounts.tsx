@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrencyExact as formatCurrency } from "@/lib/utils";
 import { FundDialog } from "./fund-dialog";
 export async function FundAccounts({ producerId,canManage }: { producerId: string; canManage: boolean }) {
   const supabase = await createClient();

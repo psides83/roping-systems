@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveProducer } from "@/lib/producers";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrencyExact as formatCurrency } from "@/lib/utils";
 import { FundDialog } from "@/components/funds/fund-dialog";
 export default async function FundPage({ params,searchParams }: { params: Promise<{ fundId: string }>; searchParams: Promise<{ page?: string }> }) {
   const producer = await getActiveProducer();
@@ -19,7 +19,7 @@ export default async function FundPage({ params,searchParams }: { params: Promis
   const balance = balances?.find((row: { id: string }) => row.id===fundId)?.balance_cents ?? 0;
   const availability = balances?.find((row: { id: string }) => row.id===fundId);
   const canManage = producer.role!=="viewer" || Boolean(producer.treasurer);
-  const labels: Record<string,string> = { entry_deposit: "Roping contribution deposit",entry_adjustment: "Roping contribution adjustment",manual_deposit: "Manual deposit",manual_debit: "Manual debit",reversal: "Reversal",roping_allocation: "Added money used at roping",roping_return: "Added money returned on reopening" };
+  const labels: Record<string,string> = { entry_deposit: "Roping contribution deposit",entry_adjustment: "Roping contribution adjustment",manual_deposit: "Manual deposit",manual_debit: "Manual debit",reversal: "Reversal",roping_allocation: "Added money used at roping",roping_return: "Added money returned on reopening",membership_deposit: "Membership dues contribution",membership_adjustment: "Membership dues reversal" };
   return <div className="space-y-5"><Link href="/funds" className="inline-flex items-center gap-2 text-sm font-semibold"><ArrowLeft size={16} />Funds</Link>
     <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-bold">{fund.name}</h1><p className="mt-2 text-sm text-[#66716b]">{fund.description}</p>{!fund.is_active ? <span className="mt-2 inline-block rounded bg-[#eef1ef] px-2 py-1 text-xs font-semibold">Archived</span> : null}</div>{canManage ? <FundDialog operation="edit" fund={fund} /> : null}</header>
     <section className="flex flex-wrap items-center justify-between gap-4 border-y border-[#dfe4e1] py-5"><div><p className="text-sm text-[#66716b]">Account balance</p><p className={`mt-1 text-2xl font-bold ${Number(balance)<0 ? "text-red-700" : ""}`}>{formatCurrency(Number(balance))}</p><p className="mt-2 text-sm text-[#66716b]">{formatCurrency(Number(availability?.reserved_cents ?? 0))} reserved · {formatCurrency(Number(availability?.available_cents ?? 0))} available</p></div>{canManage && fund.is_active ? <div className="flex flex-wrap gap-2"><FundDialog operation="manual_deposit" fund={fund} /><FundDialog operation="manual_debit" fund={fund} /></div> : null}</section>

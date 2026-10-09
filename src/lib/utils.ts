@@ -13,6 +13,12 @@ export function formatCurrency(cents: number) {
   }).format(cents / 100);
 }
 
+export function formatCurrencyExact(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 export function formatPhoneNumber(value: string | null | undefined) {
   if (!value) return "";
   let digits = value.replace(/\D/g, "");

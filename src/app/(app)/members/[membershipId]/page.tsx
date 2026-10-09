@@ -355,6 +355,7 @@ export default async function MemberDetailPage({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link href={`/members/dues?member=${member.id}`} className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">Membership dues</Link>
             <EditMemberDialog
               member={{
                 id: member.id,
