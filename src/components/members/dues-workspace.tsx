@@ -8,7 +8,7 @@ import { duesTotals, type DuesAccount, type DuesSettings } from "@/lib/membershi
 import { formatCurrencyExact as formatCurrency } from "@/lib/utils";
 
 type Choice = { id: string; name: string; is_active?: boolean };
-export function DuesWorkspace({ accounts, members, seasons, funds, settings, canManage, season, member, timezone }: { accounts: DuesAccount[]; members: Choice[]; seasons: Choice[]; funds: Choice[]; settings: DuesSettings | null; canManage: boolean; season?: string; member?: string; timezone: string }) {
+export function DuesWorkspace({ accounts, members, seasons, funds, settings, seasonalSettings = {}, canManage, season, member, timezone }: { accounts: DuesAccount[]; members: Choice[]; seasons: Choice[]; funds: Choice[]; settings: DuesSettings | null; seasonalSettings?: Record<string, DuesSettings | null>; canManage: boolean; season?: string; member?: string; timezone: string }) {
   const [query, setQuery] = useState(members.find((item) => item.id === member)?.name ?? "");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);
@@ -20,7 +20,7 @@ export function DuesWorkspace({ accounts, members, seasons, funds, settings, can
     return (names.get(account.membership_id) ?? "").toLowerCase().includes(query.toLowerCase()) && (status === "all" || (status === "paid" ? totals.outstanding === 0 : totals.outstanding > 0));
   });
   const current = Math.min(page, Math.max(0, Math.ceil(filtered.length / 20) - 1));
-  return <div className="space-y-4"><div className="flex flex-wrap items-center gap-3"><input aria-label="Search dues" type="search" placeholder="Find member" className="h-10 w-60 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} /><select aria-label="Dues status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }} className="h-10 rounded-md border border-[#ccd4d0] bg-white pl-3 pr-9 text-sm"><option value="all">All dues</option><option value="outstanding">Outstanding</option><option value="paid">Paid</option></select>{canManage && settings && <DuesDialog operation="assess" settings={settings} members={members} seasons={seasons} funds={funds} season={season} member={member} />}</div>
+  return <div className="space-y-4"><div className="flex flex-wrap items-center gap-3"><input aria-label="Search dues" type="search" placeholder="Find member" className="h-10 w-60 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} /><select aria-label="Dues status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }} className="h-10 rounded-md border border-[#ccd4d0] bg-white pl-3 pr-9 text-sm"><option value="all">All dues</option><option value="outstanding">Outstanding</option><option value="paid">Paid</option></select>{canManage && (settings || Object.values(seasonalSettings).some(Boolean)) && <DuesDialog operation="assess" settings={settings} seasonalSettings={seasonalSettings} members={members} seasons={seasons} funds={funds} season={season} member={member} />}</div>
     <div className="divide-y divide-[#d7ddda]">{filtered.slice(current * 20, current * 20 + 20).map((account) => {
       const total = duesTotals([account]);
       const reversed = new Set(account.payments.map((payment) => payment.reverses_id));

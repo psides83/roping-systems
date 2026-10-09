@@ -20,7 +20,8 @@ export async function duesAction(operation: string, reference: string, form: For
     const mode = value("mode");
     const revision = Number(value("revision"));
     if (!Number.isInteger(revision) || revision < 0 || amount === null || amount <= 0 || allocation === null || !["fixed", "percent"].includes(mode) || allocation > (mode === "fixed" ? amount : 10000) || (allocation > 0 && !uuid("fund"))) return { error: "Check the dues amount, allocation, and destination fund." };
-    result = await client.rpc("save_dues_settings", { target_producer: producer.id, expected_revision: revision, amount, allow_installments: form.get("installments") === "on", mode, allocation, target_fund: allocation > 0 ? value("fund") : null });
+    if(value("season") && !uuid("season")) return {error:"Choose a valid season."};
+    result = await client.rpc(value("season") ? "save_season_dues_settings" : "save_dues_settings", { target_producer: producer.id, ...(value("season") ? {target_season:value("season")} : {}), expected_revision: revision, amount, allow_installments: form.get("installments") === "on", mode, allocation, target_fund: allocation > 0 ? value("fund") : null });
   } else if (operation === "assess") {
     if (!uuid("member") || !uuid("season") || (value("fund") && !uuid("fund"))) return { error: "Choose a member, season, and valid destination fund." };
     result = await client.rpc("assess_membership_dues", { target_producer: producer.id, target_member: value("member"), target_season: value("season"), target_fund: value("fund") || null });

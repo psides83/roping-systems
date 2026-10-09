@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
@@ -21,6 +22,7 @@ export function ProducerSeasons({ seasons, canEdit }: { seasons: ProducerSeason[
       {seasons.map((season) => <li key={season.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
         <div className="min-w-0"><p className="break-words text-sm font-semibold">{season.name}</p><p className="mt-1 text-xs text-[#66716b]">{publicEventDate(season.startsOn)} - {publicEventDate(season.endsOn)}</p></div>
         {canEdit ? <div className="flex gap-2">
+          <Link href={`/settings/seasons/rollover?source=${season.id}`} className="inline-flex h-9 items-center rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold">Start next season</Link>
           <button type="button" onClick={() => { setEditing(season); setMessage(""); }} aria-label={`Edit ${season.name}`} title="Edit season" className="grid h-9 w-9 place-items-center rounded-md border border-[#ccd4d0]"><Pencil size={15} /></button>
           <button type="button" disabled={pending} onClick={() => {
             if (!window.confirm(`Delete ${season.name}? Event records and results will remain, but this season filter will be removed.`)) return;
