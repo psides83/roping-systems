@@ -4,6 +4,7 @@ import type { PublicEvent } from "@/lib/events/public-event-data";
 import { AddToCalendar } from "@/components/events/add-to-calendar";
 import { PublicClassSchedule } from "@/components/events/public-class-schedule";
 import { eventDateRange } from "@/lib/events/event-date-range";
+import { PublicEventInformation } from "./public-event-information";
 
 export function PublicScheduledEvent({ event, producerSlug, timezone, configured, now }: { event: PublicEvent; producerSlug: string; timezone: string; configured: boolean; now: number }) {
   const dateLabel = (value: string) => new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`));
@@ -29,6 +30,7 @@ export function PublicScheduledEvent({ event, producerSlug, timezone, configured
           {open && configured ? <Link href={`/public/${producerSlug}/${event.slug}/enter`} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-bold text-white">Enter online<ArrowRight size={15} /></Link> : null}
         </div>
       </header>
+      <PublicEventInformation event={event} timezone={timezone} />
       <details className="group/schedule mt-4">
         <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-semibold text-[var(--brand-accent-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
           Roping schedule
@@ -45,4 +47,3 @@ export function PublicScheduledEvent({ event, producerSlug, timezone, configured
 
 
 }
-

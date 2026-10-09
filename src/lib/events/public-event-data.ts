@@ -11,6 +11,7 @@ import type { PublicMoneyResult } from "@/lib/events/public-money-results";
 import type { ProducerSeason } from "@/lib/seasons";
 import { loadPublicQualificationNotices } from "./public-qualification-data";
 import type { QualificationNotice } from "./qualification-notice";
+import type { EventInformation } from "./event-information";
 
 export interface PublicEvent {
   id: string;
@@ -24,6 +25,7 @@ export interface PublicEvent {
   resultStatus: string;
   entriesOpenAt: string | null;
   entriesCloseAt: string | null;
+  information?: EventInformation;
   scheduledRopings: Array<{
     id: string;
     name: string;
@@ -213,6 +215,11 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
     throw new Error(
       `Unable to load the class schedule: ${classScheduleError.message}`,
     );
+  const { data: informationRows, error: informationError } = await supabase.from("event_information")
+    .select("id,flyer_url,directions,venue_information,contact_name,contact_phone,contact_email,entry_information")
+    .eq("producer_id", producer.id);
+  if (informationError) throw new Error("Unable to load public event information.");
+  const information = new Map((informationRows ?? []).map(row => [row.id, row]));
   const selectedEvent =
     selectPublicEvent(schedule, requestedEventSlug);
   const qualificationNotices = await loadPublicQualificationNotices(producerSlug);
@@ -340,6 +347,7 @@ export async function getPublicData(producerSlug: string, requestedEventSlug?: s
       resultStatus: event.result_status,
       entriesOpenAt: event.entries_open_at,
       entriesCloseAt: event.entries_close_at,
+      information: information.get(event.id),
       scheduledRopings: eventRows.map((row, index) => {
         const previousRoping = row.schedule_type === "follows_previous"
           ? eventRows.slice(0, index).findLast((previous) => previous.scheduled_date === row.scheduled_date && previous.arena_name === row.arena_name)

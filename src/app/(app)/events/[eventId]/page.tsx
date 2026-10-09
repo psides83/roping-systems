@@ -36,6 +36,7 @@ import { effectiveQualificationRuleSet, type QualificationOverride } from "@/lib
 import { FinalsQualifierDialog } from "@/components/events/finals-qualifier-dialog";
 import { ClassRoundOrderingForm } from "@/components/events/class-round-ordering-form";
 import { EventDetailsDialog } from "@/components/events/event-details-dialog";
+import { EventInformationEditor } from "@/components/events/event-information-editor";
 import { EventPublicationControl } from "@/components/events/event-publication-control";
 import { EventOfficialResultsControl } from "@/components/events/event-official-results-control";
 import { EventRopingOrderControls } from "@/components/events/event-roping-order-controls";
@@ -792,6 +793,7 @@ export default async function RopingDetailPage({
                   editable={setupEditable}
                 />
                 <QualificationAssignmentDialog eventId={event.id} editable={setupEditable} />
+                {event.canManage && <EventInformationEditor eventId={event.id} />}
                 <Link
                   href={`/events/${event.id}/entries`}
                   className="flex h-10 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"
