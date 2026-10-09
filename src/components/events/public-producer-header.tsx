@@ -5,7 +5,7 @@ import { UserRound } from "lucide-react";
 
 export function PublicProducerHeader({ slug, name, logoUrl, active, membershipPublished = false }: {
   slug: string; name: string; logoUrl?: string | null;
-  active: "results" | "schedule" | "standings" | "rules"; membershipPublished?: boolean;
+  active: "results" | "schedule" | "standings" | "rules" | "news"; membershipPublished?: boolean;
 }) {
   const base = `/public/${slug}`;
   const links = [
@@ -13,6 +13,7 @@ export function PublicProducerHeader({ slug, name, logoUrl, active, membershipPu
     { key: "schedule", label: "Schedule", href: `${base}/schedule` },
     { key: "standings", label: "Standings", href: `${base}/standings` },
     { key: "rules", label: "Rules", href: `${base}/rules` },
+    { key: "news", label: "News", href: `${base}/news` },
     ...(membershipPublished ? [{ key: "membership", label: "Membership", href: `${base}/membership` }] : []),
   ];
   return <header className="border-b border-[#dfe4e1] brand-primary-fill text-white">

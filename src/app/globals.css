@@ -249,12 +249,12 @@ textarea:focus-visible {
   }
   .print-receipt,
   .print-receipt *,
-  .print-rules,
-  .print-rules * {
+  .print-active-document,
+  .print-active-document * {
     visibility: visible;
   }
   .print-receipt,
-  .print-rules {
+  .print-active-document {
     position: absolute;
     inset: 0;
     width: 100%;

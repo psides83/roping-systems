@@ -17,7 +17,8 @@ function move<T>(items: T[], index: number, direction: number) {
   return next;
 }
 
-export function RulesEditor({ initial, initialRevision, initialPublished }: { initial: RulesDocument; initialRevision: number; initialPublished: boolean }) {
+export function RulesEditor({ initial, initialRevision, initialPublished, kind = "rules", saveAction = saveRules }: { initial: RulesDocument; initialRevision: number; initialPublished: boolean; kind?: "rules" | "bulletin"; saveAction?: typeof saveRules }) {
+  const noun = kind === "bulletin" ? "Bulletin" : "Rules";
   const [document, setDocument] = useState(initial);
   const [saved, setSaved] = useState(JSON.stringify(initial));
   const [revision, setRevision] = useState(initialRevision);
@@ -34,17 +35,17 @@ export function RulesEditor({ initial, initialRevision, initialPublished }: { in
     setError("");
     startTransition(async () => {
       try {
-        const result = await saveRules(document, revision, operation);
+        const result = await saveAction(document, revision, operation);
         if (result.error) { setError(result.error); return; }
         setRevision(result.revision!);
         if (operation !== "unpublish") setSaved(JSON.stringify(document));
         if (operation !== "save") setPublished(operation === "publish");
-        setStatus(operation === "save" ? "Draft saved. Public rules are unchanged." : operation === "publish" ? "Rules published." : "Rules unpublished. Your draft is retained.");
+        setStatus(operation === "save" ? "Draft saved. Published content is unchanged." : operation === "publish" ? `${noun} published.` : `${noun} unpublished. Your draft is retained.`);
         setConfirmation(null);
       } catch { setError("Unable to save. Your edits are still here; please try again."); }
     });
   }
-  const issues = rulesPublishErrors(document);
+  const issues = [...rulesPublishErrors(document), ...(kind === "bulletin" && !document.effectiveOn ? ["Choose a bulletin date before publishing."] : [])];
   return <div className="space-y-5">
     <UnsavedChangesGuard dirty={dirty} saving={pending} onSave={() => act("save")} />
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-[#d7ddda] bg-[#f5f6f7] py-3">
@@ -59,8 +60,8 @@ export function RulesEditor({ initial, initialRevision, initialPublished }: { in
     {status && <p role="status" className="text-sm font-semibold text-emerald-800">{status}</p>}
     <fieldset disabled={pending} className="min-w-0 space-y-6">
       <div className="flex flex-wrap gap-5">
-        <label className="text-sm font-semibold">Page title<input className={field} value={document.title} maxLength={150} onChange={(event) => update({ title: event.target.value })} /></label>
-        <label className="text-sm font-semibold">Effective date (optional)<input className={field} type="date" value={document.effectiveOn} onChange={(event) => update({ effectiveOn: event.target.value })} /></label>
+        <label className="text-sm font-semibold">{kind === "bulletin" ? "Bulletin title" : "Page title"}<input className={field} value={document.title} maxLength={150} onChange={(event) => update({ title: event.target.value })} /></label>
+        <label className="text-sm font-semibold">{kind === "bulletin" ? "Bulletin date" : "Effective date (optional)"}<input className={field} type="date" value={document.effectiveOn} onChange={(event) => update({ effectiveOn: event.target.value })} /></label>
       </div>
       <RuleTextEditor disabled={pending} label="Introduction (optional)" value={document.introduction} onChange={(introduction) => update({ introduction })} />
       <div className="space-y-4">{document.sections.map((section, index) => <details key={section.id} className="rounded-md border border-[#d7ddda] bg-white p-4">
@@ -81,8 +82,8 @@ export function RulesEditor({ initial, initialRevision, initialPublished }: { in
         <button type="button" className={button} disabled={document.attachments.length >= 10} onClick={() => update({ attachments: [...document.attachments, { id: crypto.randomUUID(), name: "", url: "" }] })}><Plus size={16} />Add PDF link</button>
       </section>
     </fieldset>
-    {preview && <RulesDialog title="Rules preview" onClose={() => setPreview(false)}><RulesContent document={document} preview /></RulesDialog>}
-    {confirmation && <RulesDialog title={confirmation === "publish" ? "Publish rules?" : "Unpublish rules?"} onClose={() => !pending && setConfirmation(null)}><p className="mb-5 text-sm">{confirmation === "publish" ? "This replaces the rules currently visible to the public with this draft." : "The public rules will be hidden. Your draft will remain available."}</p>{error && <p role="alert" className="mb-4 text-sm text-rose-800">{error}</p>}<button className={button} disabled={pending} onClick={() => act(confirmation)}>{pending ? "Saving…" : "Confirm"}</button></RulesDialog>}
+    {preview && <RulesDialog title={`${noun} preview`} onClose={() => setPreview(false)}><RulesContent document={document} kind={kind} preview /></RulesDialog>}
+    {confirmation && <RulesDialog title={`${confirmation === "publish" ? "Publish" : "Unpublish"} ${noun.toLowerCase()}?`} onClose={() => !pending && setConfirmation(null)}><p className="mb-5 text-sm">{confirmation === "publish" ? "This draft will become the version visible to the public." : "The published content will be hidden. Your draft will remain available."}</p>{error && <p role="alert" className="mb-4 text-sm text-rose-800">{error}</p>}<button className={button} disabled={pending} onClick={() => act(confirmation)}>{pending ? "Saving…" : "Confirm"}</button></RulesDialog>}
   </div>;
 }
 
