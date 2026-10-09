@@ -18,6 +18,8 @@ for (const [overrides, title] of [
   [{ eventStatus: "completed" }, "Competition completed"],
   [{ eventStatus: "cancelled" }, "Event cancelled"],
   [{ ropingStatus: "completed" }, "Roping completed"],
+  [{ ropingStatus: "paused" }, "Roping paused"],
+  [{ ropingStatus: "delayed" }, "Roping delayed"],
   [{ roundLocked: true }, "Round completed"],
   [{ dirty: true }, "Unsaved order"],
   [{ drawReady: false }, "Order not built"],

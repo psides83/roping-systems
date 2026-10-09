@@ -10,6 +10,7 @@ export function deskWorkflowState(input: DeskStateInput) {
   if (input.eventStatus === "cancelled") return { title: "Event cancelled", message: "Timing is closed. Existing records remain available for review." };
   if (input.eventStatus === "completed") return { title: "Competition completed", message: "Review results and continue to payouts. Timing is closed." };
   if (input.ropingStatus === "completed") return { title: "Roping completed", message: "Continue to the next roping, or finalize this roping's payouts on the Payouts page." };
+  if (input.ropingStatus === "paused" || input.ropingStatus === "delayed") return { title: input.ropingStatus === "paused" ? "Roping paused" : "Roping delayed", message: "An event manager must resume this roping before the next run is recorded." };
   if (input.roundLocked) return { title: "Round completed", message: "Continue to the next round or roping. Corrections require a reason." };
   if (!input.runs.length) return input.isShortRound
     ? input.shortRoundSeeded

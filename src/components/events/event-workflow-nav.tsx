@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, Banknote, ClipboardList, LayoutDashboard, Printer, Radio } from "lucide-react";
+import { ArrowLeft, Banknote, ClipboardList, LayoutDashboard, PanelsTopLeft, Printer, Radio } from "lucide-react";
 import { NavigationPending } from "@/components/ui/navigation-pending";
 
-export function EventWorkflowNav({ eventId, active, documentRopingId, documentRound }: { eventId: string; active: "event" | "entries" | "live" | "payouts" | "documents"; documentRopingId?: string; documentRound?: number }) {
+export function EventWorkflowNav({ eventId, active, documentRopingId, documentRound }: { eventId: string; active: "event" | "entries" | "live" | "payouts" | "documents" | "arenas"; documentRopingId?: string; documentRound?: number }) {
   const documentQuery = new URLSearchParams();
   if (active === "live") { documentQuery.set("type", "timer"); if (documentRopingId) documentQuery.set("roping", documentRopingId); if (documentRound) documentQuery.set("round", String(documentRound)); }
   if (active === "entries") documentQuery.set("type", "entries");
@@ -10,6 +10,7 @@ export function EventWorkflowNav({ eventId, active, documentRopingId, documentRo
   const steps = [
     { id: "event", label: "Event", path: "", icon: LayoutDashboard },
     { id: "entries", label: "Entries", path: "/entries", icon: ClipboardList },
+    { id: "arenas", label: "Arena overview", path: "/arenas", icon: PanelsTopLeft },
     { id: "live", label: "Live desk", path: "/live", icon: Radio },
     { id: "payouts", label: "Payouts", path: "/payouts", icon: Banknote },
     { id: "documents", label: "Print documents", path: `/documents${documentQuery.size ? `?${documentQuery}` : ""}`, icon: Printer },
