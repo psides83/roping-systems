@@ -70,6 +70,26 @@ test('roping document groups every configured round, including an unbuilt short 
   assert.equal(rows[0].id, 'second');
   assert.equal(helpers.printRoundSheets({ ...roping, short_round_enabled: false }, rows).length, 3);
 });
+test('round selector defaults to all and supports main or short rounds', () => {
+  for (const value of [undefined, 'all', '', '0', '-1', '5', '1.5', 'bad']) assert.equal(helpers.printRoundSelection(value, roping), 'all');
+  assert.equal(helpers.printRoundSelection('2', roping), 2);
+  assert.equal(helpers.printRoundSelection('4', roping), 4);
+  assert.equal(helpers.printRoundSelection('4', { ...roping, short_round_enabled: false }), 'all');
+});
+test('individual round documents exclude all other rounds and use only their own readiness', () => {
+  const runs = [run(), run({ id: 'r2', round: 2, position: null }), run({ id: 'short', round: 4 })];
+  const short = helpers.printRoundSheets(roping, runs, 4);
+  assert.equal(short.length, 1);
+  assert.equal(short[0].round, 4);
+  assert.deepEqual(short[0].runs.map(row => row.id), ['short']);
+  assert.equal(short[0].ready, true);
+  assert.equal(helpers.printRoundSheets(roping, runs, 2)[0].ready, false);
+  assert.equal(helpers.printRoundSheets(roping, runs, 3)[0].ready, false);
+  const html = renderToStaticMarkup(React.createElement(sheets.RunSheet, { roping, ...short[0], timer: true, style: 'number' }));
+  assert.ok(html.includes('Short round'));
+  assert.ok(!html.includes('Round 1'));
+  assert.ok(!html.includes('Round 2'));
+});
 test('all-round loader scopes reads and retains round numbers across pagination', async () => {
   const calls = [];
   const rows = Array.from({ length: 501 }, (_, i) => ({ id: String(i), round_number: i < 300 ? 1 : 2, draw_position: i + 1, raw_time_seconds: null, penalty_seconds: 0, status: 'pending', rerun_count: 0, event_cattle: null, run_timer_readings: [], roping_entries: { entry_number: 1, competition_status: i === 500 ? 'moved' : 'active', handicap_time_credit_seconds: 0, ropers: { first_name: 'Morgan', last_name: 'Reed' } } }));

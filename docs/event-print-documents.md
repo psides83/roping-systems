@@ -2,7 +2,9 @@
 
 Open **Print documents** from the event workflow navigation. From the live desk,
 the current roping is selected; from Entries or Payouts, the matching
-document is selected. Use the document filters and **View document**, then
+document is selected. Competition sheets default to **All rounds** unless the
+link specifies an individual round. Select **Round 1**, another main round, or
+**Short round** to print only that round. Use **View document**, then
 **Print / save PDF**. Refresh data before reprinting after changes.
 
 ## Documents
@@ -10,14 +12,15 @@ document is selected. Use the document filters and **View document**, then
 - Draw sheet: built draw positions, contestants, configured entry labels, cattle,
   and recorded run statuses. All main rounds and the short round are included in
   one document, with each round starting a new printed page. At least one round
-  must have a complete order to enable printing; other rounds are explicitly
+  must have a complete order to enable printing an all-round document; other rounds are explicitly
   labeled provisional when their orders or fields are not built yet.
+  When printing an individual round, that round must have a complete order.
 - Timer sheet: all rounds, all configured timer columns, penalties, signed handicap
   adjustments, and final times/statuses. Previously saved readings are prefilled;
   unresolved runs provide writing space. One print/save action covers the whole
   roping, including its short round. Refresh and reprint when subsequent draws
-  or short-round qualifiers become available. Old round-specific links now show
-  the entire document rather than limiting it to that round.
+  or short-round qualifiers become available. Round-specific links select that
+  round; **All rounds** remains available in the same selector.
 - Contestant entry summaries: all contestants or one contestant, including each
   entered roping, entry options/charges, event-wide fees, paid amount, balance,
   and credit. Each contestant starts a new printed page. Balances use the same

@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { getActiveProducer } from '@/lib/producers';
 import { createClient } from '@/lib/supabase/server';
 import { allPrintRows, loadPrintAwards, loadPrintEntries, loadPrintRuns } from '@/lib/events/print-document-data';
-import { documentNames, printKinds, printRoundSheets, type EventDocumentKind, type PrintRoping } from '@/lib/events/print-documents';
+import { documentNames, printKinds, printRoundSheets, printRoundSelection, type EventDocumentKind, type PrintRoping } from '@/lib/events/print-documents';
 
 export default async function EventDocumentsPage({ params, searchParams }: {
   params: Promise<{ eventId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -45,8 +45,10 @@ export default async function EventDocumentsPage({ params, searchParams }: {
   if (selectedId && selectedId !== 'all' && !ropings.some(r => r.id === selectedId)) notFound();
   const selected = ropings.find(r => r.id === selectedId) ?? ropings[0];
   const runKind = kind === 'draw' || kind === 'timer';
-  const runs = runKind && selected ? await loadPrintRuns(db, producer.id, selected.id) : [];
-  const roundSheets = runKind && selected ? printRoundSheets(selected, runs) : [];
+  const round = printRoundSelection(value('round'), selected);
+  const selectedRound = round === 'all' ? undefined : round;
+  const runs = runKind && selected ? await loadPrintRuns(db, producer.id, selected.id, selectedRound) : [];
+  const roundSheets = runKind && selected ? printRoundSheets(selected, runs, selectedRound) : [];
   const entries = kind === 'entries' ? await loadPrintEntries(db, producer.id, eventId, producer.entryLabelStyle) : [];
   const roper = value('roper');
   if (kind === 'entries' && roper && roper !== 'all' && !entries.some(p => p.id === roper)) notFound();
@@ -63,15 +65,19 @@ export default async function EventDocumentsPage({ params, searchParams }: {
   return <div className="space-y-6">
     <div className="no-print space-y-6"><EventWorkflowNav eventId={eventId} active="documents" />
       <PageHeader title="Print documents" eyebrow={event.title} description="" actions={<EventDocumentControls printable={printable} />} />
-      <form className="flex flex-wrap items-end gap-3" key={`${kind}-${selectedId}-${roper}`}>
+      <form className="flex flex-wrap items-end gap-3" key={`${kind}-${selectedId}-${round}-${roper}`}>
         <label className="text-sm font-semibold">Document<select name="type" defaultValue={kind} className="mt-1 block h-10 max-w-full rounded-md border bg-white pl-3 pr-9">{kinds.map(k => <option key={k} value={k}>{documentNames[k]}</option>)}</select></label>
         {kind !== 'entries' && <label className="text-sm font-semibold">Roping<select name="roping" defaultValue={kind === 'payouts' ? selectedId ?? 'all' : selected?.id} className="mt-1 block h-10 max-w-[min(26rem,85vw)] rounded-md border bg-white pl-3 pr-9">
           {kind === 'payouts' && <option value="all">All finalized ropings</option>}{ropings.map(r => <option key={r.id} value={r.id}>{r.name} · {r.scheduled_date} · {r.arena_name || 'First Available'}</option>)}
         </select></label>}
+        {runKind && selected && <label className="text-sm font-semibold">Rounds<select name="round" defaultValue={round} className="mt-1 block h-10 rounded-md border bg-white pl-3 pr-9">
+          <option value="all">All rounds</option>
+          {Array.from({ length: selected.main_round_count + (selected.short_round_enabled ? 1 : 0) }, (_, index) => <option key={index + 1} value={index + 1}>{index < selected.main_round_count ? `Round ${index + 1}` : 'Short round'}</option>)}
+        </select></label>}
         {kind === 'entries' && <label className="text-sm font-semibold">Contestant<select name="roper" defaultValue={roper ?? 'all'} className="mt-1 block h-10 max-w-[85vw] rounded-md border bg-white pl-3 pr-9"><option value="all">All contestants</option>{entries.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
         <button className="h-10 rounded-md border bg-white px-4 text-sm font-semibold">View document</button>
       </form>
-      {runKind && !printable && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm font-semibold">Build at least one round order in the live desk before printing the roping document.</p>}
+      {runKind && !printable && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm font-semibold">{round === 'all' ? 'Build at least one round order in the live desk before printing the roping document.' : 'Build the selected round order in the live desk before printing. For a short round, select its qualifiers and build its order first.'}</p>}
       {runKind && printable && roundSheets.some(sheet => !sheet.ready) && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">All rounds are included. Rounds without a complete order are labeled provisional; refresh and reprint after their orders are built.</p>}
     </div>
     <article className={`print-active-document event-print-document ${kind === 'timer' ? 'timer-document' : ''} overflow-x-auto rounded-md border bg-white p-5 sm:p-8`}>

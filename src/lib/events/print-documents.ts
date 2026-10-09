@@ -15,13 +15,18 @@ export interface PrintRun {
   readings: { timer: number; seconds: number }[]; raw: number | null; penalty: number;
   adjustment: number; status: string; attempts: number;
 }
-export function printRoundSheets(roping: PrintRoping, runs: PrintRun[]) {
+export function printRoundSheets(roping: PrintRoping, runs: PrintRun[], selectedRound?: number) {
   const count = roping.main_round_count + (roping.short_round_enabled ? 1 : 0);
   return Array.from({ length: count }, (_, index) => {
     const round = index + 1;
     const rows = sortPrintRuns(runs.filter(run => run.round === round));
     return { round, runs: rows, ready: rows.length > 0 && rows.every(run => run.position !== null) };
-  });
+  }).filter(sheet => selectedRound === undefined || sheet.round === selectedRound);
+}
+export function printRoundSelection(value: string | undefined, roping?: PrintRoping): 'all' | number {
+  const count = (roping?.main_round_count ?? 1) + (roping?.short_round_enabled ? 1 : 0);
+  const round = Number(value);
+  return Number.isInteger(round) && round >= 1 && round <= count ? round : 'all';
 }
 export interface PrintEntrySummary {
   id: string; name: string;
