@@ -16,6 +16,14 @@ const { eventProfitability } = compiled;
 const fee = (kind, amount, roping = "r") => ({ kind, event_roping_id: roping, collected_cents: amount, outstanding_cents: 0 });
 const ropings = [{ id: "r", name: "Open", event_day_status: "completed", payouts_finalized_at: "2026-10-10" }];
 const expense = (amount, roping = null) => ({ amount_cents: amount, event_roping_id: roping, voided_at: null });
+test("practice runs and scores are event income, never competition purses or roping income", () => {
+  const fees = [fee("stock_charge_run",12500,null),fee("stock_charge_score",1500,null)];
+  const result = eventProfitability(fees,[],[],[],[expense(3000)],ropings);
+  assert.deepEqual(feeCollectionAllocations(fees), {nonPayoutFees:14000,payoutFees:0,fundContributions:0});
+  assert.equal(result.total.nonPayoutFeesAfterExpenses,11000);
+  assert.equal(result.total.netRetained,11000);
+  assert.equal(result.ropings[0].collected,0);
+});
 test("non-payout fees include operating charges, never payout pots or fund contributions", () => {
   const fees = [
     {...fee("standard",10000),contributes_to_payout:false,title:"Production charge"},

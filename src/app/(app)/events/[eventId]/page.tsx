@@ -94,6 +94,7 @@ interface EventDetail {
   finalScheduleDate: string;
   canManage: boolean;
   canFinance?: boolean;
+  canStock?: boolean;
   availableTemplates: AddRopingTemplate[];
   availableClassifications: AddRopingClassification[];
   eventFees: Array<{
@@ -561,6 +562,7 @@ async function getEvent(
   }
   const management = await supabase.rpc("can_manage_event", { target_event: eventId });
   const finance = await supabase.rpc("can_finance_event", { target_event: eventId });
+  const stockAccess = await supabase.rpc("can_collect_event", { target_event: eventId });
   if (management.error || finance.error) throw new Error("Unable to check event staff permissions.");
   return {
     producerSlug: producer.slug,
@@ -621,6 +623,7 @@ async function getEvent(
       }).format(new Date(data.ends_at ?? data.starts_at)),
       canManage: Boolean(management.data),
       canFinance: Boolean(finance.data),
+      canStock: Boolean(stockAccess.data),
       availableTemplates: (templateData ?? []).map((template) => ({
         id: template.id,
         name: template.name,
@@ -861,6 +864,7 @@ export default async function RopingDetailPage({
           <Metric key={metric.label} {...metric} />
         ))}
         <Metric icon={CircleDollarSign} label="Fee collections" value={formatCurrency(collections.collectedCents)} detail={`${formatCurrency(collections.outstandingCents)} outstanding`} href={`/events/${event.id}/fee-collections`} />
+        {event.canStock && <Metric icon={CircleDollarSign} label="Stock charge runs" value="Practice runs & scores" detail="Packages, payments and usage" href={`/events/${event.id}/stock-charge`} />}
         {event.canFinance && (featureEnabled(features, "profitability") || hasExpenses) && <Metric icon={CircleDollarSign} label="Profitability" value="Income & expenses" detail="Retained income by event and roping" href={`/events/${event.id}/profitability`} />}
         <Metric icon={WalletCards} label="Payouts" href={`/events/${event.id}/payouts`} detail={event.status === "completed" ? undefined : "Provisional awards from recorded runs"} breakdown={[
           { label: "Due", value: formatCurrency(payouts.dueCents) },

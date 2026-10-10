@@ -1,0 +1,73 @@
+begin;
+do $$
+declare staff uuid; producer uuid; event uuid; package uuid; score uuid; session uuid;
+  purchase uuid; roper uuid; usage uuid; request uuid:=gen_random_uuid(); office uuid:=gen_random_uuid();
+  blocked boolean; predecessor uuid; following_session uuid; division uuid;
+begin
+  select id into strict staff from auth.users where lower(email)='psides83@hotmail.com';
+  perform set_config('request.jwt.claim.sub',staff::text,true);
+  select id into strict producer from public.producers where public.can_manage_organization(id) order by id limit 1;
+  insert into public.events(producer_id,title,slug,starts_at,ends_at,status,publication_state)
+    values(producer,'Stock charge test',gen_random_uuid()::text,now(),now()+interval '1 day','draft','unpublished') returning id into event;
+  perform public.manage_event_stock(event,'settings','{"enabled":true,"runLimit":"5","scoreLimit":"1"}');
+  package:=public.manage_event_stock(event,'package','{"title":"Five runs","kind":"run","units":5,"amountCents":12500}');
+  score:=public.manage_event_stock(event,'package','{"title":"Score","kind":"score","units":1,"amountCents":1500}');
+  session:=public.manage_event_stock(event,'session',jsonb_build_object('title','Practice','date',(now() at time zone (select timezone from public.producers where id=producer))::date,'arena','Arena 1','time','12:00'));
+  purchase:=public.manage_event_stock(event,'purchase',jsonb_build_object('packageId',package,'requestId',request,'firstName','Jordan','lastName','Practice','phone','2545550101'));
+  select roper_id into roper from public.event_stock_purchases where id=purchase;
+  if public.manage_event_stock(event,'purchase',jsonb_build_object('packageId',package,'requestId',request,'firstName','Jordan','lastName','Practice','phone','2545550101'))<>purchase then raise exception 'Retry duplicated purchase'; end if;
+  if exists(select 1 from public.roping_entries where event_id=event) or not exists(select 1 from public.memberships where producer_id=producer and roper_id=roper) then raise exception 'Practice purchase created an entry or failed to save roper'; end if;
+  blocked:=false;
+  begin perform public.manage_event_stock(event,'use',jsonb_build_object('id',purchase,'sessionId',session,'requestId',gen_random_uuid()));
+  exception when others then if sqlerrm<>'Collect payment before using a run or score' then raise; end if; blocked:=true; end;
+  if not blocked then raise exception 'Unpaid practice used'; end if;
+  blocked:=false;
+  begin perform public.manage_event_stock(event,'purchase',jsonb_build_object('packageId',package,'requestId',gen_random_uuid(),'roperId',roper));
+  exception when others then if sqlerrm<>'This package exceeds the roper''s run limit' then raise; end if; blocked:=true; end;
+  if not blocked then raise exception 'Bundle unit limit bypassed'; end if;
+  perform public.manage_event_stock(event,'purchase',jsonb_build_object('packageId',score,'requestId',gen_random_uuid(),'roperId',roper));
+  perform public.manage_event_stock(event,'pay',jsonb_build_object('id',purchase));
+  perform public.manage_event_stock(event,'pay',jsonb_build_object('id',purchase));
+  request:=gen_random_uuid();
+  usage:=public.manage_event_stock(event,'use',jsonb_build_object('id',purchase,'sessionId',session,'requestId',request));
+  if public.manage_event_stock(event,'use',jsonb_build_object('id',purchase,'sessionId',session,'requestId',request))<>usage or (select count(*) from public.event_stock_uses where purchase_id=purchase)<>1 then raise exception 'Retry duplicated usage'; end if;
+  if (select sum(collected_cents) from public.event_fee_collection_summary(event))<>12500 or (select sum(outstanding_cents) from public.event_fee_collection_summary(event))<>1500 then raise exception 'Collections do not reconcile'; end if;
+  for i in 1..4 loop
+    perform public.manage_event_stock(event,'use',jsonb_build_object('id',purchase,'sessionId',session,'requestId',gen_random_uuid()));
+  end loop;
+  blocked:=false;
+  begin perform public.manage_event_stock(event,'use',jsonb_build_object('id',purchase,'sessionId',session,'requestId',gen_random_uuid()));
+  exception when others then if sqlerrm<>'All units have been used' then raise; end if; blocked:=true; end;
+  if not blocked then raise exception 'More units used than purchased'; end if;
+  blocked:=false;
+  begin perform public.manage_event_stock(event,'cancel',jsonb_build_object('id',purchase,'reason','Test refund'));
+  exception when others then if sqlerrm<>'Reverse used units before canceling' then raise; end if; blocked:=true; end;
+  if not blocked then raise exception 'Used purchase was refunded'; end if;
+  perform public.manage_event_stock(event,'reverse',jsonb_build_object('id',usage,'reason','Marked wrong roper'));
+  for usage in select id from public.event_stock_uses where purchase_id=purchase and reversed_at is null loop
+    perform public.manage_event_stock(event,'reverse',jsonb_build_object('id',usage,'reason','Refunding practice package'));
+  end loop;
+  perform public.manage_event_stock(event,'cancel',jsonb_build_object('id',purchase,'reason','Refund issued to roper'));
+  if (select sum(collected_cents) from public.event_fee_collection_summary(event))<>0 then raise exception 'Refund stayed in collections'; end if;
+  if not exists(select 1 from public.producer_audit_log where entity_type='event_stock_purchases' and entity_id=purchase and before_data is not null and after_data->>'correction_reason'='Refund issued to roper') then raise exception 'Full correction history missing'; end if;
+  select id into strict division from public.divisions where producer_id=producer order by id limit 1;
+  insert into public.event_ropings(producer_id,event_id,division_id,name,scheduled_date,arena_name,main_round_count)
+    values(producer,event,division,'Preceding roping',(now() at time zone (select timezone from public.producers where id=producer))::date,'Arena 1',1) returning id into predecessor;
+  following_session:=public.manage_event_stock(event,'session',jsonb_build_object('title','After roping','date',(now() at time zone (select timezone from public.producers where id=producer))::date,'arena','Arena 1','follows',predecessor));
+  delete from public.event_ropings where id=predecessor;
+  if not exists(select 1 from public.event_stock_sessions where id=following_session and not active and follows_roping_id is null) then raise exception 'Removing preceding roping did not close its session'; end if;
+  insert into auth.users(id,email) values(office,office::text||'@example.com');
+  insert into public.producer_staff(producer_id,user_id,role) values(producer,office,'entry_office');
+  perform public.assign_staff_event(producer,event,office,true);
+  perform set_config('request.jwt.claim.sub',office::text,true);
+  blocked:=false;
+  begin perform public.manage_event_stock(event,'settings','{"enabled":false}');
+  exception when others then if sqlerrm<>'Event management access is required' then raise; end if; blocked:=true; end;
+  if not blocked then raise exception 'Entry office edited settings'; end if;
+  blocked:=false;
+  begin perform public.manage_event_stock(event,'reverse',jsonb_build_object('id',usage,'reason','Unauthorized correction'));
+  exception when others then if sqlerrm<>'Financial correction access is required' then raise; end if; blocked:=true; end;
+  if not blocked then raise exception 'Entry office reversed usage'; end if;
+  if has_function_privilege('anon','public.manage_event_stock(uuid,text,jsonb)','execute') then raise exception 'Anonymous stock mutation exposed'; end if;
+end $$;
+rollback;

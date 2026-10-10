@@ -15,7 +15,8 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
   const dates = new Map((schedule.data ?? []).map((row) => [row.id, row.scheduled_date as string]));
   const sum = (rows: FeeCollection[], field: "collected_cents" | "outstanding_cents") =>
     rows.reduce((total, row) => total + Number(row[field]), 0);
-  const eventFees = fees.filter((fee) => !fee.event_roping_id);
+  const stockFees = fees.filter((fee) => fee.kind.startsWith("stock_charge_"));
+  const eventFees = fees.filter((fee) => !fee.event_roping_id && !fee.kind.startsWith("stock_charge_"));
   const entryFees = fees.filter((fee) => fee.event_roping_id);
   const itemized = new Map<string, FeeCollection>();
   for (const fee of entryFees) {
@@ -50,6 +51,7 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
           ["Total collected", sum(fees, "collected_cents")],
           ["Entry fees collected", sum(entryFees, "collected_cents")],
           ["Event fees collected", sum(eventFees, "collected_cents")],
+          ...(stockFees.length ? [["Stock charge purchases collected", sum(stockFees, "collected_cents")]] : []),
           ["Fees still unpaid", sum(fees, "outstanding_cents")],
         ].map(([label, amount]) => (
           <div key={label}>
@@ -66,6 +68,7 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
         ].map(item => <div key={item.label}><dt className="text-xs font-semibold text-[#66716b]"><FinancialLabel label={item.label} help={item.help}/></dt><dd className="mt-1 font-mono text-lg font-bold tabular-nums">{formatCurrency(item.amount)}</dd></div>)}
       </dl>
       {eventFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Event-wide fees</h3><FeeTable fees={eventFees} /></div> : null}
+      {stockFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Stock charge runs & scores</h3><FeeTable fees={stockFees} /></div> : null}
       {entryFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Entry fees across all ropings</h3><FeeTable fees={Array.from(itemized.values())} /></div> : null}
       <details className="mt-4 border-t border-[#dfe4e1]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">

@@ -15,6 +15,8 @@ export async function loadEventReconciliation(eventId: string) {
   if (event.error) throw new Error("Unable to load the event closeout report.");
   const fees = await readAllRows<ReconciliationFee>((first, last) => db.rpc("event_fee_collection_summary", { target_event_id: eventId }).order("fee_id").range(first, last), "Load fee collections");
   const payments = await readAllRows<ReconciliationPayment>((first, last) => db.from("event_payments").select("amount_cents,voided_at").eq("event_id", eventId).eq("producer_id", producer.id).order("id").range(first, last), "Load payments");
+  const stockPayments = await readAllRows<ReconciliationPayment>((first, last) => db.from("event_stock_payments").select("amount_cents,voided_at").eq("event_id", eventId).eq("producer_id", producer.id).order("id").range(first, last), "Load stock charge payments");
+  payments.push(...stockPayments);
   const receipts = await readAllRows<ReconciliationReceipt>((first, last) => db.from("payout_receipts").select("amount_cents,reversed_at,receipt_confirmed").eq("event_id", eventId).eq("producer_id", producer.id).order("id").range(first, last), "Load payout receipts");
   const awards = await readAllRows<ReconciliationAward>((first, last) => db.rpc("event_payout_register_awards", { target_event_id: eventId }).order("plan_id").order("award_key").range(first, last), "Load winnings");
   const ropings = await readAllRows<{ id: string; name: string; payouts_finalized_at: string | null; allow_pledged_sponsor_money: boolean; event_day_status: string }>((first, last) => db.from("event_ropings").select("id,name,payouts_finalized_at,allow_pledged_sponsor_money,event_day_status").eq("event_id", eventId).eq("producer_id", producer.id).order("id").range(first, last), "Load ropings");

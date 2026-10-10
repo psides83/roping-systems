@@ -2,6 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reconciliationTotals } from "../src/lib/events/reconciliation.ts";
 
+test("stock charge receipts reconcile separately from competition entries and exclude refunds", () => {
+  const result = reconciliationTotals(
+    [{title:"Five practice runs",assessed_cents:12500,collected_cents:12500,waived_cents:0,outstanding_cents:0}],
+    [{amount_cents:12500,voided_at:null},{amount_cents:1500,voided_at:"refunded"}],[],[],new Set(),
+  );
+  assert.equal(result.recorded,12500);
+  assert.equal(result.collectionDifference,0);
+  assert.equal(result.awarded,0);
+});
+
 test("paid flags remain distinct from receipts and finalized awards from provisional winnings", () => {
   const result = reconciliationTotals(
     [{ title: "Jackpot", assessed_cents: "10000", collected_cents: "8000", waived_cents: "500", outstanding_cents: "2000" }],
