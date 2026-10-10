@@ -6,6 +6,9 @@ declare
   high_class uuid; low_class uuid; high_roping uuid; low_roping uuid;
   age_class uuid; age_roping uuid;
 begin
+  if (select provolatile from pg_proc where oid='public.walk_up_entry_eligibility(uuid,uuid)'::regprocedure)<>'v' then
+    raise exception 'Eligibility RPC must support qualification shared locks in PostgREST';
+  end if;
   select id into strict staff from auth.users where lower(email)='psides83@hotmail.com';
   perform set_config('request.jwt.claim.sub',staff::text,true);
   select id into strict producer from public.producers where public.can_manage_organization(id) order by id limit 1;
