@@ -24,6 +24,7 @@ import { NavigationPending } from "@/components/ui/navigation-pending";
 import { useProducerFeatures } from "@/components/settings/producer-features-context";
 import { featureEnabled } from "@/lib/producer-features";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Gauge },
@@ -88,21 +89,13 @@ export function AppShell({
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-5">
+        <div className="flex h-28 shrink-0 items-center justify-between border-b border-white/10 px-5">
           <Link
             href="/dashboard"
             className="flex items-center gap-3"
             onClick={() => setOpen(false)}
           >
-            <span className="grid h-9 w-9 place-items-center rounded-md brand-accent-fill text-sm font-black">
-              RS
-            </span>
-            <span>
-              <span className="block text-sm font-bold">Roping Systems</span>
-              <span className="block text-[11px] brand-muted">
-                Event operations
-              </span>
-            </span>
+            <BrandLogo className="w-40" />
           </Link>
           <button
             className="grid h-9 w-9 place-items-center lg:hidden"

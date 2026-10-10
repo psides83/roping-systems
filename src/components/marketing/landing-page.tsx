@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import {
   ArrowRight,
   CalendarDays,
@@ -56,9 +57,9 @@ export function LandingPage() {
         <div className="absolute inset-0 bg-[#101713]/65" />
 
         <div className="relative z-10 mx-auto flex min-h-[88svh] max-w-[1240px] flex-col px-5 sm:h-full sm:min-h-0 sm:px-8 lg:px-10">
-          <header className="flex h-20 shrink-0 items-center justify-between border-b border-white/20">
-            <Link href="/" className="text-base font-black text-white">
-              Roping Systems
+          <header className="flex h-24 shrink-0 items-center justify-between gap-3 border-b border-white/20 sm:h-28">
+            <Link href="/" className="shrink-0">
+              <BrandLogo className="w-32 sm:w-40" />
             </Link>
             <nav
               aria-label="Main navigation"
@@ -87,8 +88,9 @@ export function LandingPage() {
               <p className="text-xs font-bold uppercase text-[#ffd7cd]">
                 For roping organizations and event teams
               </p>
-              <h1 className="mt-4 text-5xl font-black leading-[0.98] sm:text-6xl lg:text-7xl">
-                Roping Systems
+              <h1 className="mt-4">
+                <span className="sr-only">Roping Systems</span>
+                <BrandLogo className="w-[280px] max-w-full sm:w-[360px]" decorative />
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-xl sm:leading-8">
                 Bring your members, events, and results together. Spend less
@@ -251,7 +253,7 @@ export function LandingPage() {
 
       <footer className="bg-white">
         <div className="mx-auto flex max-w-[1240px] flex-col gap-3 px-5 py-7 text-xs text-[#758078] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-          <span className="font-bold text-[#17201c]">Roping Systems</span>
+          <Link href="/"><BrandLogo className="w-36" /></Link>
           <span>Member management, event planning, and live results.</span>
         </div>
       </footer>

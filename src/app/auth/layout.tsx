@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="grid min-h-screen bg-white lg:grid-cols-[minmax(420px,560px)_1fr]">
       <section className="flex min-h-screen flex-col px-6 py-7 sm:px-12 lg:px-16">
-        <Link href="/" className="flex w-fit items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-md brand-accent-fill text-sm font-black text-white">RS</span><span><span className="block text-sm font-bold">Roping Systems</span><span className="block text-[11px] text-[#758078]">Event operations</span></span></Link>
+        <Link href="/" className="w-fit"><BrandLogo className="w-44" /></Link>
         <div className="my-auto py-12">{children}</div>
         <p className="text-xs text-[#8a938e]">Built for producers that keep the sport moving.</p>
       </section>
