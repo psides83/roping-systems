@@ -8,6 +8,8 @@ import {
   Users,
 } from "lucide-react";
 import { EntryFormDialog } from "@/components/events/entry-form-dialog";
+import { getProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 import {
   EntryLedger,
   type LedgerContestant,
@@ -191,6 +193,7 @@ export default async function EventEntriesPage({
   }
   const producer = await getActiveProducer();
   if (!producer) notFound();
+  const requireMemberships = featureEnabled(await getProducerFeatures(producer.id), "require_memberships");
   const supabase = await createClient();
   const [
     { data: roping },
@@ -213,7 +216,7 @@ export default async function EventEntriesPage({
       .single(),
     supabase
       .from("memberships")
-      .select("member_number, ropers!inner(id, first_name, last_name)")
+      .select("member_number, ropers!inner(id, first_name, last_name, phone)")
       .eq("producer_id", producer.id)
       .order("member_number"),
     supabase
@@ -272,6 +275,10 @@ export default async function EventEntriesPage({
   if (loadError)
     throw new Error(`Unable to load event entries: ${loadError.message}`);
 
+  const officePermission = await supabase.rpc("can_enter_event", { target_event: eventId });
+  const ageRequirements = officePermission.data ? await supabase.rpc("walk_up_age_requirements", { target_event: eventId }) : { data: [], error: null };
+  if (ageRequirements.error) throw new Error("Unable to load age eligibility requirements.");
+  const ageRules = new Map((ageRequirements.data as Array<{ roping_id: string; age_required: boolean; male_age_required: boolean }>).map(row => [row.roping_id, row]));
   const divisions = (
     roping.event_ropings as unknown as Array<{
       id: string;
@@ -301,6 +308,8 @@ export default async function EventEntriesPage({
         timeZone: "UTC",
       }).format(new Date(`${division.scheduled_date}T12:00:00Z`))}`,
       allowGuests: division.allow_non_members,
+      requiresBirthDate: ageRules.get(division.id)?.age_required ?? false,
+      requiresMaleBirthDate: ageRules.get(division.id)?.male_age_required ?? false,
       options: division.event_fees
         .filter((fee) => !fee.is_required)
         .map((fee) => ({
@@ -324,12 +333,14 @@ export default async function EventEntriesPage({
       id: string;
       first_name: string;
       last_name: string;
+      phone: string | null;
     };
     memberNumbers.set(person.id, membership.member_number);
     return {
       id: person.id,
       name: `${person.first_name} ${person.last_name}`,
       memberNumber: membership.member_number,
+      phone: person.phone,
     };
   });
 
@@ -530,7 +541,6 @@ export default async function EventEntriesPage({
     })),
   }));
 
-  const officePermission = await supabase.rpc("can_enter_event", { target_event: eventId });
   const management = await supabase.rpc("can_manage_event", { target_event: eventId });
   const collection = await supabase.rpc("can_collect_event", { target_event: eventId });
   const adjustment = await supabase.rpc("can_adjust_event_finances", { target_event: eventId });
@@ -548,6 +558,7 @@ export default async function EventEntriesPage({
       canOffice={Boolean(officePermission.data)}
       canCollect={Boolean(collection.data)}
       canAdjust={Boolean(adjustment.data)}
+      requireMemberships={requireMemberships}
     />
   );
 }
@@ -564,13 +575,17 @@ function EntriesWorkspace({
   canOffice = canEdit,
   canCollect = canOffice,
   canAdjust = canEdit,
+  requireMemberships = true,
 }: {
   eventId: string;
+  requireMemberships?: boolean;
   title: string;
   divisions: Array<{
     id: string;
     name: string;
     allowGuests: boolean;
+    requiresBirthDate?: boolean;
+    requiresMaleBirthDate?: boolean;
     options: Array<{
       id: string;
       title: string;
@@ -579,7 +594,7 @@ function EntriesWorkspace({
       scope: string;
     }>;
   }>;
-  ropers: Array<{ id: string; name: string; memberNumber: string }>;
+  ropers: Array<{ id: string; name: string; memberNumber: string; phone?: string | null }>;
   contestants: LedgerContestant[];
   requests: Array<{
     id: string;
@@ -633,6 +648,7 @@ function EntriesWorkspace({
             ropers={ropers}
             enabled={canOffice}
             manager={canEdit}
+            requireMemberships={requireMemberships}
           />
         }
       />

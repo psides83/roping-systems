@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 import { refreshEventQualificationChecks } from "@/lib/events/qualification-checks";
 import { eventStaffAccess } from "@/lib/staff-access";
+import { getProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 
 export interface EntryFormState {
   success?: boolean;
@@ -96,7 +98,7 @@ const guestEntrySchema = z
       .min(1, "Last name is required.")
       .transform(formatProperNoun),
     email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
-    phone: z.string().trim(),
+    phone: z.string().trim().refine(value => value.replace(/\D/g, "").length === 10, "Enter a 10-digit phone number."),
     birthDate: z.union([z.literal(""), z.iso.date()]),
     competitionGender: z.enum(["female", "male"]),
     paymentStatus: z.enum(["unpaid", "paid_cash", "comped"]),
@@ -213,6 +215,50 @@ async function addSelectedOptions(
     if (error) return error;
   }
   return null;
+}
+
+export async function addWalkUpEntries(eventId: string, guest: boolean, _state: EntryFormState, formData: FormData): Promise<EntryFormState> {
+  const ids = formData.getAll("divisionIds").map(String);
+  if (!ids.length || ids.length > 100 || new Set(ids).size !== ids.length || ids.some(id => !z.uuid().safeParse(id).success)) return { message: "Select at least one roping." };
+  const parsed = (guest ? guestEntrySchema : existingEntrySchema).safeParse({ ...Object.fromEntries(formData), divisionId: ids[0] });
+  if (!parsed.success) return { message: parsed.error.issues[0]?.message };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { message: "Entry access for this event is required." };
+  if (guest && featureEnabled(await getProducerFeatures(context.producer.id), "require_memberships")) return { message: "Add or approve the member record before using existing roper entry." };
+  if (guest && !formData.get("birthDate")) {
+    const rules = await context.supabase.rpc("walk_up_age_requirements", { target_event: eventId });
+    if (rules.error) return { message: "Unable to check age eligibility. Please retry." };
+    if ((rules.data as Array<{ roping_id: string; age_required: boolean; male_age_required: boolean }>).some(row => ids.includes(row.roping_id) && (row.age_required || (formData.get("competitionGender") === "male" && row.male_age_required)))) return { message: "Enter a birth date for the selected roping’s age eligibility." };
+  }
+  const selections = ids.map(id => ({ ropingId: id, optionIds: formData.getAll(`options:${id}`).map(String) }));
+  if (selections.some(item => item.optionIds.some(id => !z.uuid().safeParse(id).success))) return { message: "Choose valid entry options." };
+  for (const id of ids) {
+    const error = await refreshEventQualificationChecks(eventId, id);
+    if (error) return { message: error };
+  }
+  const { error } = await context.supabase.rpc("create_walk_up_entries", {
+    target_event: eventId, selections,
+    target_roper: guest ? null : String(formData.get("personId")),
+    guest_details: guest ? parsed.data : null,
+    payment: parsed.data.paymentStatus,
+    waitlisted: formData.get("waitlist") === "on",
+    override_reason: parsed.data.eligibilityOverride === "on" ? parsed.data.eligibilityOverrideReason : null,
+  });
+  if (error) return { message: error.message };
+  revalidatePath(`/events/${eventId}/entries`);
+  revalidatePath(`/events/${eventId}/live`);
+  revalidatePath("/members");
+  return { success: true, message: `${ids.length} ${formData.get("waitlist") === "on" ? "waitlist requests" : "entries"} added.` };
+}
+
+export async function walkUpEligibility(eventId: string, roperId: string): Promise<{ rows?: Array<{ roping_id: string; reason: string | null }>; error?: string }> {
+  if (!z.uuid().safeParse(roperId).success) return { error: "Choose a roper." };
+  const context = await requireEntryOffice(eventId);
+  if (!context) return { error: "Entry access is required." };
+  const error = await refreshEventQualificationChecks(eventId);
+  if (error) return { error };
+  const result = await context.supabase.rpc("walk_up_entry_eligibility", { target_event: eventId, target_roper: roperId });
+  return result.error ? { error: result.error.message } : { rows: result.data };
 }
 
 export async function addExistingEntry(
