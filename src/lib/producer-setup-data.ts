@@ -7,6 +7,8 @@ import { payoutScheduleIssues } from "@/lib/payout-schedule-validation";
 import { producerSetupChecklist, type ProducerSetupSnapshot } from "@/lib/producer-setup";
 import { seasonCalendarDate } from "@/lib/seasons";
 import type { FourDSettings } from "@/types/domain";
+import { getProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 
 export async function loadProducerSetup() {
   const configured = isSupabaseConfigured();
@@ -52,5 +54,7 @@ export async function loadProducerSetup() {
     funds: funds.map((item) => ({ id: item.id, name: item.name, active: item.is_active })),
     qualifications: qualifications.map((item) => ({ id: item.id, name: item.name, seasonId: item.season_id, standingsCutoff: item.cutoff_on, attendanceCutoff: item.attendance_cutoff_on })),
   };
-  return { name: producer.name, role: producer.role, timezone: producer.timezone, configured, checkedAt: new Date().toISOString(), items: producerSetupChecklist(snapshot) };
+  const features = await getProducerFeatures(producer.id);
+  const items = producerSetupChecklist(snapshot).filter(item => featureEnabled(features, item.id) || item.status === "attention");
+  return { name: producer.name, role: producer.role, timezone: producer.timezone, configured, checkedAt: new Date().toISOString(), items };
 }

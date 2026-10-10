@@ -19,7 +19,21 @@ sponsor galleries are hidden when disabled. Direct public URLs still work and
 already-open pages keep their current navigation label. Public preference reads
 expose only public-facing keys, never staff-only preferences.
 
-These are visibility preferences, not authorization or cancellation of existing
-rules. Subsequent work must add online entries, portal, and competition-format
-controls, and cover remaining setup forms/checklists and notifications. Existing
-server permissions and eligibility checks remain authoritative.
+Handicap, 4D, short rounds, side pots, insurance, and drawn cattle preferences
+hide new choices in template/fee/payout editors. Existing template formats and
+attached pots remain editable. Existing event formats and optional entry choices
+are not stripped. Classification setup hides unused Handicap fields. Setup
+guidance excludes hidden optional checks unless an existing configuration needs
+attention, and omits empty groups.
+
+Online entries and membership applications are exceptions to visibility-only
+behavior: turning them off blocks new submissions at the database boundary and
+their public forms/buttons. Existing online entry requests remain editable and
+withdrawable under their original ownership/window restrictions; staff can still
+review existing applications/entries. Portal preference hides only this producer's
+public shortcut, never global accounts or linked memberships at other producers.
+
+Preferences are not authorization or cancellation of existing competition rules.
+Existing server permissions and eligibility checks remain authoritative. Further
+polish can cover migration/rollover suggestions and notification preferences;
+notifications about existing obligations must never silently disappear.

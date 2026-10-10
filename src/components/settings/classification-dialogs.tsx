@@ -1,4 +1,6 @@
 "use client";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { CircleHelp, LoaderCircle, Pencil, Plus, X } from "lucide-react";
@@ -237,6 +239,11 @@ function ClassificationUseFields({
   error?: string;
 }) {
   const usesHandicap = value !== "standalone";
+  const handicapEnabled = featureEnabled(useProducerFeatures(), "handicap");
+  if (!handicapEnabled && !usesHandicap && adjustmentSeconds == null) return <>
+    <input type="hidden" name="ropingUse" value="standalone" />
+    <input type="hidden" name="handicapAdjustmentSeconds" value="" />
+  </>;
   return (
     <div className="space-y-4 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
       <label className="block text-sm font-semibold">

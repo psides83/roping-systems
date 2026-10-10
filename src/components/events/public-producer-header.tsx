@@ -27,7 +27,7 @@ export function PublicProducerHeader({ slug, name, logoUrl, active, membershipPu
         {logoUrl ? <span className="grid h-11 w-14 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-1"><Image src={logoUrl} alt={`${name} logo`} width={48} height={36} unoptimized className="h-full w-full object-contain" /></span> : null}
         <span className="min-w-0 break-words text-lg font-bold sm:text-xl">{name}</span>
       </Link>
-      <Link href="/roper" title="Roper portal" aria-label="Roper portal" className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-white/30 hover:bg-white/10"><UserRound size={19} /></Link>
+      {featureEnabled(features, "portal") && <Link href="/roper" title="Roper portal" aria-label="Roper portal" className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-white/30 hover:bg-white/10"><UserRound size={19} /></Link>}
       </div>
       <nav aria-label="Producer public pages" className="flex flex-wrap gap-x-4 text-sm font-semibold sm:gap-x-5">
         {links.filter(link => link.key === active || featureEnabled(features, link.key)).map((link) => <Link key={link.key} href={link.href} aria-current={active === link.key ? "page" : undefined}

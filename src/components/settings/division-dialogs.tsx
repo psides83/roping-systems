@@ -131,6 +131,7 @@ function EventTemplateDialog({
   classifications: ClassificationOption[];
   template?: DivisionTemplateSummary;
 }) {
+  const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
   const [disciplineId, setDisciplineId] = useState(
     template?.disciplineId ?? divisions[0]?.id ?? "",
@@ -252,8 +253,8 @@ function EventTemplateDialog({
                 className={inputClass}
               >
                 <option value="standard">Standard aggregate</option>
-                <option value="handicap">Handicap</option>
-                <option value="four_d">4D time brackets</option>
+                {(featureEnabled(features, "handicap") || template?.competitionFormat === "handicap") && <option value="handicap">Handicap</option>}
+                {(featureEnabled(features, "four_d") || template?.competitionFormat === "four_d") && <option value="four_d">4D time brackets</option>}
               </select>
               <span className="mt-1 block text-xs font-normal leading-5 text-[#66716b]">
                 {competitionFormat === "standard"
@@ -454,16 +455,19 @@ function EventTemplateDialog({
                 </label>
               </div>
             </div>
-            <div>
+            {(featureEnabled(features, "short_rounds") || template?.shortRoundEnabled) ? <div>
               <p className="mb-2 text-sm font-semibold">Final-round format</p>
               <ShortRoundFields
                 defaultEnabled={template?.shortRoundEnabled}
                 defaultBrackets={template?.shortRoundBrackets}
                 defaultTiePolicy={template?.shortRoundTiePolicy}
               />
-            </div>
+            </div> : <>
+              <input type="hidden" name="shortRoundBrackets" value={JSON.stringify(template?.shortRoundBrackets ?? [])} />
+              <input type="hidden" name="shortRoundTiePolicy" value={template?.shortRoundTiePolicy ?? "advance_all"} />
+            </>}
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+              {(featureEnabled(features, "cattle_draw") || template?.cattleDrawEnabled) && <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
                 <input
                   name="cattleDrawEnabled"
                   type="checkbox"
@@ -471,7 +475,7 @@ function EventTemplateDialog({
                   className="h-4 w-4 accent-[var(--brand-accent)]"
                 />{" "}
                 Draw and track cattle
-              </label>
+              </label>}
               <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
                 <input
                   name="allowGuests"
@@ -641,7 +645,8 @@ function FeeDialog({
   fee?: FeeTemplateSummary;
   funds?: { id: string; name: string }[];
 }) {
-  const fundsEnabled = featureEnabled(useProducerFeatures(), "funds");
+  const features = useProducerFeatures();
+  const fundsEnabled = featureEnabled(features, "funds");
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState(fee?.kind ?? "standard");
   const [fundTracking, setFundTracking] = useState(fee?.fundTracking ?? "general");
@@ -732,8 +737,8 @@ function FeeDialog({
                   className={inputClass}
                 >
                   <option value="standard">Standard fee</option>
-                  <option value="insurance">Insurance</option>
-                  <option value="side_pot">Side pot</option>
+                  {(featureEnabled(features, "insurance") || fee?.kind === "insurance") && <option value="insurance">Insurance</option>}
+                  {(featureEnabled(features, "side_pots") || fee?.kind === "side_pot") && <option value="side_pot">Side pot</option>}
                   <option value="other">Other option</option>
                   {(fundsEnabled || fee?.kind === "added_money") && <option value="added_money">Added-money fund</option>}
                 </select>

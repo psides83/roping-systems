@@ -6,8 +6,9 @@ import { producerSetupChecklist } from "../src/lib/producer-setup.ts";
 import { payoutScheduleIssues } from "../src/lib/payout-schedule-validation.ts";
 import { seasonCalendarDate } from "../src/lib/seasons.ts";
 import { readAllRows } from "../src/lib/supabase/read-all-rows.ts";
+import { featureEnabled } from "../src/lib/producer-features.ts";
 
-function loader({ missingProducer = false, failedTable = null, preview = false } = {}) {
+function loader({ missingProducer = false, failedTable = null, preview = false, features = {} } = {}) {
   const reads = [];
   const classes = Array.from({ length: 501 }, (_, index) => ({ id: `class-${index}`, division_id: "td", is_active: true, standalone_enabled: true, handicap_adjustment_seconds: 0 }));
   const tables = {
@@ -31,6 +32,8 @@ function loader({ missingProducer = false, failedTable = null, preview = false }
     "@/lib/supabase/config": { isSupabaseConfigured: () => !preview }, "@/lib/supabase/server": { createClient: async () => db },
     "@/lib/supabase/read-all-rows": { readAllRows }, "@/lib/payout-schedule-validation": { payoutScheduleIssues },
     "@/lib/producer-setup": { producerSetupChecklist }, "@/lib/seasons": { seasonCalendarDate },
+    "@/lib/producer-features-server": { getProducerFeatures: async () => features },
+    "@/lib/producer-features": { featureEnabled },
   };
   new Function("require", "exports", code)((id) => { if (!(id in mocks)) throw new Error(`Unexpected dependency ${id}`); return mocks[id]; }, compiled.exports);
   return { run: compiled.exports.loadProducerSetup, reads };
@@ -42,6 +45,12 @@ test("every setup read is scoped to the active producer; classification paginati
   assert.ok(reads.some(([table, field, range]) => table === "classifications" && field === "range" && range[0] === 500));
   assert.equal(result.items.find((item) => item.id === "templates").status, "ready");
   assert.equal(result.role, "viewer");
+});
+test("hidden optional features are absent from setup guidance without removing core checks", async () => {
+  const result = await loader({features:{dues:false,qualifications:false}}).run();
+  assert.ok(!result.items.some(item=>item.id==='dues'||item.id==='qualifications'));
+  assert.ok(result.items.some(item=>item.id==='payouts'));
+  assert.ok(result.items.some(item=>item.id==='templates'));
 });
 test("failed reads never become a misleading ready or empty checklist", async () => {
   await assert.rejects(loader({ failedTable: "payout_schedules" }).run(), /Unable to check payout schedules/);

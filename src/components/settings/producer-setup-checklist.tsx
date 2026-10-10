@@ -15,7 +15,7 @@ export function ProducerSetupChecklist({ items }: { items: ChecklistItem[] }) {
       <div role="progressbar" aria-label="Producer setup progress" aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={summary.ready} aria-valuetext={`${summary.ready} of ${summary.total} setup checks ready`} className="mt-4 h-2 overflow-hidden rounded bg-[#e4e9e6]"><div className="h-full bg-emerald-600 transition-[width] motion-reduce:transition-none" style={{ width: `${summary.total ? summary.ready / summary.total * 100 : 100}%` }} /></div>
       {summary.next ? <Link href={summary.next.href} className="mt-4 inline-flex min-h-11 max-w-full items-center gap-2 text-sm font-semibold text-[var(--brand-accent-strong)]"><span>Next step: {summary.next.title}</span><ArrowRight size={17} className="shrink-0" /></Link> : <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-emerald-800"><CheckCircle2 size={18} />Your setup checks are ready.</p>}
     </section>
-    {groups.map((group) => <section key={group.id} aria-labelledby={`setup-${group.id}`}><h2 id={`setup-${group.id}`} className="mb-1 text-base font-bold">{group.title}</h2><div className="divide-y divide-[#dfe4e1]">
+    {groups.filter(group => items.some(item => item.group === group.id)).map((group) => <section key={group.id} aria-labelledby={`setup-${group.id}`}><h2 id={`setup-${group.id}`} className="mb-1 text-base font-bold">{group.title}</h2><div className="divide-y divide-[#dfe4e1]">
       {items.filter((item) => item.group === group.id).map((item) => {
         const Icon = icons[item.status];
         return <article key={item.id} className="py-4">

@@ -10,6 +10,8 @@ import {
 import { DeleteRecordButton } from "@/components/settings/delete-record-button";
 import { FourDSettingsFields } from "@/components/settings/four-d-settings-fields";
 import type { CompetitionFormat, FourDSettings } from "@/types/domain";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 interface EditableBracket {
   key: string;
@@ -64,6 +66,7 @@ export function PayoutScheduleDialog({
   schedule?: EditablePayoutSchedule;
   enabled: boolean;
 }) {
+  const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<PayoutStage>("go_round");
   const [shortRoundEnabled, setShortRoundEnabled] = useState(
@@ -250,7 +253,7 @@ export function PayoutScheduleDialog({
                     className={inputClass}
                   >
                     <option value="standard">Standard places</option>
-                    <option value="four_d">4D breakaway</option>
+                    {(featureEnabled(features, "four_d") || schedule?.competitionFormat === "four_d") && <option value="four_d">4D breakaway</option>}
                   </select>
                 </label>
                 {competitionFormat === "four_d" ? (
@@ -340,7 +343,7 @@ export function PayoutScheduleDialog({
                     <input type="hidden" name="shortRoundPercent" value="0" />
                   )}
                 </div>
-                <label className="mt-4 flex items-start gap-3 border-t border-[#e7ebe8] pt-4 text-sm font-semibold">
+                {(featureEnabled(features, "short_rounds") || schedule?.shortRoundEnabled) && <label className="mt-4 flex items-start gap-3 border-t border-[#e7ebe8] pt-4 text-sm font-semibold">
                   <input
                     name="shortRoundEnabled"
                     type="checkbox"
@@ -365,7 +368,7 @@ export function PayoutScheduleDialog({
                       for the short round.
                     </span>
                   </span>
-                </label>
+                </label>}
               </section>
               <div className="space-y-3">
                 <div>

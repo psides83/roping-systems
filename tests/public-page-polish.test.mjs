@@ -69,12 +69,13 @@ test("Public navigation hides unused features but keeps an open historical page 
     "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
     "next/image": { default: () => null },
     "@/components/ui/navigation-pending": { NavigationPending: () => null },
-    "@/components/settings/producer-features-context": { useProducerFeatures: () => ({rules:false, news:false, membership:false, standings:false}) },
+    "@/components/settings/producer-features-context": { useProducerFeatures: () => ({rules:false, news:false, membership:false, standings:false, portal:false}) },
     "@/lib/producer-features": { featureEnabled },
   });
   const render = active => renderToStaticMarkup(React.createElement(PublicProducerHeader, {slug:"producer", name:"Producer", active, membershipPublished:true}));
   assert.doesNotMatch(render("results"), />Rules<|>News<|>Membership<|>Standings</);
   assert.match(render("results"), />Schedule</);
+  assert.doesNotMatch(render("results"), /aria-label="Roper portal"/);
   assert.match(render("rules"), />Rules</);
 });
 test("A larger schedule offers month navigation without adding a redundant single-month control", () => {

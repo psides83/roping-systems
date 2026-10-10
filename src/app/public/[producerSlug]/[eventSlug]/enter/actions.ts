@@ -7,6 +7,8 @@ import { formatProperNoun } from "@/lib/utils";
 import type { OnlineEntryEligibility } from "@/lib/online-entry-eligibility";
 import { calculateEntryBalance } from "@/lib/entry-balance";
 import type { RoperAccountEvent } from "@/lib/roper-accounts";
+import { getPublicProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 
 export async function loadOnlineEntryEligibility(producerSlug: string, eventSlug: string, form: FormData): Promise<{ checks?: OnlineEntryEligibility[]; coveredFeeKeys?: string[]; balanceDueCents?: number; creditCents?: number; feeError?: string; error?: string }> {
   const parsed = z.object({ email: z.email(), memberNumber: z.string().trim().min(1).max(50) }).safeParse(Object.fromEntries(form));
@@ -81,6 +83,7 @@ export async function submitOnlineEntry(
   _state: OnlineEntryFormState,
   formData: FormData,
 ): Promise<OnlineEntryFormState> {
+  if (!featureEnabled(await getPublicProducerFeatures(producerSlug), "online_entries")) return { message: "This producer is not accepting new online entry requests. Contact the producer to enter." };
   const parsed = onlineEntrySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 
