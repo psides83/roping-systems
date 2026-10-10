@@ -2,11 +2,52 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { transpileModule, ModuleKind, JsxEmit } from 'typescript';
+import { transpileModule, ModuleKind, JsxEmit, ScriptTarget } from 'typescript';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { featureEnabled } from '../src/lib/producer-features.ts';
+import { featureEnabled, producerFeatures, producerFeatureDescriptions } from '../src/lib/producer-features.ts';
+import { nextSeasonDates } from '../src/lib/season-rollover.ts';
 const require = createRequire(import.meta.url);
+test('all feature preferences explain their effect',()=>{
+  for(const feature of producerFeatures) assert.ok(producerFeatureDescriptions[feature.key]?.length > 30,feature.key);
+});
+test('feature form associates each checkbox with its explanation',()=>{
+  const {ProducerFeaturesForm}=component('../src/components/settings/producer-features-form.tsx',{
+    react:{...React,useActionState:()=>[{},()=>{},false]},
+    '@/lib/producer-features':{featureEnabled,producerFeatures,producerFeatureDescriptions},
+    '@/app/(app)/settings/features/actions':{saveFeatures:()=>{}},
+  });
+  const html=renderToStaticMarkup(React.createElement(ProducerFeaturesForm,{features:{},revision:0,editable:true}));
+  for(const feature of producerFeatures){
+    assert.ok(html.includes(`aria-describedby="feature-${feature.key}-description"`));
+    assert.ok(html.includes(`id="feature-${feature.key}-description"`));
+  }
+});
+test('rollover disables new dues and qualification copies while preserving existing fund balances',()=>{
+  const mocks={
+    react:{...React,useActionState:()=>[{},()=>{},false]},
+    '@/components/settings/producer-features-context':{useProducerFeatures:()=>({dues:false,qualifications:false,funds:false})},
+    '@/lib/producer-features':{featureEnabled},
+    '@/lib/season-rollover':{nextSeasonDates},
+    '@/lib/utils':{formatCurrencyExact:n=>`$${n/100}`},
+    '@/app/(app)/settings/seasons/rollover/actions':{startNextSeason:()=>{}},
+  };
+  const {SeasonRolloverForm}=component('../src/components/settings/season-rollover-form.tsx',mocks);
+  const props={seasons:[{id:'s',name:'2026',starts_on:'2026-01-01',ends_on:'2026-12-31'}],sourceId:'s',settings:{amount_cents:5000,allocation_mode:'fixed',allocation_value:0},seasonal:[],funds:[],activeMembers:10,ruleCounts:{s:2}};
+  const render=extra=>renderToStaticMarkup(React.createElement(SeasonRolloverForm,{...props,...extra}));
+  const empty=render({});
+  assert.match(empty,/<fieldset hidden="" disabled=""/);
+  assert.match(empty,/name="mode" value="fixed"/);
+  assert.doesNotMatch(empty,/name="copyQualifications"|name="duesEnabled"[^>]*checked|<table/);
+  const existing=render({funds:[{id:'fund',name:'General fund',is_active:false,balance_cents:50000,reserved_cents:0,available_cents:50000}]});
+  assert.match(existing,/General fund \(inactive\)/);
+  assert.match(existing,/\$500/);
+  mocks['@/components/settings/producer-features-context'].useProducerFeatures=()=>({funds:false});
+  const active=render({settings:{amount_cents:5000,allocation_mode:'fixed',allocation_value:1000,fund_id:'fund'},funds:[{id:'fund',name:'General fund',is_active:false,balance_cents:50000,reserved_cents:0,available_cents:50000}]});
+  assert.match(active,/<option value="fund" selected="">General fund \(inactive\)<\/option>/);
+  assert.match(active,/name="allocation"[^>]*value="10.00"/);
+  assert.doesNotMatch(active,/<div hidden=""><div class="flex flex-wrap items-end gap-3">/);
+});
 test('new event qualification controls disappear when disabled',()=>{
   const {EventQualificationFields}=component('../src/components/events/event-qualification-fields.tsx',{
     '@/components/settings/producer-features-context':{useProducerFeatures:()=>({qualifications:false})},
@@ -28,7 +69,7 @@ test('dues hide unused fund settings but preserve existing allocations',()=>{
 });
 function component(path, mocks) {
   const compiled = {exports:{}};
-  const source = transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText;
+  const source = transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX,target:ScriptTarget.ES2022}}).outputText;
   new Function('require','module','exports',source)(name=>mocks[name] ?? require(name),compiled,compiled.exports);
   return compiled.exports;
 }

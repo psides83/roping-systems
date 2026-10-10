@@ -34,6 +34,20 @@ review existing applications/entries. Portal preference hides only this producer
 public shortcut, never global accounts or linked memberships at other producers.
 
 Preferences are not authorization or cancellation of existing competition rules.
-Existing server permissions and eligibility checks remain authoritative. Further
-polish can cover migration/rollover suggestions and notification preferences;
-notifications about existing obligations must never silently disappear.
+Existing server permissions and eligibility checks remain authoritative.
+
+Migration hides historical winnings when standings are disabled, but attendance
+remains available as a core member record. Opening balance import remains available
+for existing funds even when fund navigation is hidden. Prior import logs and
+authorized reversals remain accessible.
+
+Season rollover does not enable dues or copy qualification rules when those
+features are disabled. Existing fund allocations stay visible, including inactive
+destination funds, so they cannot silently turn into a different destination.
+Prior-season records and balance snapshots remain unchanged.
+
+Every feature preference explains its effect and historical-record exceptions.
+The notification feed currently contains actual activity and outstanding records,
+not setup suggestions. It intentionally does not filter these by feature flags:
+pending applications, fines, watch flags, and unresolved bonus positions must
+remain visible until resolved.

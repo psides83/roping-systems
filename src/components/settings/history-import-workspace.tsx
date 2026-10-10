@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, Upload } from "lucide-react";
 import { importHistory, reviewHistory } from "@/app/(app)/settings/migration/actions";
 import { mapHistoryRows, type HistoryChoice, type HistoryKind, type HistoryMapping, type HistoryPreview, type HistoryRow } from "@/lib/history-import";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 type Sheet = { sheet: string; data: string[][] };
 interface Season { id: string; name: string; starts_on: string; ends_on: string }
@@ -11,7 +13,10 @@ const control = "max-w-full rounded-md border px-3 py-2 text-sm";
 const button = `${control} inline-flex items-center gap-2 font-semibold disabled:opacity-50`;
 export function HistoryImportWorkspace({ seasons, classes, funds, canStandings }: { seasons: Season[]; classes: HistoryChoice[]; funds: HistoryChoice[]; canStandings: boolean }) {
   const router = useRouter();
-  const [kind, setKind] = useState<HistoryKind>(canStandings ? "standings" : "fund"), [season, setSeason] = useState(seasons[0]?.id ?? "");
+  const features = useProducerFeatures();
+  const showStandings = canStandings && featureEnabled(features, "standings");
+  const showFunds = featureEnabled(features, "funds") || funds.length > 0;
+  const [kind, setKind] = useState<HistoryKind>(canStandings ? showStandings ? "standings" : "attendance" : "fund"), [season, setSeason] = useState(seasons[0]?.id ?? "");
   const [sheets, setSheets] = useState<Sheet[]>([]), [sheet, setSheet] = useState(0), [header, setHeader] = useState(0), [file, setFile] = useState("");
   const [columns, setColumns] = useState<HistoryMapping>({}), [targets, setTargets] = useState<HistoryMapping>({}), [dateOrder, setDateOrder] = useState<"mdy" | "dmy">("mdy");
   const [note, setNote] = useState(""), [preview, setPreview] = useState<HistoryPreview | null>(null), [selected, setSelected] = useState(new Set<number>());
@@ -73,12 +78,13 @@ export function HistoryImportWorkspace({ seasons, classes, funds, canStandings }
   const fields = [{ id: "reference", label: "Source reference (optional)" }, { id: "date", label: "Effective date" },
     ...(kind !== "fund" ? [{ id: "memberNumber", label: "Member number" }] : []),
     { id: "target", label: kind === "fund" ? "Fund" : "Class" }, { id: "value", label: kind === "attendance" ? "Ropings attended" : "Amount" }];
+  if (!canStandings && !showFunds) return <p className="text-sm text-[#66716b]">No import tools are enabled for your role. Previous imports remain in the history below.</p>;
   return <section className="space-y-5" aria-busy={Boolean(busy)}>
     {busy && <div role="status" aria-live="polite" className="sticky top-0 z-10 flex items-center gap-3 rounded-md border bg-white p-5 shadow-sm"><LoaderCircle className="animate-spin" size={24} /><strong>{busy}</strong></div>}
     {error && <p role="alert" className="whitespace-pre-line rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</p>}
     {success && <p role="status" className="rounded-md bg-emerald-50 p-4 text-emerald-800">{success}</p>}
     <fieldset disabled={Boolean(busy)} className="space-y-5">
-      <div className="flex flex-wrap items-end gap-4"><label className="space-y-1 text-sm"><span className="block font-semibold">Import type</span><select className={control} value={kind} onChange={(e) => { setKind(e.target.value as HistoryKind); setTargets({}); reset(); }}>{canStandings && <><option value="standings">Historical winnings</option><option value="attendance">Historical attendance</option></>}<option value="fund">Opening fund balances</option></select></label>
+      <div className="flex flex-wrap items-end gap-4"><label className="space-y-1 text-sm"><span className="block font-semibold">Import type</span><select className={control} value={kind} onChange={(e) => { setKind(e.target.value as HistoryKind); setTargets({}); reset(); }}>{showStandings && <option value="standings">Historical winnings</option>}{canStandings && <option value="attendance">Historical attendance</option>}{showFunds && <option value="fund">Opening fund balances</option>}</select></label>
         <label className="space-y-1 text-sm"><span className="block font-semibold">Season</span><select className={control} value={season} onChange={(e) => { setSeason(e.target.value); reset(); }}><option value="">Choose season</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         <label className={`${button} cursor-pointer`}><Upload size={16} />Choose spreadsheet<input className="sr-only" type="file" accept=".csv,.xlsx" onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ""; }} /></label>
       </div>

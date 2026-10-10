@@ -1,7 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { saveFeatures } from "@/app/(app)/settings/features/actions";
-import { featureEnabled, producerFeatures, type ProducerFeatures } from "@/lib/producer-features";
+import { featureEnabled, producerFeatures, producerFeatureDescriptions, type ProducerFeatures } from "@/lib/producer-features";
 export function ProducerFeaturesForm({ features, revision, editable }: { features: ProducerFeatures; revision: number; editable: boolean }) {
   const [state, action, pending] = useActionState(saveFeatures, {});
   return <form action={action} className="space-y-6">
@@ -9,8 +9,8 @@ export function ProducerFeaturesForm({ features, revision, editable }: { feature
     <fieldset disabled={!editable || pending} className="grid gap-6 sm:grid-cols-2">
       {[...new Set(producerFeatures.map(f => f.group))].map(group => <section key={group} className="border-t border-[#d7ddda] pt-4">
         <h2 className="mb-3 font-bold">{group}</h2>
-        {producerFeatures.filter(f => f.group === group).map(f => <label key={f.key} className="flex min-h-11 items-center gap-3 text-sm">
-          <input type="checkbox" name={f.key} defaultChecked={featureEnabled(features, f.key)} className="h-5 w-5 accent-[var(--brand-accent)]" />{f.label}
+        {producerFeatures.filter(f => f.group === group).map(f => <label key={f.key} className="flex min-h-11 items-start gap-3 py-2 text-sm">
+          <input type="checkbox" name={f.key} defaultChecked={featureEnabled(features, f.key)} aria-describedby={`feature-${f.key}-description`} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--brand-accent)]" /><span><span className="font-semibold">{f.label}</span><span id={`feature-${f.key}-description`} className="mt-1 block text-xs leading-5 text-[#66716b]">{producerFeatureDescriptions[f.key]}</span></span>
         </label>)}
       </section>)}
     </fieldset>

@@ -14,6 +14,7 @@ export default async function FeaturesPage() {
     <ProducerSettingsTabs active="features" />
     <p className="max-w-2xl text-sm text-[#66716b]">Existing records and competition rules are preserved. Tools needed to manage existing dues, fines, suspensions, expenses, and qualifications remain available. Hidden sections can still be opened from existing links.</p>
     <p className="max-w-2xl text-sm text-[#66716b]">Turning off online entries or membership applications stops new submissions, including from old links. Existing requests remain available for review. The portal preference hides its public shortcut, not existing roper accounts.</p>
+    <p className="max-w-2xl text-sm text-[#66716b]">Notifications about pending requests, unpaid fines, watch flags, and unresolved bonus positions remain visible until those records are resolved, even when their feature is turned off.</p>
     <ProducerFeaturesForm features={data?.features ?? {}} revision={data?.revision ?? 0} editable={["owner","admin"].includes(producer.role)} />
   </div>;
 }

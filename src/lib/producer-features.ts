@@ -23,6 +23,29 @@ export const producerFeatures = [
 ] as const;
 export type ProducerFeature = (typeof producerFeatures)[number]["key"];
 export type ProducerFeatures = Partial<Record<ProducerFeature, boolean>>;
+export const producerFeatureDescriptions: Record<ProducerFeature, string> = {
+  online_entries: "Accept new online entries. Turning this off stops new submissions; staff can still review existing requests.",
+  membership: "Accept new membership applications. Existing applications remain available for staff review.",
+  dues: "Set seasonal dues and collect payments. Existing dues balances remain accessible when disabled.",
+  fines: "Issue member fines. Outstanding fines can still be collected or waived when disabled.",
+  suspensions: "Issue temporary suspensions. Existing suspensions remain effective and can still be lifted.",
+  watch: "Show classification-watch tools. Existing flags remain available for staff review.",
+  standings: "Show season standings navigation and historical winnings import options. Previous records are retained.",
+  qualifications: "Add qualification requirements to events and copy rules during rollover. Existing requirements still apply.",
+  finals: "Set up earned bonus positions. Existing positions remain available for assignment and review.",
+  handicap: "Offer Handicap formats and classification offsets. Existing Handicap ropings are unchanged.",
+  four_d: "Offer 4D formats and payout schedules. Existing 4D competitions are unchanged.",
+  short_rounds: "Offer short rounds in new templates and payout schedules. Existing short rounds are unchanged.",
+  side_pots: "Offer side pots in new fee setups. Existing pots, entries, and winnings are retained.",
+  insurance: "Offer insurance pots in new fee setups. Existing pots, entries, and winnings are retained.",
+  cattle_draw: "Offer drawn cattle in new templates. Existing cattle settings remain editable.",
+  funds: "Show added-money fund tools. Existing balances, allocations, and fund-backed contributions remain accessible.",
+  profitability: "Show event expense and profitability tools. Events with expense history retain access.",
+  sponsors: "Display sponsor placement on public pages. Sponsor records are retained when hidden.",
+  rules: "Show public rules navigation. Existing rules remain available through direct links.",
+  news: "Show public news navigation. Existing bulletins remain available through direct links.",
+  portal: "Show the public roper-portal shortcut. Roper accounts and linked memberships remain accessible.",
+};
 export function featureEnabled(features: ProducerFeatures, key: string): boolean {
   return features[key as ProducerFeature] !== false;
 }
