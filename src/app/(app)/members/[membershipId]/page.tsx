@@ -29,6 +29,8 @@ import {
   type SelectedMembershipField,
 } from "@/lib/membership-forms";
 import { getActiveProducer } from "@/lib/producers";
+import { getProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatPhoneNumber } from "@/lib/utils";
@@ -311,6 +313,14 @@ export default async function MemberDetailPage({
   const member = await getMemberDetail(membershipId);
   const producer = isSupabaseConfigured() ? await getActiveProducer() : null;
   if (!member) notFound();
+  const features = producer ? await getProducerFeatures(producer.id) : {};
+  let hasDues = false;
+  if (producer && !featureEnabled(features, "dues")) {
+    const db = await createClient();
+    const { data, error } = await db.from("membership_dues").select("id").eq("membership_id", member.id).limit(1);
+    if (error) throw new Error("Unable to load membership dues history.");
+    hasDues = Boolean(data?.length);
+  }
   const options = member.divisions.map((discipline) => ({
     id: discipline.id,
     name: discipline.name,
@@ -360,7 +370,7 @@ export default async function MemberDetailPage({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/members/dues?member=${member.id}`} className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">Membership dues</Link>
+            {(featureEnabled(features, "dues") || hasDues) && <Link href={`/members/dues?member=${member.id}`} className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">Membership dues</Link>}
             <EditMemberDialog
               member={{
                 id: member.id,
@@ -397,9 +407,9 @@ export default async function MemberDetailPage({
         <Link href={`/members/${member.id}?tab=activity`} aria-current={activity ? "page" : undefined} className={`pb-3 ${activity ? "border-b-2 border-[var(--brand-accent)]" : "text-[#66716b]"}`}>Activity</Link>
       </nav>
       {activity ? <MemberActivityTimeline memberId={member.id} query={{ type: value("type"), season: value("season"), from: value("from"), to: value("to"), page: value("page") }} /> : <>
-      {isSupabaseConfigured() ? <MemberFinesData membershipId={member.id} canManage={member.canEdit} /> : null}
-      {isSupabaseConfigured() ? <MemberSuspensionsData membershipId={member.id} canManage={member.canEdit} /> : null}
-      {producer && <MemberFinalsPositions producerId={producer.id} producerSlug={producer.slug} memberId={member.id} />}
+      {isSupabaseConfigured() ? <MemberFinesData membershipId={member.id} canManage={member.canEdit} enabled={featureEnabled(features, "fines")} /> : null}
+      {isSupabaseConfigured() ? <MemberSuspensionsData membershipId={member.id} canManage={member.canEdit} enabled={featureEnabled(features, "suspensions")} /> : null}
+      {producer && <MemberFinalsPositions producerId={producer.id} producerSlug={producer.slug} memberId={member.id} enabled={featureEnabled(features, "finals")} />}
       <ClassificationMoveBackProgress membershipId={member.id} progress={member.moveBackProgress} exceptions={member.moveBackExceptions} canEdit={member.canEdit} timezone={member.timezone} />
       {isSupabaseConfigured() ? <ClassificationWatchEvidence membershipId={member.id} /> : null}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

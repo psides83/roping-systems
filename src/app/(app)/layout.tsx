@@ -8,6 +8,7 @@ import { AppBootSkeleton } from "@/components/ui/page-skeleton";
 import { EntryLabelProvider } from "@/components/events/entry-label";
 import { isPlatformOwner } from "@/lib/platform-access";
 import { ProducerFeaturesProvider } from "@/components/settings/producer-features-context";
+import { getProducerFeatures } from "@/lib/producer-features-server";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<AppBootSkeleton />}><AuthenticatedShell>{children}</AuthenticatedShell></Suspense>;
@@ -27,6 +28,6 @@ async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   }
 
   const email = typeof data.claims.email === "string" ? data.claims.email : "Signed-in user";
-  const { data: preferences } = await supabase.from("producer_feature_preferences").select("features").eq("producer_id", producer.id).maybeSingle();
-  return <ProducerFeaturesProvider features={preferences?.features ?? {}}><EntryLabelProvider style={producer.entryLabelStyle}><AppShell platformOwner={await isPlatformOwner()} producerName={producer.name} producers={producers.map(({ id, name }) => ({ id, name }))} activeProducerId={producer.id} userLabel={email} brandPrimary={producer.brandPrimary} brandAccent={producer.brandAccent}>{children}</AppShell></EntryLabelProvider></ProducerFeaturesProvider>;
+  const features = await getProducerFeatures(producer.id);
+  return <ProducerFeaturesProvider features={features}><EntryLabelProvider style={producer.entryLabelStyle}><AppShell platformOwner={await isPlatformOwner()} producerName={producer.name} producers={producers.map(({ id, name }) => ({ id, name }))} activeProducerId={producer.id} userLabel={email} brandPrimary={producer.brandPrimary} brandAccent={producer.brandAccent}>{children}</AppShell></EntryLabelProvider></ProducerFeaturesProvider>;
 }

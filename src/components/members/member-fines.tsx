@@ -7,13 +7,13 @@ import { MemberFineDialog, type FineDialogTarget } from "./member-fine-dialog";
 import { formatCurrency } from "@/lib/utils";
 
 const date = (value: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Chicago" }).format(new Date(value));
-export function MemberFines({ membershipId, fines, ropings, canManage }: {
-  membershipId: string; fines: MemberFine[]; ropings: { id: string; name: string }[]; canManage: boolean;
+export function MemberFines({ membershipId, fines, ropings, canManage, allowIssue = true }: {
+  membershipId: string; fines: MemberFine[]; ropings: { id: string; name: string }[]; canManage: boolean; allowIssue?: boolean;
 }) {
   const [target, setTarget] = useState<FineDialogTarget | null>(null);
   const balance = fines.reduce((sum, fine) => sum + fineBalance(fine), 0);
   return <section aria-labelledby={`fines-${membershipId}`} className="space-y-4">
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dfe4e1] pb-3"><div><h2 id={`fines-${membershipId}`} className="flex items-center gap-2 text-lg font-bold"><CircleAlert size={19} />Member fines</h2><p className="mt-1 text-sm text-[#66716b]">Outstanding balance <strong className="ml-2 text-[#19231d]">{formatCurrency(balance)}</strong></p></div>{canManage ? <button type="button" onClick={() => setTarget({ operation: "issue" })} className="flex h-9 items-center gap-2 rounded-md brand-primary-fill px-3 text-sm font-semibold text-white"><Plus size={16} />Issue fine</button> : null}</header>
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dfe4e1] pb-3"><div><h2 id={`fines-${membershipId}`} className="flex items-center gap-2 text-lg font-bold"><CircleAlert size={19} />Member fines</h2><p className="mt-1 text-sm text-[#66716b]">Outstanding balance <strong className="ml-2 text-[#19231d]">{formatCurrency(balance)}</strong></p></div>{canManage && allowIssue ? <button type="button" onClick={() => setTarget({ operation: "issue" })} className="flex h-9 items-center gap-2 rounded-md brand-primary-fill px-3 text-sm font-semibold text-white"><Plus size={16} />Issue fine</button> : null}</header>
     {!fines.length ? <p className="py-3 text-sm text-[#66716b]">No fines recorded.</p> : <div className="divide-y divide-[#dfe4e1]">{fines.map((fine) => {
       const due = fineBalance(fine);
       const reversed = new Set(fine.transactions.map((transaction) => transaction.reversesId));

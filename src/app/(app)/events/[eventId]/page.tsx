@@ -56,6 +56,8 @@ import {
   divisionTemplates as demoDivisions,
 } from "@/data/demo";
 import { getActiveProducer } from "@/lib/producers";
+import { getProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
@@ -661,7 +663,12 @@ export default async function RopingDetailPage({
   const { eventId } = await params;
   const { event, producerSlug } = await getEvent(eventId);
   if (!event) notFound();
+  const producer = isSupabaseConfigured() ? await getActiveProducer() : null;
+  const features = producer ? await getProducerFeatures(producer.id) : {};
   const qualificationRopings = new Set<string>();
+  const qualifierRopings = new Set<string>();
+  let eventQualification = false;
+  let hasExpenses = false;
   if (isSupabaseConfigured()) {
     const db = await createClient();
     const checks = await db.from("roping_qualification_checks").select("event_roping_id,event_ropings!inner(event_id)")
@@ -671,7 +678,18 @@ export default async function RopingDetailPage({
     const assignment = await db.from("events").select("qualification_rule_set_id").eq("id", event.id).single();
     const ropingAssignments = await db.from("event_ropings").select("id,qualification_override,qualification_rule_set_id").eq("event_id", event.id);
     if (assignment.error || ropingAssignments.error) throw new Error("Unable to load event qualification assignments.");
+    eventQualification = Boolean(assignment.data.qualification_rule_set_id);
     for (const roping of ropingAssignments.data) if (effectiveQualificationRuleSet(assignment.data.qualification_rule_set_id, roping.qualification_override as QualificationOverride, roping.qualification_rule_set_id)) qualificationRopings.add(roping.id);
+    if (!featureEnabled(features, "finals")) {
+      const rules = await db.from("finals_qualification_rules").select("event_roping_id,event_ropings!inner(event_id)").eq("event_ropings.event_id", event.id);
+      if (rules.error) throw new Error("Unable to load existing qualifier rules.");
+      for (const rule of rules.data) qualifierRopings.add(rule.event_roping_id);
+    }
+    if (event.canFinance && !featureEnabled(features, "profitability")) {
+      const expenses = await db.from("event_expenses").select("id").eq("event_id", event.id).limit(1);
+      if (expenses.error) throw new Error("Unable to load event expense history.");
+      hasExpenses = Boolean(expenses.data.length);
+    }
   }
   const totalEntries = event.divisions.reduce(
     (sum, division) => sum + division.entries,
@@ -792,7 +810,7 @@ export default async function RopingDetailPage({
                   }}
                   editable={setupEditable}
                 />
-                <QualificationAssignmentDialog eventId={event.id} editable={setupEditable} />
+                {(featureEnabled(features, "qualifications") || eventQualification || qualificationRopings.size > 0) && <QualificationAssignmentDialog eventId={event.id} editable={setupEditable} />}
                 {event.canManage && <EventInformationEditor eventId={event.id} />}
                 <Link
                   href={`/events/${event.id}/entries`}
@@ -843,7 +861,7 @@ export default async function RopingDetailPage({
           <Metric key={metric.label} {...metric} />
         ))}
         <Metric icon={CircleDollarSign} label="Fee collections" value={formatCurrency(collections.collectedCents)} detail={`${formatCurrency(collections.outstandingCents)} outstanding`} href={`/events/${event.id}/fee-collections`} />
-        {event.canFinance && <Metric icon={CircleDollarSign} label="Profitability" value="Income & expenses" detail="Retained income by event and roping" href={`/events/${event.id}/profitability`} />}
+        {event.canFinance && (featureEnabled(features, "profitability") || hasExpenses) && <Metric icon={CircleDollarSign} label="Profitability" value="Income & expenses" detail="Retained income by event and roping" href={`/events/${event.id}/profitability`} />}
         <Metric icon={WalletCards} label="Payouts" href={`/events/${event.id}/payouts`} detail={event.status === "completed" ? undefined : "Provisional awards from recorded runs"} breakdown={[
           { label: "Due", value: formatCurrency(payouts.dueCents) },
           { label: "Completed", value: formatCurrency(payouts.completedCents) },
@@ -978,8 +996,8 @@ export default async function RopingDetailPage({
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <QualificationAssignmentDialog eventId={event.id} ropingId={division.id} name={division.name} editable={roundsEditable && isSupabaseConfigured()} />
-                    <FinalsQualifierDialog ropingId={division.id} name={division.name} editable={event.canManage && isSupabaseConfigured()} />
+                    {(featureEnabled(features, "qualifications") || qualificationRopings.has(division.id)) && <QualificationAssignmentDialog eventId={event.id} ropingId={division.id} name={division.name} editable={roundsEditable && isSupabaseConfigured()} />}
+                    {(featureEnabled(features, "finals") || qualifierRopings.has(division.id)) && <FinalsQualifierDialog ropingId={division.id} name={division.name} editable={event.canManage && isSupabaseConfigured()} />}
                     {qualificationRopings.has(division.id) ? <Link href={`/events/${event.id}/qualification/${division.id}`} className="inline-flex h-9 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Entry review</Link> : null}
                     <ClassScheduleDialog
                       arenaName={division.arenaName}

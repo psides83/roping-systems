@@ -7,14 +7,14 @@ import { SuspensionDialog } from "./suspension-dialog";
 
 const date = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
 
-export function MemberSuspensions({ membershipId, suspensions, canManage, today }: {
-  membershipId: string; suspensions: MembershipSuspension[]; canManage: boolean; today: string;
+export function MemberSuspensions({ membershipId, suspensions, canManage, today, allowIssue = true }: {
+  membershipId: string; suspensions: MembershipSuspension[]; canManage: boolean; today: string; allowIssue?: boolean;
 }) {
   const [target, setTarget] = useState<MembershipSuspension | "new" | null>(null);
   return <section className="border-y border-[#dfe4e1] py-5">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <h2 className="flex items-center gap-2 text-lg font-bold"><Ban size={19} />Membership suspensions</h2>
-      {canManage ? <button onClick={() => setTarget("new")} className="flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold"><Plus size={16} />Add suspension</button> : null}
+      {canManage && allowIssue ? <button onClick={() => setTarget("new")} className="flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold"><Plus size={16} />Add suspension</button> : null}
     </header>
     {!suspensions.length ? <p className="mt-3 text-sm text-[#66716b]">No suspensions.</p> : null}
     <div className="divide-y divide-[#e7ebe8]">{suspensions.map((suspension) => {

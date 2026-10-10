@@ -1,4 +1,6 @@
 import { getActiveProducer } from "@/lib/producers";
+import { getProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 import { createClient } from "@/lib/supabase/server";
 import type { RunFlag, WatchCurrentAssignment } from "@/lib/classification-watch";
 import { seasonCalendarDate } from "@/lib/seasons";
@@ -20,6 +22,7 @@ export async function ClassificationWatchEvidence({ membershipId, eventId, compa
     flags.push(...(data ?? []) as unknown as RunFlag[]);
     if ((data?.length ?? 0) < 1000) break;
   }
+  if (!flags.length && !featureEnabled(await getProducerFeatures(producer.id), "watch")) return null;
   const classes = await db.from("classifications").select("id,name,division_id,is_active").eq("producer_id", producer.id).order("rank", { ascending: false });
   if (classes.error) throw new Error("Unable to load watch classification names.");
   const assignments: WatchCurrentAssignment[] = [];

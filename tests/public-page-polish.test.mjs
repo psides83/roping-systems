@@ -7,6 +7,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as standings from "../src/lib/events/public-standings.ts";
 import * as money from "../src/lib/events/public-money-results.ts";
+import { featureEnabled } from "../src/lib/producer-features.ts";
 const require = createRequire(import.meta.url);
 function component(file, mocks = {}) {
   const compiled = { exports: {} };
@@ -52,6 +53,8 @@ test("Public navigation shares branding and comfortable mobile links", () => {
     "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
     "next/image": { default: () => null },
     "@/components/ui/navigation-pending": { NavigationPending: () => null },
+    "@/components/settings/producer-features-context": { useProducerFeatures: () => ({}) },
+    "@/lib/producer-features": { featureEnabled },
   });
   const html = renderToStaticMarkup(React.createElement(PublicProducerHeader, {
     slug: "producer", name: "Calf Roping Association", active: "standings", membershipPublished: true,
@@ -60,6 +63,19 @@ test("Public navigation shares branding and comfortable mobile links", () => {
   assert.match(html, /Membership/);
   assert.match(html, /aria-label="Roper portal"/);
   assert.match(html, /min-h-11/);
+});
+test("Public navigation hides unused features but keeps an open historical page identifiable", () => {
+  const { PublicProducerHeader } = component("public-producer-header", {
+    "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
+    "next/image": { default: () => null },
+    "@/components/ui/navigation-pending": { NavigationPending: () => null },
+    "@/components/settings/producer-features-context": { useProducerFeatures: () => ({rules:false, news:false, membership:false, standings:false}) },
+    "@/lib/producer-features": { featureEnabled },
+  });
+  const render = active => renderToStaticMarkup(React.createElement(PublicProducerHeader, {slug:"producer", name:"Producer", active, membershipPublished:true}));
+  assert.doesNotMatch(render("results"), />Rules<|>News<|>Membership<|>Standings</);
+  assert.match(render("results"), />Schedule</);
+  assert.match(render("rules"), />Rules</);
 });
 test("A larger schedule offers month navigation without adding a redundant single-month control", () => {
   const { PublicScheduleJump } = component("public-schedule-jump");

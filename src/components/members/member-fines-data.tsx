@@ -2,12 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { MemberFines } from "./member-fines";
 import type { FineRestriction, MemberFine } from "@/lib/member-fines";
 
-export async function MemberFinesData({ membershipId, canManage }: { membershipId: string; canManage: boolean }) {
+export async function MemberFinesData({ membershipId, canManage, enabled = true }: { membershipId: string; canManage: boolean; enabled?: boolean }) {
   const supabase = await createClient();
   const { data, error } = await supabase.from("member_fines")
     .select("id, amount_cents, reason, restriction, issued_at, issued_by_label, member_fine_transactions(id, kind, amount_cents, reason, reverses_id, created_at, staff_label), member_fine_exceptions(id, event_roping_id, expires_at, reason, created_at, staff_label, revoked_at, revocation_reason)")
     .eq("membership_id", membershipId).order("issued_at", { ascending: false });
   if (error) throw new Error(`Unable to load member fines: ${error.message}`);
+  if (!enabled && !data?.length) return null;
   const fines: MemberFine[] = (data ?? []).map((fine) => ({
     id: fine.id, amountCents: fine.amount_cents, reason: fine.reason,
     restriction: fine.restriction as FineRestriction, issuedAt: fine.issued_at, staff: fine.issued_by_label,
@@ -36,5 +37,5 @@ export async function MemberFinesData({ membershipId, canManage }: { membershipI
       })).values()];
     }
   }
-  return <MemberFines membershipId={membershipId} fines={fines} ropings={ropings} canManage={canManage} />;
+  return <MemberFines membershipId={membershipId} fines={fines} ropings={ropings} canManage={canManage} allowIssue={enabled} />;
 }

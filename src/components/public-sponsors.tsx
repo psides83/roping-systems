@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { sponsorBucket,type ProducerSponsor } from "@/lib/producer-sponsors";
+import { getPublicProducerFeatures } from "@/lib/producer-features-server";
+import { featureEnabled } from "@/lib/producer-features";
 
 export function SponsorGallery({sponsors}:{sponsors:(Pick<ProducerSponsor,"id"|"name"|"website_url"> & {logoUrl:string|null})[]}){
   if(!sponsors.length)return null;
@@ -13,6 +15,7 @@ export function SponsorGallery({sponsors}:{sponsors:(Pick<ProducerSponsor,"id"|"
 }
 export async function PublicSponsors({producerSlug}:{producerSlug:string}){
   if(!isSupabaseConfigured())return null;
+  if (!featureEnabled(await getPublicProducerFeatures(producerSlug), "sponsors")) return null;
   const db=await createClient();
   const producer=await db.from("public_producer_pages").select("id").eq("slug",producerSlug).maybeSingle();
   if(producer.error)throw new Error("Unable to load producer sponsors.");

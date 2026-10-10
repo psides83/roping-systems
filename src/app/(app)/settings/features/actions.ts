@@ -13,5 +13,5 @@ export async function saveFeatures(_state: { message?: string }, form: FormData)
     feature_values: Object.fromEntries(producerFeatures.map(({key}) => [key, form.get(key) === "on"])) });
   if (error) return { message: "Unable to save. Refresh the page and try again." };
   revalidatePath("/", "layout");
-  return { message: "Navigation preferences saved." };
+  return { message: "Feature preferences saved." };
 }

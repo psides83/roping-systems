@@ -1,13 +1,17 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/navigation-pending";
 import { UserRound } from "lucide-react";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 export function PublicProducerHeader({ slug, name, logoUrl, active, membershipPublished = false }: {
   slug: string; name: string; logoUrl?: string | null;
   active: "results" | "schedule" | "standings" | "rules" | "news"; membershipPublished?: boolean;
 }) {
   const base = `/public/${slug}`;
+  const features = useProducerFeatures();
   const links = [
     { key: "results", label: "Results", href: base },
     { key: "schedule", label: "Schedule", href: `${base}/schedule` },
@@ -26,7 +30,7 @@ export function PublicProducerHeader({ slug, name, logoUrl, active, membershipPu
       <Link href="/roper" title="Roper portal" aria-label="Roper portal" className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-white/30 hover:bg-white/10"><UserRound size={19} /></Link>
       </div>
       <nav aria-label="Producer public pages" className="flex flex-wrap gap-x-4 text-sm font-semibold sm:gap-x-5">
-        {links.map((link) => <Link key={link.key} href={link.href} aria-current={active === link.key ? "page" : undefined}
+        {links.filter(link => link.key === active || featureEnabled(features, link.key)).map((link) => <Link key={link.key} href={link.href} aria-current={active === link.key ? "page" : undefined}
           className={`relative inline-flex min-h-11 items-center border-b-2 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 ${active === link.key ? "border-white text-white" : "border-transparent brand-muted brand-hover"}`}>
           {link.label}<NavigationPending label={`Loading ${link.label.toLowerCase()}`} className="ml-1" />
         </Link>)}

@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Plus, Pencil, X, LoaderCircle, LockKeyhole, Undo2 } from "lucide-react";
 import { changeRopingFunding } from "@/app/(app)/events/funding-actions";
 import { formatCurrency } from "@/lib/utils";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 export interface FundingRecord { id: string; source: string; fund_id: string | null; sponsor_name: string; amount_cents: number; received_cents: number; reason: string; cancelled_at: string | null }
 export interface FundingAccount { id: string; name: string; available_cents: number; is_active: boolean }
@@ -28,9 +30,10 @@ export function RopingFunding(props: Props) {
   </section>;
 }
 function FundingDialog({operation,record,onClose,...props}: Props & {operation: string; record?: FundingRecord; onClose: () => void}) {
+  const fundsEnabled = featureEnabled(useProducerFeatures(), "funds");
   const ref = useRef<HTMLDialogElement>(null);
   const [reference] = useState(() => record?.id ?? crypto.randomUUID());
-  const [source,setSource] = useState(record?.source ?? "fund");
+  const [source,setSource] = useState(record?.source ?? (fundsEnabled ? "fund" : "sponsor"));
   const [pending,startTransition] = useTransition();
   const [error,setError] = useState("");
   const [cancel,setCancel] = useState(false);
@@ -40,7 +43,7 @@ function FundingDialog({operation,record,onClose,...props}: Props & {operation: 
   return <dialog ref={ref} aria-labelledby="funding-title" onCancel={e => {if (pending) e.preventDefault(); else onClose();}} className="fixed inset-0 m-auto max-h-[90dvh] w-[min(94vw,560px)] overflow-y-auto rounded-lg border border-[#dfe4e1] bg-white p-0 text-[#19231d] shadow-xl backdrop:bg-black/40"><header className="flex items-center justify-between border-b border-[#dfe4e1] p-5"><h2 id="funding-title" className="text-lg font-bold">{title}</h2><button disabled={pending} onClick={onClose} title="Close" aria-label="Close"><X size={20}/></button></header>
     <form action={submit} className="space-y-4 p-5"><fieldset disabled={pending} className="min-w-0 space-y-4">
       {operation === "save" ? <>
-        <label className="flex flex-col items-start gap-2 text-sm font-semibold">Source<select name="source" value={source} onChange={e => setSource(e.target.value)} className={control} disabled={props.finalized}><option value="fund">Producer fund</option><option value="sponsor">Sponsor</option><option value="other">Other external money</option></select></label>
+        <label className="flex flex-col items-start gap-2 text-sm font-semibold">Source<select name="source" value={source} onChange={e => setSource(e.target.value)} className={control} disabled={props.finalized}>{(fundsEnabled || record?.source === "fund") && <option value="fund">Producer fund</option>}<option value="sponsor">Sponsor</option><option value="other">Other external money</option></select></label>
         {props.finalized ? <input type="hidden" name="source" value={source}/> : null}
         {source === "fund" ? <label className="flex flex-col items-start gap-2 text-sm font-semibold">Fund<select name="fund" required defaultValue={record?.fund_id ?? ""} className={control}><option value="">Choose a fund</option>{props.funds.filter(f => f.is_active || f.id === record?.fund_id).map(f => <option key={f.id} value={f.id}>{f.name} · {formatCurrency(Number(f.available_cents))} available</option>)}</select></label> : null}
         {source === "sponsor" ? <label className="flex flex-col items-start gap-2 text-sm font-semibold">Sponsor<input name="sponsor" required maxLength={200} readOnly={props.finalized} defaultValue={record?.sponsor_name} className={control}/></label> : null}

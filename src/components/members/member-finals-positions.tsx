@@ -4,7 +4,7 @@ import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data
 import { loadFinalsAssignments } from "@/lib/events/finals-assignment-data";
 import { finalsPositionSlots } from "@/lib/finals-position-assignments";
 
-export async function MemberFinalsPositions({ producerId, producerSlug, memberId }: { producerId: string; producerSlug: string; memberId: string }) {
+export async function MemberFinalsPositions({ producerId, producerSlug, memberId, enabled = true }: { producerId: string; producerSlug: string; memberId: string; enabled?: boolean }) {
   const db = await createClient();
   const seasons = await db.from("producer_seasons").select("id,name,ends_on").eq("producer_id", producerId).order("starts_on", { ascending: false }).limit(5);
   const producer = await db.from("producers").select("timezone").eq("id", producerId).single();
@@ -25,5 +25,6 @@ export async function MemberFinalsPositions({ producerId, producerSlug, memberId
       expired: slots.filter((slot) => slot.classId === row.classId && slot.status === "expired").length,
       review: slots.filter((slot) => slot.classId === row.classId && slot.status === "needs_review").length })));
   }
+  if (!enabled && !rows.length) return null;
   return <section className="space-y-3 border-t pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Earned finals positions</h2><Link href="/settings/finals" className="text-sm font-semibold underline">Finals positions</Link></div>{rows.length ? <ul className="space-y-2 text-sm">{rows.map((row) => <li key={`${row.seasonId}:${row.classId}`} className="flex flex-wrap justify-between gap-3"><span>{row.seasonName} · {names.get(row.classId) ?? "Class"}</span><div className="text-right"><strong>{row.positions} earned</strong><p className="mt-1 text-xs text-[#66716b]">{row.pending} pending · {row.assigned} assigned · {row.expired} expired{row.review ? ` · ${row.review} need review` : ""}</p></div></li>)}</ul> : <p className="text-sm text-[#66716b]">No earned finals positions in the five most recent seasons.</p>}</section>;
 }

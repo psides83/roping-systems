@@ -1,5 +1,7 @@
 "use client";
 import { NumberStepper } from "@/components/ui/number-stepper";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 import {
   useActionState,
@@ -639,6 +641,7 @@ function FeeDialog({
   fee?: FeeTemplateSummary;
   funds?: { id: string; name: string }[];
 }) {
+  const fundsEnabled = featureEnabled(useProducerFeatures(), "funds");
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState(fee?.kind ?? "standard");
   const [fundTracking, setFundTracking] = useState(fee?.fundTracking ?? "general");
@@ -732,7 +735,7 @@ function FeeDialog({
                   <option value="insurance">Insurance</option>
                   <option value="side_pot">Side pot</option>
                   <option value="other">Other option</option>
-                  <option value="added_money">Added-money fund</option>
+                  {(fundsEnabled || fee?.kind === "added_money") && <option value="added_money">Added-money fund</option>}
                 </select>
               </label>
               <label className="block text-sm font-semibold">
