@@ -843,6 +843,7 @@ export default async function RopingDetailPage({
           <Metric key={metric.label} {...metric} />
         ))}
         <Metric icon={CircleDollarSign} label="Fee collections" value={formatCurrency(collections.collectedCents)} detail={`${formatCurrency(collections.outstandingCents)} outstanding`} href={`/events/${event.id}/fee-collections`} />
+        {event.canFinance && <Metric icon={CircleDollarSign} label="Profitability" value="Income & expenses" detail="Retained income by event and roping" href={`/events/${event.id}/profitability`} />}
         <Metric icon={WalletCards} label="Payouts" href={`/events/${event.id}/payouts`} detail={event.status === "completed" ? undefined : "Provisional awards from recorded runs"} breakdown={[
           { label: "Due", value: formatCurrency(payouts.dueCents) },
           { label: "Completed", value: formatCurrency(payouts.completedCents) },

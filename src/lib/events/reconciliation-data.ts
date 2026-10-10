@@ -23,6 +23,6 @@ export async function loadEventReconciliation(eventId: string) {
   const transfers = await readAllRows<TransferRow>((first, last) => db.from("fund_transactions").select("id,event_roping_id,kind,amount_cents,reason,created_at,event_ropings!inner(event_id),producer_funds(name)").eq("event_ropings.event_id", eventId).eq("producer_id", producer.id).order("created_at").order("id").range(first, last), "Load fund transfers");
   const finalized = new Set(ropings.filter((roping) => roping.payouts_finalized_at).map((roping) => roping.id));
   const namedFunding = funding.filter((row) => !row.cancelled_at).map((row) => ({ ...row, fundName: Array.isArray(row.producer_funds) ? row.producer_funds[0]?.name : row.producer_funds?.name }));
-  return { event: event.data, fees, funding: namedFunding, transfers, ropings,
+  return { event: event.data, fees, funding: namedFunding, transfers, ropings, awards,
     totals: reconciliationTotals(fees, payments, receipts, awards, finalized) };
 }
