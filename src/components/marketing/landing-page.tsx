@@ -142,9 +142,9 @@ export function LandingPage() {
               Roping Systems brings those records together for your team.
             </p>
             <p className="text-base leading-7 text-[#59645e]">
-              Your staff can work from shared information, and your members
-              can find schedules, enter events, and follow their progress online.
-              Use the features you need and turn off optional tools you don&apos;t.
+              Start with the essentials for running a roping, or bring more of
+              your organization into one place: memberships, event planning,
+              finances, and season records. Use the features you need and turn off optional tools you don&apos;t.
             </p>
           </div>
         </div>
@@ -246,8 +246,8 @@ export function LandingPage() {
           />
           <ValueItem
             icon={ClipboardList}
-            title="Flexible enough for your organization"
-            text="Set your own season dates, entry requirements, fees, and payouts. Keep optional features out of the way when you don't need them."
+            title="As simple or complete as you need"
+            text="Keep everyday tasks straightforward while managing as much of your roping operation as you choose. Have a need unique to your organization? Custom features can be added to support the way you work."
           />
           <ValueItem
             icon={Search}

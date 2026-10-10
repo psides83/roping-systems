@@ -24,6 +24,9 @@ test('landing page explains current benefits in plain language and preserves nav
   const html = renderToStaticMarkup(React.createElement(compiled.exports.LandingPage));
   for (const phrase of ['waitlist', 'assigned arenas', 'record when they receive it', 'membership dues', 'Export standings', 'attendance still needed', 'participating producers', 'In-app notices', 'turn off optional tools']) assert.ok(html.includes(phrase), phrase);
   assert.match(html, /Separate prize money and fund contributions/);
+  assert.match(html, /As simple or complete as you need/);
+  assert.match(html, /Custom features can be added/);
+  assert.match(html, /Start with the essentials for running a roping/);
   assert.match(html, /href="\/auth\/login"/);
   assert.match(html, /id="operations"/);
   assert.match(html, /id="live-results"/);
