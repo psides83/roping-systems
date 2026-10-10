@@ -1,4 +1,5 @@
 import { EventWorkflowNav } from "@/components/events/event-workflow-nav";
+import { RopingWaitlists } from "@/components/events/roping-waitlist";
 import { notFound } from "next/navigation";
 import {
   Banknote,
@@ -651,6 +652,7 @@ function EntriesWorkspace({
         />
       </section>
       <OnlineEntryRequestList eventId={eventId} requests={requests} enabled={canOffice} manager={canEdit} />
+      {canOffice && <RopingWaitlists eventId={eventId} manager={canEdit} />}
       <EntryLedger
         eventId={eventId}
         contestants={contestants}

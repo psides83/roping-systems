@@ -22,7 +22,7 @@ function loadComponent(path, mode = "member") {
       useEffect: () => {},
       useActionState: () => [{}, () => {}, false],
     };
-    if (name.endsWith("/entries/actions")) return new Proxy({}, { get: () => () => {} });
+    if (name.endsWith("/entries/actions") || name.endsWith("/entries/waitlist-actions")) return new Proxy({}, { get: () => () => {} });
     if (name === "@/lib/utils") return { cn: (...values) => values.join(" "), formatCurrency: (cents) => `$${cents / 100}`, formatPhoneNumber: (value) => value };
     if (name.endsWith("/phone-input")) return { PhoneInput: () => React.createElement("input", { name: "phone" }) };
     return require(name);
@@ -32,6 +32,18 @@ function loadComponent(path, mode = "member") {
 }
 
 const divisions = [{ id: "test", name: "Open", allowGuests: true, options: [] }];
+test("Waitlist controls expose limits only to managers and reserve offers", () => {
+  const { WaitlistControls } = loadComponent("../src/components/events/waitlist-controls.tsx");
+  const props = { eventId: "event", roping: { id: "roping", name: "Open Tie-down", scheduled_date: "2026-10-10", entry_limit: 1, event_day_status: "scheduled" }, count: 0,
+    rows: [{ id: "first", event_roping_id: "roping", status: "offered", revision: 2, note: "", guest: { firstName: "Taylor", lastName: "Carter" }, ropers: null }, { id: "next", event_roping_id: "roping", status: "waiting", revision: 1, note: "", guest: { firstName: "Casey", lastName: "Hayes" }, ropers: null }] };
+  const staff = renderToStaticMarkup(React.createElement(WaitlistControls, { ...props, manager: false }));
+  assert.doesNotMatch(staff, /name="limit"/);
+  assert.match(staff, /Confirm acceptance/);
+  assert.match(staff, /value="offer" disabled=""/);
+  const manager = renderToStaticMarkup(React.createElement(WaitlistControls, { ...props, manager: true }));
+  assert.match(manager, /name="limit"/);
+  assert.match(manager, /1 reserved/);
+});
 for (const mode of ["member", "guest"]) {
   test(`Entry Office ${mode} dialog exposes neither exceptions nor payment shortcuts`, () => {
     const { EntryFormDialog } = loadComponent("../src/components/events/entry-form-dialog.tsx", mode);
@@ -59,7 +71,8 @@ test("Read-only online request controls are disabled", () => {
     eventId: "event", enabled: false, manager: false,
     requests: [{ id: "request", name: "Test Roper", email: "test@example.com", membershipVerified: true, items: [] }],
   }));
-  assert.equal((html.match(/disabled=""/g) ?? []).length, 4);
+  assert.equal((html.match(/disabled=""/g) ?? []).length, 5);
+  assert.match(html, /Add requested entries to waitlists/);
   assert.match(html, /Message to roper/);
   assert.match(html, /Office note \(staff only\)/);
 });

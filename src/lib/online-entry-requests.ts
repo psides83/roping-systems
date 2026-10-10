@@ -1,6 +1,6 @@
 export interface OnlineEntryRequest {
   id: string;
-  status: "pending" | "accepted" | "declined" | "withdrawn";
+  status: "pending" | "accepted" | "declined" | "withdrawn" | "waitlisted";
   revision: number;
   submittedAt: string;
   updatedAt: string;

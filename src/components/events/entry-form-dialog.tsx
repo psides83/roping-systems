@@ -220,11 +220,14 @@ export function EntryFormDialog({
 
 function CommonEntryFields({ divisions, manager = true }: { divisions: EntryDivision[]; manager?: boolean }) {
   const [divisionId, setDivisionId] = useState("");
+  const [waitlist, setWaitlist] = useState(false);
   const [eligibilityOverride, setEligibilityOverride] = useState(false);
   const options =
     divisions.find((division) => division.id === divisionId)?.options ?? [];
   return (
     <>
+      <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="waitlist" checked={waitlist} onChange={event => setWaitlist(event.target.checked)} className="h-4 w-4" />Add to waitlist instead of entering</label>
+      {waitlist && <p className="text-sm text-[#66716b]">No fees are due until a space is offered and accepted.</p>}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-semibold">
           Class
@@ -248,6 +251,7 @@ function CommonEntryFields({ divisions, manager = true }: { divisions: EntryDivi
           <select
             name="paymentStatus"
             defaultValue="unpaid"
+            disabled={waitlist}
             className={inputClass}
           >
             <option value="unpaid">Unpaid</option>
@@ -255,6 +259,7 @@ function CommonEntryFields({ divisions, manager = true }: { divisions: EntryDivi
             {manager ? <option value="comped">Comped</option> : null}
           </select>
         </label>
+        {waitlist && <input type="hidden" name="paymentStatus" value="unpaid" />}
       </div>
       {options.length ? (
         <fieldset>

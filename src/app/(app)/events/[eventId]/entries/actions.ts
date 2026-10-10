@@ -108,7 +108,7 @@ const reviewRequestSchema = z
   .object({
     requestId: z.uuid(),
     requestRevision: z.coerce.number().int().positive(),
-    decision: z.enum(["accepted", "declined"]),
+    decision: z.enum(["accepted", "declined", "waitlisted"]),
     reviewNote: z
       .string()
       .trim()
@@ -230,6 +230,16 @@ export async function addExistingEntry(
   if (!context) return { message: "Entry access for this event is required." };
   const roping = await context.supabase.from("event_ropings").select("id").eq("id", parsed.data.divisionId).eq("event_id", eventId).maybeSingle();
   if (roping.error || !roping.data) return { message: "Choose a roping from this event." };
+  if (formData.get("waitlist") === "on") {
+    const { error } = await context.supabase.rpc("join_roping_waitlist", {
+      target_roping: parsed.data.divisionId, target_roper: parsed.data.personId,
+      guest_details: null, selected_options: getOptionIds(formData),
+      eligibility_reason: parsed.data.eligibilityOverride === "on" ? parsed.data.eligibilityOverrideReason : null,
+    });
+    if (error) return { message: error.message };
+    revalidatePath(`/events/${eventId}/entries`);
+    return { success: true, message: "Added to the waitlist. No fees are due yet." };
+  }
   const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
   if (qualificationError) return { message: qualificationError };
   const { data: entryId, error } = await context.supabase.rpc(
@@ -275,6 +285,17 @@ export async function addGuestEntry(
   if (!context) return { message: "Entry access for this event is required." };
   const roping = await context.supabase.from("event_ropings").select("id").eq("id", parsed.data.divisionId).eq("event_id", eventId).maybeSingle();
   if (roping.error || !roping.data) return { message: "Choose a roping from this event." };
+  if (formData.get("waitlist") === "on") {
+    const { error } = await context.supabase.rpc("join_roping_waitlist", {
+      target_roping: parsed.data.divisionId, target_roper: null,
+      guest_details: { firstName: parsed.data.firstName, lastName: parsed.data.lastName, email: parsed.data.email, phone: parsed.data.phone, birthDate: parsed.data.birthDate, competitionGender: parsed.data.competitionGender },
+      selected_options: getOptionIds(formData),
+      eligibility_reason: parsed.data.eligibilityOverride === "on" ? parsed.data.eligibilityOverrideReason : null,
+    });
+    if (error) return { message: error.message };
+    revalidatePath(`/events/${eventId}/entries`);
+    return { success: true, message: "Added to the waitlist. No fees are due yet." };
+  }
   const qualificationError = await refreshEventQualificationChecks(eventId, parsed.data.divisionId);
   if (qualificationError) return { message: qualificationError };
   const { data: entryId, error } = await context.supabase.rpc(
@@ -324,6 +345,14 @@ export async function reviewOnlineEntryRequest(
   if (!context) return { message: "Entry access for this event is required." };
   const request = await context.supabase.from("online_entry_submissions").select("id").eq("id", parsed.data.requestId).eq("event_id", eventId).maybeSingle();
   if (request.error || !request.data) return { message: "Choose a request from this event." };
+  if (parsed.data.decision === "waitlisted") {
+    const { error } = await context.supabase.rpc("waitlist_online_submission", { target_submission: parsed.data.requestId, expected_revision: parsed.data.requestRevision });
+    if (error) return { message: error.message };
+    revalidatePath(`/events/${eventId}/entries`);
+    revalidatePath("/roper");
+    revalidatePath("/roper/requests");
+    return { success: true, message: "Requested entries added to their waitlists. No fees are due yet." };
+  }
 
   if (parsed.data.decision === "accepted") {
     const qualificationError = await refreshEventQualificationChecks(eventId);

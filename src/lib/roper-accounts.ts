@@ -7,7 +7,7 @@ export interface RoperAccountEvent {
   payments: (BalancePayment & { id: string; method: string; receivedAt: string })[];
 }
 export interface RoperSubmission {
-  id: string; status: "pending" | "accepted" | "declined" | "withdrawn";
+  id: string; status: "pending" | "accepted" | "declined" | "withdrawn" | "waitlisted";
   revision?: number; canModify?: boolean; producerSlug?: string; eventSlug?: string;
   changes?: { action: "edited" | "withdrawn"; changedAt: string }[];
   submittedAt: string; reviewedAt: string | null; eventTitle: string;

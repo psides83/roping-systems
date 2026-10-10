@@ -178,6 +178,7 @@ function RequestRow({
             Approve eligibility exception
           </label> : null}
           <div className="mt-2 grid grid-cols-2 gap-2">
+            <button name="decision" value="waitlisted" disabled={pending || !enabled} className="col-span-2 h-9 rounded-md border border-[#ccd4d0] text-xs font-bold disabled:opacity-50">Add requested entries to waitlists</button>
             <button
               name="decision"
               value="declined"
