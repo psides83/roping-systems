@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { loadEventReconciliation } from "@/lib/events/reconciliation-data";
 import { formatCurrencyExact as money } from "@/lib/utils";
+import { FinancialLabel } from "@/components/ui/financial-label";
 
 export default async function ReconciliationPage({ params }: PageProps<"/events/[eventId]/reconciliation">) {
   const { eventId } = await params;
@@ -35,7 +36,11 @@ export default async function ReconciliationPage({ params }: PageProps<"/events/
   return <div className="space-y-6">
     <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm"><Link href="/events">Events</Link><span>/</span><Link href={`/events/${eventId}`}>{event.title}</Link><span>/</span><span aria-current="page">Financial closeout</span></nav>
     <PageHeader eyebrow="Event finances" title="Financial closeout" description={event.title} actions={<Link href={`/events/${eventId}`} className="flex h-10 items-center gap-2 rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold"><ArrowLeft size={16} />Event dashboard</Link>} />
-    <section className="border-y border-[#dfe4e1] py-5"><dl className="grid gap-5 sm:grid-cols-3">{[["Recorded entry payments", t.recorded], ["Recorded payouts", t.paid], ["Finalized awards", t.finalizedAwards]].map(([label, amount]) => <div key={label}><dt className="text-sm text-[#66716b]">{label}</dt><dd className="mt-1 font-mono text-2xl font-bold tabular-nums">{money(Number(amount))}</dd></div>)}</dl></section>
+    <section className="border-y border-[#dfe4e1] py-5"><dl className="grid gap-5 sm:grid-cols-3">{[
+      {label:"Entry payments recorded",amount:t.recorded,help:"Payment-ledger receipts, including refunds. Shown separately from fees collected, which also includes entries marked paid."},
+      {label:"Payouts paid",amount:t.paid,help:"Payout amounts recorded as paid in recipient receipts. Recipient acknowledgment is tracked separately."},
+      {label:"Finalized winnings",amount:t.finalizedAwards,help:"Total winnings from ropings whose payouts have been finalized, whether or not the ropers have been paid yet."},
+    ].map(item => <div key={item.label}><dt className="text-sm text-[#66716b]"><FinancialLabel label={item.label} help={item.help}/></dt><dd className="mt-1 font-mono text-2xl font-bold tabular-nums">{money(item.amount)}</dd></div>)}</dl></section>
     <section><h2 className="text-lg font-bold">Closeout review</h2>{issues.length ? <ul className="mt-3 space-y-2 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : <p className="mt-2 text-sm text-[#66716b]">Payment records match the collection and award totals.</p>}<div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold"><Link className="underline" href={`/events/${eventId}/entries`}>Review payments</Link><Link className="underline" href={`/events/${eventId}/payouts`}>Review payouts and acknowledgments</Link></div></section>
     <section><h2 className="text-lg font-bold">Expected and recorded</h2>
       <div className="mt-3 space-y-4 sm:hidden">{rows.map(([label, expected, recorded, outstanding]) => <div key={label} className="border-b border-[#dfe4e1] pb-3"><h3 className="text-sm font-semibold">{label}</h3><dl className="mt-2 grid grid-cols-2 gap-2 text-sm">{[["Expected", expected], ["Collected / paid", recorded], ["Outstanding", outstanding]].map(([name, amount]) => <div key={name}><dt className="text-xs text-[#66716b]">{name}</dt><dd className="font-mono tabular-nums">{money(Number(amount))}</dd></div>)}</dl></div>)}</div>
