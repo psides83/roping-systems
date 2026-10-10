@@ -8,6 +8,7 @@ import {
   loadOnlineFinalsAllowance,
   loadOnlineEntryEligibility,
   type OnlineEntryFormState,
+  type OnlineRoperSearchResult,
 } from "@/app/public/[producerSlug]/[eventSlug]/enter/actions";
 import { formatCurrency } from "@/lib/utils";
 import { summarizeOnlineEntryOptions, type EntryOption } from "@/lib/online-entry-summary";
@@ -17,6 +18,7 @@ import type { OnlineEntryRequest } from "@/lib/online-entry-requests";
 import { qualificationNoticeText, type QualificationNotice } from "@/lib/events/qualification-notice";
 import type { OnlineEntryEligibility } from "@/lib/online-entry-eligibility";
 import { EntryEligibilityFeedback } from "@/components/events/entry-eligibility-feedback";
+import { OnlineRoperSearch } from "./online-roper-search";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
@@ -51,15 +53,16 @@ interface EntryDivision {
 export function OnlineEntryForm({
   producerSlug,
   eventSlug,
-  allowGuests,
   divisions,
   existingRequest,
+  requireMemberships = true,
 }: {
   producerSlug: string;
   eventSlug: string;
   allowGuests: boolean;
   divisions: EntryDivision[];
   existingRequest?: OnlineEntryRequest;
+  requireMemberships?: boolean;
 }) {
   const action = existingRequest ? updateOnlineEntryRequest.bind(null, existingRequest.id, existingRequest.revision) : submitOnlineEntry.bind(null, producerSlug, eventSlug);
   const [state, formAction, pending] = useActionState<
@@ -74,6 +77,7 @@ export function OnlineEntryForm({
   const optionalTotal = summary.reduce((total, roping) => total + roping.options.reduce((sum, option) => sum + option.amountCents, 0), 0);
   const requiredTotal = summary.reduce((total, roping) => total + roping.requiredFees.reduce((sum, fee) => sum + fee.amountCents, 0), 0);
   const formRef = useRef<HTMLFormElement>(null);
+  const [selectedRecord, setSelectedRecord] = useState<OnlineRoperSearchResult | null>(null);
   const [checkingAllowance, startAllowanceCheck] = useTransition();
   const [allowances, setAllowances] = useState<Awaited<ReturnType<typeof loadOnlineFinalsAllowance>>["allowances"]>([]);
   const [allowanceMessage, setAllowanceMessage] = useState("");
@@ -98,13 +102,24 @@ export function OnlineEntryForm({
   return (
     <form ref={formRef} action={formAction} aria-busy={pending} className="space-y-7" onChange={(event) => {
       const name = event.target instanceof HTMLInputElement ? event.target.name : null;
+      if (name === "firstName" || name === "lastName") setSelectedRecord(null);
       if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); setEligibility([]); setEligibilityMessage(""); setFeeContext(null); }
     }}>
       <section>
         <h2 className="text-lg font-bold">Contestant information</h2>
-        <p className="mt-1 text-sm text-[#66716b]">{existingRequest ? "Contestant details stay with the original request. Contact the producer if they need correcting." : "Use the email address associated with your membership when applicable."}</p>
-        <fieldset disabled={checkingAllowance || checkingEligibility || !!existingRequest} className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field
+        <p className="mt-1 text-sm text-[#66716b]">{existingRequest ? "Contestant details stay with the original request. Contact the producer if they need correcting." : "Use an email address where the producer can contact you."}</p>
+        <fieldset disabled={checkingAllowance || checkingEligibility || !!existingRequest} className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
+        {!existingRequest && <OnlineRoperSearch producerSlug={producerSlug} eventSlug={eventSlug} selected={selectedRecord} onSelect={record => {
+          setSelectedRecord(record);
+          setAllowances([]); setAllowanceMessage(""); setEligibility([]); setEligibilityMessage(""); setFeeContext(null); setQuantities({});
+          if (!formRef.current) return;
+          for (const [name,value] of [["firstName",record?.first_name ?? ""],["lastName",record?.last_name ?? ""],["memberNumber",record?.member_number ?? ""]]) {
+            const input = formRef.current.elements.namedItem(name);
+            if (input instanceof HTMLInputElement) input.value = value;
+          }
+        }} />}
+        <input type="hidden" name="selectedRecordId" value={selectedRecord?.record_id ?? ""} />
+        <Field
             label="First name"
             name="firstName"
             defaultValue={existingRequest?.firstName}
@@ -167,11 +182,11 @@ export function OnlineEntryForm({
           </label>
           <Field
             label={
-              allowGuests ? "Member number (if applicable)" : "Member number"
+              requireMemberships ? "Member number (if applicable)" : "Roper number (if known)"
             }
             name="memberNumber"
             defaultValue={existingRequest?.memberNumber ?? ""}
-            required={!allowGuests}
+            required={false}
             error={state.errors?.memberNumber?.[0]}
           />
         </fieldset>
@@ -212,7 +227,7 @@ export function OnlineEntryForm({
         </label>
       </section>
 
-      <fieldset disabled={pending}>
+      <fieldset disabled={pending} className="min-w-0">
         <legend className="text-lg font-bold">Ropings</legend>
         <p className="mt-1 text-sm text-[#66716b]">
           Select each division and classification you want to enter, then choose
@@ -258,9 +273,7 @@ export function OnlineEntryForm({
                     <span className="mt-2 block text-xs font-semibold text-[#758078]">
                       Required fees from{" "}
                       {formatCurrency(division.estimatedFirstEntryCents)}
-                      {division.allowGuests
-                        ? " · Guest entries allowed"
-                        : " · Active members only"}
+                      {requireMemberships ? " · Membership approval required before competing" : " · No membership required"}
                     </span>
                     <span className="mt-1 block text-xs font-semibold text-[var(--brand-accent-strong)]">
                       {division.eligibilityType === "open"

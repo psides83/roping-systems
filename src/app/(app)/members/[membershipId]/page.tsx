@@ -147,11 +147,12 @@ async function getMemberDetail(
 
   const producer = await getActiveProducer();
   if (!producer) return null;
+  const requireMemberships = featureEnabled(await getProducerFeatures(producer.id), "require_memberships");
   const supabase = await createClient();
   const { data: membership, error } = await supabase
     .from("memberships")
     .select(
-      "id, member_number, status, joined_on, expires_on, notes, profile_fields, ropers!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
+      "id, member_number, status, formally_approved, joined_on, expires_on, notes, profile_fields, ropers!inner(first_name, last_name, email, phone, birth_date, competition_gender)",
     )
     .eq("id", membershipId)
     .eq("producer_id", producer.id)
@@ -217,7 +218,7 @@ async function getMemberDetail(
           is_active: boolean;
         }>
       )
-        .filter((item) => item.is_active && item.eligibility_type === "skill")
+        .filter((item) => item.is_active && item.eligibility_type !== "age")
         .sort(
           (a, b) =>
             b.classification_number - a.classification_number ||
@@ -258,7 +259,7 @@ async function getMemberDetail(
     lastName: person.last_name,
     name: `${person.first_name} ${person.last_name}`.trim(),
     memberNumber: membership.member_number,
-    status: membership.status as MembershipStatus,
+    status: requireMemberships && membership.status === "active" && !membership.formally_approved ? "pending" : membership.status as MembershipStatus,
     email: person.email ?? "-",
     phone: formatPhoneNumber(person.phone) || "-",
     joinedOn: membership.joined_on,
@@ -347,7 +348,7 @@ export default async function MemberDetailPage({
           href="/members"
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#66716b] hover:text-[#17201c]"
         >
-          <ArrowLeft size={16} /> Members
+          <ArrowLeft size={16} /> {featureEnabled(features,"require_memberships") ? "Members" : "Ropers"}
         </Link>
         <div className="mt-4 flex flex-col gap-4 border-b border-[#dfe4e1] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex items-start gap-4">
@@ -362,7 +363,7 @@ export default async function MemberDetailPage({
                 <h1 className="text-2xl font-bold sm:text-3xl">
                   {member.name}
                 </h1>
-                <StatusPill status={member.status} />
+                {featureEnabled(features,"require_memberships") && <StatusPill status={member.status} />}
               </div>
               <p className="mt-2 font-mono text-xs text-[#66716b]">
                 {member.memberNumber}

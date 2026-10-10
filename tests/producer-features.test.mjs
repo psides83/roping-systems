@@ -12,3 +12,10 @@ test('catalog keys are unique and never include core timing, entries, or permiss
   assert.equal(new Set(keys).size, keys.length);
   for (const key of ['timing','entries','permissions','payouts','templates']) assert.equal(keys.includes(key), false);
 });
+test('informal roper records hide applications and dues without disabling competition or discipline', () => {
+  const features = { require_memberships: false };
+  assert.equal(featureEnabled(features, 'membership'), false);
+  assert.equal(featureEnabled(features, 'dues'), false);
+  for (const key of ['online_entries','fines','suspensions','standings','handicap']) assert.equal(featureEnabled(features,key),true);
+  assert.equal(featureEnabled({require_memberships:true,membership:false},'membership'),false);
+});

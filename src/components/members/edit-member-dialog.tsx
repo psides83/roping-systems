@@ -8,6 +8,8 @@ import {
   type MemberProfileFormState,
 } from "@/app/(app)/members/[membershipId]/actions";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 import { blocksMoveBack, type MoveBackProgress } from "@/lib/classification-move-back";
 import { MoveBackFeedback } from "./move-back-feedback";
 import type {
@@ -65,6 +67,7 @@ export function EditMemberDialog({
   moveBackProgress?: MoveBackProgress[];
 }) {
   const [open, setOpen] = useState(false);
+  const requireMemberships = featureEnabled(useProducerFeatures(), "require_memberships");
   const [classifications, setClassifications] = useState(
     currentClassifications,
   );
@@ -221,15 +224,15 @@ export function EditMemberDialog({
                 </section>
               ))}
               <section className="border-t border-[#e7ebe8] pt-5">
-                <h3 className="text-sm font-bold">Membership</h3>
+                <h3 className="text-sm font-bold">{requireMemberships ? "Membership" : "Roper record"}</h3>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   <Field
-                    label="Member number"
+                    label={requireMemberships ? "Member number" : "Roper number"}
                     name="memberNumber"
                     value={member.memberNumber}
                     required
                   />
-                  <label className="block text-sm font-semibold">
+                  {requireMemberships ? <label className="block text-sm font-semibold">
                     Status
                     <select
                       name="status"
@@ -241,19 +244,19 @@ export function EditMemberDialog({
                       <option value="inactive">Inactive</option>
                       <option value="expired">Expired</option>
                     </select>
-                  </label>
+                  </label> : <input type="hidden" name="status" value={member.status} />}
                   <Field
                     label="Joined date"
                     name="joinedOn"
                     value={member.joinedOn ?? ""}
                     type="date"
                   />
-                  <Field
+                  {requireMemberships ? <Field
                     label="Expiration date"
                     name="expiresOn"
                     value={member.expiresOn ?? ""}
                     type="date"
-                  />
+                  /> : <input type="hidden" name="expiresOn" value={member.expiresOn ?? ""} />}
                 </div>
                 <label className="mt-4 block text-sm font-semibold">
                   Notes

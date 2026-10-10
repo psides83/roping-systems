@@ -4,6 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { LoaderCircle, Plus, X } from "lucide-react";
 import { addMember, type MemberFormState } from "@/app/(app)/members/actions";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 const initialState: MemberFormState = {};
 
@@ -21,6 +23,7 @@ export function AddMemberDialog({
   divisions: DisciplineOption[];
 }) {
   const [open, setOpen] = useState(false);
+  const requireMemberships = featureEnabled(useProducerFeatures(), "require_memberships");
   const [state, action, pending] = useActionState(addMember, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -37,7 +40,7 @@ export function AddMemberDialog({
         onClick={() => setOpen(true)}
         className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white"
       >
-        <Plus size={17} /> Add member
+        <Plus size={17} /> Add {requireMemberships ? "member" : "roper"}
       </button>
       {open ? (
         <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
@@ -55,7 +58,7 @@ export function AddMemberDialog({
             <div className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
               <div>
                 <h2 id="add-member-title" className="text-lg font-bold">
-                  Add producer member
+                  {requireMemberships ? "Add producer member" : "Add roper record"}
                 </h2>
                 <p className="mt-1 text-sm text-[#66716b]">
                   Contact details belong to the roper; the member number belongs
@@ -121,12 +124,12 @@ export function AddMemberDialog({
                   ) : null}
                 </label>
                 <FormField
-                  label="Member number"
+                  label={requireMemberships ? "Member number" : "Roper number"}
                   name="memberNumber"
                   placeholder="RR-1205"
                   error={state.errors?.memberNumber?.[0]}
                 />
-                <label className="block text-sm font-semibold">
+                {requireMemberships ? <label className="block text-sm font-semibold">
                   Membership status
                   <select
                     name="status"
@@ -138,7 +141,7 @@ export function AddMemberDialog({
                     <option value="inactive">Inactive</option>
                     <option value="expired">Expired</option>
                   </select>
-                </label>
+                </label> : <input type="hidden" name="status" value="active" />}
               </div>
               {divisions.length ? (
                 <fieldset className="rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-4">
@@ -204,7 +207,7 @@ export function AddMemberDialog({
                   {pending ? (
                     <LoaderCircle size={16} className="animate-spin" />
                   ) : null}
-                  Add member
+                  Add {requireMemberships ? "member" : "roper"}
                 </button>
               </div>
             </form>

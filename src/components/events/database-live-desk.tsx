@@ -57,6 +57,8 @@ import type { PenaltyOption } from "@/lib/penalties";
 export interface LiveRunRow {
   recordedAt?: string | null;
   fineBlocked?: boolean;
+  competitionHold?: string | null;
+  membershipId?: string | null;
   id: string;
   entryId: string;
   drawPosition: number | null;

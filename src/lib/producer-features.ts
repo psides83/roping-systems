@@ -1,4 +1,5 @@
 export const producerFeatures = [
+  { key: "require_memberships", label: "Require memberships", group: "Membership" },
   { key: "online_entries", label: "Online entries", group: "Membership" },
   { key: "membership", label: "Online membership applications", group: "Membership" },
   { key: "dues", label: "Membership dues", group: "Membership" },
@@ -24,6 +25,7 @@ export const producerFeatures = [
 export type ProducerFeature = (typeof producerFeatures)[number]["key"];
 export type ProducerFeatures = Partial<Record<ProducerFeature, boolean>>;
 export const producerFeatureDescriptions: Record<ProducerFeature, string> = {
+  require_memberships: "Require approved membership before competing. Entries may be accepted while approval is pending. Turn off to keep reusable roper records without formal memberships or dues.",
   online_entries: "Accept new online entries. Turning this off stops new submissions; staff can still review existing requests.",
   membership: "Accept new membership applications. Existing applications remain available for staff review.",
   dues: "Set seasonal dues and collect payments. Existing dues balances remain accessible when disabled.",
@@ -47,5 +49,6 @@ export const producerFeatureDescriptions: Record<ProducerFeature, string> = {
   portal: "Show the public roper-portal shortcut. Roper accounts and linked memberships remain accessible.",
 };
 export function featureEnabled(features: ProducerFeatures, key: string): boolean {
+  if ((key === "membership" || key === "dues") && features.require_memberships === false) return false;
   return features[key as ProducerFeature] !== false;
 }

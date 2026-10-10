@@ -52,7 +52,7 @@ begin
   exception when others then
     if sqlerrm<>'You do not have permission to move this entry' then raise; end if;
   end;
-  guest_entry:=public.create_guest_event_entry_v2_with_eligibility_override(target.id,'Guest','Office',guest_email,'2545550101','2010-01-01','male','unpaid',null);
+  guest_entry:=public.create_guest_event_entry_v2_with_eligibility_override(target.id,'Existing','Guest',guest_email,'2545550101','2010-01-01','male','unpaid',null);
   if not exists(select 1 from public.ropers where email=guest_email and birth_date='1980-01-01' and competition_gender='female') then
     raise exception 'Office changed existing guest eligibility facts'; end if;
   if public.review_online_entry_request_with_eligibility_override(request_id,'accepted','Eligible online guest',false)<>1 then raise exception 'Online entry not created'; end if;

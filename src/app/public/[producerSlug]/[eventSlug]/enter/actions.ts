@@ -31,6 +31,24 @@ export interface OnlineEntryFormState {
   errors?: Record<string, string[]>;
 }
 
+export interface OnlineRoperSearchResult {
+  record_id: string;
+  first_name: string;
+  last_name: string;
+  member_number: string;
+  city: string | null;
+  state: string | null;
+}
+
+export async function searchOnlineRopers(producerSlug: string, eventSlug: string, query: string): Promise<{ records?: OnlineRoperSearchResult[]; error?: string }> {
+  const parsed = z.string().trim().min(3).max(80).safeParse(query);
+  if (!parsed.success) return { error: "Enter at least three characters." };
+  const db = await createClient();
+  const { data, error } = await db.rpc("search_event_roper_records", { producer_slug: producerSlug, event_slug: eventSlug, search_text: parsed.data });
+  if (error) return { error: "Roper search is unavailable. You can still enter your details below." };
+  return { records: data as OnlineRoperSearchResult[] };
+}
+
 export async function updateOnlineEntryRequest(requestId: string, revision: number, _state: OnlineEntryFormState, form: FormData): Promise<OnlineEntryFormState> {
   const selections = z.array(z.object({ divisionId: z.uuid(), quantity: z.number().int().min(1).max(1000), optionIds: z.array(z.uuid()) })).min(1).max(100).safeParse(
     form.getAll("divisionIds").map(String).map((id) => ({ divisionId: id, quantity: Number(form.get(`quantity-${id}`)), optionIds: form.getAll(`option-${id}`).map(String) })),
@@ -111,7 +129,9 @@ export async function submitOnlineEntry(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("submit_online_entry_request_v3", {
+  const selectedRecord = z.union([z.literal(""), z.uuid()]).safeParse(formData.get("selectedRecordId") ?? "");
+  if (!selectedRecord.success) return { message: "Select a valid roper record or enter as a new roper." };
+  const { error } = await supabase.rpc("submit_online_entry_request_v4", {
     target_organization_slug: producerSlug,
     target_roping_slug: eventSlug,
     contestant_first_name: parsed.data.firstName,
@@ -123,6 +143,7 @@ export async function submitOnlineEntry(
     contestant_member_number: parsed.data.memberNumber,
     contestant_note: parsed.data.note,
     requested_divisions: requestedDivisions,
+    selected_record_id: selectedRecord.data || null,
   });
 
   if (error) return { message: error.message };

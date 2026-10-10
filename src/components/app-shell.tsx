@@ -187,7 +187,7 @@ export function AppShell({
                 )}
               >
                 <Icon size={18} strokeWidth={1.8} />
-                {item.name}
+                {item.href === "/members" && !featureEnabled(features, "require_memberships") ? "Ropers" : item.name}
                 <NavigationPending className="ml-auto" />
               </Link>
             );

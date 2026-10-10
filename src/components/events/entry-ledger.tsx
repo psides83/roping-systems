@@ -54,6 +54,8 @@ export interface LedgerContestant {
     eligibilityOverridden: boolean;
     eligibilityIssue: string | null;
     eligibilityOverrideReason: string | null;
+    competitionHold?: string | null;
+    membershipId?: string | null;
     options: EntryOptionChoice[];
     competitionStatus: "active" | "withdrawn";
     withdrawalReason: string | null;
@@ -268,6 +270,7 @@ function ContestantRow({
                     {entry.transferNote}
                   </span>
                 ) : null}
+                {entry.competitionHold && entry.competitionStatus === "active" ? <span className="mt-1 block max-w-72 whitespace-normal font-semibold text-amber-900">{entry.competitionHold}{entry.membershipId && <a href={`/members/${entry.membershipId}`} className="ml-1 underline">Review record</a>}</span> : null}
                 {entry.options.some((option) => option.selected) ? (
                   <span className="mt-1 block font-normal text-[#66716b]">
                     {entry.options

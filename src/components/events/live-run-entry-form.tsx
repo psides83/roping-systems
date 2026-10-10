@@ -45,7 +45,7 @@ export function RunEntryForm({
   const timing = useTimingControl();
   const draft = useTimerDraft({ userId: timing.staffUserId, eventId, ropingId, round, runId: run.id,
     name: run.name, rerunCount: run.rerunCount ?? 0, recordedAt: run.recordedAt ?? null },timerCount);
-  const canEdit = permitted && timing.canWrite && draft.ready && !draft.stale;
+  const canEdit = permitted && timing.canWrite && draft.ready && !draft.stale && !run.competitionHold;
   const [state, formAction, pending] = useActionState<TimerSaveResult, FormData>(
     async (_, data) => {
       const snapshot = draft.prepare(data.get("status") as TimerOutcome);
@@ -131,6 +131,7 @@ export function RunEntryForm({
         ) : null}
       </div>
       <div className="mt-5">
+        {run.competitionHold ? <div role="alert" className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{run.competitionHold}{run.membershipId && <a href={`/members/${run.membershipId}`} className="mt-2 block underline">Review roper record</a>}</div> : null}
         {run.fineBlocked ? <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">Competition blocked by an unpaid member fine. Record payment or approve a fine exception before this roper competes.</p> : null}
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase text-[#66716b]">

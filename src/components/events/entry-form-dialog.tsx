@@ -112,7 +112,7 @@ export function EntryFormDialog({
                       : "border-transparent text-[#758078]",
                   )}
                 >
-                  Member
+                  Existing roper
                 </button>
                 <button
                   onClick={() => setMode("guest")}
@@ -123,7 +123,7 @@ export function EntryFormDialog({
                       : "border-transparent text-[#758078]",
                   )}
                 >
-                  Guest
+                  New roper
                 </button>
               </div>
             </div>
@@ -132,7 +132,7 @@ export function EntryFormDialog({
                 <label className="block text-sm font-semibold">
                   Contestant
                   <select name="personId" className={inputClass} required>
-                    <option value="">Choose a member</option>
+                    <option value="">Choose a roper</option>
                     {ropers.map((person) => (
                       <option key={person.id} value={person.id}>
                         {person.name} · {person.memberNumber}
@@ -192,20 +192,14 @@ export function EntryFormDialog({
                 </div>
                 <CommonEntryFields
                   manager={manager}
-                  divisions={divisions.filter(
-                    (division) => division.allowGuests,
-                  )}
+                  divisions={divisions}
                 />
                 <FormMessage state={state} />
-                {!divisions.some((division) => division.allowGuests) ? (
-                  <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    None of this event’s classes allow guest entries.
-                  </p>
-                ) : null}
+                <p className="text-sm text-[#66716b]">The roper is saved for future entries. Membership approval and any missing classification must be resolved before competing.</p>
                 <FormFooter
                   pending={
                     pending ||
-                    !divisions.some((division) => division.allowGuests)
+                    !divisions.length
                   }
                   close={() => setOpen(false)}
                 />

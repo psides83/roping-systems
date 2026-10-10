@@ -28,6 +28,7 @@ interface EntryRequest {
   contestantNote: string | null;
   submittedAt: string;
   membershipVerified: boolean;
+  requestedRecordId?: string | null;
   items: Array<{ division: string; quantity: number }>;
 }
 
@@ -96,10 +97,11 @@ function RequestRow({
               className={`rounded-md px-2 py-1 text-[11px] font-bold ${request.membershipVerified ? "bg-emerald-100 text-emerald-800" : "bg-[#eef1ef] text-[#59645e]"}`}
             >
               {request.membershipVerified
-                ? `Member ${request.memberNumber}`
-                : "Guest request"}
+                ? `Matched roper ${request.memberNumber}`
+                : request.requestedRecordId ? "Roper match selected" : "New roper request"}
             </span>
           </div>
+          {request.requestedRecordId && <p className="mt-2 text-xs text-amber-900">Confirm this is the correct roper before accepting. <a className="font-semibold underline" href={`/members/${request.requestedRecordId}`}>View selected record</a></p>}
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#66716b]">
             <a
               href={`mailto:${request.email}`}

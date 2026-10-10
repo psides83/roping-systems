@@ -257,6 +257,10 @@ export default async function LiveRopingPage({
     if (fineError) throw new Error(`Unable to load fine restrictions: ${fineError.message}`);
     const fineBlockedEntries = new Set((fineRestrictions ?? []).filter((restriction: { blocked: boolean }) => restriction.blocked).map((restriction: { entry_id: string }) => restriction.entry_id));
     runs = runs.map((run) => ({ ...run, fineBlocked: fineBlockedEntries.has(run.entryId) }));
+    const { data: clearance, error: clearanceError } = await supabase.rpc("event_entry_competition_holds", { target_roping_id: selectedDivisionId });
+    if (clearanceError) throw new Error(`Unable to load competition clearance: ${clearanceError.message}`);
+    const holds = new Map((clearance as Array<{ entry_id: string; membership_id: string | null; hold_reason: string | null }>).map(row => [row.entry_id, row]));
+    runs = runs.map(run => ({ ...run, competitionHold: holds.get(run.entryId)?.hold_reason, membershipId: holds.get(run.entryId)?.membership_id }));
     if (canTime) {
       const { data: options, error: penaltyError } = await supabase.rpc("event_run_penalty_options", { target_event_roping_id: selectedDivisionId });
       if (penaltyError) throw new Error(`Unable to load applicable penalties: ${penaltyError.message}`);

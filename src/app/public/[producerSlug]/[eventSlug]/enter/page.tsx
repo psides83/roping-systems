@@ -213,6 +213,7 @@ export default async function PublicOnlineEntryPage({
               producerSlug={producerSlug}
               eventSlug={eventSlug}
               allowGuests={event.allow_non_member_entries}
+              requireMemberships={featureEnabled(features, "require_memberships")}
               divisions={divisions}
             />
           ) : (

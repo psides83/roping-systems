@@ -215,7 +215,6 @@ export default async function EventEntriesPage({
       .from("memberships")
       .select("member_number, ropers!inner(id, first_name, last_name)")
       .eq("producer_id", producer.id)
-      .eq("status", "active")
       .order("member_number"),
     supabase
       .from("roping_entries")
@@ -234,7 +233,7 @@ export default async function EventEntriesPage({
     supabase
       .from("online_entry_submissions")
       .select(
-        "id, revision, first_name, last_name, email, phone, birth_date, competition_gender, member_number, membership_id, contestant_note, created_at, online_entry_submission_ropings(quantity, event_ropings!inner(name, scheduled_date))",
+        "id, revision, first_name, last_name, email, phone, birth_date, competition_gender, member_number, membership_id, requested_membership_id, contestant_note, created_at, online_entry_submission_ropings(quantity, event_ropings!inner(name, scheduled_date))",
       )
       .eq("event_id", eventId)
       .eq("status", "pending")
@@ -314,6 +313,12 @@ export default async function EventEntriesPage({
     }));
 
   const memberNumbers = new Map<string, string>();
+  const clearanceRows = await Promise.all(divisions.map(async division => {
+    const { data, error } = await supabase.rpc("event_entry_competition_holds", { target_roping_id: division.id });
+    if (error) throw new Error(`Unable to load competition clearance: ${error.message}`);
+    return data as Array<{ entry_id: string; membership_id: string | null; hold_reason: string | null }>;
+  }));
+  const clearance = new Map(clearanceRows.flat().map(row => [row.entry_id, row]));
   const ropers = (membershipData ?? []).map((membership) => {
     const person = membership.ropers as unknown as {
       id: string;
@@ -454,6 +459,8 @@ export default async function EventEntriesPage({
       eligibilityOverridden: entry.eligibility_overridden,
       eligibilityIssue: entry.eligibility_note,
       eligibilityOverrideReason: entry.eligibility_override_reason,
+      competitionHold: clearance.get(entry.id)?.hold_reason,
+      membershipId: clearance.get(entry.id)?.membership_id,
       options: (divisionOptions.get(division.id) ?? []).map((option) => ({
         ...option,
         selected: (chargeData ?? []).some(
@@ -505,6 +512,7 @@ export default async function EventEntriesPage({
       timeZone: producer.timezone,
     }).format(new Date(request.created_at)),
     membershipVerified: Boolean(request.membership_id),
+    requestedRecordId: request.requested_membership_id,
     items: request.online_entry_submission_ropings.map((item) => ({
       division: (() => {
         const division = item.event_ropings as unknown as {
@@ -585,6 +593,7 @@ function EntriesWorkspace({
     contestantNote: string | null;
     submittedAt: string;
     membershipVerified: boolean;
+    requestedRecordId?: string | null;
     items: Array<{ division: string; quantity: number }>;
   }>;
   totalEntries: number;

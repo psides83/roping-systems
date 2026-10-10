@@ -20,6 +20,7 @@ function load(file, name, { state = {}, confirming = false } = {}) {
     if (id.endsWith("phone-input")) return { PhoneInput: ({ defaultValue, name }) => React.createElement("input", { name, defaultValue }) };
     if (id.endsWith("qualification-notice")) return { qualificationNoticeText: () => "Qualification required" };
     if (id.endsWith("entry-eligibility-feedback")) return { EntryEligibilityFeedback: () => null };
+    if (id === "./online-roper-search") return { OnlineRoperSearch: load("events/online-roper-search", "OnlineRoperSearch") };
     return require(id);
   }, loaded, loaded.exports);
   return loaded.exports[name];
@@ -67,4 +68,31 @@ test("successful saves and withdrawals replace their controls with a receipt", (
   const receipt = renderToStaticMarkup(React.createElement(Actions, { requestId: "request", revision: 3, producerSlug: "producer", eventSlug: "event" }));
   assert.match(receipt, /Request withdrawn/);
   assert.doesNotMatch(receipt, /Edit request/);
+});
+
+test("new entries offer a privacy-safe search without requiring a member number", () => {
+  const Form = load("events/online-entry-form", "OnlineEntryForm");
+  const html = renderToStaticMarkup(React.createElement(Form, { producerSlug: "producer", eventSlug: "event", allowGuests: false, divisions }));
+  assert.match(html,/Find your roper record/);
+  assert.match(html,/First time here/);
+  assert.match(html,/name="selectedRecordId" value=""/);
+  const memberInput=html.match(/<input[^>]*name="memberNumber"[^>]*>/)?.[0];
+  assert.ok(memberInput);
+  assert.doesNotMatch(memberInput,/required/);
+  assert.match(html,/Membership approval required before competing/);
+});
+
+test("a selected search record displays identity only, with a change action", () => {
+  const Search = load("events/online-roper-search", "OnlineRoperSearch");
+  const html = renderToStaticMarkup(React.createElement(Search,{producerSlug:"producer",eventSlug:"event",selected:{record_id:"record",first_name:"June",last_name:"Marshall",member_number:"124"},onSelect:()=>{}}));
+  assert.match(html,/June Marshall/);
+  assert.match(html,/Change roper/);
+  assert.doesNotMatch(html,/email|birthDate|phone|Claim account/);
+});
+test("informal roper entry forms do not advertise a membership requirement", () => {
+  const Form = load("events/online-entry-form", "OnlineEntryForm");
+  const html=renderToStaticMarkup(React.createElement(Form,{producerSlug:"producer",eventSlug:"event",allowGuests:false,requireMemberships:false,divisions}));
+  assert.match(html,/No membership required/);
+  assert.match(html,/Roper number \(if known\)/);
+  assert.doesNotMatch(html,/Membership approval required before competing/);
 });
