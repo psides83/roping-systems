@@ -11,7 +11,7 @@ import { eventProfitability, type EventExpense } from "@/lib/events/profitabilit
 import type { FeeCollection } from "@/lib/events/fee-collections";
 import { formatCurrencyExact as money } from "@/lib/utils";
 
-const nonPayoutHelp = "Collected production, stock, office, and other fees not allocated to payouts or added-money funds. These fees cover event expenses. Unpaid fees are excluded.";
+const nonPayoutHelp = "Collected production and office charges, entry stock charges, stock charge practice runs and scores, and other fees not allocated to payouts or added-money funds. These fees cover expenses. Unpaid fees are excluded. Practice purchases and office charges belong to event totals, not an individual competition roping.";
 const balanceHelp = "Non-payout fees collected minus recorded expenses. A negative amount means expenses exceed those fees. This is not a bank balance or the final overall event result.";
 const payoutHelp = "All calculated winnings, including amounts already paid and amounts still owed. Unpaid winnings are deducted when calculating the final amount retained.";
 const netHelp = "Collected fees minus fund contributions, plus received added money and fund money used, minus all winnings and recorded expenses. Unpaid fees and unreceived pledges are not income.";
@@ -35,7 +35,7 @@ export default async function ProfitabilityPage({ params }: PageProps<"/events/[
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(metric => <div key={metric.label} className="rounded-md border bg-white p-4"><h2 className="text-sm text-[#66716b]"><FinancialLabel label={metric.label} help={metric.help} /></h2><p className="mt-2 text-xl font-bold tabular-nums">{metric.value}</p></div>)}</section>
     {totals.netRetained === null && <p className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900">The final amount retained is available after all ropings are completed and payouts finalized. Fee and expense totals update as records are entered.</p>}
     <section className="border-y py-4"><h2 className="font-bold">Money breakdown</h2><dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-      <Line label="All fees collected" amount={totals.collected} help="All collected entry and event-wide fees, including money allocated to payouts and added-money funds. This is not the amount the producer keeps." />
+      <Line label="All fees collected" amount={totals.collected} help="All collected entry fees, event-wide charges, and stock charge practice purchases, including money allocated to payouts and added-money funds. This is not the amount the producer keeps." />
       <Line label="Non-payout fees collected" amount={totals.nonPayoutFees} help={nonPayoutHelp} />
       <Line label="Fees allocated to payout pots" amount={totals.payoutFees} help="Collected fees assigned to the main purse, side pots, or insurance pots. These are not available to cover producer expenses." />
       <Line label="Fees allocated to added-money funds" amount={totals.fundContributions} help="Collected contributions reserved for added-money funds, even if the deposit has not posted yet. Excluded from non-payout fees and retained profit." />

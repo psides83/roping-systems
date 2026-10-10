@@ -20,12 +20,16 @@ export function feeCollectionTotals(fees: FeeCollection[]) {
   }), { collectedCents: 0, outstandingCents: 0 });
 }
 
+export function feeCollectionCategory(fee: Pick<FeeCollection, "kind" | "contributes_to_payout">) {
+  if (fee.kind === "added_money") return "fundContributions";
+  if (fee.contributes_to_payout || fee.kind === "side_pot" || fee.kind === "insurance") return "payoutFees";
+  return "nonPayoutFees";
+}
+
 export function feeCollectionAllocations(fees: FeeCollection[]) {
   return fees.reduce((totals, fee) => {
     const amount = Number(fee.collected_cents);
-    if (fee.kind === "added_money") totals.fundContributions += amount;
-    else if (fee.contributes_to_payout || fee.kind === "side_pot" || fee.kind === "insurance") totals.payoutFees += amount;
-    else totals.nonPayoutFees += amount;
+    totals[feeCollectionCategory(fee)] += amount;
     return totals;
   }, { nonPayoutFees: 0, payoutFees: 0, fundContributions: 0 });
 }

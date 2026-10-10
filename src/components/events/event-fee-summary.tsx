@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import type { FeeCollection } from "@/lib/events/fee-collections";
 import { getEventFeeCollections } from "@/lib/events/fee-collections-data";
-import { feeCollectionAllocations } from "@/lib/events/fee-collections";
+import { feeCollectionAllocations, feeCollectionCategory } from "@/lib/events/fee-collections";
 import { FinancialLabel } from "@/components/ui/financial-label";
 
 export async function EventFeeSummary({ eventId }: { eventId: string }) {
@@ -15,11 +15,10 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
   const dates = new Map((schedule.data ?? []).map((row) => [row.id, row.scheduled_date as string]));
   const sum = (rows: FeeCollection[], field: "collected_cents" | "outstanding_cents") =>
     rows.reduce((total, row) => total + Number(row[field]), 0);
-  const stockFees = fees.filter((fee) => fee.kind.startsWith("stock_charge_"));
-  const eventFees = fees.filter((fee) => !fee.event_roping_id && !fee.kind.startsWith("stock_charge_"));
+  const eventFees = fees.filter((fee) => !fee.event_roping_id);
   const entryFees = fees.filter((fee) => fee.event_roping_id);
   const itemized = new Map<string, FeeCollection>();
-  for (const fee of entryFees) {
+  for (const fee of fees) {
     const key = `${fee.title.toLowerCase()}|${fee.kind}|${fee.contributes_to_payout}`;
     const row = itemized.get(key);
     if (row) {
@@ -51,7 +50,6 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
           ["Total collected", sum(fees, "collected_cents")],
           ["Entry fees collected", sum(entryFees, "collected_cents")],
           ["Event fees collected", sum(eventFees, "collected_cents")],
-          ...(stockFees.length ? [["Stock charge purchases collected", sum(stockFees, "collected_cents")]] : []),
           ["Fees still unpaid", sum(fees, "outstanding_cents")],
         ].map(([label, amount]) => (
           <div key={label}>
@@ -62,14 +60,19 @@ export async function EventFeeSummary({ eventId }: { eventId: string }) {
       </dl>
       <dl className="mt-5 grid gap-4 border-t border-[#dfe4e1] pt-4 sm:grid-cols-3">
         {[
-          { label: "Non-payout fees collected", amount: allocations.nonPayoutFees, help: "Production, stock, office, and other collected fees not allocated to payouts or added-money funds. Used to cover expenses; this is before expenses, not profit." },
+          { label: "Non-payout fees collected", amount: allocations.nonPayoutFees, help: "Production and office charges, entry stock charges, stock charge practice runs and scores, and other collected fees not allocated to payouts or added-money funds. Used to cover expenses; this is before expenses, not profit." },
           { label: "Fees allocated to payout pots", amount: allocations.payoutFees, help: "Collected main purse, side pot, and insurance fees. Reserved for winnings, not producer expenses." },
           { label: "Fees allocated to added-money funds", amount: allocations.fundContributions, help: "Collected fund contributions, including deposits not yet posted. Separate from non-payout fees and profit." },
         ].map(item => <div key={item.label}><dt className="text-xs font-semibold text-[#66716b]"><FinancialLabel label={item.label} help={item.help}/></dt><dd className="mt-1 font-mono text-lg font-bold tabular-nums">{formatCurrency(item.amount)}</dd></div>)}
       </dl>
-      {eventFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Event-wide fees</h3><FeeTable fees={eventFees} /></div> : null}
-      {stockFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Stock charge runs & scores</h3><FeeTable fees={stockFees} /></div> : null}
-      {entryFees.length ? <div className="mt-5"><h3 className="mb-2 text-sm font-bold">Entry fees across all ropings</h3><FeeTable fees={Array.from(itemized.values())} /></div> : null}
+      {([
+        ["nonPayoutFees", "Non-payout fees: production, stock & office charges"],
+        ["payoutFees", "Fees allocated to payout pots"],
+        ["fundContributions", "Added-money fund contributions"],
+      ] as const).map(([category, title]) => {
+        const rows = Array.from(itemized.values()).filter(fee => feeCollectionCategory(fee) === category);
+        return rows.length ? <div key={category} className="mt-5"><h3 className="mb-2 text-sm font-bold">{title}</h3><FeeTable fees={rows} /></div> : null;
+      })}
       <details className="mt-4 border-t border-[#dfe4e1]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
           By roping <span className="flex items-center gap-2 text-xs font-normal text-[#66716b]">{groups.size} ropings <ChevronDown size={16} /></span>

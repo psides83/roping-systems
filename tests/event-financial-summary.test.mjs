@@ -1,6 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { feeCollectionTotals, payoutSummary } from "../src/lib/events/fee-collections.ts";
+import { feeCollectionTotals, feeCollectionCategory, feeCollectionAllocations, payoutSummary } from "../src/lib/events/fee-collections.ts";
+
+test("practice receipts share the production and office fee category without changing payout pots", () => {
+  const fees = [
+    { kind: "standard", contributes_to_payout: false, collected_cents: 10000 },
+    { kind: "standard", contributes_to_payout: false, collected_cents: 2000 },
+    { kind: "stock_charge_run", contributes_to_payout: false, collected_cents: 12500 },
+    { kind: "stock_charge_score", contributes_to_payout: false, collected_cents: 1500 },
+    { kind: "standard", contributes_to_payout: true, collected_cents: 30000 },
+    { kind: "added_money", contributes_to_payout: false, collected_cents: 1000 },
+  ];
+  assert.ok(fees.slice(0,4).every(fee => feeCollectionCategory(fee) === "nonPayoutFees"));
+  assert.deepEqual(feeCollectionAllocations(fees), { nonPayoutFees: 26000, payoutFees: 30000, fundContributions: 1000 });
+});
 
 test("fee card totals combine entry and event charges and handle database integer strings", () => {
   assert.deepEqual(feeCollectionTotals([
