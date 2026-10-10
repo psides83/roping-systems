@@ -15,5 +15,6 @@ test("landing copy addresses organizations without promising self-service produc
 test("home metadata reflects the broader member and event management message", () => {
   const page = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /absolute: "Roping Systems \| Member and Event Management"/);
-  assert.match(page, /helps organizations manage memberships/);
+  assert.match(page, /Bring members, events, results, and finances together/);
+  assert.match(page, /qualification progress online/);
 });

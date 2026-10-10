@@ -4,11 +4,15 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 import {
   ArrowRight,
   CalendarDays,
+  CircleDollarSign,
   Check,
   ClipboardList,
   Clock3,
   LayoutDashboard,
   LogIn,
+  Flag,
+  FileDown,
+  PiggyBank,
   Radio,
   Search,
   ShieldCheck,
@@ -20,19 +24,19 @@ const operations = [
     icon: UsersRound,
     title: "Member management, made simpler",
     description:
-      "Keep member profiles, applications, eligibility, and history in one place, so your team can find what it needs.",
+      "Keep member profiles, applications, dues, and competition history together. Bring existing member lists in from a spreadsheet instead of retyping them.",
   },
   {
     icon: CalendarDays,
     title: "Less work planning each event",
     description:
-      "Build schedules, reuse event formats, and accept registrations online or in person without starting from scratch each time.",
+      "Reuse event formats, plan each day by arena, and accept entries online or in person. Set entry limits and keep a waitlist when a roping fills up.",
   },
   {
     icon: Clock3,
     title: "A more organized event day",
     description:
-      "Give staff a shared place to manage participants, record results, and track payments while the event is underway.",
+      "Let staff focus on their assigned arenas. Manage draws, times, and reruns, with checks before finishing and protection against two staff members editing the same roping at once.",
   },
 ];
 
@@ -69,7 +73,7 @@ export function LandingPage() {
                 Features
               </a>
               <a href="#live-results" className="hover:text-white">
-                Live results
+                For ropers
               </a>
               <a href="#producers" className="hover:text-white">
                 For organizations
@@ -93,8 +97,8 @@ export function LandingPage() {
                 <BrandLogo className="w-[280px] max-w-full sm:w-[360px]" decorative />
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-xl sm:leading-8">
-                Bring your members, events, and results together. Spend less
-                time managing spreadsheets and more time running your organization.
+                Bring your members, events, results, and finances together.
+                Spend less time managing spreadsheets and more time running your events.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -139,8 +143,8 @@ export function LandingPage() {
             </p>
             <p className="text-base leading-7 text-[#59645e]">
               Your staff can work from shared information, and your members
-              can find schedules, enter events, and follow results online.
-              Set things up to suit the way your organization operates.
+              can find schedules, enter events, and follow their progress online.
+              Use the features you need and turn off optional tools you don&apos;t.
             </p>
           </div>
         </div>
@@ -188,7 +192,7 @@ export function LandingPage() {
               <Radio size={15} /> Published as it happens
             </span>
             <h2 className="mt-4 max-w-lg text-3xl font-black leading-tight sm:text-4xl">
-              Keep members and spectators informed.
+              Keep ropers and spectators informed.
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2">
@@ -196,17 +200,38 @@ export function LandingPage() {
               <CalendarDays size={21} className="text-[#ff9d87]" />
               <h3 className="mt-4 font-bold">Public event schedules</h3>
               <p className="mt-2 text-sm leading-6 text-white/65">
-                Make it easy to find upcoming events, locations, and start
-                times, with schedule changes reflected online.
+                Share schedules by day and arena, along with flyers, venue
+                details, and entry deadlines. Ropers can add events to their own calendars.
               </p>
             </div>
             <div className="border-t border-white/25 pt-5">
               <Radio size={21} className="text-[#ff9d87]" />
               <h3 className="mt-4 font-bold">Results without the wait</h3>
               <p className="mt-2 text-sm leading-6 text-white/65">
-                Let participants follow results as the event progresses,
-                then publish official results after your team has reviewed them.
+                Share live times, round results, overall results, and winnings.
+                Publish official results once your team has reviewed them.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-[#d8ded9] bg-white">
+        <div className="mx-auto max-w-[1240px] px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
+          <p className="text-xs font-bold uppercase text-[#a93420]">Beyond event day</p>
+          <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight sm:text-4xl">A clearer picture, all season long.</h2>
+          <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:gap-16">
+            <div>
+              <h3 className="border-b border-[#d8ded9] pb-4 text-xl font-bold">Know where the money goes</h3>
+              <FeatureBenefit icon={CircleDollarSign} title="See what an event earns" text="Separate prize money and fund contributions from production, stock, and office charges. Record expenses to see what you actually retain." />
+              <FeatureBenefit icon={PiggyBank} title="Keep funds and payouts accounted for" text="Track money set aside for future prizes or awards, sponsor contributions, and membership dues. See who is owed a payout and record when they receive it." />
+              <FeatureBenefit icon={FileDown} title="Take your records with you" text="Export standings, attendance, collections, payouts, and fund activity. Bring prior records into the app when moving over during a season." />
+            </div>
+            <div>
+              <h3 className="border-b border-[#d8ded9] pb-4 text-xl font-bold">Give ropers answers in one place</h3>
+              <FeatureBenefit icon={UsersRound} title="Their own membership and event records" text="Ropers can sign in to see their memberships, entries, results, winnings, and balances across participating producers." />
+              <FeatureBenefit icon={Flag} title="See what is needed to qualify" text="Show standings position, attendance still needed, earned extra entries, and important deadlines. Ropers can follow their progress, while staff preview who currently meets the requirements." />
+              <FeatureBenefit icon={ClipboardList} title="Keep everyone up to date" text="Share rules, news, and sponsors on your public pages. In-app notices help staff and ropers keep up with requests and changes without searching through separate records." />
             </div>
           </div>
         </div>
@@ -217,17 +242,17 @@ export function LandingPage() {
           <ValueItem
             icon={ShieldCheck}
             title="The right access for your team"
-            text="Give staff the permissions they need while keeping your organization's records separate."
+            text="Give each staff member access suited to their job, with a record of important changes and who made them."
           />
           <ValueItem
             icon={ClipboardList}
             title="Flexible enough for your organization"
-            text="Adapt event formats, eligibility, fees, and payouts to your rules and requirements."
+            text="Set your own season dates, entry requirements, fees, and payouts. Keep optional features out of the way when you don't need them."
           />
           <ValueItem
             icon={Search}
             title="Clear records and accountability"
-            text="Track payments and payouts, and see who made changes to important records."
+            text="Follow a member's entries, results, payments, and classification changes in one history, with private staff information kept private."
           />
         </div>
       </section>
@@ -259,6 +284,13 @@ export function LandingPage() {
       </footer>
     </main>
   );
+}
+
+function FeatureBenefit({ icon: Icon, title, text }: { icon: typeof ShieldCheck; title: string; text: string }) {
+  return <div className="flex gap-4 pt-6">
+    <Icon size={21} aria-hidden="true" className="mt-1 shrink-0 text-[#a93420]" />
+    <div><h4 className="font-bold">{title}</h4><p className="mt-2 text-sm leading-6 text-[#66716b]">{text}</p></div>
+  </div>;
 }
 
 function LiveDeskPreview() {
