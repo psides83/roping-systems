@@ -14,6 +14,7 @@ import { reviewFinalsEntry, qualificationCheckIsCurrent } from "@/lib/finals-ent
 import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
 import { loadEffectiveRuleSet } from "@/lib/events/rule-set-qualification";
 import { QualificationRefreshButton } from "@/components/events/qualification-refresh-button";
+import { StaffFinalsOutlook } from "@/components/events/staff-finals-outlook";
 
 export default async function QualificationPage({ params, searchParams }: PageProps<"/events/[eventId]/qualification/[ropingId]">) {
   const { eventId, ropingId } = await params;
@@ -37,9 +38,12 @@ export default async function QualificationPage({ params, searchParams }: PagePr
   if (check.error) throw new Error("Unable to load qualification setup.");
   const ruleSet = await loadEffectiveRuleSet(ropingId, producer.id);
   const back = `/events/${eventId}`;
+  const outlookClassKey = ["handicap", "four_d"].includes(roping.data.competition_format)
+    ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
   if (!check.data) return <section className="space-y-4"><Link href={back}>Back to event</Link>
     <h1 className="text-2xl font-bold">{title} · Entry review</h1><p>{ruleSet ? `Qualification required: ${ruleSet.name}. Refresh qualification information before accepting entries.` : "This roping has no qualification requirements."}</p>
     {ruleSet && canManage && <QualificationRefreshButton ropingId={ropingId} />}
+    {ruleSet && outlookClassKey && <StaffFinalsOutlook producer={producer} ropingId={ropingId} classKey={outlookClassKey} rule={ruleSet} normalEntries={roping.data.max_entries_per_roper} />}
     {editable && <QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable />}
     <Link href="/settings/standings" className="inline-block text-sm font-semibold underline">Class qualification settings</Link></section>;
   const { season_id: seasonId, class_key: classKey } = check.data;
@@ -103,6 +107,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
       </div></div>
     {!available ? <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Qualification setup needs review. Entries without an approved exception are blocked.</p> : null}
     {available && !current ? <p role="alert" className="border-l-4 border-amber-400 bg-amber-50 p-4 text-sm text-amber-900">Standings or requirements changed since the last saved check. This review shows current eligibility. {canManage ? "Refresh the check before processing entries." : "Ask an event manager to refresh the check before processing entries."}</p> : null}
+    {available && <StaffFinalsOutlook producer={producer} ropingId={ropingId} classKey={classKey} rule={ruleSet ?? { ...rule.data!, season_id: seasonId, bonus_entries_enabled: check.data.bonus_entries_enabled }} normalEntries={roping.data.max_entries_per_roper} source={!ruleSet || ruleSet.season_id === seasonId ? source : undefined} />}
     <dl className="flex flex-wrap gap-x-8 gap-y-4 border-y border-[#dfe4e1] py-4 text-sm">
       <div><dt className="text-xs text-[#66716b]">Regular allowance</dt><dd className="mt-1 font-semibold">{roping.data.max_entries_per_roper ?? "Unlimited"}{roping.data.max_entries_per_roper !== null ? roping.data.max_entries_per_roper === 1 ? " entry" : " entries" : ""}</dd></div>
       <div><dt className="text-xs text-[#66716b]">Earned bonus entries</dt><dd className="mt-1 font-semibold">{check.data.bonus_entries_enabled ? "Added to regular allowance" : "Not enabled for this roping"}</dd></div>

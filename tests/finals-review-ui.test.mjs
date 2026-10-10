@@ -51,6 +51,7 @@ async function renderReview({ manager = true, configured = true, current = false
     if (name.endsWith("/qualification-assignment-dialog")) return { QualificationAssignmentDialog: () => React.createElement("button", null, "Qualification setup") };
     if (name.endsWith("/rule-set-qualification")) return { loadEffectiveRuleSet: async () => null };
     if (name.endsWith("/qualification-refresh-button")) return { QualificationRefreshButton: () => React.createElement("button", null, "Refresh check") };
+    if (name.endsWith("/staff-finals-outlook")) return { StaffFinalsOutlook: () => React.createElement("details", null, React.createElement("summary", null, "Projected qualifying field")) };
     return require(name);
   };
   const page = compile("../src/app/(app)/events/[eventId]/qualification/[ropingId]/page.tsx", imports).default;

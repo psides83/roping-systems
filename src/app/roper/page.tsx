@@ -20,6 +20,8 @@ import { loadSeasonStandings } from "@/lib/events/season-standings-data";
 import { PersonalResultsView } from "@/components/roper/personal-results";
 import type { PersonalResults } from "@/lib/roper-results";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { loadRoperFinalsOutlook } from "@/lib/events/finals-outlook-data";
+import { PortalFinalsOutlook } from "@/components/roper/portal-finals-outlook";
 
 export default async function RoperPortal({ searchParams }: { searchParams: Promise<{ producer?: string; view?: string; season?: string; page?: string }> }) {
   const supabase = await createClient();
@@ -30,7 +32,7 @@ export default async function RoperPortal({ searchParams }: { searchParams: Prom
   const memberships = (portal?.memberships ?? []) as PortalMembership[];
   const params = await searchParams;
   const member = memberships.find((item) => item.producerSlug === params.producer) ?? memberships[0];
-  const view = ["entries", "results", "history", "requests", "balances", "bonus", "standings", "membership"].includes(params.view ?? "") ? params.view! : "entries";
+  const view = ["entries", "results", "history", "requests", "balances", "bonus", "standings", "outlook", "membership"].includes(params.view ?? "") ? params.view! : "entries";
   const grouped = member ? groupPortalEntries(member.entries, member.today) : null;
   let accounts: RoperAccounts = { timezone: "America/Chicago", events: [], submissions: [] };
   if (member) {
@@ -43,6 +45,7 @@ export default async function RoperPortal({ searchParams }: { searchParams: Prom
   let standingsContext: RoperStandingsContext | null = null;
   let standingRows: PortalStanding[] = [];
   let personalResults: PersonalResults | null = null;
+  const outlook = member && view === "outlook" ? await loadRoperFinalsOutlook(member.id, params.season) : null;
   if (member && view === "results") {
     const page = Number(params.page ?? 1);
     const result = await supabase.rpc("my_roper_results", { target_membership_id: member.id, target_season_id: params.season || null, page_number: Number.isInteger(page) && page > 0 && page <= 10000 ? page : 1 });
@@ -69,9 +72,10 @@ export default async function RoperPortal({ searchParams }: { searchParams: Prom
         <section className="space-y-4 border-y border-[#dfe4e1] py-5"><div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-bold">{member.producerName}</h2><StatusPill status={member.status} /></div><p className="text-sm text-[#66716b]">Member #{member.memberNumber}{member.expiresOn ? ` · Expires ${member.expiresOn}` : ""}</p><div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold"><Link href={`/public/${member.producerSlug}/schedule`}>Schedule & entries</Link><Link href={`/public/${member.producerSlug}`}>Results</Link><Link href={`/public/${member.producerSlug}/standings`}>Standings</Link></div></section>
         <PortalNavigation producerSlug={member.producerSlug} view={view} upcoming={grouped!.upcoming.length} pending={pendingCount} />
         {standingsContext ? <PortalStandings context={standingsContext} rows={standingRows} /> : null}
+        {outlook ? <PortalFinalsOutlook data={outlook} /> : null}
         {bonus ? <PortalBonusPositions data={bonus} producerSlug={member.producerSlug} /> : null}
         {personalResults ? <PersonalResultsView data={personalResults} membership={member} season={params.season} /> : null}
-        {view === "bonus" || view === "standings" || view === "results" ? null : view === "balances" ? <PortalBalances events={accounts.events} style={member.entryLabelStyle} timezone={accounts.timezone} /> : view === "requests" ? <PortalSubmissions submissions={accounts.submissions} timezone={accounts.timezone} /> : view === "membership" ? <div className="space-y-6"><section><h3 className="font-semibold">Current classifications</h3><div className="mt-3 flex flex-wrap gap-3">{member.classifications.map((item) => <span key={`${item.division}:${item.name}`} className="text-sm">{item.division}: <strong>{item.name}</strong></span>)}{!member.classifications.length ? <p className="text-sm text-[#66716b]">No classifications assigned.</p> : null}</div></section><MemberSuspensionsData membershipId={member.id} canManage={false} /><MemberFinesData membershipId={member.id} canManage={false} /></div> : <PortalEntries membership={member} entries={view === "history" ? grouped!.past : grouped!.upcoming} history={view === "history"} />}
+        {view === "bonus" || view === "standings" || view === "outlook" || view === "results" ? null : view === "balances" ? <PortalBalances events={accounts.events} style={member.entryLabelStyle} timezone={accounts.timezone} /> : view === "requests" ? <PortalSubmissions submissions={accounts.submissions} timezone={accounts.timezone} /> : view === "membership" ? <div className="space-y-6"><section><h3 className="font-semibold">Current classifications</h3><div className="mt-3 flex flex-wrap gap-3">{member.classifications.map((item) => <span key={`${item.division}:${item.name}`} className="text-sm">{item.division}: <strong>{item.name}</strong></span>)}{!member.classifications.length ? <p className="text-sm text-[#66716b]">No classifications assigned.</p> : null}</div></section><MemberSuspensionsData membershipId={member.id} canManage={false} /><MemberFinesData membershipId={member.id} canManage={false} /></div> : <PortalEntries membership={member} entries={view === "history" ? grouped!.past : grouped!.upcoming} history={view === "history"} />}
       </>}
     </div>
   </main>;
