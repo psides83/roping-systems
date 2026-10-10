@@ -40,7 +40,7 @@ export async function loadFinancialReport(options: Options, requested: ReportFil
     && (!filters.through || reportDate(event.starts_at, timezone) <= filters.through));
   const report: ProducerReport = filters.report === "collections"
     ? { title: reportTypes.collections, columns: ["Producer", "Event", "Event start date", "Roping", "Fee", "Type", "Main purse contribution", "Assessed", "Waived", "Collected", "Outstanding", "Charge count", "Partial payments present", "Event ID", "Roping ID", "Fee ID"], rows: [] }
-    : { title: reportTypes.payouts, columns: ["Producer", "Event", "Roping", "Contestant", "Member number", "Pool", "Pool type", "Stage", "Round", "D", "Place", "Awarded", "Paid", "Remaining", "Status", "Event ID", "Roping ID", "Roper ID", "Entry ID", "Plan ID", "Award key"], rows: [] };
+    : { title: reportTypes.payouts, columns: ["Producer", "Event", "Roping", "Contestant", "Member number", "Pool", "Pool type", "Stage", "Round", "D", "Place", "Awarded", "Paid", "Remaining", "Status", "Event ID", "Roping ID", "Entry ID", "Plan ID", "Award key"], rows: [] };
   for (const event of events) {
     const ropings = filters.classification ? await readAllRows<{ id: string; classification_id: string | null; division_id: string; competition_format: string }>((first, last) => db.from("event_ropings")
       .select("id,classification_id,division_id,competition_format").eq("producer_id", options.producer.id).eq("event_id", event.id).order("id").range(first, last), "Unable to filter report ropings") : [];
@@ -60,7 +60,7 @@ export async function loadFinancialReport(options: Options, requested: ReportFil
         const status = paid > amount ? "Review required" : paid === amount ? "paid" : paid > 0 ? "partial" : "due";
         if (filters.status !== "all" && filters.status !== status) continue;
         report.rows.push([options.producer.name, event.title, award.roping_name, award.contestant_name, award.member_number, award.pool_name, award.pool_type, award.section_type.replaceAll("_", " "),
-          award.round_number, award.d_number, award.place_number, amount / 100, paid / 100, Math.max(0, amount - paid) / 100, status, event.id, award.event_roping_id, award.roper_id, award.entry_id, award.plan_id, award.award_key]);
+          award.round_number, award.d_number, award.place_number, amount / 100, paid / 100, Math.max(0, amount - paid) / 100, status, event.id, award.event_roping_id, award.entry_id, award.plan_id, award.award_key]);
       }
     }
   }
