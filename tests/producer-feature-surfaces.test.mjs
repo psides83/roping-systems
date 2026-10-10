@@ -7,6 +7,25 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { featureEnabled } from '../src/lib/producer-features.ts';
 const require = createRequire(import.meta.url);
+test('new event qualification controls disappear when disabled',()=>{
+  const {EventQualificationFields}=component('../src/components/events/event-qualification-fields.tsx',{
+    '@/components/settings/producer-features-context':{useProducerFeatures:()=>({qualifications:false})},
+    '@/lib/producer-features':{featureEnabled},
+    '@/app/(app)/events/[eventId]/rule-set-actions':{loadAvailableQualificationRuleSets:()=>{throw new Error('Should not load disabled rules');}},
+  });
+  assert.equal(renderToStaticMarkup(React.createElement(EventQualificationFields)),'');
+});
+test('dues hide unused fund settings but preserve existing allocations',()=>{
+  const {MembershipDuesSettings}=component('../src/components/members/dues-settings.tsx',{
+    '@/components/settings/producer-features-context':{useProducerFeatures:()=>({funds:false})},
+    '@/lib/producer-features':{featureEnabled},
+    '@/app/(app)/members/dues/actions':{duesAction:()=>{}},
+  });
+  const render=settings=>renderToStaticMarkup(React.createElement(MembershipDuesSettings,{settings,funds:[],enabled:true}));
+  assert.match(render(null),/<div hidden="" class="space-y-5">/);
+  assert.match(render(null),/name="allocation"/);
+  assert.doesNotMatch(render({fund_id:'fund',allocation_value:1000,allocation_mode:'fixed',amount_cents:5000}),/<div hidden=""/);
+});
 function component(path, mocks) {
   const compiled = {exports:{}};
   const source = transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText;
