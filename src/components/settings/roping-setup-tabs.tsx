@@ -1,4 +1,7 @@
+"use client";
 import Link from "next/link";
+import { useProducerFeatures } from "./producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 
 const tabs = [
   { id: "setup", label: "Setup checklist", href: "/settings/setup" },
@@ -25,12 +28,13 @@ export function RopingSetupTabs({
 }: {
   active: (typeof tabs)[number]["id"];
 }) {
+  const features = useProducerFeatures();
   return (
     <nav
       aria-label="Roping setup"
       className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]"
     >
-      {tabs.map((tab) => (
+      {tabs.filter(tab => tab.id === active || featureEnabled(features, tab.id)).map((tab) => (
         <Link
           key={tab.id}
           href={tab.href}

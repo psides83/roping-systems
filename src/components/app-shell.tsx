@@ -21,6 +21,8 @@ import { signOut } from "@/app/auth/actions";
 import { switchProducer } from "@/app/actions/producers";
 import { getBrandStyle } from "@/lib/branding";
 import { NavigationPending } from "@/components/ui/navigation-pending";
+import { useProducerFeatures } from "@/components/settings/producer-features-context";
+import { featureEnabled } from "@/lib/producer-features";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const navigation = [
@@ -59,6 +61,7 @@ export function AppShell({
   platformOwner?: boolean;
 }) {
   const pathname = usePathname();
+  const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
   const [producerMenuOpen, setProducerMenuOpen] = useState(false);
   const currentNavigationHref = navigation
@@ -167,7 +170,7 @@ export function AppShell({
           ) : null}
         </div>
         <nav className="mt-5 flex-1 space-y-1 px-3">
-          {navigation.map((item) => {
+          {navigation.filter(item => item.href !== "/funds" || featureEnabled(features, "funds")).map((item) => {
             const active =
               item.name === "Roping setup"
                 ? [

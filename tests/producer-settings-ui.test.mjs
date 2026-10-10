@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { transpileModule, ModuleKind, JsxEmit } from 'typescript';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { featureEnabled } from '../src/lib/producer-features.ts';
 
 const require = createRequire(import.meta.url);
 function component(path, overrides={}) {
@@ -19,7 +20,11 @@ function component(path, overrides={}) {
   return compiled.exports;
 }
 
-const {ProducerSettingsTabs,producerSettingsTabs}=component('../src/components/settings/producer-settings-tabs.tsx');
+let features = {};
+const {ProducerSettingsTabs,producerSettingsTabs}=component('../src/components/settings/producer-settings-tabs.tsx', {
+  './producer-features-context': {useProducerFeatures:()=>features},
+  '@/lib/producer-features': {featureEnabled},
+});
 test('settings navigation keeps all groups available and marks only the selected group',()=>{
   for(const tab of producerSettingsTabs) {
     const html=renderToStaticMarkup(React.createElement(ProducerSettingsTabs,{active:tab.id}));
@@ -29,6 +34,16 @@ test('settings navigation keeps all groups available and marks only the selected
   }
   assert.equal(new Set(producerSettingsTabs.map(tab=>tab.href)).size,producerSettingsTabs.length);
   assert.ok(producerSettingsTabs.some(tab=>tab.id==='rules' && tab.href==='/settings/rules'));
+});
+test('hidden feature tabs disappear except when viewing their historical section',()=>{
+  features={dues:false,rules:false};
+  try {
+    const html=renderToStaticMarkup(React.createElement(ProducerSettingsTabs,{active:'features'}));
+    assert.doesNotMatch(html,/Membership Dues|Public Rules/);
+    assert.match(html,/General/);
+    const historical=renderToStaticMarkup(React.createElement(ProducerSettingsTabs,{active:'dues'}));
+    assert.match(historical,/Membership Dues/);
+  } finally {features={};}
 });
 
 const {StaffIdentity}=component('../src/components/settings/staff-identity.tsx');
