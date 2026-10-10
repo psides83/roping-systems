@@ -1,4 +1,5 @@
 export const activityTypes = {
+  membership: "Membership",
   entry: "Entries", result: "Results", classification: "Classifications", dues: "Dues",
   fine: "Fines", suspension: "Suspensions", qualification: "Qualifications", payout: "Payouts",
 } as const;

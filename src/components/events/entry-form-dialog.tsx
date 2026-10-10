@@ -35,6 +35,7 @@ export function EntryFormDialog({
   enabled = true,
   manager = true,
   requireMemberships = true,
+  canApproveMemberships = false,
 }: {
   eventId: string;
   divisions: EntryDivision[];
@@ -42,6 +43,7 @@ export function EntryFormDialog({
   enabled?: boolean;
   manager?: boolean;
   requireMemberships?: boolean;
+  canApproveMemberships?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"member" | "guest">("member");
@@ -49,6 +51,8 @@ export function EntryFormDialog({
   const [selectionCount, setSelectionCount] = useState(0);
   const [guestSelections, setGuestSelections] = useState<string[]>([]);
   const [guestGender, setGuestGender] = useState("");
+  const [membershipApproval, setMembershipApproval] = useState("pending");
+  const [guestWaitlisted, setGuestWaitlisted] = useState(false);
   const birthDateRequired = divisions.some(division => guestSelections.includes(division.id) && (division.requiresBirthDate || (guestGender === "male" && division.requiresMaleBirthDate)));
   const existingAction = addWalkUpEntries.bind(null, eventId, false);
   const guestAction = addWalkUpEntries.bind(null, eventId, true);
@@ -72,7 +76,7 @@ export function EntryFormDialog({
     <>
       <button
         disabled={!enabled}
-        onClick={() => { setOpen(true); setPersonId(""); setSelectionCount(0); setMode("member"); setGuestSelections([]); setGuestGender(""); }}
+        onClick={() => { setOpen(true); setPersonId(""); setSelectionCount(0); setMode("member"); setGuestSelections([]); setGuestGender(""); setMembershipApproval("pending"); setGuestWaitlisted(false); }}
         className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-50"
       >
         <Plus size={17} /> Add entry
@@ -125,8 +129,8 @@ export function EntryFormDialog({
                 >
                   Existing roper
                 </button>
-                {!requireMemberships && divisions.some(division => division.allowGuests) && <button
-                  onClick={() => { if (mode !== "guest") { setMode("guest"); setSelectionCount(0); setGuestSelections([]); setGuestGender(""); } }}
+                {divisions.length > 0 && <button
+                  onClick={() => { if (mode !== "guest") { setMode("guest"); setSelectionCount(0); setGuestSelections([]); setGuestGender(""); setMembershipApproval("pending"); setGuestWaitlisted(false); } }}
                   disabled={pending}
                   className={cn(
                     "border-b-2 pb-3 text-sm font-bold",
@@ -135,7 +139,7 @@ export function EntryFormDialog({
                       : "border-transparent text-[#758078]",
                   )}
                 >
-                  Guest roper
+                  New roper
                 </button>}
               </div>
             </div>
@@ -194,11 +198,22 @@ export function EntryFormDialog({
                     </select>
                   </label>
                 </div>
+                {requireMemberships && <fieldset className="min-w-0 border-t border-[#e7ebe8] pt-3">
+                  <legend className="text-sm font-semibold">Membership</legend>
+                  {canApproveMemberships && !guestWaitlisted ? <label className="block text-sm font-semibold">Application status
+                    <select name="membershipApproval" value={membershipApproval} onChange={event => setMembershipApproval(event.target.value)} className={inputClass}>
+                      <option value="pending">Approval pending</option>
+                      <option value="approved">Paper application approved</option>
+                    </select>
+                  </label> : <input type="hidden" name="membershipApproval" value="pending" />}
+                  <p className="mt-2 text-sm text-[#66716b]">{canApproveMemberships && !guestWaitlisted && membershipApproval === "approved" ? "Your approval is recorded in the member’s activity history. Any missing classification still needs staff confirmation before competing." : "Registration is allowed now. The roper cannot compete until membership approval is recorded."}</p>
+                </fieldset>}
                 <CommonEntryFields
                   onSelectionCount={setSelectionCount}
                   onSelectedIds={setGuestSelections}
+                  onWaitlistChange={setGuestWaitlisted}
                   manager={manager}
-                  divisions={divisions.filter(division => division.allowGuests)}
+                  divisions={divisions}
                 />
                 <FormMessage state={state} />
                 <p className="text-sm text-[#66716b]">The roper is saved for future entries. Any missing classification must be confirmed before competing.</p>
@@ -216,7 +231,7 @@ export function EntryFormDialog({
   );
 }
 
-function CommonEntryFields({ divisions, manager = true, eventId, personId, onSelectionCount, onSelectedIds }: { divisions: EntryDivision[]; manager?: boolean; eventId?: string; personId?: string; onSelectionCount: (count: number) => void; onSelectedIds?: (ids: string[]) => void }) {
+function CommonEntryFields({ divisions, manager = true, eventId, personId, onSelectionCount, onSelectedIds, onWaitlistChange }: { divisions: EntryDivision[]; manager?: boolean; eventId?: string; personId?: string; onSelectionCount: (count: number) => void; onSelectedIds?: (ids: string[]) => void; onWaitlistChange?: (waiting: boolean) => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [waitlist, setWaitlist] = useState(false);
   const [eligibilityOverride, setEligibilityOverride] = useState(false);
@@ -235,7 +250,7 @@ function CommonEntryFields({ divisions, manager = true, eventId, personId, onSel
   const available = personId !== undefined ? (!personId || !eligibility ? [] : divisions.filter(division => eligibilityOverride || eligibility.some(row => row.roping_id === division.id && !row.reason))) : divisions;
   return (
     <>
-      <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="waitlist" checked={waitlist} onChange={event => setWaitlist(event.target.checked)} className="h-4 w-4" />Add to waitlist instead of entering</label>
+      <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="waitlist" checked={waitlist} onChange={event => { setWaitlist(event.target.checked); onWaitlistChange?.(event.target.checked); }} className="h-4 w-4" />Add to waitlist instead of entering</label>
       {waitlist && <p className="text-sm text-[#66716b]">No fees are due until a space is offered and accepted.</p>}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-semibold">

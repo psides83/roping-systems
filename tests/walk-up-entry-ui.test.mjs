@@ -7,7 +7,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const require = createRequire(import.meta.url);
-function renderDialog({ guest = false, requireMemberships = true, pending = false, selectedIds = [], gender = "" } = {}) {
+function renderDialog({ guest = false, requireMemberships = true, pending = false, selectedIds = [], gender = "", canApproveMemberships = false } = {}) {
   let stateIndex = 0;
   const loaded = { exports: {} };
   const source = transpileModule(readFileSync(new URL("../src/components/events/entry-form-dialog.tsx", import.meta.url), "utf8"), {
@@ -25,7 +25,7 @@ function renderDialog({ guest = false, requireMemberships = true, pending = fals
     return require(id);
   }, loaded, loaded.exports);
   return renderToStaticMarkup(React.createElement(loaded.exports.EntryFormDialog, {
-    eventId: "event", requireMemberships, ropers: [], divisions: [
+    eventId: "event", requireMemberships, canApproveMemberships, ropers: [], divisions: [
       { id: "roping-a", name: "Open Tie-down", allowGuests: true, options: [] },
       { id: "roping-b", name: "Open Breakaway", allowGuests: true, options: [] },
       { id: "roping-c", name: "Members only", allowGuests: false, options: [] },
@@ -35,10 +35,10 @@ function renderDialog({ guest = false, requireMemberships = true, pending = fals
   }));
 }
 
-test("membership-required entry office hides the guest choice and offers search", () => {
+test("membership-required entry office offers new roper registration and existing roper search", () => {
   const html = renderDialog();
   assert.match(html, /Search ropers by name, number, or phone/);
-  assert.doesNotMatch(html, /Guest roper/);
+  assert.match(html, /New roper/);
   assert.match(html, /Select a roper to see eligible ropings/);
   assert.match(html, /<button disabled=""[^>]*>Add entries/);
   assert.doesNotMatch(html, /animate-spin/);
@@ -50,8 +50,18 @@ test("guest office registration requires phone, not email, and selects multiple 
   assert.doesNotMatch(html.match(/<input[^>]*name="email"[^>]*>/)?.[0] ?? "", /required/);
   assert.match(html, /name="divisionIds"[^>]*value="roping-a"/);
   assert.match(html, /name="divisionIds"[^>]*value="roping-b"/);
-  assert.doesNotMatch(html, /Members only/);
+  assert.match(html, /Members only/);
   assert.doesNotMatch(html, /animate-spin/);
+});
+
+test("only membership managers can approve a paper application during registration", () => {
+  const office = renderDialog({ guest: true });
+  assert.match(office, /name="membershipApproval" value="pending"/);
+  assert.match(office, /cannot compete until membership approval/);
+  assert.doesNotMatch(office, /Paper application approved/);
+  const manager = renderDialog({ guest: true, canApproveMemberships: true });
+  assert.match(manager, /Paper application approved/);
+  assert.match(manager, /Approval pending/);
 });
 
 test("only a real save displays the saving indicator", () => {

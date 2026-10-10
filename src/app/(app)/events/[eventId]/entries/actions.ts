@@ -7,8 +7,6 @@ import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
 import { refreshEventQualificationChecks } from "@/lib/events/qualification-checks";
 import { eventStaffAccess } from "@/lib/staff-access";
-import { getProducerFeatures } from "@/lib/producer-features-server";
-import { featureEnabled } from "@/lib/producer-features";
 
 export interface EntryFormState {
   success?: boolean;
@@ -224,7 +222,8 @@ export async function addWalkUpEntries(eventId: string, guest: boolean, _state: 
   if (!parsed.success) return { message: parsed.error.issues[0]?.message };
   const context = await requireEntryOffice(eventId);
   if (!context) return { message: "Entry access for this event is required." };
-  if (guest && featureEnabled(await getProducerFeatures(context.producer.id), "require_memberships")) return { message: "Add or approve the member record before using existing roper entry." };
+  const approval = z.enum(["pending", "approved"]).safeParse(formData.get("membershipApproval") ?? "pending");
+  if (!approval.success) return { message: "Choose a valid membership approval status." };
   if (guest && !formData.get("birthDate")) {
     const rules = await context.supabase.rpc("walk_up_age_requirements", { target_event: eventId });
     if (rules.error) return { message: "Unable to check age eligibility. Please retry." };
@@ -239,7 +238,7 @@ export async function addWalkUpEntries(eventId: string, guest: boolean, _state: 
   const { error } = await context.supabase.rpc("create_walk_up_entries", {
     target_event: eventId, selections,
     target_roper: guest ? null : String(formData.get("personId")),
-    guest_details: guest ? parsed.data : null,
+    guest_details: guest ? { ...parsed.data, membershipApproval: approval.data } : null,
     payment: parsed.data.paymentStatus,
     waitlisted: formData.get("waitlist") === "on",
     override_reason: parsed.data.eligibilityOverride === "on" ? parsed.data.eligibilityOverrideReason : null,

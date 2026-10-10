@@ -12,6 +12,7 @@ function fixture(role, member = { id: "m", roper_id: "r" }) {
   const db = { from(table) {
     const call = { table, filters: [] }; calls.push(call);
     const chain = { select() { return chain; }, eq(key, value) { call.filters.push([key, value]); return chain; },
+      contains(key, value) { call.filters.push([key, value]); return chain; },
       order() { return chain; }, range() { return Promise.resolve({ data: [], error: null }); },
       maybeSingle() { return Promise.resolve({ data: member, error: null }); } };
     return chain;
@@ -56,5 +57,9 @@ test("managers receive the authorized financial and qualification sources", asyn
   await data.load("m");
   assert.equal(data.financialReads(), 1);
   assert.equal(data.qualificationReads(), 1);
+  const approvals = data.calls.find(call => call.table === "producer_audit_log");
+  assert.ok(approvals);
+  assert.ok(approvals.filters.some(([key, value]) => key === "entity_id" && value === "m"));
+  assert.ok(approvals.filters.some(([key, value]) => key === "after_data" && value.paper_application_approved === true));
   assert.ok(data.calls.every(call => call.filters.some(([key, value]) => key === "producer_id" && value === "p")));
 });

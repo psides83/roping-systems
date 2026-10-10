@@ -56,6 +56,13 @@ export async function loadMemberActivity(memberId: string, query: ActivityQuery 
     const directory = await readAllRows<{ user_id: string; display_name: string | null; email: string }>((first, last) => db.from("producer_staff_directory")
       .select("user_id,display_name,email").eq("producer_id", producer.id).order("user_id").range(first, last), "Unable to load activity staff names");
     const staff = new Map(directory.map(row => [row.user_id, row.display_name || row.email]));
+    const paperApprovals = await readAllRows<{ id: string; created_at: string; actor_user_id: string | null; after_data: { approval_note?: string } }>((first, last) => db.from("producer_audit_log")
+      .select("id,created_at,actor_user_id,after_data").eq("producer_id", producer.id).eq("entity_type", "memberships")
+      .eq("entity_id", memberId).contains("after_data", { paper_application_approved: true })
+      .order("created_at", { ascending: false }).order("id").range(first, last), "Unable to load paper membership approvals");
+    for (const row of paperApprovals) items.push({ id: `paper-membership:${row.id}`, type: "membership", occurredAt: row.created_at,
+      title: "Paper membership approved", summary: row.after_data.approval_note ?? "Paper application reviewed at the event office",
+      details: [`Approved by ${row.actor_user_id ? staff.get(row.actor_user_id) ?? "Former staff member" : "Staff"}`], staffOnly: true, href: detailsHref });
     items.push(...await loadMemberEntryChanges(db, producer.id, memberId, member.data.roper_id, staff));
     const history = await readAllRows<ClassificationHistory>((first, last) => db.from("membership_classification_history")
       .select("id,effective_on,reason,ended_reason,assigned_by,previous_assignment_id,divisions!inner(name),classifications!inner(name)").eq("producer_id", producer.id).eq("membership_id", memberId)

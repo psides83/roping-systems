@@ -542,6 +542,8 @@ export default async function EventEntriesPage({
   }));
 
   const management = await supabase.rpc("can_manage_event", { target_event: eventId });
+  const membershipManagement = await supabase.rpc("can_manage_organization", { target_organization_id: producer.id });
+  if (membershipManagement.error) throw new Error("Unable to check membership approval access.");
   const collection = await supabase.rpc("can_collect_event", { target_event: eventId });
   const adjustment = await supabase.rpc("can_adjust_event_finances", { target_event: eventId });
   if (officePermission.error || management.error || collection.error || adjustment.error) throw new Error("Unable to check entry office access.");
@@ -559,6 +561,7 @@ export default async function EventEntriesPage({
       canCollect={Boolean(collection.data)}
       canAdjust={Boolean(adjustment.data)}
       requireMemberships={requireMemberships}
+      canApproveMemberships={Boolean(membershipManagement.data)}
     />
   );
 }
@@ -576,9 +579,11 @@ function EntriesWorkspace({
   canCollect = canOffice,
   canAdjust = canEdit,
   requireMemberships = true,
+  canApproveMemberships = false,
 }: {
   eventId: string;
   requireMemberships?: boolean;
+  canApproveMemberships?: boolean;
   title: string;
   divisions: Array<{
     id: string;
@@ -649,6 +654,7 @@ function EntriesWorkspace({
             enabled={canOffice}
             manager={canEdit}
             requireMemberships={requireMemberships}
+            canApproveMemberships={canApproveMemberships}
           />
         }
       />

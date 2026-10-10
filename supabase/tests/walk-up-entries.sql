@@ -5,6 +5,7 @@ declare
   person uuid := gen_random_uuid(); member uuid; rev integer; blocked boolean; result integer;
   high_class uuid; low_class uuid; high_roping uuid; low_roping uuid;
   age_class uuid; age_roping uuid;
+  pending_roper uuid; pending_entry uuid; approved_member uuid; office uuid:=gen_random_uuid();
 begin
   if (select provolatile from pg_proc where oid='public.walk_up_entry_eligibility(uuid,uuid)'::regprocedure)<>'v' then
     raise exception 'Eligibility RPC must support qualification shared locks in PostgREST';
@@ -45,21 +46,31 @@ begin
   end if;
   select coalesce(max(revision),0) into rev from public.producer_feature_preferences where producer_id=producer;
   perform public.save_producer_features(producer,rev,'{"require_memberships":true}');
-  blocked:=false;
-  begin
-    perform public.create_walk_up_entries(event,jsonb_build_array(jsonb_build_object('ropingId',first_roping,'optionIds','[]'::jsonb)),null,
-      '{"firstName":"Guest","lastName":"Walkup","phone":"(254) 555-0102","email":"","birthDate":"","competitionGender":"female"}', 'unpaid',false,null);
-  exception when others then
-    if sqlerrm<>'Guest entries are not available when memberships are required' then raise; end if;
-    blocked:=true;
-  end;
-  if not blocked then raise exception 'Membership-only guest restriction bypassed'; end if;
+  update public.event_ropings set allow_non_members=false where id=first_roping;
+  result:=public.create_walk_up_entries(event,jsonb_build_array(jsonb_build_object('ropingId',first_roping,'optionIds','[]'::jsonb)),null,
+    '{"firstName":"Pending","lastName":"Walkup","phone":"(254) 555-0102","email":"","birthDate":"","competitionGender":"female","membershipApproval":"pending"}', 'unpaid',false,null);
+  select e.roper_id,e.id into pending_roper,pending_entry from public.roping_entries e
+    join public.ropers r on r.id=e.roper_id where e.event_id=event and r.first_name='Pending';
+  if result<>1 or public.entry_competition_hold(pending_entry)<>'Membership approval required before competing' then
+    raise exception 'Pending paper applicant was not registered with a competition hold';
+  end if;
+  perform public.create_walk_up_entries(event,jsonb_build_array(jsonb_build_object('ropingId',first_roping,'optionIds','[]'::jsonb)),null,
+    '{"firstName":"Approved","lastName":"Walkup","phone":"(254) 555-0103","email":"","birthDate":"","competitionGender":"female","membershipApproval":"approved"}', 'unpaid',false,null);
+  select m.id into approved_member from public.memberships m join public.ropers r on r.id=m.roper_id
+    where m.producer_id=producer and r.first_name='Approved' and r.last_name='Walkup' order by m.created_at desc limit 1;
+  if not exists(select 1 from public.memberships where id=approved_member and formally_approved and status='active')
+    or not exists(select 1 from public.producer_audit_log where entity_id=approved_member
+      and after_data->>'paper_application_approved'='true' and actor_user_id=staff) then
+    raise exception 'Paper membership approval or staff audit record missing';
+  end if;
+  if exists(select 1 from public.roping_entries e where e.membership_id=approved_member
+    and public.entry_competition_hold(e.id) is not null) then raise exception 'Approved Open roper remained held'; end if;
   perform public.save_producer_features(producer,rev+1,'{"require_memberships":false}');
   result:=public.create_walk_up_entries(event,jsonb_build_array(
     jsonb_build_object('ropingId',first_roping,'optionIds','[]'::jsonb),
     jsonb_build_object('ropingId',second_roping,'optionIds','[]'::jsonb)),null,
     '{"firstName":"Guest","lastName":"Walkup","phone":"(254) 555-0102","email":"","birthDate":"","competitionGender":"female"}', 'unpaid',false,null);
-  if result<>2 or (select count(distinct roper_id) from public.roping_entries where event_id=event and roper_id<>person)<>1 then
+  if result<>2 or (select count(distinct e.roper_id) from public.roping_entries e join public.ropers r on r.id=e.roper_id where e.event_id=event and r.first_name='Guest')<>1 then
     raise exception 'Guest batch duplicated the roper';
   end if;
   select c.id,c.division_id into high_class,division from public.classifications c
@@ -94,6 +105,25 @@ begin
   end if;
   if has_function_privilege('anon','public.create_walk_up_entries(uuid,jsonb,uuid,jsonb,public.payment_status,boolean,text)','execute') then
     raise exception 'Anonymous entry office access exposed';
+  end if;
+  perform public.save_producer_features(producer,rev+2,'{"require_memberships":true}');
+  insert into auth.users(id,email) values(office,office::text||'@example.com');
+  insert into public.producer_staff(producer_id,user_id,role) values(producer,office,'entry_office');
+  perform public.assign_staff_event(producer,event,office,true);
+  perform set_config('request.jwt.claim.sub',office::text,true);
+  blocked:=false;
+  begin
+    perform public.create_walk_up_entries(event,jsonb_build_array(jsonb_build_object('ropingId',first_roping,'optionIds','[]'::jsonb)),null,
+      '{"firstName":"Unauthorized","lastName":"Walkup","phone":"(254) 555-0104","email":"","birthDate":"","competitionGender":"female","membershipApproval":"approved"}', 'unpaid',false,null);
+  exception when others then
+    if sqlerrm<>'Membership-management access is required to approve a paper application' then raise; end if;
+    blocked:=true;
+  end;
+  if not blocked then raise exception 'Entry office approved a membership without permission'; end if;
+  perform public.create_walk_up_entries(event,jsonb_build_array(jsonb_build_object('ropingId',first_roping,'optionIds','[]'::jsonb)),null,
+    '{"firstName":"Office","lastName":"Walkup","phone":"(254) 555-0105","email":"","birthDate":"","competitionGender":"female","membershipApproval":"pending"}', 'unpaid',false,null);
+  if has_function_privilege('authenticated','public.approve_walk_up_paper_membership(uuid,uuid,uuid)','execute') then
+    raise exception 'Private paper approval helper exposed';
   end if;
 end $$;
 rollback;

@@ -27,6 +27,22 @@ Unstarted Handicap entries refresh their copied adjustment when staff assign
 the member classification. Started entries keep their recorded adjustment;
 staff use the existing transfer workflow if the contestant must change ropings.
 
+## Walk-Up Paper Applications
+
+The entry office offers New roper even when memberships are required. First
+and last name, phone, and competition gender are required; email is optional.
+Birth date is required only when a selected roping has applicable age eligibility.
+
+Membership managers can choose Paper application approved after reviewing the
+physical application. Approval is saved with the entries in one transaction,
+and the member activity history records the approving staff member. Pending is
+the default; staff without membership-management access can register pending
+members but cannot approve them. Approval never clears a missing classification
+or other competition restriction. Existing inactive or expired records must be
+reviewed separately, not reactivated by new-roper entry.
+
+Waitlisted applications remain pending and can be approved from the roper record.
+
 ## Online Identity Safety
 
 Public search is restricted to a published, public event accepting entries and
@@ -46,7 +62,9 @@ Rollback-only database checks:
 
 - `supabase/tests/membership-competition-holds.sql`
 - `supabase/tests/online-roper-record-selection.sql`
+- `supabase/tests/walk-up-entries.sql`
 - Existing membership applications, entry office, producer features, and
   waitlist regression checks.
 
 UI regression checks are in `tests/online-entry-management-ui.test.mjs`.
+Walk-up form checks are in `tests/walk-up-entry-ui.test.mjs`.
