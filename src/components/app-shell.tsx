@@ -11,6 +11,7 @@ import {
   Menu,
   PiggyBank,
   Settings,
+  ShieldCheck,
   SlidersHorizontal,
   Users,
   X,
@@ -154,10 +155,10 @@ export function AppShell({
                 ))
               )}
               {platformOwner ? <Link
-                href="/onboarding?new=1"
+                href="/platform"
                 className="block border-t border-[#e7ebe8] px-3 py-2 text-xs font-semibold text-[var(--brand-accent-strong)]"
               >
-                Create another producer
+                Platform Admin
               </Link> : null}
             </div>
           ) : null}
@@ -194,6 +195,7 @@ export function AppShell({
           })}
         </nav>
         <div className="border-t border-white/10 p-3">
+          {platformOwner && <Link href="/platform" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-md px-3 text-sm brand-muted hover:bg-white/[0.07] brand-hover"><ShieldCheck size={18} />Platform Admin</Link>}
           <Link
             href="/settings"
             className="flex h-10 items-center gap-3 rounded-md px-3 text-sm brand-muted hover:bg-white/[0.07] brand-hover"

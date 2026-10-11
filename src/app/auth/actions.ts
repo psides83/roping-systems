@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatProperNoun } from "@/lib/utils";
 import { authDestination } from "@/lib/auth-destination";
+import { isPlatformOwner } from "@/lib/platform-access";
 
 export interface AuthState {
   message?: string;
@@ -45,6 +46,7 @@ export async function login(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { message: error.message };
+  if (authDestination(formData.get("next")) === "/platform" && await isPlatformOwner()) redirect("/platform");
   if (authDestination(formData.get("next")) === "/staff-invitations") redirect("/staff-invitations");
   const invitations = await supabase.rpc("my_staff_invitations");
   if (invitations.data?.length) redirect("/staff-invitations");

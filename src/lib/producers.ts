@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { EntryLabelStyle } from "@/lib/entry-labels";
 import { producerAccessRole } from "@/lib/staff-permissions";
+import type { AccountStatus } from "@/lib/platform-admin";
 
 export interface ActiveProducer {
   id: string;
@@ -13,6 +14,7 @@ export interface ActiveProducer {
   brandAccent: string;
   entryLabelStyle: EntryLabelStyle;
   role: "owner" | "admin" | "operator" | "viewer";
+  accountStatus?: AccountStatus;
   timingStaff?: boolean;
   entryOffice?: boolean;
   eventManager?: boolean;
@@ -32,9 +34,12 @@ export async function getProducers(): Promise<ActiveProducer[]> {
     .order("created_at", { ascending: true });
 
   if (error || !data?.length) return [];
+  const statuses = await supabase.rpc("my_producer_account_statuses");
+  if (statuses.error) throw new Error("Unable to verify producer account status.");
+  const accountStatus = new Map((statuses.data as { producer_id: string; status: AccountStatus }[]).map((item) => [item.producer_id, item.status]));
   return data.map((membership) => {
     const producer = membership.producers as unknown as { id: string; name: string; slug: string; timezone: string; brand_primary: string; brand_accent: string; entry_label_style: EntryLabelStyle };
-    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: producerAccessRole(membership.role), timingStaff: membership.role === "timing_staff", entryOffice: membership.role === "entry_office", eventManager: membership.role === "event_manager", treasurer: membership.role === "treasurer" };
+    return { id: producer.id, name: producer.name, slug: producer.slug, timezone: producer.timezone, brandPrimary: producer.brand_primary, brandAccent: producer.brand_accent, entryLabelStyle: producer.entry_label_style, role: producerAccessRole(membership.role), accountStatus: accountStatus.get(producer.id) ?? "pending", timingStaff: membership.role === "timing_staff", entryOffice: membership.role === "entry_office", eventManager: membership.role === "event_manager", treasurer: membership.role === "treasurer" };
   });
 }
 
