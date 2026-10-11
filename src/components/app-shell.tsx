@@ -16,7 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/auth/actions";
 import { switchProducer } from "@/app/actions/producers";
@@ -66,6 +66,23 @@ export function AppShell({
   const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
   const [producerMenuOpen, setProducerMenuOpen] = useState(false);
+  const producerMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!producerMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !producerMenuRef.current?.contains(event.target))
+        setProducerMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProducerMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [producerMenuOpen]);
   const currentNavigationHref = navigation
     .filter(
       (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
@@ -106,11 +123,15 @@ export function AppShell({
             <X size={19} />
           </button>
         </div>
-        <div className="relative mx-3 mt-4 rounded-md border border-white/10 bg-white/[0.06] p-3">
+        <div ref={producerMenuRef} onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setProducerMenuOpen(true);
+        }} className="relative mx-3 mt-4 rounded-md border border-white/10 bg-white/[0.06] p-3">
           <p className="text-[10px] font-bold uppercase brand-muted">
             Producer
           </p>
           <button
+            aria-expanded={producerMenuOpen}
+            aria-controls="producer-account-menu"
             onClick={() => setProducerMenuOpen((value) => !value)}
             className="mt-1 flex w-full items-center justify-between text-left text-sm font-semibold"
           >
@@ -124,7 +145,7 @@ export function AppShell({
             />
           </button>
           {producerMenuOpen ? (
-            <div className="menu-enter absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-md border border-[#dfe4e1] bg-white py-1 text-[#17201c] shadow-xl">
+            <div id="producer-account-menu" className="menu-enter absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-md border border-[#dfe4e1] bg-white py-1 text-[#17201c] shadow-xl">
               {demo ? (
                 <p className="px-3 py-2 text-xs text-[#66716b]">
                   Producer switching becomes available after Supabase is
@@ -156,6 +177,7 @@ export function AppShell({
               )}
               {platformOwner ? <Link
                 href="/platform"
+                onClick={() => { setProducerMenuOpen(false); setOpen(false); }}
                 className="block border-t border-[#e7ebe8] px-3 py-2 text-xs font-semibold text-[var(--brand-accent-strong)]"
               >
                 Platform Admin
