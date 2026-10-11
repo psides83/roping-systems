@@ -14,7 +14,7 @@ test("producer menu opens for mouse hover, retains touch click, and closes outsi
   const inside = {};
   const loaded = { exports: {} };
   new Function("require", "exports", source)(id => {
-    if (id === "react") return { useState: () => [stateIndex++ === 1, value => updates.push(value)], useRef: () => ({ current: { contains: target => target === inside } }), useEffect: effect => effects.push(effect) };
+    if (id === "react") return { useState: () => [stateIndex++ === 1, value => updates.push(value)], useRef: initial => ({ current: initial === false ? false : { contains: target => target === inside } }), useEffect: effect => effects.push(effect) };
     if (id === "next/navigation") return { usePathname: () => "/dashboard" };
     if (id === "@/lib/utils") return { cn: (...args) => args.filter(Boolean).join(" ") };
     if (id === "@/lib/branding") return { getBrandStyle: () => ({}) };
@@ -34,7 +34,9 @@ test("producer menu opens for mouse hover, retains touch click, and closes outsi
   wrapper.props.onPointerEnter({ pointerType: "mouse" }); assert.equal(updates.pop(), true);
   const trigger = find(tree, node => node.props?.["aria-controls"] === "producer-account-menu");
   assert.equal(trigger.props["aria-expanded"], true);
-  trigger.props.onClick(); assert.equal(updates.pop()(true), false);
+  wrapper.props.onPointerLeave({ pointerType: "mouse" }); assert.equal(updates.pop(), false);
+  trigger.props.onClick(); assert.equal(updates.pop(), true);
+  wrapper.props.onPointerLeave({ pointerType: "mouse" }); assert.equal(updates.length, 0);
   const previousDocument = globalThis.document, previousNode = globalThis.Node;
   globalThis.Node = Object;
   globalThis.document = { addEventListener: (name, handler) => listeners.set(name, handler), removeEventListener: name => listeners.delete(name) };
@@ -42,6 +44,7 @@ test("producer menu opens for mouse hover, retains touch click, and closes outsi
     const cleanup = effects[0]();
     listeners.get("pointerdown")({ target: inside }); assert.equal(updates.length, 0);
     listeners.get("pointerdown")({ target: {} }); assert.equal(updates.pop(), false);
+    wrapper.props.onPointerLeave({ pointerType: "mouse" }); assert.equal(updates.pop(), false);
     listeners.get("keydown")({ key: "Escape" }); assert.equal(updates.pop(), false);
     cleanup(); assert.equal(listeners.size, 0);
   } finally { globalThis.document = previousDocument; globalThis.Node = previousNode; }
