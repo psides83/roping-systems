@@ -38,6 +38,7 @@ export function ProducerSettingsForm({
           Producer name
           <input
             name="name"
+            autoCapitalize="none"
             defaultValue={producer.name}
             disabled={!canEdit}
             className={inputClass}
@@ -48,6 +49,7 @@ export function ProducerSettingsForm({
           Public display name
           <input
             name="publicName"
+            autoCapitalize="none"
             defaultValue={producer.publicName}
             disabled={!canEdit}
             className={inputClass}

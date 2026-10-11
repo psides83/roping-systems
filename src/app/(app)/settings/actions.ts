@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
-import { formatProperNoun } from "@/lib/utils";
 
 export interface ProducerSettingsState {
   success?: boolean;
@@ -46,9 +45,8 @@ const settingsSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, "Producer name is required.")
-    .transform(formatProperNoun),
-  publicName: z.string().trim().transform(formatProperNoun),
+    .min(2, "Producer name is required."),
+  publicName: z.string().trim(),
   email: z.union([z.literal(""), z.email("Enter a valid email address.")]),
   phone: z.string().trim(),
   timezone: z.enum([

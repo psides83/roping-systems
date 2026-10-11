@@ -13,7 +13,7 @@ export interface PlatformFormState { success?: boolean; message?: string }
 const email = z.union([z.literal(""), z.email()]);
 const phone = z.string().transform((value) => value.replace(/\D/g, "")).refine((value) => !value || value.length === 10, "Enter a ten-digit phone number.");
 const operations = z.discriminatedUnion("operation", [
-  z.object({ operation: z.literal("account"), producerName: z.string().trim().min(2).max(120).transform(formatProperNoun), expectedProducerUpdatedAt: z.iso.datetime({ offset: true }), status: z.enum(Object.keys(accountStatuses) as [keyof typeof accountStatuses, ...Array<keyof typeof accountStatuses>]), nextAction: z.string().trim().max(300), followUpOn: z.union([z.literal(""), z.iso.date()]), reason: z.string().trim().max(1000), expectedUpdatedAt: z.iso.datetime({ offset: true }) }),
+  z.object({ operation: z.literal("account"), producerName: z.string().trim().min(2).max(120), expectedProducerUpdatedAt: z.iso.datetime({ offset: true }), status: z.enum(Object.keys(accountStatuses) as [keyof typeof accountStatuses, ...Array<keyof typeof accountStatuses>]), nextAction: z.string().trim().max(300), followUpOn: z.union([z.literal(""), z.iso.date()]), reason: z.string().trim().max(1000), expectedUpdatedAt: z.iso.datetime({ offset: true }) }),
   z.object({ operation: z.literal("contact"), id: z.union([z.literal(""), z.uuid()]), name: z.string().trim().min(1).max(120).transform(formatProperNoun), email, phone, responsibility: z.string().trim().max(120), isPrimary: z.boolean() }).refine((value) => Boolean(value.email || value.phone), "Provide an email or phone number."),
   z.object({ operation: z.literal("archive_contact"), id: z.uuid(), reason: z.string().trim().min(5).max(1000) }),
   z.object({ operation: z.literal("task"), key: z.enum(Object.keys(onboardingTasks) as [keyof typeof onboardingTasks, ...Array<keyof typeof onboardingTasks>]), done: z.boolean() }),
@@ -38,7 +38,7 @@ export async function managePlatformProducer(id: string, _state: PlatformFormSta
 }
 
 const createSchema = z.object({
-  name: z.string().trim().min(2).max(120).transform(formatProperNoun),
+  name: z.string().trim().min(2).max(120),
   slug: z.string().trim().min(2).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   ownerEmail: z.email().transform((value) => value.toLowerCase()),
   contactName: z.string().trim().min(1).max(120).transform(formatProperNoun),

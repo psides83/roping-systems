@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { formatProperNoun } from "@/lib/utils";
 import { isVerifiedPlatformOwner } from "@/lib/platform-access";
 import { sendStaffInvitation } from "@/lib/send-staff-invitation";
 
@@ -18,8 +17,7 @@ const producerSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, "Enter the producer name.")
-    .transform(formatProperNoun),
+    .min(2, "Enter the producer name."),
   slug: z
     .string()
     .trim()
