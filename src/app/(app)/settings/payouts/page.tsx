@@ -11,6 +11,7 @@ import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { payoutScheduleIssues } from "@/lib/payout-schedule-validation";
+import { PayoutCsvExport, PayoutSpreadsheetImport } from "@/components/settings/payout-spreadsheet-controls";
 
 function demoBrackets(finalSplit: number[]) {
   return [
@@ -141,7 +142,7 @@ export default async function PayoutSettingsPage() {
         eyebrow="Producer setup"
         title="Payout structures"
         description="Define how entry counts determine paid places and how each purse is split. Schedules are copied into new events to preserve history."
-        actions={<PayoutScheduleDialog enabled={enabled} />}
+        actions={<div className="flex flex-wrap gap-2"><PayoutSpreadsheetImport enabled={enabled} /><PayoutScheduleDialog enabled={enabled} /></div>}
       />
       <RopingSetupTabs active="payouts" />
       <section className="rounded-md border border-[#dfe4e1] bg-white">
@@ -209,7 +210,7 @@ export default async function PayoutSettingsPage() {
           <CollapsibleCard
             key={schedule.id}
             actions={
-              <PayoutScheduleDialog schedule={schedule} enabled={enabled} />
+              <div className="flex flex-wrap gap-2"><PayoutCsvExport schedule={schedule} /><PayoutScheduleDialog schedule={schedule} enabled={enabled} /></div>
             }
             summary={
               <>

@@ -62,9 +62,13 @@ const newBracket = (index: number): EditableBracket => ({
 export function PayoutScheduleDialog({
   schedule,
   enabled,
+  importDraft = false,
+  onSaved,
 }: {
   schedule?: EditablePayoutSchedule;
   enabled: boolean;
+  importDraft?: boolean;
+  onSaved?: () => void;
 }) {
   const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
@@ -109,9 +113,9 @@ export function PayoutScheduleDialog({
   );
   useEffect(() => {
     if (!state.success) return;
-    const timeoutId = window.setTimeout(() => setOpen(false), 0);
+    const timeoutId = window.setTimeout(() => { setOpen(false); onSaved?.(); }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [state]);
+  }, [state, onSaved]);
   const bracketsJson = useMemo(
     () =>
       JSON.stringify(
@@ -168,7 +172,7 @@ export function PayoutScheduleDialog({
         }
       >
         {schedule ? (
-          "Edit schedule"
+          importDraft ? "Open imported schedule" : "Edit schedule"
         ) : (
           <>
             <Plus size={17} /> New schedule
@@ -190,7 +194,7 @@ export function PayoutScheduleDialog({
             <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
               <div>
                 <h2 className="text-lg font-bold">
-                  {schedule
+                  {schedule && !importDraft
                     ? `Edit ${schedule.name}`
                     : "Create payout schedule"}
                 </h2>
@@ -548,7 +552,7 @@ export function PayoutScheduleDialog({
                 </p>
               ) : null}
               <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
-                {schedule ? (
+                {schedule && !importDraft ? (
                   <div className="mr-auto">
                     <DeleteRecordButton
                       recordType="schedule"
