@@ -14,7 +14,7 @@ function component(path, overrides={}) {
   const imports=(name)=> {
     if (name in overrides) return overrides[name];
     if (name==='next/link') return {default:({children,...props})=>React.createElement('a',props,children)};
-    return require(name);
+    return (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name));
   };
   new Function('require','module','exports',source)(imports,compiled,compiled.exports);
   return compiled.exports;

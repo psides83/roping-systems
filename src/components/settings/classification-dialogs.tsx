@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useProducerFeatures } from "@/components/settings/producer-features-context";
 import { featureEnabled } from "@/lib/producer-features";
 
@@ -480,7 +481,7 @@ export function CreateDisciplineDialog({
           description="Create the first-level event split, such as Calf roping or Breakaway. Each division can have its own classifications."
           close={() => setOpen(false)}
         >
-          <form ref={formRef} action={action} className="space-y-4 p-5">
+          <PersistentForm ref={formRef} action={action} className="space-y-4 p-5">
             <label className="block text-sm font-semibold">
               Name
               <input
@@ -528,7 +529,7 @@ export function CreateDisciplineDialog({
                 Create division
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>
@@ -576,7 +577,7 @@ export function CreateClassificationDialog({
           description="Create a numbered skill class, an open class, or an age-based class."
           close={() => setOpen(false)}
         >
-          <form ref={formRef} action={action} className="space-y-4 p-5">
+          <PersistentForm ref={formRef} action={action} className="space-y-4 p-5">
             <input type="hidden" name="disciplineId" value={disciplineId} />
             <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
               <label className="block text-sm font-semibold">
@@ -635,7 +636,7 @@ export function CreateClassificationDialog({
                 Add classification
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>
@@ -687,7 +688,7 @@ export function EditDisciplineDialog({
           description="Update this division or make it unavailable for future setup without removing its history."
           close={() => setOpen(false)}
         >
-          <form action={action} className="space-y-4 p-5">
+          <PersistentForm action={action} className="space-y-4 p-5">
             <input type="hidden" name="disciplineId" value={discipline.id} />
             <label className="block text-sm font-semibold">
               Name
@@ -758,7 +759,7 @@ export function EditDisciplineDialog({
                 Save changes
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>
@@ -820,7 +821,7 @@ export function EditClassificationDialog({
           description="Update this classification or make it unavailable for future use without removing existing records."
           close={() => setOpen(false)}
         >
-          <form action={action} className="space-y-4 p-5">
+          <PersistentForm action={action} className="space-y-4 p-5">
             <input type="hidden" name="disciplineId" value={disciplineId} />
             <input
               type="hidden"
@@ -902,7 +903,7 @@ export function EditClassificationDialog({
                 Save changes
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>

@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 function load(path, mocks = {}) {
   const loaded = { exports: {} };
   const code = transpileModule(readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ModuleKind.CommonJS, jsx: JsxEmit.ReactJSX } }).outputText;
-  new Function("require", "module", "exports", code)((id) => mocks[id] ?? (id.endsWith("/actions") ? {} : require(id)), loaded, loaded.exports);
+  new Function("require", "module", "exports", code)((id) => mocks[id] ?? (id.endsWith("/actions") ? {} : (id === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(id))), loaded, loaded.exports);
   return loaded.exports;
 }
 const { roperContactSchema } = load("lib/roper-profile.ts", { "./utils": { formatProperNoun } });

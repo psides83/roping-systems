@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Image from "next/image";
 import { useActionState,useEffect,useRef,useState,useTransition } from "react";
 import { ImagePlus,LoaderCircle,Pencil,Plus,Trash2,Upload,X } from "lucide-react";
@@ -38,7 +39,7 @@ function SponsorForm({sponsor,nextOrder,close}:{sponsor?:Sponsor;nextOrder:numbe
   const field="mt-1 h-11 w-64 max-w-full rounded-md border bg-white px-3 text-sm font-normal";
   return <dialog ref={ref} aria-label={sponsor?"Edit sponsor":"Add sponsor"} onCancel={e=>{if(pending)e.preventDefault();else close();}} className="m-auto max-h-[90svh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-md border bg-white p-5 text-[#17201c] shadow-xl backdrop:bg-black/45">
     <header className="mb-5 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{sponsor?"Edit sponsor":"Add sponsor"}</h2><button type="button" disabled={pending} onClick={close} title="Close" aria-label="Close" className="grid h-11 w-11 place-items-center rounded-md hover:bg-[#f1f3f2]"><X size={20}/></button></header>
-    <form action={action} className="space-y-5"><input type="hidden" name="id" value={id}/><input type="hidden" name="revision" value={sponsor?.revision ?? 0}/><fieldset disabled={pending} className="min-w-0 space-y-4">
+    <PersistentForm action={action} className="space-y-5"><input type="hidden" name="id" value={id}/><input type="hidden" name="revision" value={sponsor?.revision ?? 0}/><fieldset disabled={pending} className="min-w-0 space-y-4">
       <label className="grid justify-items-start text-sm font-semibold">Sponsor name<input name="name" required maxLength={120} defaultValue={sponsor?.name} className={field}/></label>
       <label className="grid justify-items-start text-sm font-semibold">Website<input name="website" type="url" maxLength={2000} placeholder="https://example.com" defaultValue={sponsor?.website_url} className={field}/></label>
       <div className="flex flex-wrap items-center gap-4"><div className="grid h-24 w-36 shrink-0 place-items-center rounded-md border bg-[#f7f8f7] p-2">{preview?<Image src={preview} alt="Sponsor logo preview" width={144} height={96} unoptimized className="h-full w-full object-contain"/>:<ImagePlus size={26} className="text-[#758078]"/>}</div><div className="min-w-0"><label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-semibold"><Upload size={16}/>Choose logo<input name="logo" type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={e=>{
@@ -52,6 +53,6 @@ function SponsorForm({sponsor,nextOrder,close}:{sponsor?:Sponsor;nextOrder:numbe
     </fieldset>
     {(fileError || state.message) && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-800">{fileError || state.message}</p>}
     <footer className="flex justify-end gap-2 border-t pt-4"><button type="button" disabled={pending} onClick={close} className="h-11 rounded-md border px-4 text-sm font-semibold">Cancel</button><button disabled={pending||Boolean(fileError)} className="inline-flex h-11 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-semibold text-white disabled:opacity-40">{pending && <LoaderCircle size={16} className="animate-spin"/>}{pending?"Saving…":"Save sponsor"}</button></footer>
-    </form>
+    </PersistentForm>
   </dialog>;
 }

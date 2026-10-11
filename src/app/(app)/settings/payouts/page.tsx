@@ -1,3 +1,4 @@
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { Banknote, CircleDollarSign } from "lucide-react";
 import { assignDivisionPayout } from "./actions";
 import {
@@ -158,7 +159,7 @@ export default async function PayoutSettingsPage() {
         </header>
         <div className="divide-y divide-[#edf0ee]">
           {data.divisions.map((division) => (
-            <form
+            <PersistentForm
               action={assignDivisionPayout}
               key={division.id}
               className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
@@ -196,7 +197,7 @@ export default async function PayoutSettingsPage() {
               >
                 Save
               </button>
-            </form>
+            </PersistentForm>
           ))}
           {!data.divisions.length ? (
             <p className="px-5 py-7 text-sm text-[#758078]">

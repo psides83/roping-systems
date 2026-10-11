@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LoaderCircle, RefreshCw, X } from "lucide-react";
@@ -48,7 +49,7 @@ export function TemplateUpdateDialog({ eventId, review, canManage }: { eventId: 
           <div><h2 id={`template-review-${review.ropingId}`} className="text-lg font-bold">Review template changes</h2><p className="mt-1 text-sm text-[#66716b]">{review.templateName}</p></div>
           <button type="button" aria-label="Close template review" disabled={pending} onClick={() => setOpen(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-md hover:bg-[#f1f3f2]"><X size={18} /></button>
         </header>
-        <form action={action} className="flex min-h-0 flex-1 flex-col">
+        <PersistentForm action={action} className="flex min-h-0 flex-1 flex-col">
           <input type="hidden" name="token" value={review.token} />
           <div className="min-h-0 space-y-5 overflow-y-auto p-5">
             {review.changes.map((change) => <section key={change.section}>
@@ -76,7 +77,7 @@ export function TemplateUpdateDialog({ eventId, review, canManage }: { eventId: 
             <button name="decision" value="keep" disabled={pending || !canManage} className="h-10 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold disabled:opacity-50">Keep current settings</button>
             <button name="decision" value="update" disabled={pending || !canManage || !!review.blockedReason || (review.entryCount > 0 && !confirmed)} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white disabled:opacity-50">{pending ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} Update from template</button>
           </footer>
-        </form>
+        </PersistentForm>
       </section>
     </div>, document.body) : null}
   </>;

@@ -25,7 +25,7 @@ function loadComponent(path, mode = "member") {
     if (name.endsWith("/entries/actions") || name.endsWith("/entries/waitlist-actions")) return new Proxy({}, { get: () => () => {} });
     if (name === "@/lib/utils") return { cn: (...values) => values.join(" "), formatCurrency: (cents) => `$${cents / 100}`, formatPhoneNumber: (value) => value };
     if (name.endsWith("/phone-input")) return { PhoneInput: () => React.createElement("input", { name: "phone" }) };
-    return require(name);
+    return (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name));
   };
   new Function("require", "module", "exports", source)(imports, compiled, compiled.exports);
   return compiled.exports;

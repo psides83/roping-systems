@@ -21,7 +21,7 @@ function load(file, name, { state = {}, confirming = false } = {}) {
     if (id.endsWith("qualification-notice")) return { qualificationNoticeText: () => "Qualification required" };
     if (id.endsWith("entry-eligibility-feedback")) return { EntryEligibilityFeedback: () => null };
     if (id === "./online-roper-search") return { OnlineRoperSearch: load("events/online-roper-search", "OnlineRoperSearch") };
-    return require(id);
+    return (id === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(id));
   }, loaded, loaded.exports);
   return loaded.exports[name];
 }

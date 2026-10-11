@@ -1,3 +1,4 @@
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { EventWorkflowNav } from "@/components/events/event-workflow-nav";
 import { notFound } from "next/navigation";
 import { Banknote, Users } from "lucide-react";
@@ -316,11 +317,11 @@ export default async function EventPayoutsPage({
             pools. Existing events can then copy those rules without changing
             prior results.
           </p>
-          <form action={initAction}>
+          <PersistentForm action={initAction}>
             <button className="mt-4 h-10 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">
               Load configured payout plans
             </button>
-          </form>
+          </PersistentForm>
         </section>
       )}
     </div>

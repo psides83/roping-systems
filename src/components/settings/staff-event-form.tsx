@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState } from "react";
 import { CalendarPlus, LoaderCircle, X } from "lucide-react";
 import { assignStaffEvent, type StaffActionState } from "@/app/(app)/settings/staff/actions";
@@ -7,7 +8,7 @@ export function StaffEventForm({ userId, events, eventId }: {
   userId: string; events?: { id: string; name: string }[]; eventId?: string;
 }) {
   const [state, action, pending] = useActionState<StaffActionState, FormData>(assignStaffEvent, {});
-  return <form action={action} className="flex flex-wrap items-center gap-2">
+  return <PersistentForm action={action} className="flex flex-wrap items-center gap-2">
     <input type="hidden" name="userId" value={userId} />
     <input type="hidden" name="assigned" value={eventId ? "false" : "true"} />
     {eventId ? <input type="hidden" name="eventId" value={eventId} /> :
@@ -22,5 +23,5 @@ export function StaffEventForm({ userId, events, eventId }: {
     </button>
     {state.error ? <p role="alert" className="basis-full text-xs text-rose-700">{state.error}</p> : null}
     {state.success ? <p role="status" className="basis-full text-xs text-emerald-700">Saved</p> : null}
-  </form>;
+  </PersistentForm>;
 }

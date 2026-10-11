@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Check, Copy, LoaderCircle, Plus, Save, X, Pencil, Archive } from "lucide-react";
 import { createPlatformProducer, managePlatformProducer, type PlatformFormState } from "@/app/platform/actions";
@@ -21,7 +22,7 @@ export function CreatePlatformProducerForm() {
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return <form action={action} className="space-y-5">
+  return <PersistentForm action={action} className="space-y-5">
     <div className="grid gap-5 sm:grid-cols-2">
       <label className="text-sm font-semibold">Producer name<input name="name" value={name} onChange={(event) => { setName(event.target.value); if (!slugEdited) setSlug(slugify(event.target.value)); }} required maxLength={120} className={input} /></label>
       <label className="text-sm font-semibold">Public page address<div className="mt-1 flex h-10 max-w-sm items-center rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal"><span className="text-[#758078]">/public/</span><input name="slug" value={slug} onChange={(event) => { setSlugEdited(true); setSlug(slugify(event.target.value)); }} required maxLength={100} className="min-w-0 flex-1 outline-none" /></div></label>
@@ -32,14 +33,14 @@ export function CreatePlatformProducerForm() {
     </div>
     <p className="text-sm leading-6 text-[#66716b]">The administrator receives an owner invitation, not a shared password. Pending accounts cannot access the producer workspace until approved.</p>
     <Feedback state={state} /><Submit pending={pending}>Create producer</Submit>
-  </form>;
+  </PersistentForm>;
 }
 
 export function PlatformAccountForm({ detail }: { detail: PlatformDetail }) {
   const [state, action, pending] = useActionState(managePlatformProducer.bind(null, detail.producer.id), {});
   const [status, setStatus] = useState(detail.account.status);
   const changingStatus = status !== detail.account.status;
-  return <form action={action} className="space-y-5">
+  return <PersistentForm action={action} className="space-y-5">
     <input type="hidden" name="operation" value="account" /><input type="hidden" name="expectedUpdatedAt" value={detail.account.updated_at} />
     <input type="hidden" name="expectedProducerUpdatedAt" value={detail.producer.updated_at} />
     <label className="block text-sm font-semibold">Producer name<input name="producerName" defaultValue={detail.producer.name} required minLength={2} maxLength={120} className={input} /></label>
@@ -56,7 +57,7 @@ export function PlatformAccountForm({ detail }: { detail: PlatformDetail }) {
     </div>}
     {!changingStatus && <input type="hidden" name="reason" value="" />}
     <Feedback state={state} /><Submit pending={pending}>Save account</Submit>
-  </form>;
+  </PersistentForm>;
 }
 
 export function ContactDialog({ producerId, contact }: { producerId: string; contact?: PlatformContact }) {
@@ -87,14 +88,14 @@ export function ContactDialog({ producerId, contact }: { producerId: string; con
       <button type="button" aria-label="Close contact dialog" disabled={pending} className="absolute inset-0" onClick={() => setOpen(false)} />
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={`contact-title-${contact?.id ?? "new"}`} className="relative my-8 w-full max-w-lg rounded-md bg-white p-5 shadow-xl">
         <header className="mb-5 flex items-center justify-between gap-3"><h2 id={`contact-title-${contact?.id ?? "new"}`} className="text-lg font-bold">{contact ? "Edit contact" : "Add contact"}</h2><button type="button" aria-label="Close" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center"><X size={18} /></button></header>
-        <form action={action} className="space-y-4"><input type="hidden" name="operation" value="contact" /><input type="hidden" name="id" value={contact?.id ?? ""} />
+        <PersistentForm action={action} className="space-y-4"><input type="hidden" name="operation" value="contact" /><input type="hidden" name="id" value={contact?.id ?? ""} />
           <label className="block text-sm font-semibold">Name<input name="name" required maxLength={120} defaultValue={contact?.name} className={input} /></label>
           <label className="block text-sm font-semibold">Email<input name="email" type="email" defaultValue={contact?.email ?? ""} className={input} /></label>
           <label className="block text-sm font-semibold">Phone<PhoneInput name="phone" defaultValue={contact?.phone ?? ""} className={input} /></label>
           <label className="block text-sm font-semibold">Responsibility<input name="responsibility" maxLength={120} defaultValue={contact?.responsibility ?? "Primary"} className={input} /></label>
           <label className="flex items-center gap-2 text-sm"><input name="isPrimary" type="checkbox" defaultChecked={contact?.is_primary} className="h-4 w-4" />Primary contact</label>
           <Feedback state={state} /><div className="flex justify-end gap-3 border-t border-[#e7ebe8] pt-4"><button type="button" onClick={() => setOpen(false)} className="text-sm font-semibold">Cancel</button><Submit pending={pending} /></div>
-        </form>
+        </PersistentForm>
       </section>
     </div>}
   </>;
@@ -104,22 +105,22 @@ export function ArchiveContact({ producerId, contactId }: { producerId: string; 
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(managePlatformProducer.bind(null, producerId), {});
   if (!open) return <button onClick={() => setOpen(true)} className="flex h-10 items-center gap-1 px-2 text-sm text-[#66716b]"><Archive size={15} />Archive</button>;
-  return <form action={action} className="space-y-2 border-l-2 border-amber-400 pl-3"><input name="operation" type="hidden" value="archive_contact" /><input name="id" type="hidden" value={contactId} /><label className="text-xs font-semibold">Reason<input name="reason" required minLength={5} maxLength={1000} className={input} /></label><Feedback state={state} /><div className="flex gap-3"><Submit pending={pending}>Archive contact</Submit><button type="button" onClick={() => setOpen(false)} className="text-sm">Cancel</button></div></form>;
+  return <PersistentForm action={action} className="space-y-2 border-l-2 border-amber-400 pl-3"><input name="operation" type="hidden" value="archive_contact" /><input name="id" type="hidden" value={contactId} /><label className="text-xs font-semibold">Reason<input name="reason" required minLength={5} maxLength={1000} className={input} /></label><Feedback state={state} /><div className="flex gap-3"><Submit pending={pending}>Archive contact</Submit><button type="button" onClick={() => setOpen(false)} className="text-sm">Cancel</button></div></PersistentForm>;
 }
 
 export function OnboardingTaskAction({ producerId, taskKey, completed }: { producerId: string; taskKey: string; completed: boolean }) {
   const [state, action, pending] = useActionState(managePlatformProducer.bind(null, producerId), {});
-  return <form action={action}><input name="operation" type="hidden" value="task" /><input name="key" type="hidden" value={taskKey} /><input name="done" type="hidden" value={completed ? "false" : "true"} />
+  return <PersistentForm action={action}><input name="operation" type="hidden" value="task" /><input name="key" type="hidden" value={taskKey} /><input name="done" type="hidden" value={completed ? "false" : "true"} />
     <button disabled={pending} className={`flex min-h-10 items-center gap-2 rounded-md border px-3 text-xs font-semibold disabled:opacity-50 ${completed ? "border-emerald-200 text-emerald-800" : "border-[#ccd4d0]"}`}>{pending ? <LoaderCircle size={15} className="animate-spin" /> : completed ? <Check size={15} /> : null}{completed ? "Reviewed" : "Mark reviewed"}</button>
     {!state.success && state.message && <p role="alert" className="mt-2 text-xs text-rose-700">{state.message}</p>}
-  </form>;
+  </PersistentForm>;
 }
 
 export function PlatformNoteForm({ producerId }: { producerId: string }) {
   const [state, action, pending] = useActionState(managePlatformProducer.bind(null, producerId), {});
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state.success) ref.current?.reset(); }, [state]);
-  return <form ref={ref} action={action} className="space-y-3"><input name="operation" type="hidden" value="note" /><label className="block text-sm font-semibold">Private account note<textarea name="body" required maxLength={5000} rows={4} className="mt-2 block w-full max-w-2xl rounded-md border border-[#ccd4d0] p-3 text-sm font-normal" /></label><Feedback state={state} /><Submit pending={pending}>Add note</Submit></form>;
+  return <PersistentForm ref={ref} action={action} className="space-y-3"><input name="operation" type="hidden" value="note" /><label className="block text-sm font-semibold">Private account note<textarea name="body" required maxLength={5000} rows={4} className="mt-2 block w-full max-w-2xl rounded-md border border-[#ccd4d0] p-3 text-sm font-normal" /></label><Feedback state={state} /><Submit pending={pending}>Add note</Submit></PersistentForm>;
 }
 
 export function CopyInvitationLink() {

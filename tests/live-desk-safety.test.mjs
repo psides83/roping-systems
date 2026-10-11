@@ -52,7 +52,7 @@ function renderTiming({ pending = false, fineBlocked = false, state = {}, asTree
     if (name === "./use-desk-leave-guard") return { useDeskLeaveGuard() {} };
     if (name === "./timing-control") return { useTimingControl: () => ({ sessionId: "browser-session", canWrite: ownsControl, staffUserId: "staff" }) };
     if (name.startsWith("@/lib/")) return compile(`../src/lib/${name.slice(6)}.ts`, require);
-    return require(name);
+    return (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name));
   });
   const element = RunEntryForm({
     eventId: "event", run: { id: "run", name: "Austin Foster", entryNumber: 2, drawPosition: 7,

@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LoaderCircle, Plus, Pencil, Undo2, X } from "lucide-react";
 import { saveFundChange } from "@/app/(app)/funds/actions";
@@ -28,7 +29,7 @@ function FundForm({ operation,fund,reversalId,onClose }: { operation: string; fu
   }
   return <dialog ref={ref} aria-labelledby="fund-title" onCancel={(event) => { if (pending) event.preventDefault(); else onClose(); }} onClick={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }} className="fixed inset-0 m-auto max-h-[90dvh] w-[min(94vw,560px)] overflow-y-auto rounded-lg border border-[#dfe4e1] bg-white p-0 text-[#19231d] shadow-xl backdrop:bg-black/40">
     <header className="flex items-center justify-between gap-3 border-b border-[#dfe4e1] p-5"><h2 id="fund-title" className="text-lg font-bold">{titles[operation]}</h2><button type="button" disabled={pending} onClick={onClose} title="Close" aria-label="Close" className="grid h-9 w-9 place-items-center"><X size={20} /></button></header>
-    <form action={submit} className="space-y-5 p-5"><fieldset disabled={pending} className="min-w-0 space-y-4">
+    <PersistentForm action={submit} className="space-y-5 p-5"><fieldset disabled={pending} className="min-w-0 space-y-4">
       {account ? <>
         <label className="flex flex-col items-start gap-2 text-sm font-semibold">Fund name<input autoFocus name="name" required maxLength={120} defaultValue={fund?.name} className="h-10 w-80 max-w-full rounded-md border border-[#ccd4d0] px-3" /></label>
         <label className="flex flex-col items-start gap-2 text-sm font-semibold">Description<textarea name="description" defaultValue={fund?.description} maxLength={2000} rows={3} className="w-96 max-w-full rounded-md border border-[#ccd4d0] p-3" /></label>
@@ -39,6 +40,6 @@ function FundForm({ operation,fund,reversalId,onClose }: { operation: string; fu
       </>}
     </fieldset>{error ? <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       <footer className="flex justify-end gap-2 border-t border-[#dfe4e1] pt-4"><button type="button" disabled={pending} onClick={onClose} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button><button disabled={pending} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}{pending ? "Saving..." : "Save"}</button></footer>
-    </form>
+    </PersistentForm>
   </dialog>;
 }

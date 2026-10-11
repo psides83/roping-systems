@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { CheckCircle2, LoaderCircle, RefreshCw, X } from "lucide-react";
@@ -42,10 +43,10 @@ export function SetupReadinessForm({ eventId, mode, action, children, pending, s
   }, [open, pending]);
   const blocked = !result.issues || result.issues.some((issue) => issue.severity === "blocker");
   return <>
-    <form ref={form} action={action} className={className} aria-busy={pending} onSubmit={(event) => {
+    <PersistentForm ref={form} action={action} className={className} aria-busy={pending} onSubmit={(event) => {
       if (!mode || approved.current) { approved.current = false; return; }
       event.preventDefault(); setOpen(true); refresh();
-    }}>{children}</form>
+    }}>{children}</PersistentForm>
     {open ? <div className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-black/45 p-4">
       <section role="dialog" aria-modal="true" aria-labelledby={`setup-review-${mode}`} className="my-6 w-full max-w-xl rounded-md bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3"><h2 id={`setup-review-${mode}`} className="text-lg font-bold">{mode === "start" ? "Start event review" : "Publish event review"}</h2><button ref={close} type="button" disabled={pending} onClick={() => setOpen(false)} aria-label="Close review" className="grid h-10 w-10 shrink-0 place-items-center"><X size={20} /></button></div>

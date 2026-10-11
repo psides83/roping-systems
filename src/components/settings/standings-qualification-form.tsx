@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState } from "react";
 import { saveQualificationRule } from "@/app/(app)/settings/standings/actions";
 import { CutoffDateLabel } from "@/components/settings/cutoff-date-label";
@@ -9,7 +10,7 @@ export function StandingsQualificationForm({ season, classId, rule, canEdit }: {
 }) {
   const [state, action, pending] = useActionState(saveQualificationRule, {});
   const input = "mt-1 block h-10 w-40 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm";
-  return <form action={action} className="space-y-5 border-t border-[#dfe4e1] pt-5">
+  return <PersistentForm action={action} className="space-y-5 border-t border-[#dfe4e1] pt-5">
     <input type="hidden" name="season" value={season.id} /><input type="hidden" name="class" value={classId} />
     <fieldset disabled={!canEdit || pending} className="space-y-5">
       <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="enabled" defaultChecked={!!rule} />Qualification requirements</label>
@@ -24,5 +25,5 @@ export function StandingsQualificationForm({ season, classId, rule, canEdit }: {
     </fieldset>
     {state.error ? <p role="alert" className="text-sm text-rose-700">{state.error}</p> : null}
     {state.success ? <p role="status" className="text-sm text-emerald-700">Saved</p> : null}
-  </form>;
+  </PersistentForm>;
 }

@@ -19,7 +19,7 @@ function renderAssignment(ropingId) {
     if (name === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
     if (name.includes("rule-set-actions")) return {};
     if (name.endsWith("qualification-rule-sets")) return { qualificationCutoffText };
-    return require(name);
+    return (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name));
   }, compiled, compiled.exports);
   return renderToStaticMarkup(React.createElement(compiled.exports.QualificationAssignmentDialog, { eventId: "event", ropingId, editable: true }));
 }

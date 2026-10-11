@@ -70,7 +70,7 @@ test('dues hide unused fund settings but preserve existing allocations',()=>{
 function component(path, mocks) {
   const compiled = {exports:{}};
   const source = transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX,target:ScriptTarget.ES2022}}).outputText;
-  new Function('require','module','exports',source)(name=>mocks[name] ?? require(name),compiled,compiled.exports);
+  new Function('require','module','exports',source)(name=>mocks[name] ?? (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name)),compiled,compiled.exports);
   return compiled.exports;
 }
 test('feature gate preserves existing obligations while hiding unused controls',()=>{

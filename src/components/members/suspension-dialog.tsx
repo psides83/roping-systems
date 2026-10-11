@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LoaderCircle, X } from "lucide-react";
 import { saveMembershipSuspension } from "@/app/(app)/members/[membershipId]/suspension-actions";
@@ -31,7 +32,7 @@ export function SuspensionDialog({ membershipId, suspension, today, onClose }: {
       <h2 id="suspension-title" className="text-lg font-bold">{suspension ? "Lift suspension" : "Suspend membership"}</h2>
       <button type="button" disabled={pending} onClick={onClose} aria-label="Close" title="Close" className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#eef1ef]"><X size={20} /></button>
     </header>
-    <form action={submit} className="space-y-5 p-5">
+    <PersistentForm action={submit} className="space-y-5 p-5">
       <fieldset disabled={pending} className="min-w-0 space-y-5">
         {!suspension ? <div className="flex flex-wrap gap-4">
           <label className="grid max-w-full shrink-0 gap-2 text-sm font-semibold">Starts on<input autoFocus type="date" name="startsOn" value={start} onChange={(event) => setStart(event.target.value)} required className="h-10 w-44 max-w-full rounded-md border border-[#ccd4d0] px-3 text-sm" /></label>
@@ -44,6 +45,6 @@ export function SuspensionDialog({ membershipId, suspension, today, onClose }: {
         <button type="button" disabled={pending} onClick={onClose} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button>
         <button disabled={pending} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-60">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}{pending ? "Saving..." : suspension ? "Lift suspension" : "Suspend"}</button>
       </footer>
-    </form>
+    </PersistentForm>
   </dialog>;
 }

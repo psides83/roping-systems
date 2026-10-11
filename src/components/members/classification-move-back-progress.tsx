@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState } from "react";
 import { Check, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
@@ -39,10 +40,10 @@ function displayDate(value: string) {
 
 function ExceptionForm({ membershipId, assignmentId }: { membershipId: string; assignmentId: string }) {
   const [state, action, pending] = useActionState(approveMoveBackException, {});
-  return <form action={action} className="mt-3 flex flex-wrap items-end gap-3">
+  return <PersistentForm action={action} className="mt-3 flex flex-wrap items-end gap-3">
     <input name="membershipId" type="hidden" value={membershipId} /><input name="assignmentId" type="hidden" value={assignmentId} />
     <label className="grid min-w-0 max-w-full gap-1 text-xs font-semibold">Reason for the exception<textarea name="reason" required minLength={5} maxLength={2000} rows={2} className="w-96 max-w-full rounded-md border border-[#ccd4d0] p-3 text-sm font-normal" /></label>
     <button disabled={pending} className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold disabled:opacity-50"><Check size={15} />{pending ? "Saving..." : "Approve exception"}</button>
     {state.error ? <p role="alert" className="basis-full text-sm text-red-700">{state.error}</p> : null}
-  </form>;
+  </PersistentForm>;
 }

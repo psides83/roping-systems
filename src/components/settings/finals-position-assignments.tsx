@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { ChevronDown, LoaderCircle } from "lucide-react";
@@ -12,7 +13,7 @@ const labels = { pending: "Pending assignment", assigned: "Assigned", expired: "
 function PositionForm({ slot, seasonId, targets }: { slot: FinalsPositionSlot; seasonId: string; targets: FinalsTarget[] }) {
   const [state, action, pending] = useActionState(assignFinalsPosition, {});
   const matching = targets.filter((item) => item.classId === slot.classId && !item.locked);
-  return <form action={action} className="mt-3 space-y-3">
+  return <PersistentForm action={action} className="mt-3 space-y-3">
     <input type="hidden" name="seasonId" value={seasonId} /><input type="hidden" name="awardId" value={slot.awardId} /><input type="hidden" name="number" value={slot.number} />
     <fieldset disabled={pending} className="flex flex-wrap items-end gap-3">
       <label className="grid gap-1 text-xs font-semibold">Target roping<select name="targetId" defaultValue={slot.targetId ?? ""} className="h-10 w-72 max-w-full rounded-md border bg-white px-3 text-sm" required={!slot.targetId}>
@@ -24,7 +25,7 @@ function PositionForm({ slot, seasonId, targets }: { slot: FinalsPositionSlot; s
     </fieldset>
     {!matching.some((item) => item.ready) && <p className="text-xs text-amber-800">No ready target roping. <Link href="/events" className="font-semibold underline">Schedule a matching roping</Link> and enable bonus entries in its qualification setup.</p>}
     {state.error && <p role="alert" className="text-xs text-rose-700">{state.error}</p>}{state.success && <p role="status" className="text-xs text-emerald-700">Assignment saved.</p>}
-  </form>;
+  </PersistentForm>;
 }
 
 export function FinalsPositionAssignments({ slots, targets, members, classes, seasonId, endsOn, canEdit }: {

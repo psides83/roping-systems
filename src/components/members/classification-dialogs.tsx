@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle, Tags, X } from "lucide-react";
 import {
@@ -138,7 +139,7 @@ export function AssignClassificationDialog({
           description="The previous assignment stays in history and this change becomes effective on the selected date."
           close={() => setOpen(false)}
         >
-          <form action={action} className="space-y-4 p-5">
+          <PersistentForm action={action} className="space-y-4 p-5">
             <input type="hidden" name="membershipId" value={membershipId} />
             <input type="hidden" name="reviewId" value={reviewId} />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -214,7 +215,7 @@ export function AssignClassificationDialog({
                 Save assignment
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { Beef, Dices, LoaderCircle, Settings2, X } from "lucide-react";
 import {
@@ -72,7 +73,7 @@ export function CattleDrawPanel({
         </button>
       </div>
 
-      <form action={drawFormAction} className="mt-3">
+      <PersistentForm action={drawFormAction} className="mt-3">
         <input type="hidden" name="divisionId" value={divisionId} />
         <input type="hidden" name="runNumber" value={runNumber} />
         <button
@@ -86,7 +87,7 @@ export function CattleDrawPanel({
           )}
           {assignedCount ? "Redraw cattle" : "Draw cattle"}
         </button>
-      </form>
+      </PersistentForm>
       {drawState.message ? (
         <p
           className={`mt-2 text-xs ${drawState.success ? "text-emerald-700" : "text-rose-700"}`}
@@ -129,7 +130,7 @@ export function CattleDrawPanel({
                 <X size={18} />
               </button>
             </header>
-            <form action={saveFormAction} className="space-y-4 p-5">
+            <PersistentForm action={saveFormAction} className="space-y-4 p-5">
               <textarea
                 name="cattleTags"
                 defaultValue={cattleTags.join("\n")}
@@ -167,7 +168,7 @@ export function CattleDrawPanel({
                   Save cattle
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { ArrowRight, Check, LoaderCircle } from "lucide-react";
@@ -33,7 +34,7 @@ function RolloverFields(props: Props) {
   const [mode,setMode]=useState(defaults?.allocation_mode ?? "fixed");
   const [review,setReview]=useState(false);
   if(state.seasonId) return <section role="status" className="mt-5 space-y-4 border-y py-5"><h2 className="flex items-center gap-2 text-lg font-bold"><Check size={20}/>New season ready</h2><p className="text-sm">Prior-season records and fund ledgers are unchanged.{showQualifications && " Review copied qualification cutoffs before using them."}</p><div className="flex flex-wrap gap-3">{enabled && <Link href={`/members/dues?season=${state.seasonId}`} className="rounded-md border bg-white px-3 py-2 text-sm font-semibold">Review dues</Link>}{showQualifications && <Link href="/settings/qualifications" className="rounded-md border bg-white px-3 py-2 text-sm font-semibold">Qualification templates</Link>}<Link href="/settings?tab=seasons" className="rounded-md border bg-white px-3 py-2 text-sm font-semibold">Seasons</Link></div></section>;
-  return <form action={action} className="mt-5 space-y-6"><input type="hidden" name="reference" value={reference}/><input type="hidden" name="sourceSeason" value={source.id}/>
+  return <PersistentForm action={action} className="mt-5 space-y-6"><input type="hidden" name="reference" value={reference}/><input type="hidden" name="sourceSeason" value={source.id}/>
     <fieldset disabled={pending} className="min-w-0 space-y-6">
       <section className="space-y-3 border-t pt-5"><h2 className="font-bold">New season</h2><div className="flex flex-wrap items-end gap-3"><label className="grid max-w-full gap-2 text-sm font-semibold">Name<input name="name" required maxLength={80} defaultValue={dates.startsOn.slice(0,4)===dates.endsOn.slice(0,4) ? dates.startsOn.slice(0,4) : `${dates.startsOn.slice(0,4)}-${dates.endsOn.slice(0,4)}`} className={field}/></label><label className="grid gap-2 text-sm font-semibold">Starts<input name="startsOn" type="date" required min={new Date(Date.parse(source.ends_on)+86400000).toISOString().slice(0,10)} defaultValue={dates.startsOn} className={field}/></label><label className="grid gap-2 text-sm font-semibold">Ends<input name="endsOn" type="date" required defaultValue={dates.endsOn} className={field}/></label></div></section>
       {!showDues && <input type="hidden" name="mode" value="fixed"/>}
@@ -48,5 +49,5 @@ function RolloverFields(props: Props) {
     </fieldset>
     {state.error && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-800">{state.error}</p>}
     <button disabled={pending||!review} className="flex min-h-11 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-semibold text-white disabled:opacity-40">{pending?<LoaderCircle size={16} className="animate-spin"/>:<ArrowRight size={16}/>} {pending?"Creating season…":"Start new season"}</button>
-  </form>;
+  </PersistentForm>;
 }

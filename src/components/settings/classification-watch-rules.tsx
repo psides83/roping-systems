@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { NumberStepper } from "@/components/ui/number-stepper";
 
 import { useActionState, useEffect, useState } from "react";
@@ -17,22 +18,22 @@ export function ClassificationWatchRules({ rules, classifications, enabled, canE
   const [starter, starterAction, addingStarter] = useActionState(addWatchStarter, {});
   const divisions = [...new Map(classifications.map((c) => [c.division_id, { id: c.division_id, name: c.divisions.name }])).values()];
   return <section className="border-y border-[#dfe4e1] bg-white">
-    <form action={action} className="flex flex-wrap items-center gap-4 border-b border-[#e7ebe8] p-5">
+    <PersistentForm action={action} className="flex flex-wrap items-center gap-4 border-b border-[#e7ebe8] p-5">
       <label className="flex items-center gap-2 text-sm font-semibold"><input name="enabled" type="checkbox" defaultChecked={enabled} disabled={!canConfigure} />Enable classification watch</label>
       <span className={`rounded px-2 py-1 text-xs font-semibold ${enabled ? "bg-emerald-50 text-emerald-800" : "bg-[#eef1ef] text-[#66716b]"}`}>{enabled ? "Enabled" : "Off"}</span>
       {canConfigure ? <button disabled={pending} className="flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-semibold"><Save size={14} />{pending ? "Saving…" : "Save"}</button> : null}
       {state.error ? <p role="alert" className="text-sm text-red-700">{state.error}</p> : state.success ? <p role="status" className="text-sm text-emerald-700">Saved</p> : null}
-    </form>
+    </PersistentForm>
     <header className="flex flex-wrap items-center justify-between gap-3 p-5"><h2 className="font-bold">Fast-time rules</h2>
       {canEdit && classifications.length ? <button onClick={() => setEditing("new")} className="flex items-center gap-2 text-sm font-semibold"><Plus size={16} />Add rule</button> : null}
     </header>
     {canEdit && divisions.length ? <details className="px-5 pb-4"><summary className="cursor-pointer text-sm font-semibold text-[#66716b]">UCR starting rules</summary>
-      <form action={starterAction} className="mt-3 flex flex-wrap items-end gap-3">
+      <PersistentForm action={starterAction} className="mt-3 flex flex-wrap items-end gap-3">
         <label className="text-sm font-semibold">Division<select name="divisionId" className={field}>{divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
         <button disabled={addingStarter} className="h-10 rounded-md border px-3 text-sm font-semibold">{addingStarter ? "Adding…" : "Add starting rules"}</button>
         <p className="basis-full text-xs text-[#66716b]">#12: ≤10.00 · #11.5: &lt;10.25 · #11: ≤9.00 · #10: ≤8.00. Existing rules are kept. Watch stays off until enabled.</p>
         {starter.error ? <p role="alert" className="text-sm text-red-700">{starter.error}</p> : starter.success ? <p role="status" className="text-sm text-emerald-700">Starting rules added for matching classifications.</p> : null}
-      </form>
+      </PersistentForm>
     </details> : null}
     {editing ? <RuleForm key={editing === "new" ? "new" : editing.id} rule={editing === "new" ? undefined : editing} classifications={classifications} onClose={() => setEditing(null)} /> : null}
     <div className="divide-y divide-[#e7ebe8]">{rules.map((rule) => <div key={rule.id} className="flex items-start justify-between gap-3 px-5 py-4">
@@ -51,7 +52,7 @@ function RuleForm({ rule, classifications, onClose }: { rule?: WatchRule; classi
   const division = classifications.find((c) => c.id === classification)?.division_id;
   useEffect(() => { if (state.success || deletion.success) onClose(); }, [state.success, deletion.success, onClose]);
   return <div className="disclosure-content space-y-3 border-y bg-[#f7f8f7] p-5">
-    <form action={action} className="space-y-4">
+    <PersistentForm action={action} className="space-y-4">
       <input type="hidden" name="id" value={rule?.id ?? ""} />
       <div className="flex flex-wrap gap-4">
         <label className="text-sm font-semibold">Rule name<input className={field} name="name" required maxLength={100} defaultValue={rule?.name} /></label>
@@ -66,10 +67,10 @@ function RuleForm({ rule, classifications, onClose }: { rule?: WatchRule; classi
       {state.error ? <p role="alert" className="text-sm text-red-700">{state.error}</p> : null}
       <div className="flex gap-3"><button disabled={pending || deleting} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold disabled:opacity-50"><Save size={15} />{pending ? "Saving…" : "Save rule"}</button>
         <button type="button" onClick={onClose} className="px-3 text-sm font-semibold">Cancel</button></div>
-    </form>
-    {rule ? <form action={deleteAction} onSubmit={(e) => { if (!window.confirm("Delete this rule? Existing flags will remain in history.")) e.preventDefault(); }}>
+    </PersistentForm>
+    {rule ? <PersistentForm action={deleteAction} onSubmit={(e) => { if (!window.confirm("Delete this rule? Existing flags will remain in history.")) e.preventDefault(); }}>
       <input name="id" type="hidden" value={rule.id} /><button disabled={pending || deleting} className="flex items-center gap-2 text-sm font-semibold text-red-700"><Trash2 size={15} />{deleting ? "Deleting…" : "Delete rule"}</button>
       {deletion.error ? <p role="alert" className="mt-2 text-sm text-red-700">{deletion.error}</p> : null}
-    </form> : null}
+    </PersistentForm> : null}
   </div>;
 }

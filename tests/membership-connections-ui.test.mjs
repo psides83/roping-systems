@@ -15,7 +15,7 @@ function load(path, name) {
   new Function("require", "module", "exports", compiled)((id) => {
     if (id === "react") return { ...React, useActionState: () => [{}, undefined, false] };
     if (id.endsWith("/actions")) return {};
-    return require(id);
+    return (id === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(id));
   }, loaded, loaded.exports);
   return loaded.exports[name];
 }

@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useTimingControl } from "./timing-control";
 
 import { useActionState, useEffect, useMemo, useRef } from "react";
@@ -88,7 +89,7 @@ export function RunEntryForm({
         : "Average reading";
 
   return (
-    <form
+    <PersistentForm
       action={formAction}
       aria-busy={pending}
       data-desk-unsaved={unsaved || pending ? "time" : undefined}
@@ -265,6 +266,6 @@ export function RunEntryForm({
           Rerun required
         </button>
       </div>
-    </form>
+    </PersistentForm>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
@@ -71,7 +72,7 @@ export function PublicMembershipForm({
   }
 
   return (
-    <form
+    <PersistentForm
       action={action}
       className="border-t border-[#e7ebe8] px-5 py-6 sm:px-8"
     >
@@ -178,7 +179,7 @@ export function PublicMembershipForm({
           {renewal ? "Submit renewal" : "Submit application"}
         </button>
       </div>
-    </form>
+    </PersistentForm>
   );
 }
 

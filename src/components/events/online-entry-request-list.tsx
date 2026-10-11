@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useState } from "react";
 import {
   CalendarDays,
@@ -86,7 +87,7 @@ function RequestRow({
   );
   const [eligibilityOverride, setEligibilityOverride] = useState(false);
   return (
-    <form action={formAction} className="p-5">
+    <PersistentForm action={formAction} className="p-5">
       <input type="hidden" name="requestId" value={request.id} />
       <input type="hidden" name="requestRevision" value={request.revision} />
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -210,6 +211,6 @@ function RequestRow({
           ) : null}
         </div>
       </div>
-    </form>
+    </PersistentForm>
   );
 }

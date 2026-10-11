@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -58,10 +59,10 @@ export function ClassificationWatchList({ flags, canEdit, compact = false, event
 
 function ReviewForm({ membershipId, divisionId }: { membershipId: string; divisionId: string }) {
   const [state, action, pending] = useActionState(acknowledgeWatch, {});
-  return <form action={action} className="flex flex-wrap items-end gap-3">
+  return <PersistentForm action={action} className="flex flex-wrap items-end gap-3">
     <input name="membershipId" type="hidden" value={membershipId} /><input name="divisionId" type="hidden" value={divisionId} />
     <label className="text-xs font-semibold">Staff decision<input name="reason" required minLength={5} maxLength={2000} placeholder="Decision and reason" className="mt-1 block h-10 w-72 max-w-full rounded-md border px-3 text-sm font-normal" /></label>
     <button disabled={pending} className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold"><Check size={15} />{pending ? "Saving…" : "Mark reviewed"}</button>
     {state.error ? <p role="alert" className="text-sm text-red-700">{state.error}</p> : null}
-  </form>;
+  </PersistentForm>;
 }

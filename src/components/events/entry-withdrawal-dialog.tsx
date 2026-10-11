@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle, RotateCcw, UserMinus, X } from "lucide-react";
 import {
@@ -82,7 +83,7 @@ export function EntryWithdrawalDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={action} className="space-y-4 p-5">
+            <PersistentForm action={action} className="space-y-4 p-5">
               <input
                 type="hidden"
                 name="action"
@@ -167,7 +168,7 @@ export function EntryWithdrawalDialog({
                   {withdrawn ? "Reinstate entry" : "Withdraw entry"}
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

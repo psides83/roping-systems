@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
@@ -40,7 +41,7 @@ export function ProducerSeasons({ seasons, canEdit }: { seasons: ProducerSeason[
 function SeasonForm({ season, onClose }: { season?: ProducerSeason; onClose: () => void }) {
   const [state, action, pending] = useActionState(saveProducerSeason, {});
   useEffect(() => { if (state.success) onClose(); }, [state.success, onClose]);
-  return <form action={action} className="mt-4 border-t border-[#e7ebe8] pt-4">
+  return <PersistentForm action={action} className="mt-4 border-t border-[#e7ebe8] pt-4">
     <input type="hidden" name="id" value={season?.id ?? ""} />
     <h4 className="mb-3 text-sm font-bold">{season ? "Edit season" : "Add season"}</h4>
     <div className="flex flex-wrap items-end gap-3">
@@ -53,5 +54,5 @@ function SeasonForm({ season, onClose }: { season?: ProducerSeason; onClose: () 
       <button disabled={pending} className="inline-flex h-9 items-center gap-2 rounded-md brand-primary-fill px-3 text-xs font-semibold disabled:opacity-50">{pending ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />} Save season</button>
       <button type="button" disabled={pending} onClick={onClose} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-xs font-semibold"><X size={15} /> Cancel</button>
     </div>
-  </form>;
+  </PersistentForm>;
 }

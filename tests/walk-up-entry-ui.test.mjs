@@ -22,7 +22,7 @@ function renderDialog({ guest = false, requireMemberships = true, pending = fals
     if (id.endsWith("/actions")) return { addWalkUpEntries: () => {}, walkUpEligibility: async () => ({ rows: [] }) };
     if (id.endsWith("utils")) return { cn: (...values) => values.join(" "), formatCurrency: cents => `$${cents / 100}`, formatPhoneNumber: phone => phone };
     if (id.endsWith("phone-input")) return { PhoneInput: props => React.createElement("input", { name: "phone", type: "tel", ...props }) };
-    return require(id);
+    return (id === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(id));
   }, loaded, loaded.exports);
   return renderToStaticMarkup(React.createElement(loaded.exports.EntryFormDialog, {
     eventId: "event", requireMemberships, canApproveMemberships, ropers: [], divisions: [

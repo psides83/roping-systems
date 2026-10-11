@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { EntryLabel, useEntryLabelStyle } from "./entry-label";
 import { formatEntryLabel } from "@/lib/entry-labels";
 import { deskWorkflowState } from "@/lib/events/desk-workflow";
@@ -295,7 +296,7 @@ export function DatabaseLiveDesk({
                   <LockKeyhole size={14} /> Round locked
                 </span>
               ) : roundReadyToLock && drawReady ? (
-                <form action={roundFormAction} onSubmit={(event) => {
+                <PersistentForm action={roundFormAction} onSubmit={(event) => {
                   if (!window.confirm(`Complete ${isShortRound ? "the short round" : `round ${selectedRound}`} for ${selectedDivision?.name}? All results will be locked; corrections will require a reason.`)) event.preventDefault();
                 }}>
                   <input
@@ -317,10 +318,10 @@ export function DatabaseLiveDesk({
                     )}
                     {roundPending ? "Completing round..." : "Complete round"}
                   </button>
-                </form>
+                </PersistentForm>
               ) : null}
               {isShortRound && !shortRoundSeeded ? (
-                <form action={shortRoundFormAction}>
+                <PersistentForm action={shortRoundFormAction}>
                   <input
                     type="hidden"
                     name="divisionId"
@@ -342,7 +343,7 @@ export function DatabaseLiveDesk({
                     )}
                     Build short round
                   </button>
-                </form>
+                </PersistentForm>
               ) : null}
               {isShortRound && shortRoundSeeded ? (
                 <ShortRoundFieldDialog
@@ -358,7 +359,7 @@ export function DatabaseLiveDesk({
                 />
               ) : null}
               {dirty ? (
-                <form action={orderFormAction}>
+                <PersistentForm action={orderFormAction}>
                   <input
                     type="hidden"
                     name="divisionId"
@@ -384,12 +385,12 @@ export function DatabaseLiveDesk({
                     )}
                     Save order
                   </button>
-                </form>
+                </PersistentForm>
               ) : null}
               {orderedRuns.length &&
               !isShortRound &&
               (!drawReady || selectedOrderMethod !== "custom") ? (
-                <form action={drawFormAction}>
+                <PersistentForm action={drawFormAction}>
                   <input
                     type="hidden"
                     name="divisionId"
@@ -407,7 +408,7 @@ export function DatabaseLiveDesk({
                         ? "Rebuild order"
                         : "Build order"}
                   </button>
-                </form>
+                </PersistentForm>
               ) : null}
             </div>
           </div>

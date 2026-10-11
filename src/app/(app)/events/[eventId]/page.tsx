@@ -1,3 +1,4 @@
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 import { CopyDayScheduleDialog } from "@/components/events/copy-day-schedule-dialog";
 import { EventSummaryCard as Metric } from "@/components/events/event-summary-card";
@@ -1051,7 +1052,7 @@ export default async function RopingDetailPage({
                     </span>
                   </div>
                   <div className="mt-4 max-w-xl">
-                    <form
+                    <PersistentForm
                       action={spacingAction}
                       className="flex items-end gap-2"
                     >
@@ -1078,7 +1079,7 @@ export default async function RopingDetailPage({
                       >
                         Save
                       </button>
-                    </form>
+                    </PersistentForm>
                   </div>
                 </div>
 

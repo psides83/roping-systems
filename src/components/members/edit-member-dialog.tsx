@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { FinalsMoveDecision } from "./finals-move-decision";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
@@ -143,7 +144,7 @@ export function EditMemberDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={action} className="space-y-5 p-5">
+            <PersistentForm action={action} className="space-y-5 p-5">
               <input type="hidden" name="membershipId" value={member.id} />
               <input
                 type="hidden"
@@ -349,7 +350,7 @@ export function EditMemberDialog({
                   Save changes
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

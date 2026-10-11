@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { LoaderCircle, Plus, X } from "lucide-react";
 import { addMember, type MemberFormState } from "@/app/(app)/members/actions";
@@ -73,7 +74,7 @@ export function AddMemberDialog({
                 <X size={18} />
               </button>
             </div>
-            <form ref={formRef} action={action} className="space-y-4 p-5">
+            <PersistentForm ref={formRef} action={action} className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   label="First name"
@@ -210,7 +211,7 @@ export function AddMemberDialog({
                   Add {requireMemberships ? "member" : "roper"}
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

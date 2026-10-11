@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { ArrowRightLeft, LoaderCircle, X } from "lucide-react";
 import {
@@ -90,7 +91,7 @@ export function EntryTransferDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={action} className="space-y-4 p-5">
+            <PersistentForm action={action} className="space-y-4 p-5">
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 Recorded runs will be archived in the entry history and excluded
                 from results and payouts. Fresh pending runs will be created in
@@ -220,7 +221,7 @@ export function EntryTransferDialog({
                   Move entry
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

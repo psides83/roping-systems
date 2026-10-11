@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Banknote, LoaderCircle, X } from "lucide-react";
 import { recordRoperPayout, updatePayoutReceipt } from "@/app/(app)/events/[eventId]/payouts/actions";
@@ -41,7 +42,7 @@ export function PayoutPaymentDialog({ eventId, ropingId, target, onClose }: {
       <div><h2 id="payout-dialog-title" className="flex items-center gap-2 text-lg font-bold"><Banknote size={20} />{reversing ? "Reverse payment" : "Record payout"}</h2><p className="mt-1 text-sm text-[#66716b]">{target.name}</p></div>
       <button type="button" onClick={onClose} disabled={pending} aria-label="Close" title="Close" className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#eef1ef]"><X size={20} /></button>
     </header>
-    <form action={submit} aria-busy={pending} className="space-y-5 p-5">
+    <PersistentForm action={submit} aria-busy={pending} className="space-y-5 p-5">
       <fieldset disabled={pending} className="space-y-5">
       {reversing ? <label className="block text-sm font-semibold">Reason for reversal<textarea autoFocus name="reason" required maxLength={1000} rows={3} className="mt-2 block w-full rounded-md border border-[#ccd4d0] p-3" /></label> : <>
         <p className="text-sm">Balance due <strong className="ml-2 text-lg">{formatCurrency(target.dueCents)}</strong></p>
@@ -59,6 +60,6 @@ export function PayoutPaymentDialog({ eventId, ropingId, target, onClose }: {
         <button type="button" disabled={pending} onClick={onClose} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button>
         <button disabled={pending} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-60">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}{pending ? "Saving..." : reversing ? "Reverse payment" : "Record payout"}</button>
       </footer>
-    </form>
+    </PersistentForm>
   </dialog>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { Clock3, LoaderCircle, X } from "lucide-react";
 import {
@@ -83,7 +84,7 @@ export function ClassScheduleDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={formAction} className="space-y-4 p-5">
+            <PersistentForm action={formAction} className="space-y-4 p-5">
               <label className="block text-sm font-semibold">
                 Arena
                 <select
@@ -186,7 +187,7 @@ export function ClassScheduleDialog({
                   Save schedule
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

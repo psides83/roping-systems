@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { ClockAlert, LoaderCircle, X } from "lucide-react";
 import { FinalReadinessCheck } from "./final-readiness-check";
@@ -105,7 +106,7 @@ export function ClassOperationsDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={formAction} className="space-y-4 p-5">
+            <PersistentForm action={formAction} className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-semibold">
                   Current arena
@@ -191,7 +192,7 @@ export function ClassOperationsDialog({
                   {pending ? "Saving update..." : "Save roping update"}
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

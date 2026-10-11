@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { ArrowRight, Check, LoaderCircle, X } from "lucide-react";
 import { approveWatchMove } from "@/app/(app)/settings/classification-watch/approval-actions";
@@ -56,7 +57,7 @@ export function ClassificationWatchMoveDialog({ flags, choices, current, current
       <div><h2 id={titleId} className="text-lg font-bold">Approve classification move</h2><p className="mt-1 text-sm text-[#66716b]">{roper.first_name} {roper.last_name}</p></div>
       <button type="button" disabled={pending} onClick={onClose} aria-label="Close" title="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md hover:bg-[#eef1ef]"><X size={20} /></button>
     </header>
-    <form action={submit} className="space-y-5 p-5">
+    <PersistentForm action={submit} className="space-y-5 p-5">
       <input name="membershipId" type="hidden" value={current.membership_id} /><input name="divisionId" type="hidden" value={current.division_id} />
       <input name="assignmentId" type="hidden" value={current.id} /><input name="reference" type="hidden" value={reference} />
       {flags.map((f) => <input key={f.id} name="flagId" type="hidden" value={f.id} />)}
@@ -77,6 +78,6 @@ export function ClassificationWatchMoveDialog({ flags, choices, current, current
         <button type="button" disabled={pending} onClick={onClose} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button>
         <button disabled={pending || !classificationId || eligibility.loading || Boolean(eligibility.error) || blocked} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-60">{pending ? <LoaderCircle size={16} className="animate-spin" /> : <Check size={16} />}{pending ? "Saving..." : "Approve & move"}</button>
       </footer>
-    </form>
+    </PersistentForm>
   </dialog>;
 }

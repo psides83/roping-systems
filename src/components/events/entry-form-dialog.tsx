@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle, Plus, UserPlus, X } from "lucide-react";
 import {
@@ -144,14 +145,14 @@ export function EntryFormDialog({
               </div>
             </div>
             {mode === "member" ? (
-              <form action={existingFormAction} aria-busy={pending} className="space-y-4 p-5">
+              <PersistentForm action={existingFormAction} aria-busy={pending} className="space-y-4 p-5">
                 <RoperPicker ropers={ropers} selected={personId} onSelect={id => { setPersonId(id); setSelectionCount(0); }} />
                 <CommonEntryFields key={personId} onSelectionCount={setSelectionCount} eventId={eventId} personId={personId} divisions={divisions} manager={manager} />
                 <FormMessage state={state} />
                 <FormFooter pending={pending} disabled={!personId || !selectionCount} close={() => setOpen(false)} />
-              </form>
+              </PersistentForm>
             ) : (
-              <form action={guestFormAction} aria-busy={pending} className="space-y-4 p-5">
+              <PersistentForm action={guestFormAction} aria-busy={pending} className="space-y-4 p-5">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-semibold">
                     First name
@@ -222,7 +223,7 @@ export function EntryFormDialog({
                   disabled={!selectionCount}
                   close={() => setOpen(false)}
                 />
-              </form>
+              </PersistentForm>
             )}
           </section>
         </div>

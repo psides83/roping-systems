@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import {
@@ -122,7 +123,7 @@ export function AddEventRopingDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={action} className="grid gap-4 p-5 sm:grid-cols-2">
+            <PersistentForm action={action} className="grid gap-4 p-5 sm:grid-cols-2">
               <label className="text-sm font-semibold sm:col-span-2">
                 Roping template
                 <select
@@ -286,7 +287,7 @@ export function AddEventRopingDialog({
                   {pending ? "Adding..." : "Add roping"}
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}
@@ -355,7 +356,7 @@ export function RemoveEventRopingDialog({
               {entryCount === 1 ? "entry" : "entries"}, fees, draws, and pending
               runs from the event. The removal remains in the changelog.
             </p>
-            <form action={action} className="mt-4">
+            <PersistentForm action={action} className="mt-4">
               <label className="text-sm font-semibold">
                 Reason
                 <input
@@ -385,7 +386,7 @@ export function RemoveEventRopingDialog({
                   {pending ? "Removing..." : "Remove roping"}
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

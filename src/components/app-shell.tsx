@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { NavigationGuardLink as Link } from "nextjs-nav-guard";
 import { usePathname } from "next/navigation";
 import {
@@ -164,7 +165,7 @@ export function AppShell({
                 </p>
               ) : (
                 producers.map((producer) => (
-                  <form action={switchProducer} key={producer.id}>
+                  <PersistentForm action={switchProducer} key={producer.id}>
                     <input
                       type="hidden"
                       name="producerId"
@@ -183,7 +184,7 @@ export function AppShell({
                         <span>Active</span>
                       ) : null}
                     </button>
-                  </form>
+                  </PersistentForm>
                 ))
               )}
               {platformOwner ? <Link
@@ -248,11 +249,11 @@ export function AppShell({
             </div>
           </div>
           {!demo ? (
-            <form action={signOut}>
+            <PersistentForm action={signOut}>
               <button className="mt-1 h-9 w-full rounded-md px-3 text-left text-xs font-semibold brand-muted hover:bg-white/[0.07] brand-hover">
                 Sign out
               </button>
-            </form>
+            </PersistentForm>
           ) : null}
         </div>
       </aside>

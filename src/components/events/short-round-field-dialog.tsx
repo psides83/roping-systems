@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import {
   LockKeyhole,
@@ -151,7 +152,7 @@ export function ShortRoundFieldDialog({
             </div>
 
             {selected ? (
-              <form
+              <PersistentForm
                 action={changeFormAction}
                 className="space-y-3 border-t border-[#e7ebe8] bg-[#fafbfa] p-5"
               >
@@ -199,7 +200,7 @@ export function ShortRoundFieldDialog({
                     Confirm change
                   </button>
                 </div>
-              </form>
+              </PersistentForm>
             ) : (
               <footer className="flex items-center justify-between gap-3 border-t border-[#e7ebe8] p-5">
                 <p className="text-xs text-[#758078]">
@@ -207,7 +208,7 @@ export function ShortRoundFieldDialog({
                   changelog.
                 </p>
                 {!locked ? (
-                  <form action={lockFormAction}>
+                  <PersistentForm action={lockFormAction}>
                     <button
                       disabled={!editable || !finalists.length || lockPending}
                       className="flex h-9 shrink-0 items-center gap-2 rounded-md brand-primary-fill px-3 text-xs font-semibold text-white disabled:opacity-50"
@@ -219,7 +220,7 @@ export function ShortRoundFieldDialog({
                       )}
                       Lock field
                     </button>
-                  </form>
+                  </PersistentForm>
                 ) : null}
                 {lockState.message && !lockState.success ? (
                   <p className="text-xs text-rose-700">{lockState.message}</p>

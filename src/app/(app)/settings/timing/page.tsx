@@ -1,3 +1,4 @@
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { Clock3 } from "lucide-react";
 import { updateDivisionTiming } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
@@ -67,7 +68,7 @@ export default async function TimingSettingsPage() {
         </header>
         <div className="divide-y divide-[#edf0ee]">
           {divisions.map((division) => (
-            <form
+            <PersistentForm
               action={updateDivisionTiming}
               key={division.id}
               className="grid gap-4 px-5 py-5 md:grid-cols-[minmax(180px,1fr)_150px_220px_auto] md:items-end"
@@ -112,7 +113,7 @@ export default async function TimingSettingsPage() {
               >
                 Save
               </button>
-            </form>
+            </PersistentForm>
           ))}
           {!divisions.length ? (
             <p className="p-8 text-center text-sm text-[#758078]">

@@ -1,3 +1,4 @@
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -497,7 +498,7 @@ export default async function MemberDetailPage({
                 </p>
               </div>
               <div className="flex gap-2">
-                <form action={dismissClassificationReview}>
+                <PersistentForm action={dismissClassificationReview}>
                   <input type="hidden" name="membershipId" value={member.id} />
                   <input type="hidden" name="reviewId" value={review.id} />
                   <button
@@ -506,7 +507,7 @@ export default async function MemberDetailPage({
                   >
                     Dismiss
                   </button>
-                </form>
+                </PersistentForm>
                 <AssignClassificationDialog
                   membershipId={member.id}
                   divisions={options}

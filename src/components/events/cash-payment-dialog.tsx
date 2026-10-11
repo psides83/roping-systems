@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -104,7 +105,7 @@ export function CashPaymentDialog({
             </header>
             <div className="space-y-5 p-5">
               {balanceDueCents ? (
-                <form action={action} className="space-y-4">
+                <PersistentForm action={action} className="space-y-4">
                   <div className="rounded-md bg-[#f3f5f4] px-4 py-3">
                     <p className="text-xs font-semibold text-[#66716b]">
                       Remaining balance
@@ -169,7 +170,7 @@ export function CashPaymentDialog({
                       Record payment
                     </button>
                   </div>
-                </form>
+                </PersistentForm>
               ) : (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
                   Balance paid in full
@@ -264,7 +265,7 @@ function VoidPaymentForm({
     );
 
   return (
-    <form
+    <PersistentForm
       action={action}
       className="w-full rounded-md border border-rose-200 bg-rose-50 p-3"
     >
@@ -298,6 +299,6 @@ function VoidPaymentForm({
           {pending ? "Voiding..." : "Confirm void"}
         </button>
       </div>
-    </form>
+    </PersistentForm>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { NumberStepper } from "@/components/ui/number-stepper";
 import { useProducerFeatures } from "@/components/settings/producer-features-context";
 import { featureEnabled } from "@/lib/producer-features";
@@ -192,7 +193,7 @@ function EventTemplateDialog({
           description="Define reusable format, entry, timing, fee, and payout defaults for the selected divisions."
           close={() => setOpen(false)}
         >
-          <form ref={formRef} action={action} className="space-y-4 p-5">
+          <PersistentForm ref={formRef} action={action} className="space-y-4 p-5">
             <input type="hidden" name="disciplineId" value={availableDivisionIds[0] ?? ""} />
             <input
               type="hidden"
@@ -519,7 +520,7 @@ function EventTemplateDialog({
                 {isEditing ? "Save changes" : "Create template"}
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>
@@ -678,7 +679,7 @@ function FeeDialog({
           description="Configure a required fee, optional insurance, side pot, or another event option."
           close={() => setOpen(false)}
         >
-          <form action={action} className="space-y-4 p-5">
+          <PersistentForm action={action} className="space-y-4 p-5">
             <input type="hidden" name="divisionId" value={divisionId} />
             {fee ? <input type="hidden" name="feeId" value={fee.id} /> : null}
             <div className="grid gap-4 sm:grid-cols-2">
@@ -862,7 +863,7 @@ function FeeDialog({
                 {isEditing ? "Save changes" : "Add"}
               </button>
             </div>
-          </form>
+          </PersistentForm>
         </DialogFrame>
       ) : null}
     </>

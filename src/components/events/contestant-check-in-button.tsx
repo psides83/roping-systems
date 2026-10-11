@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState } from "react";
 import { Check, LoaderCircle, Undo2 } from "lucide-react";
 import {
@@ -29,7 +30,7 @@ export function ContestantCheckInButton({
   );
 
   return (
-    <form action={action} className="flex flex-col items-start gap-1.5">
+    <PersistentForm action={action} className="flex flex-col items-start gap-1.5">
       <input
         type="hidden"
         name="checkedIn"
@@ -57,6 +58,6 @@ export function ContestantCheckInButton({
           {state.message}
         </span>
       ) : null}
-    </form>
+    </PersistentForm>
   );
 }

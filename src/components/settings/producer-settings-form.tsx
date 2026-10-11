@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState } from "react";
 import { LoaderCircle, Save } from "lucide-react";
 import {
@@ -32,7 +33,7 @@ export function ProducerSettingsForm({
     FormData
   >(updateProducerSettings, {});
   return (
-    <form action={action} className="space-y-5">
+    <PersistentForm action={action} className="space-y-5">
       <div className="flex flex-wrap items-end gap-4">
         <label className="block w-80 max-w-full text-sm font-semibold">
           Producer name
@@ -134,6 +135,6 @@ export function ProducerSettingsForm({
           Only owners and administrators can change producer settings.
         </p>
       )}
-    </form>
+    </PersistentForm>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useRef, useState, type ReactNode } from "react";
 import { stockChargeAction } from "@/app/(app)/events/[eventId]/stock-charge/actions";
 import { formatCurrency, formatPhoneNumber } from "@/lib/utils";
@@ -25,7 +26,7 @@ function Action({ eventId, operation, label, children }: { eventId: string; oper
     if (result.success) request.current = null;
     return result;
   }, {});
-  return <form action={action} className="flex flex-wrap items-end gap-3">{children}<button className={button} disabled={pending}>{pending ? "Saving..." : label}</button>{state.message && <p role="status" className={`w-full text-sm ${state.success ? "text-emerald-700" : "text-red-700"}`}>{state.message}</p>}</form>;
+  return <PersistentForm action={action} className="flex flex-wrap items-end gap-3">{children}<button className={button} disabled={pending}>{pending ? "Saving..." : label}</button>{state.message && <p role="status" className={`w-full text-sm ${state.success ? "text-emerald-700" : "text-red-700"}`}>{state.message}</p>}</PersistentForm>;
 }
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="flex min-w-0 flex-col gap-1 text-sm font-semibold">{label}{children}</label>; }
 

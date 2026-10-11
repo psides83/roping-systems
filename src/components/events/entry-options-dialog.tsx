@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Settings2, X } from "lucide-react";
 import {
@@ -106,7 +107,7 @@ export function EntryOptionsDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={action} className="space-y-4 p-5">
+            <PersistentForm action={action} className="space-y-4 p-5">
               <fieldset>
                 <legend className="text-sm font-semibold">
                   Included with this entry
@@ -182,7 +183,7 @@ export function EntryOptionsDialog({
                   Save options
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

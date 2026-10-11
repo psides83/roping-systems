@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LoaderCircle, X } from "lucide-react";
 import { saveMemberFine, type FineOperation } from "@/app/(app)/members/[membershipId]/fine-actions";
@@ -39,7 +40,7 @@ export function MemberFineDialog({ membershipId, target, ropings, onClose }: {
     onClick={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}
     className="fixed inset-0 m-auto max-h-[90dvh] w-[min(94vw,560px)] overflow-y-auto rounded-lg border border-[#dfe4e1] bg-white p-0 text-[#19231d] shadow-xl backdrop:bg-black/40">
     <header className="flex items-start justify-between gap-4 border-b border-[#dfe4e1] p-5"><div><h2 id="fine-dialog-title" className="text-lg font-bold">{titles[target.operation]}</h2>{target.fine ? <p className="mt-1 text-sm text-[#66716b]">Balance {formatCurrency(balance)}</p> : null}</div><button type="button" disabled={pending} onClick={onClose} aria-label="Close" title="Close" className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#eef1ef]"><X size={20} /></button></header>
-    <form action={submit} className="space-y-5 p-5">
+    <PersistentForm action={submit} className="space-y-5 p-5">
       {target.transactionId ? <input type="hidden" name="transactionId" value={target.transactionId} /> : null}
       {target.exceptionId ? <input type="hidden" name="exceptionId" value={target.exceptionId} /> : null}
       {showAmount ? <label className="grid justify-items-start gap-2 text-sm font-semibold">Amount ($)<input autoFocus name="amount" type="number" required min="0.01" step="0.01" max={target.fine ? (balance / 100).toFixed(2) : undefined} defaultValue={target.fine ? (balance / 100).toFixed(2) : undefined} className={`${input} w-40`} /></label> : null}
@@ -49,6 +50,6 @@ export function MemberFineDialog({ membershipId, target, ropings, onClose }: {
       <label className="grid justify-items-start gap-2 text-sm font-semibold">Reason<textarea autoFocus={!showAmount} name="reason" required minLength={5} maxLength={2000} defaultValue={target.operation === "payment" ? "Cash payment received" : ""} rows={3} className="w-96 max-w-full rounded-md border border-[#ccd4d0] p-3 text-sm" /></label>
       {error ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       <footer className="flex justify-end gap-2 border-t border-[#dfe4e1] pt-4"><button type="button" disabled={pending} onClick={onClose} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button><button disabled={pending} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-60">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}{pending ? "Saving..." : "Save"}</button></footer>
-    </form>
+    </PersistentForm>
   </dialog>;
 }

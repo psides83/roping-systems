@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useState } from "react";
 import { CheckCheck, LoaderCircle, X } from "lucide-react";
 import { FinalReadinessCheck } from "./final-readiness-check";
@@ -20,10 +21,10 @@ export function EventOfficialResultsControl({ eventId, status, resultStatus, ena
         <div className="flex items-center justify-between gap-3"><h2 id={`official-title-${eventId}`} className="font-bold">Publish official results?</h2><button type="button" aria-label="Close" disabled={pending} onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center"><X size={18} /></button></div>
         <p className="my-3 text-sm text-[#66716b]">This completes the event and marks every roping&apos;s results official.</p>
         <FinalReadinessCheck eventId={eventId} onReady={setReady} />
-        <form action={action} aria-busy={pending} className="mt-4">
+        <PersistentForm action={action} aria-busy={pending} className="mt-4">
           {state.message ? <p role={state.success ? "status" : "alert"} className="mb-3 text-sm text-rose-700">{state.message}</p> : null}
           <div className="flex justify-end gap-2"><button type="button" disabled={pending} onClick={() => setOpen(false)} className="h-10 rounded-md border px-4 text-sm font-semibold">Cancel</button><button disabled={pending || !ready} className="flex min-h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-50">{pending ? <LoaderCircle size={16} className="animate-spin" /> : <CheckCheck size={16} />}{pending ? "Publishing..." : "Publish official results"}</button></div>
-        </form>
+        </PersistentForm>
       </section>
     </div> : null}
   </>;

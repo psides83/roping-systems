@@ -21,7 +21,7 @@ test("producer menu opens for mouse hover, retains touch click, and closes outsi
     if (id.includes("producer-features-context")) return { useProducerFeatures: () => ({}) };
     if (id.includes("producer-features")) return { featureEnabled: () => true };
     if (id.startsWith("@/")) return new Proxy({}, { get: () => () => null });
-    return require(id);
+    return (id === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(id));
   }, loaded.exports);
   const tree = loaded.exports.AppShell({ children: null, platformOwner: true });
   function find(node, predicate) {

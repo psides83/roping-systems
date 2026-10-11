@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { Copy, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import {
@@ -211,7 +212,7 @@ export function PayoutScheduleDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={action} className="space-y-5 p-5">
+            <PersistentForm action={action} className="space-y-5 p-5">
               <input
                 type="hidden"
                 name="scheduleId"
@@ -581,7 +582,7 @@ export function PayoutScheduleDialog({
                   Save schedule
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { EntryLabel } from "./entry-label";
 import { ContestantContactDialog } from "./contestant-contact-dialog";
 
@@ -422,7 +423,7 @@ function PaymentForm({
   );
 
   return (
-    <form action={action} onSubmit={(event) => {
+    <PersistentForm action={action} onSubmit={(event) => {
       const form = new FormData(event.currentTarget);
       const status = paymentLabels[String(form.get("paymentStatus")) as PaymentStatus];
       if (!window.confirm(`Set all entries for ${contestant.name} to ${status}? This changes payment status, not a cash receipt.`)) event.preventDefault();
@@ -467,6 +468,6 @@ function PaymentForm({
           {state.message}
         </p>
       ) : null}
-    </form>
+    </PersistentForm>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useState, useRef, useTransition } from "react";
 import { CheckCircle2, LoaderCircle, Minus, Plus } from "lucide-react";
 import {
@@ -100,7 +101,7 @@ export function OnlineEntryForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} aria-busy={pending} className="space-y-7" onChange={(event) => {
+    <PersistentForm ref={formRef} action={formAction} aria-busy={pending} className="space-y-7" onChange={(event) => {
       const name = event.target instanceof HTMLInputElement ? event.target.name : null;
       if (name === "firstName" || name === "lastName") setSelectedRecord(null);
       if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); setEligibility([]); setEligibilityMessage(""); setFeeContext(null); }
@@ -443,7 +444,7 @@ export function OnlineEntryForm({
           eligibility and collect payment in person.
         </p>
       </div>
-    </form>
+    </PersistentForm>
   );
 }
 

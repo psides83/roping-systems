@@ -1,5 +1,6 @@
 "use client";
 
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useState } from "react";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import {
@@ -68,7 +69,7 @@ export function MembershipFormBuilder({
   }
 
   return (
-    <form action={action} className="space-y-6">
+    <PersistentForm action={action} className="space-y-6">
       <input
         type="hidden"
         name="standardFields"
@@ -239,7 +240,7 @@ export function MembershipFormBuilder({
           Save membership form
         </button>
       </div>
-    </form>
+    </PersistentForm>
   );
 }
 

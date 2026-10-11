@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useTimingControl } from "./timing-control";
 import { EntryLabel } from "./entry-label";
 
@@ -104,7 +105,7 @@ export function RunCorrectionDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={formAction} onSubmit={(event) => { if (!canEdit) event.preventDefault(); }} className="space-y-4 p-5">
+            <PersistentForm action={formAction} onSubmit={(event) => { if (!canEdit) event.preventDefault(); }} className="space-y-4 p-5">
               {!canEdit ? <p role="alert" className="text-sm font-semibold text-rose-700">Timing control was lost. Your correction has not been saved.</p> : null}
               <input type="hidden" name="timingSessionId" value={timing.sessionId} />
               <input type="hidden" name="runId" value={run.id} />
@@ -199,7 +200,7 @@ export function RunCorrectionDialog({
                   Save correction
                 </button>
               </div>
-            </form>
+            </PersistentForm>
           </section>
         </div>
       ) : null}

@@ -1,3 +1,4 @@
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { updateClassRoundOrdering } from "@/app/(app)/events/[eventId]/actions";
 import type { RoundOrderMethod } from "@/types/domain";
 
@@ -27,7 +28,7 @@ export function ClassRoundOrderingForm({
   if (roundCount < 2) return null;
 
   return (
-    <form
+    <PersistentForm
       action={updateClassRoundOrdering.bind(null, eventId)}
       className={`${embedded ? "" : "mt-4 border-t border-[#e7ebe8] pt-4"} grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end`}
     >
@@ -62,7 +63,7 @@ export function ClassRoundOrderingForm({
         Custom order creates a starting list on the live desk, then lets you
         move contestants and save the final order.
       </p>
-    </form>
+    </PersistentForm>
   );
 }
 

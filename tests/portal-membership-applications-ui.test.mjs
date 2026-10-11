@@ -17,7 +17,7 @@ function load(file, name, state = {}) {
     if (id === "@/lib/membership-forms") return { getStandardMembershipField };
     if (id === "@/components/ui/phone-input") return { PhoneInput: ({ defaultValue, name }) => React.createElement("input", { name, defaultValue }) };
     if (id.endsWith("private-receipt-code")) return { PrivateReceiptCode: ({ code }) => React.createElement("textarea", { readOnly: true, value: code }) };
-    return require(id);
+    return id === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(id);
   }, loaded, loaded.exports);
   return loaded.exports[name];
 }

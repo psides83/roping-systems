@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import { Plus, Pencil, Save } from "lucide-react";
 import { savePenalty } from "@/app/(app)/settings/timing/penalty-actions";
@@ -32,7 +33,7 @@ function PenaltyForm({ rule, divisions, classifications, onClose }: {
   const [ageMode, setAgeMode] = useState(rule?.age_mode ?? "all");
   useEffect(() => { if (state.success) onClose(); }, [state.success, onClose]);
   const field = "mt-1 block h-10 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-normal";
-  return <form action={action} className="disclosure-content space-y-4 border-y border-[#dfe4e1] bg-[#f7f8f7] p-5">
+  return <PersistentForm action={action} className="disclosure-content space-y-4 border-y border-[#dfe4e1] bg-[#f7f8f7] p-5">
     <input type="hidden" name="id" value={rule?.id ?? ""} />
     <div className="flex flex-wrap gap-4">
       <label className="text-sm font-semibold">Name<input name="name" defaultValue={rule?.name} required maxLength={80} className={field} /></label>
@@ -56,5 +57,5 @@ function PenaltyForm({ rule, divisions, classifications, onClose }: {
     {state.error ? <p role="alert" className="text-sm text-red-700">{state.error}</p> : null}
     <div className="flex gap-3"><button disabled={pending} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold disabled:opacity-50"><Save size={15} />{pending ? "Saving…" : "Save penalty"}</button>
       <button type="button" onClick={onClose} className="px-3 text-sm font-semibold">Cancel</button></div>
-  </form>;
+  </PersistentForm>;
 }

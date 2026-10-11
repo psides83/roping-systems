@@ -1,4 +1,5 @@
 "use client";
+import { PersistentForm } from "@/components/ui/persistent-form";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Check, X } from "lucide-react";
@@ -14,7 +15,7 @@ export function ReviewMembershipApplication({ id, kind, membershipId, members, r
   const value = (key: string) => typeof responses[key] === "string" ? responses[key] as string : "";
   const input = "mt-2 block h-10 w-56 max-w-full rounded-md border border-[#ccd4d0] px-3 text-sm";
   if (state.success) return <p role="status" className="mt-4 text-sm font-semibold text-emerald-700">Review saved.{state.membershipId && <Link href={`/members/${state.membershipId}`} className="ml-2 underline">View member</Link>}</p>;
-  return <form action={action} className="mt-5 space-y-4 border-t border-[#edf0ee] pt-4" aria-busy={pending}>
+  return <PersistentForm action={action} className="mt-5 space-y-4 border-t border-[#edf0ee] pt-4" aria-busy={pending}>
     <input type="hidden" name="applicationId" value={id} />
     <fieldset disabled={pending} className="space-y-4">
       {kind === "renewal" ? <><input type="hidden" name="membershipId" value={membershipId ?? ""} /><p className="text-xs font-semibold">Renewal · existing member record</p></> : <div className="flex flex-wrap items-end gap-3">
@@ -35,5 +36,5 @@ export function ReviewMembershipApplication({ id, kind, membershipId, members, r
       </div>
     </fieldset>
     {state.error && <p role="alert" className="text-sm text-rose-700">{state.error}</p>}
-  </form>;
+  </PersistentForm>;
 }

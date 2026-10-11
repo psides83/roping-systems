@@ -17,7 +17,7 @@ function renderAssignments(status, canEdit = true) {
     if (name === "react") return { ...React, useState: () => [stateIndex++ === 0 ? status : "", () => {}], useActionState: () => [{}, () => {}, false] };
     if (name === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
     if (name.endsWith("/assignment-actions")) return { assignFinalsPosition: () => {} };
-    return require(name);
+    return (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name));
   };
   new Function("require", "module", "exports", source)(imports, compiled, compiled.exports);
   return renderToStaticMarkup(React.createElement(compiled.exports.FinalsPositionAssignments, { seasonId: "season", endsOn: "2027-04-30", canEdit,
