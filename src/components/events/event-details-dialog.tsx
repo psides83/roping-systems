@@ -1,7 +1,7 @@
 "use client";
 import { NumberStepper } from "@/components/ui/number-stepper";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { LoaderCircle, Pencil, X } from "lucide-react";
 import {
@@ -118,7 +118,12 @@ export function EventDetailsDialog({
                 <X size={18} />
               </button>
             </header>
-            <form action={formAction} className="space-y-5 p-5">
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              if (pending) return;
+              const data = new FormData(event.currentTarget);
+              startTransition(() => formAction(data));
+            }} className="space-y-5 p-5">
               <input
                 type="hidden"
                 name="eventFeeId"

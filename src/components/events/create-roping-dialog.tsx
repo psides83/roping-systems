@@ -1,7 +1,7 @@
 "use client";
 import { NumberStepper } from "@/components/ui/number-stepper";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import {
   CalendarPlus,
   CircleDollarSign,
@@ -160,7 +160,12 @@ export function CreateRopingDialog({
               </button>
             </header>
 
-            <form key={formKey} action={action} className="space-y-6 p-5">
+            <form key={formKey} onSubmit={(event) => {
+              event.preventDefault();
+              if (pending) return;
+              const data = new FormData(event.currentTarget);
+              startTransition(() => action(data));
+            }} className="space-y-6 p-5">
               {isDuplicate ? (
                 <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-900">
                   The event setup is copied for review. Entries, payments,
