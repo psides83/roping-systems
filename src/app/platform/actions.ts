@@ -27,11 +27,13 @@ export async function managePlatformProducer(id: string, _state: PlatformFormSta
   if (!parsed.success) return { message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
   const db = await createClient();
   const { operation, ...payload } = parsed.data;
-  const { error } = await db.rpc("manage_platform_producer", { target_producer: id, operation, payload: { ...payload, confirmed: formData.get("confirmed") === "on" } });
+  const { error } = await db.rpc("manage_platform_producer", { target_producer: id, operation, payload: { ...payload, confirmed: formData.get("confirmed") === "on", archiveHideEvents: formData.get("archiveHideEvents") === "on" } });
   if (error) return { message: error.message };
   revalidatePath("/platform");
+  revalidatePath("/platform/overview");
   revalidatePath(`/platform/producers/${id}`);
   revalidatePath("/dashboard", "layout");
+  revalidatePath("/public", "layout");
   return { success: true, message: "Saved." };
 }
 

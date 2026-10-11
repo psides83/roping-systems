@@ -52,6 +52,7 @@ export function PlatformAccountForm({ detail }: { detail: PlatformDetail }) {
       <p className="text-sm font-semibold">{accountAvailable(status) ? "This enables access for the producer's existing staff." : "This blocks the producer workspace and staff changes, including existing signed-in sessions. Records are retained."}</p>
       <label className="block text-sm font-semibold">Reason for status change<textarea name="reason" required minLength={5} maxLength={1000} rows={3} className="mt-1 block w-full max-w-xl rounded-md border border-[#ccd4d0] bg-white p-3 text-sm font-normal" /></label>
       {!accountAvailable(status) && <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="confirmed" required className="mt-1 h-4 w-4 shrink-0" />I understand that staff access will be blocked.</label>}
+      {status === "archived" && <div className="space-y-2"><label className="flex items-start gap-2 text-sm"><input type="checkbox" name="archiveHideEvents" defaultChecked className="mt-1 h-4 w-4 shrink-0" />Unpublish this producer’s events when archiving.</label><p className="text-xs leading-5 text-[#66716b]">Leave unchecked to keep published schedules and results visible. Rules, bulletins, and producer information stay public. Restoring the account will not republish hidden events.</p></div>}
     </div>}
     {!changingStatus && <input type="hidden" name="reason" value="" />}
     <Feedback state={state} /><Submit pending={pending}>Save account</Submit>

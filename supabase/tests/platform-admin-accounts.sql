@@ -24,7 +24,7 @@ begin
   if not blocked then raise exception 'Customer read private directory'; end if;
   blocked:=false;
   begin perform public.manage_platform_producer(tenant,'note','{"body":"Unauthorized"}'); exception when others then
-    if sqlerrm<>'Platform owner access is required' then raise; end if; blocked:=true;
+    if sqlerrm not in ('Platform owner access is required','Platform owner two-factor verification is required') then raise; end if; blocked:=true;
   end;
   if not blocked then raise exception 'Customer changed platform notes'; end if;
   perform set_config('request.jwt.claim.sub',owner_id::text,true);
