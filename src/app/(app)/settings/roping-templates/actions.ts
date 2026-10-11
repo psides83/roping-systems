@@ -22,6 +22,7 @@ const divisionSchema = z.object({
     .transform(formatProperNoun),
   description: z.string().trim(),
   disciplineId: z.uuid(),
+  availableDivisionIds: z.array(z.uuid()).min(1, "Select at least one division."),
   maximumEntries: z.union([
     z.literal(""),
     z.coerce.number().int().min(1).max(100),
@@ -127,7 +128,7 @@ async function getManagerContext() {
 
 async function validateHandicapRuleRelationships(
   context: NonNullable<Awaited<ReturnType<typeof getManagerContext>>>,
-  disciplineId: string,
+  disciplineIds: string[],
   rules: z.infer<typeof handicapRulesSchema>,
 ) {
   const classificationIds = rules.map((rule) => rule.classificationId);
@@ -136,9 +137,9 @@ async function validateHandicapRuleRelationships(
 
   const { data, error } = await context.supabase
     .from("classifications")
-    .select("id, handicap_time_credit_seconds:handicap_adjustment_seconds")
+    .select("id, division_id, handicap_time_credit_seconds:handicap_adjustment_seconds")
     .eq("producer_id", context.producer.id)
-    .eq("division_id", disciplineId)
+    .in("division_id", disciplineIds)
     .eq("is_active", true)
     .in("id", classificationIds);
   if (
@@ -149,6 +150,8 @@ async function validateHandicapRuleRelationships(
     )
   )
     return { error: "One or more handicap classifications are unavailable." };
+  if (disciplineIds.some((id) => !data.some((classification) => classification.division_id === id)))
+    return { error: "Select at least one handicap classification for each available division." };
   const adjustments = new Map(
     data.map((classification) => [
       classification.id,
@@ -167,7 +170,7 @@ export async function createDivision(
   _state: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  const parsed = divisionSchema.safeParse(Object.fromEntries(formData));
+  const parsed = divisionSchema.safeParse({ ...Object.fromEntries(formData), availableDivisionIds: formData.getAll("availableDivisionIds") });
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
   if (!context)
@@ -198,7 +201,7 @@ export async function createDivision(
   if (parsed.data.competitionFormat === "handicap" && handicapRules.success) {
     const handicapResult = await validateHandicapRuleRelationships(
       context,
-      parsed.data.disciplineId,
+      parsed.data.availableDivisionIds,
       handicapRules.data,
     );
     if (handicapResult.error) return { message: handicapResult.error };
@@ -215,6 +218,7 @@ export async function createDivision(
     name: parsed.data.name,
     description: parsed.data.description || null,
     division_id: parsed.data.disciplineId,
+    available_division_ids: parsed.data.availableDivisionIds,
     classification_id: null,
     max_entries_per_roper:
       parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,
@@ -287,7 +291,7 @@ export async function updateDivision(
   _state: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  const parsed = updateDivisionSchema.safeParse(Object.fromEntries(formData));
+  const parsed = updateDivisionSchema.safeParse({ ...Object.fromEntries(formData), availableDivisionIds: formData.getAll("availableDivisionIds") });
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
   const context = await getManagerContext();
   if (!context)
@@ -314,7 +318,7 @@ export async function updateDivision(
   if (parsed.data.competitionFormat === "handicap" && handicapRules.success) {
     const handicapResult = await validateHandicapRuleRelationships(
       context,
-      parsed.data.disciplineId,
+      parsed.data.availableDivisionIds,
       handicapRules.data,
     );
     if (handicapResult.error) return { message: handicapResult.error };
@@ -332,6 +336,7 @@ export async function updateDivision(
       name: parsed.data.name,
       description: parsed.data.description || null,
       division_id: parsed.data.disciplineId,
+      available_division_ids: parsed.data.availableDivisionIds,
       classification_id: null,
       max_entries_per_roper:
         parsed.data.maximumEntries === "" ? null : parsed.data.maximumEntries,

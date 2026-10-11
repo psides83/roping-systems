@@ -9,7 +9,7 @@ export interface ProducerSetupSnapshot {
   divisions: { id: string; name: string; active: boolean }[];
   classifications: { id: string; divisionId: string; active: boolean; standalone: boolean; adjustment: number | null }[];
   templates: {
-    id: string; name: string; divisionId: string; active: boolean; format: string;
+    id: string; name: string; divisionId: string; availableDivisionIds?: string[]; active: boolean; format: string;
     scheduleId: string | null; shortRound: boolean; handicapIds: string[];
     fees: { title: string; kind: string; contributes: boolean; scheduleId: string | null; fundId: string | null }[];
   }[];
@@ -40,15 +40,15 @@ export function producerSetupChecklist(data: ProducerSetupSnapshot): ChecklistIt
   const usedSchedules = new Set<string>();
 
   for (const division of divisions) {
-    if (!templates.some((template) => template.divisionId === division.id)) templateIssues.push({ message: `${division.name}: add an active roping template.`, href: templatesHref });
+    if (!templates.some((template) => (template.availableDivisionIds ?? [template.divisionId]).includes(division.id))) templateIssues.push({ message: `${division.name}: add an active roping template.`, href: templatesHref });
   }
   for (const template of templates) {
     const add = (message: string, href = templatesHref) => templateIssues.push({ message: `${template.name}: ${message}`, href });
-    if (!divisionIds.has(template.divisionId)) add("its division is inactive or missing.", classificationsHref);
-    if (template.format === "standard" && !classes.some((item) => item.divisionId === template.divisionId && item.standalone)) add("add an active standalone classification for this division.", classificationsHref);
+    if ((template.availableDivisionIds ?? [template.divisionId]).some((id) => !divisionIds.has(id))) add("its division is inactive or missing.", classificationsHref);
+    if (template.format === "standard" && !classes.some((item) => (template.availableDivisionIds ?? [template.divisionId]).includes(item.divisionId) && item.standalone)) add("add an active standalone classification for this division.", classificationsHref);
     if (template.format === "handicap") {
       if (!template.handicapIds.length) add("select eligible member classifications.");
-      else if (template.handicapIds.some((id) => !classes.some((item) => item.id === id && item.divisionId === template.divisionId && item.adjustment !== null))) add("an eligible classification is inactive, missing, or has no Handicap time offset.", classificationsHref);
+      else if (template.handicapIds.some((id) => !classes.some((item) => item.id === id && (template.availableDivisionIds ?? [template.divisionId]).includes(item.divisionId) && item.adjustment !== null))) add("an eligible classification is inactive, missing, or has no Handicap time offset.", classificationsHref);
     }
     function checkSchedule(id: string | null, label: string, required: boolean, main: boolean) {
       if (!id) {
@@ -70,7 +70,7 @@ export function producerSetupChecklist(data: ProducerSetupSnapshot): ChecklistIt
     }
   }
   const classIssues = divisions.flatMap((division) => {
-    const formats = templates.filter((template) => template.divisionId === division.id).map((template) => template.format);
+    const formats = templates.filter((template) => (template.availableDivisionIds ?? [template.divisionId]).includes(division.id)).map((template) => template.format);
     // Open 4D competitions do not require individual member classifications.
     const needsClasses = !formats.length || formats.some((format) => format !== "four_d");
     return needsClasses && !classes.some((item) => item.divisionId === division.id)
@@ -95,7 +95,7 @@ export function producerSetupChecklist(data: ProducerSetupSnapshot): ChecklistIt
     return ([ ["Standings", rule.standingsCutoff], ["Attendance", rule.attendanceCutoff] ] as const).flatMap(([label, cutoff]) => cutoff && (cutoff < season.first || cutoff > season.last)
       ? [{ message: `${rule.name}: ${label.toLowerCase()} cutoff is outside its season dates.`, href: qualificationsHref }] : []);
   });
-  const hasClassRequirement = divisions.some((division) => !templates.some((template) => template.divisionId === division.id) || templates.some((template) => template.divisionId === division.id && template.format !== "four_d"));
+  const hasClassRequirement = divisions.some((division) => !templates.some((template) => (template.availableDivisionIds ?? [template.divisionId]).includes(division.id)) || templates.some((template) => (template.availableDivisionIds ?? [template.divisionId]).includes(division.id) && template.format !== "four_d"));
   const noSchedules = schedules.size === 0;
   const payoutStatus: SetupStatus = payoutIssues.length || (!noSchedules && !completeSchedules.length) ? "attention" : noSchedules ? "optional" : "ready";
   return [

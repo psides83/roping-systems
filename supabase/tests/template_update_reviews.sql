@@ -24,7 +24,7 @@ begin
   select producer_id,user_id into strict producer_uuid,manager_uuid from public.producer_staff where role='owner' limit 1;
   perform set_config('request.jwt.claim.sub',manager_uuid::text,true);
   select t.id,t.main_round_count into strict template_uuid,round_count from public.roping_templates t
-    where t.producer_id=producer_uuid and t.is_active and t.competition_format='standard'
+    where t.producer_id=producer_uuid and t.is_active and t.competition_format='standard' and t.payout_schedule_id is not null
       and exists (select 1 from public.classifications c where c.division_id=t.division_id and c.eligibility_type='open' and c.is_active and c.standalone_enabled)
       and exists (select 1 from public.roping_template_fees f where f.roping_template_id=t.id and f.is_required)
       and exists (select 1 from public.roping_template_fees f where f.roping_template_id=t.id and not f.is_required)
@@ -77,7 +77,7 @@ begin
     from public.event_ropings where id=roping_uuid) then raise exception 'Schedule or classification was changed'; end if;
   if not exists(select 1 from public.producer_audit_log where entity_id=roping_uuid and actor_user_id=manager_uuid and after_data->>'change_reason'='Updated from roping template') then
     raise exception 'Template update was not attributed in the audit log'; end if;
-  update public.payout_schedules set default_added_money_cents=default_added_money_cents+2500
+  update public.payout_schedules set go_rounds_basis_points=go_rounds_basis_points+100, aggregate_basis_points=aggregate_basis_points-100
     where id=(select payout_schedule_id from public.roping_templates where id=template_uuid);
   review:=public.get_event_template_reviews(event_uuid)->0;
   if not exists(select 1 from jsonb_array_elements(review->'changes') c where c->>'section'='payouts') then

@@ -36,6 +36,7 @@ export interface EventTemplate {
   id: string;
   name: string;
   disciplineId: string | null;
+  availableDivisionIds?: string[];
   divisionName: string;
   competitionFormat: CompetitionFormat;
   handicapRules: Record<string, number>;
@@ -53,6 +54,7 @@ export type ScheduleType = "fixed" | "tentative" | "follows_previous";
 
 export interface ScheduledOccurrenceDraft {
   templateId: string;
+  divisionId?: string;
   classificationId: string;
   scheduledDate: string;
   scheduleType: ScheduleType;
@@ -133,7 +135,7 @@ export function ScheduledClassFields({
   );
   const selectedTemplateHasClassifications = classifications.some(
     (classification) =>
-      classification.disciplineId === selectedTemplate?.disciplineId &&
+      (selectedTemplate?.availableDivisionIds ?? [selectedTemplate?.disciplineId]).includes(classification.disciplineId) &&
       (selectedTemplate?.competitionFormat === "handicap"
         ? selectedTemplate.handicapRules[classification.id] !== undefined
         : classification.standaloneEnabled),
@@ -144,6 +146,7 @@ export function ScheduledClassFields({
       JSON.stringify(
         occurrences.map((occurrence) => ({
           templateId: occurrence.templateId,
+          divisionId: occurrence.divisionId ?? classifications.find((item) => item.id === occurrence.classificationId)?.disciplineId ?? templates.find((item) => item.id === occurrence.templateId)?.disciplineId,
           classificationId: occurrence.classificationId,
           scheduledDate: occurrence.scheduledDate,
           scheduleType: occurrence.scheduleType,
@@ -181,28 +184,30 @@ export function ScheduledClassFields({
           ),
         })),
       ),
-    [occurrences, templates],
+    [occurrences, templates, classifications],
   );
 
   function addOccurrence() {
     if (!selectedTemplateId) return;
     const template = templates.find((item) => item.id === selectedTemplateId);
     if (!template) return;
-    const templateClassifications = classifications.filter(
+    const availableClassifications = classifications.filter(
       (classification) =>
-        classification.disciplineId === template.disciplineId &&
+        (template.availableDivisionIds ?? [template.disciplineId]).includes(classification.disciplineId) &&
         (template.competitionFormat === "handicap"
           ? template.handicapRules[classification.id] !== undefined
           : classification.standaloneEnabled),
     );
-    const defaultClassification = templateClassifications[0];
+    const defaultClassification = availableClassifications.find((item) => item.disciplineId === template.disciplineId) ?? availableClassifications[0];
     if (!defaultClassification) return;
+    const templateClassifications = availableClassifications.filter((item) => item.disciplineId === defaultClassification.disciplineId);
     const occurrenceKey = newKey();
     setOccurrences((current) => [
       ...current,
       {
         key: occurrenceKey,
         templateId: selectedTemplateId,
+        divisionId: defaultClassification.disciplineId,
         classificationId:
           template.competitionFormat === "handicap"
             ? ""
@@ -261,7 +266,7 @@ export function ScheduledClassFields({
   }
 
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <input type="hidden" name="classOccurrences" value={serialized} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -314,11 +319,13 @@ export function ScheduledClassFields({
             (item) => item.id === occurrence.templateId,
           );
           if (!template) return null;
+          const divisionIds = template.availableDivisionIds ?? (template.disciplineId ? [template.disciplineId] : []);
+          const divisionId = occurrence.divisionId ?? classifications.find((item) => item.id === occurrence.classificationId)?.disciplineId ?? template.disciplineId;
+          const divisionName = classifications.find((item) => item.disciplineId === divisionId)?.divisionName ?? template.divisionName;
           const eligible = classifications.filter(
             (classification) =>
-              classification.disciplineId === template.disciplineId &&
-              (template.competitionFormat === "handicap" ||
-                classification.standaloneEnabled),
+              classification.disciplineId === divisionId &&
+              (template.competitionFormat === "handicap" ? template.handicapRules[classification.id] !== undefined : classification.standaloneEnabled),
           );
           const selectedClassification =
             template.competitionFormat === "handicap"
@@ -388,7 +395,7 @@ export function ScheduledClassFields({
                         "Choose classification")}
                   </h4>
                   <p className="mt-0.5 text-xs text-[#758078]">
-                    {template.divisionName} · {template.name} ·{" "}
+                    {divisionName} · {template.name} ·{" "}
                     {template.competitionFormat === "four_d"
                       ? "4D"
                       : template.competitionFormat === "handicap"
@@ -442,6 +449,15 @@ export function ScheduledClassFields({
                 id={`scheduled-roping-${occurrence.key}`}
                 className={collapsed ? "hidden" : "space-y-4 p-4"}
               >
+                {divisionIds.length > 1 ? <Field label="Division">
+                  <select value={divisionId ?? ""} onChange={(event) => {
+                    const nextDivision = event.target.value;
+                    const nextClasses = classifications.filter((item) => item.disciplineId === nextDivision && (template.competitionFormat === "handicap" ? template.handicapRules[item.id] !== undefined : item.standaloneEnabled));
+                    updateOccurrence(occurrence.key, { divisionId: nextDivision, classificationId: template.competitionFormat === "handicap" ? "" : nextClasses[0]?.id ?? "", incentiveRules: template.competitionFormat === "handicap" ? Object.fromEntries(nextClasses.map((item) => [item.id, String(template.handicapRules[item.id])])) : {} });
+                  }} className="h-10 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm">
+                    {divisionIds.map((id) => <option key={id} value={id}>{classifications.find((item) => item.disciplineId === id)?.divisionName ?? "Division"}</option>)}
+                  </select>
+                </Field> : null}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {template.competitionFormat === "handicap" ? (
                     <Field label="Roping offering">
@@ -867,7 +883,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-xs font-semibold text-[#66716b]">
+    <label className="block min-w-0 text-xs font-semibold text-[#66716b]">
       <span className="mb-1 block">{label}</span>
       {children}
     </label>

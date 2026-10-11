@@ -314,13 +314,13 @@ async function getEvent(
       .is("event_roping_id", null),
     supabase
       .from("roping_templates")
-      .select("id, name, division_id, competition_format, divisions(name)")
+      .select("id, name, division_id, available_division_ids, competition_format, handicap_rules, divisions(name)")
       .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("sort_order"),
     supabase
       .from("classifications")
-      .select("id, name, division_id, standalone_enabled")
+      .select("id, name, division_id, standalone_enabled, divisions(name)")
       .eq("producer_id", producer.id)
       .eq("is_active", true)
       .order("rank", { ascending: false }),
@@ -628,6 +628,9 @@ async function getEvent(
         id: template.id,
         name: template.name,
         disciplineId: template.division_id,
+        availableDivisionIds: template.available_division_ids,
+        handicapClassificationIds: ((template.handicap_rules ?? []) as Array<{ classificationId: string }>).map((rule) => rule.classificationId),
+        divisionNames: Object.fromEntries((classificationData ?? []).map((classification) => [classification.division_id, (classification.divisions as unknown as { name: string } | null)?.name ?? "Division"])),
         divisionName:
           (template.divisions as unknown as { name: string } | null)?.name ??
           "Unassigned division",

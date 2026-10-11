@@ -87,14 +87,14 @@ async function getRopingData() {
     supabase
       .from("events")
       .select(
-        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, venue_city, venue_state, venue_postal_code, arena_count, publication_state, is_public, status, result_status, event_ropings(id, roping_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, main_round_count, cattle_draw_enabled, arena_name, incentive_enabled, male_eligibility_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_division_id, male_minimum_classification_number, event_roping_handicap_adjustments(classification_id, handicap_time_credit_seconds)), entries:roping_entries(id)",
+        "id, title, slug, starts_at, ends_at, entries_open_at, entries_close_at, venue_name, address, venue_city, venue_state, venue_postal_code, arena_count, publication_state, is_public, status, result_status, event_ropings(id, division_id, roping_template_id, classification_id, competition_format, starts_at, scheduled_date, schedule_type, schedule_note, sort_order, main_round_count, cattle_draw_enabled, arena_name, incentive_enabled, male_eligibility_policy, male_youth_maximum_age, male_senior_minimum_age, male_classification_division_id, male_minimum_classification_number, event_roping_handicap_adjustments(classification_id, handicap_time_credit_seconds)), entries:roping_entries(id)",
       )
       .eq("producer_id", producer.id)
       .order("starts_at", { ascending: false }),
     supabase
       .from("roping_templates")
       .select(
-        "id, name, division_id, competition_format, handicap_rules, main_round_count, cattle_draw_enabled, divisions(name), roping_template_fees(id, title, amount_cents, is_required)",
+        "id, name, division_id, available_division_ids, competition_format, handicap_rules, main_round_count, cattle_draw_enabled, divisions(name), roping_template_fees(id, title, amount_cents, is_required)",
       )
       .eq("producer_id", producer.id)
       .eq("is_active", true)
@@ -143,6 +143,7 @@ async function getRopingData() {
     id: division.id,
     name: division.name,
     disciplineId: division.division_id,
+    availableDivisionIds: division.available_division_ids,
     competitionFormat: division.competition_format,
     numberOfRuns: division.main_round_count,
     cattleDrawEnabled: division.cattle_draw_enabled,

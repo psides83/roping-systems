@@ -80,6 +80,7 @@ export interface DivisionTemplateSummary {
   allowGuests: boolean;
   isActive: boolean;
   disciplineId?: string | null;
+  availableDivisionIds?: string[];
   divisionName?: string;
   timerCount?: number;
   timerResolution?: "average" | "best" | "longest";

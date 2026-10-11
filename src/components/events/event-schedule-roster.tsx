@@ -14,6 +14,9 @@ export interface AddRopingTemplate {
   name: string;
   divisionName: string;
   disciplineId: string;
+  availableDivisionIds?: string[];
+  handicapClassificationIds?: string[];
+  divisionNames?: Record<string, string>;
   competitionFormat: CompetitionFormat;
 }
 
@@ -50,13 +53,16 @@ export function AddEventRopingDialog({
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [classificationId, setClassificationId] = useState("");
+  const [chosenDivision, setChosenDivision] = useState("");
   const [scheduleType, setScheduleType] = useState("fixed");
   const [scheduledDate, setScheduledDate] = useState(defaultDate);
   const [arenaName, setArenaName] = useState("Arena 1");
   const template = templates.find((item) => item.id === templateId);
+  const divisionIds = template?.availableDivisionIds ?? (template ? [template.disciplineId] : []);
+  const selectedDivision = divisionIds.includes(chosenDivision) ? chosenDivision : divisionIds[0];
   const eligible = classifications.filter(
     (item) =>
-      item.disciplineId === template?.disciplineId && item.standaloneEnabled,
+      item.disciplineId === selectedDivision && (template?.competitionFormat === "handicap" ? template.handicapClassificationIds?.includes(item.id) : item.standaloneEnabled),
   );
   const actionWithId = addRopingToEvent.bind(null, eventId);
   const [state, action, pending] = useActionState<
@@ -125,6 +131,7 @@ export function AddEventRopingDialog({
                   onChange={(event) => {
                     setTemplateId(event.target.value);
                     setClassificationId("");
+                    setChosenDivision("");
                   }}
                   className="mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3"
                 >
@@ -135,8 +142,15 @@ export function AddEventRopingDialog({
                   ))}
                 </select>
               </label>
+              {divisionIds.length > 1 ? (
+                <label className="text-sm font-semibold">Division
+                  <select value={selectedDivision} onChange={(event) => { setChosenDivision(event.target.value); setClassificationId(""); }} className="mt-2 h-11 rounded-md border border-[#ccd4d0] bg-white px-3">
+                    {divisionIds.map((id) => <option key={id} value={id}>{template?.divisionNames?.[id] ?? template?.divisionName}</option>)}
+                  </select>
+                </label>
+              ) : null}
               {template?.competitionFormat === "handicap" ? (
-                <input type="hidden" name="classificationId" value="" />
+                <input type="hidden" name="classificationId" value={selectedClassification} />
               ) : (
                 <label className="text-sm font-semibold">
                   Classification
@@ -265,8 +279,7 @@ export function AddEventRopingDialog({
                 <button
                   disabled={
                     pending ||
-                    (!eligible.length &&
-                      template?.competitionFormat !== "handicap")
+                    !eligible.length
                   }
                   className="h-10 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                 >

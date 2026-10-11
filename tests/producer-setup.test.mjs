@@ -41,6 +41,19 @@ test("4D-only divisions do not require standalone member classifications", () =>
   assert.equal(item(data, "classifications").status, "optional");
   assert.equal(item(data, "templates").status, "ready");
 });
+test("shared templates satisfy setup for all selected divisions without duplicate templates", () => {
+  const data = complete();
+  data.divisions.push({ id: "ba", name: "Breakaway", active: true });
+  data.classifications.push({ id: "open-ba", divisionId: "ba", active: true, standalone: true, adjustment: null });
+  data.templates[0].availableDivisionIds = ["td", "ba"];
+  assert.equal(item(data, "templates").status, "ready");
+  assert.equal(item(data, "classifications").status, "ready");
+  assert.match(item(data, "templates").detail, /1 active template/);
+  data.templates[0].format = "handicap";
+  data.templates[0].handicapIds = ["11.5", "open-ba"];
+  data.classifications.forEach((classification) => { classification.adjustment = -0.25; });
+  assert.equal(item(data, "templates").status, "ready");
+});
 test("Handicap classifications accept zero and signed offsets without standalone use", () => {
   const data = complete();
   data.templates[0].format = "handicap";

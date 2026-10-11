@@ -56,6 +56,7 @@ const incentiveRuleSchema = z.object({
 
 const classOccurrenceSchema = z.object({
   templateId: z.uuid(),
+  divisionId: z.uuid().optional(),
   classificationId: z.union([z.literal(""), z.uuid()]),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduleType: z.enum(["fixed", "tentative", "follows_previous"]),
@@ -201,7 +202,7 @@ export async function createRoping(
     await supabase
       .from("roping_templates")
       .select(
-        "id, main_round_count, cattle_draw_enabled, competition_format, handicap_rules",
+        "id, division_id, available_division_ids, main_round_count, cattle_draw_enabled, competition_format, handicap_rules",
       )
       .eq("producer_id", producer.id)
       .eq("is_active", true)
@@ -231,7 +232,7 @@ export async function createRoping(
     standaloneClassificationIds.length
       ? await supabase
           .from("classifications")
-          .select("id")
+          .select("id, division_id")
           .eq("producer_id", producer.id)
           .eq("is_active", true)
           .eq("standalone_enabled", true)
@@ -260,7 +261,7 @@ export async function createRoping(
     handicapClassificationIds.length
       ? await supabase
           .from("classifications")
-          .select("id, handicap_time_credit_seconds:handicap_adjustment_seconds")
+          .select("id, division_id, handicap_time_credit_seconds:handicap_adjustment_seconds")
           .eq("producer_id", producer.id)
           .eq("is_active", true)
           .in("id", handicapClassificationIds)
@@ -276,11 +277,13 @@ export async function createRoping(
   );
   const configuredOccurrences = classOccurrences.map((occurrence) => {
     const template = settingsByTemplate.get(occurrence.templateId)!;
+    const divisionId = occurrence.divisionId ?? standaloneClassifications.find((item) => item.id === occurrence.classificationId)?.division_id ?? template.division_id;
     const selectedHandicapIds = (
       (template.handicap_rules ?? []) as Array<{ classificationId: string }>
-    ).map((rule) => rule.classificationId);
+    ).map((rule) => rule.classificationId).filter((id) => handicapClassifications.some((item) => item.id === id && item.division_id === divisionId));
     return {
       ...occurrence,
+      divisionId,
       roundCount: template.main_round_count,
       cattleDrawEnabled: template.cattle_draw_enabled,
       incentiveEnabled:
@@ -299,6 +302,10 @@ export async function createRoping(
             })),
     };
   });
+  if (configuredOccurrences.some((occurrence) => {
+    const template = settingsByTemplate.get(occurrence.templateId)!;
+    return !template.available_division_ids.includes(occurrence.divisionId) || (template.competition_format === "handicap" ? !occurrence.incentiveRules.length : !standaloneClassifications.some((item) => item.id === occurrence.classificationId && item.division_id === occurrence.divisionId));
+  })) return { message: "Choose an eligible classification in an available template division for every roping." };
   if (
     configuredOccurrences.some((occurrence) =>
       occurrence.incentiveRules.some(

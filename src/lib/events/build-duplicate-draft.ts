@@ -4,6 +4,7 @@ import type { ResultStatus, RopingStatus, RopingSummary } from "@/types/domain";
 interface ScheduledRopingRecord {
   id: string;
   roping_template_id: string | null;
+  division_id?: string;
   classification_id: string | null;
   competition_format: "standard" | "handicap" | "four_d";
   starts_at: string | null;
@@ -140,6 +141,7 @@ export function buildDuplicableRopingSummary({
           : "",
         occurrences: scheduledRopings.map((scheduled) => ({
           templateId: scheduled.roping_template_id!,
+          divisionId: scheduled.division_id,
           classificationId: scheduled.classification_id ?? "",
           scheduledDate: scheduled.scheduled_date,
           scheduleType: scheduled.schedule_type,

@@ -133,8 +133,8 @@ function EventTemplateDialog({
 }) {
   const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
-  const [disciplineId, setDisciplineId] = useState(
-    template?.disciplineId ?? divisions[0]?.id ?? "",
+  const [availableDivisionIds, setAvailableDivisionIds] = useState<string[]>(
+    template?.availableDivisionIds ?? [template?.disciplineId ?? divisions[0]?.id ?? ""].filter(Boolean),
   );
   const [competitionFormat, setCompetitionFormat] = useState<CompetitionFormat>(
     template?.competitionFormat ?? "standard",
@@ -155,7 +155,7 @@ function EventTemplateDialog({
   const isEditing = Boolean(template);
   const handicapClassifications = classifications.filter(
     (classification) =>
-      classification.disciplineId === disciplineId &&
+      availableDivisionIds.includes(classification.disciplineId) &&
       classification.handicapAdjustmentSeconds !== null,
   );
   useEffect(() => {
@@ -189,10 +189,11 @@ function EventTemplateDialog({
           title={
             isEditing ? `Edit ${template?.name}` : "Create roping template"
           }
-          description="Define reusable format, entry, timing, fee, and payout defaults for one division. Choose the classification when adding each roping to an event."
+          description="Define reusable format, entry, timing, fee, and payout defaults for the selected divisions."
           close={() => setOpen(false)}
         >
           <form ref={formRef} action={action} className="space-y-4 p-5">
+            <input type="hidden" name="disciplineId" value={availableDivisionIds[0] ?? ""} />
             <input
               type="hidden"
               name="handicapRules"
@@ -225,23 +226,10 @@ function EventTemplateDialog({
                 </span>
               ) : null}
             </label>
-            <label className="block text-sm font-semibold">
-              Division
-              <select
-                name="disciplineId"
-                value={disciplineId}
-                onChange={(event) => setDisciplineId(event.target.value)}
-                className={inputClass}
-                required
-              >
-                <option value="">Choose a division</option>
-                {divisions.map((division) => (
-                  <option key={division.id} value={division.id}>
-                    {division.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <fieldset className="space-y-2"><legend className="text-sm font-semibold">Available divisions</legend>
+              <div className="flex flex-wrap gap-x-6 gap-y-3">{divisions.map(division => <label key={division.id} className="flex min-h-10 items-center gap-2 text-sm font-semibold"><input type="checkbox" name="availableDivisionIds" value={division.id} checked={availableDivisionIds.includes(division.id)} onChange={event => setAvailableDivisionIds(current => event.target.checked ? [...current,division.id] : current.filter(id => id !== division.id))} className="h-4 w-4" />{division.name}</label>)}</div>
+              {state.errors?.availableDivisionIds && <p className="text-xs text-rose-700">{state.errors.availableDivisionIds[0]}</p>}
+            </fieldset>
             <label className="block text-sm font-semibold">
               Competition format
               <select
@@ -295,7 +283,7 @@ function EventTemplateDialog({
                         className="h-4 w-4 accent-[var(--brand-accent)]"
                       />
                       <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                        {classification.name}
+                        {availableDivisionIds.length > 1 ? `${divisions.find((division) => division.id === classification.disciplineId)?.name ?? "Division"} · ` : ""}{classification.name}
                       </span>
                       <span className="font-mono text-xs text-[#66716b]">
                         {classification.handicapAdjustmentSeconds !== null &&
