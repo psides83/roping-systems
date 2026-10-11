@@ -5,6 +5,7 @@ declare owner_id uuid; customer uuid:=gen_random_uuid(); created record; tenant 
 begin
   select id into strict owner_id from auth.users where lower(email)='psides83@hotmail.com';
   insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values(customer,'platform-customer-'||customer||'@example.com',now(),'{"first_name":"Sample","last_name":"Producer"}');
+  perform set_config('request.jwt.claims','{"aal":"aal2"}',true);
   perform set_config('request.jwt.claim.sub',owner_id::text,true);
   select * into created from public.provision_platform_producer('Platform account regression','platform-admin-'||gen_random_uuid(),'platform-customer-'||customer||'@example.com','Sample Producer','2545550101','pending');
   tenant:=created.producer_id;

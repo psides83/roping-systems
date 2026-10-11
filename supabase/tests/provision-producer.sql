@@ -13,6 +13,7 @@ begin
   exception when others then
     if sqlerrm <> 'Only the platform owner can create producers.' then raise; end if;
   end;
+  perform set_config('request.jwt.claims','{"aal":"aal2"}',true);
   perform set_config('request.jwt.claim.sub',platform_user::text,true);
   begin
     perform public.provision_producer('Invalid owner',tenant_slug,'invalid');

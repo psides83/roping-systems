@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { formatProperNoun } from "@/lib/utils";
-import { isPlatformOwner } from "@/lib/platform-access";
+import { isVerifiedPlatformOwner } from "@/lib/platform-access";
 import { sendStaffInvitation } from "@/lib/send-staff-invitation";
 
 export interface ProducerState {
@@ -34,7 +34,7 @@ export async function createProducer(
   _state: ProducerState,
   formData: FormData,
 ): Promise<ProducerState> {
-  if (!await isPlatformOwner()) return { message: "Only the platform owner can create producers." };
+  if (!await isVerifiedPlatformOwner()) return { message: "Platform owner two-factor verification is required." };
   const parsed = producerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors };
 

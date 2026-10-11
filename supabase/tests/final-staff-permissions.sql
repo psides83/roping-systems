@@ -26,6 +26,7 @@ begin
     order by e.created_at desc limit 1;
   select e.id into strict other_event from public.events e where e.producer_id=producer and e.id<>target_event_id order by e.id limit 1;
   select r.id into strict roping_id from public.event_ropings r where r.event_id=target_event_id order by r.id limit 1;
+  perform set_config('request.jwt.claims','{"aal":"aal2"}',true);
   perform set_config('request.jwt.claim.sub',platform_user::text,true);
   foreign_producer:=public.create_organization('Rollback permission isolation','permission-isolation-'||gen_random_uuid()::text);
   insert into public.events(producer_id,title,slug,starts_at,status)

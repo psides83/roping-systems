@@ -1,6 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import { isPlatformOwner } from "@/lib/platform-access";
+import { isPlatformOwner, isVerifiedPlatformOwner } from "@/lib/platform-access";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { PlatformDetail } from "@/lib/platform-admin";
@@ -11,6 +11,7 @@ export async function platformAdminClient() {
   const { data } = await db.auth.getClaims();
   if (!data?.claims) redirect("/auth/login?next=%2Fplatform");
   if (!await isPlatformOwner()) redirect("/dashboard");
+  if (!await isVerifiedPlatformOwner()) redirect("/auth/platform-security");
   return db;
 }
 

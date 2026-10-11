@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { isPlatformOwner } from "@/lib/platform-access";
+import { isVerifiedPlatformOwner } from "@/lib/platform-access";
 import { createClient } from "@/lib/supabase/server";
 import { accountStatuses, onboardingTasks } from "@/lib/platform-admin";
 import { formatProperNoun } from "@/lib/utils";
@@ -21,7 +21,7 @@ const operations = z.discriminatedUnion("operation", [
 ]);
 
 export async function managePlatformProducer(id: string, _state: PlatformFormState, formData: FormData): Promise<PlatformFormState> {
-  if (!await isPlatformOwner()) return { message: "Platform owner access is required." };
+  if (!await isVerifiedPlatformOwner()) return { message: "Verify your authenticator code before managing producer accounts." };
   if (!z.uuid().safeParse(id).success) return { message: "Producer account not found." };
   const parsed = operations.safeParse({ ...Object.fromEntries(formData), isPrimary: formData.get("isPrimary") === "on", done: formData.get("done") === "true" });
   if (!parsed.success) return { message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
@@ -43,7 +43,7 @@ const createSchema = z.object({
   contactPhone: phone, status: z.enum(["pending", "setup"]),
 });
 export async function createPlatformProducer(_state: PlatformFormState, formData: FormData): Promise<PlatformFormState> {
-  if (!await isPlatformOwner()) return { message: "Platform owner access is required." };
+  if (!await isVerifiedPlatformOwner()) return { message: "Verify your authenticator code before creating producer accounts." };
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
   const db = await createClient();
