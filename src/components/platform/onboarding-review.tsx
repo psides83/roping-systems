@@ -8,6 +8,11 @@ export function ProducerOnboardingReview({ detail }: { detail: PlatformDetail })
   const review = onboardingReview(detail);
   const base = `/platform/producers/${detail.producer.id}`;
   return <section className="space-y-6">
+    <section className="grid gap-4 border-y border-[#dfe4e1] py-4 sm:grid-cols-3">
+      <div><h2 className="text-sm font-bold">Initial contact</h2><p className="mt-1 break-words text-sm text-[#66716b]">{detail.contacts.find(contact => contact.is_primary && !contact.archived_at)?.name || "Record a primary contact"}</p><Link href={`${base}?tab=notes`} className="mt-2 inline-block text-xs underline">Contact notes & history</Link></div>
+      <div><h2 className="text-sm font-bold">Account approval</h2><p className="mt-1 text-sm text-[#66716b]">{detail.account.approved_at ? "Approval recorded" : "Approval not recorded"}</p><Link href={`${base}?tab=account`} className="mt-2 inline-block text-xs underline">Review approval & status</Link></div>
+      <div><h2 className="text-sm font-bold">Staff invitations</h2><p className="mt-1 text-sm text-[#66716b]">{detail.staff.length} staff with access · {detail.invitations.length} outstanding invitations</p>{detail.invitations.some(invitation => invitation.expired) && <p className="mt-1 text-xs text-amber-800">An invitation has expired.</p>}<Link href={`${base}?tab=contacts`} className="mt-2 inline-block text-xs underline">Review staff access</Link></div>
+    </section>
     <header className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Launch readiness</h2><span className="text-sm font-semibold">{review.reviewed} of {review.total} reviewed</span></div>
       <progress value={review.reviewed} max={review.total} aria-label="Onboarding reviews completed" className="block h-2 w-full accent-[#3146a8]" />
