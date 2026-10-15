@@ -62,7 +62,7 @@ function SponsorForm({sponsor,nextOrder,close}:{sponsor?:Sponsor;nextOrder:numbe
         if(objectUrl.current)URL.revokeObjectURL(objectUrl.current);
         objectUrl.current=file?URL.createObjectURL(file):null;setPreview(objectUrl.current ?? sponsor?.logoUrl ?? null);
       }}/></label><p className="mt-2 text-xs text-[#66716b]">PNG, JPEG or WebP · Up to 2 MB</p>{sponsor?.logoUrl && <label className="mt-2 flex min-h-10 items-center gap-2 text-sm"><input name="removeLogo" type="checkbox"/>Remove current logo</label>}</div></div>
-      <label className="grid justify-items-start gap-1 text-sm font-semibold">Display position<NumberStepper label="Display position" name="sortOrder" min={1} max={10000} defaultValue={sponsor?.sort_order ?? nextOrder} className="h-11 w-44"/></label>
+      <div className="grid justify-items-start gap-1 text-sm font-semibold">Display position<NumberStepper label="Display position" name="sortOrder" min={1} max={10000} defaultValue={sponsor?.sort_order ?? nextOrder} className="h-11 w-44"/></div>
       <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input name="isActive" type="checkbox" defaultChecked={sponsor?.is_active ?? true}/>Show on public pages</label>
     </fieldset>
     {(fileError || state.message) && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-800">{fileError || state.message}</p>}

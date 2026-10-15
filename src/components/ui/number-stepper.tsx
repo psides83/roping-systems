@@ -29,7 +29,7 @@ export function NumberStepper({ label, className, onChange, disabled, readOnly, 
   const button = "grid h-full w-11 place-items-center bg-[#f4f6f5] text-[#526059] transition-colors hover:bg-[#e5ebe7] hover:text-[#17201c] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-[var(--brand-accent)] disabled:cursor-not-allowed disabled:opacity-35";
   return <span className={cn("number-stepper rounded-md border border-[#ccd4d0] bg-white focus-within:border-[var(--brand-accent)]", className)}>
     <button type="button" aria-label={`Decrease ${label.toLowerCase()}`} title={`Decrease ${label.toLowerCase()}`} disabled={Boolean(unavailable || (current !== "" && props.min !== undefined && value - step < Number(props.min)))} onClick={() => adjust(-1)} className={cn(button, "rounded-l-[inherit] border-r border-[#dfe4e1]")}><Minus size={17} /></button>
-    <input {...props} ref={ref} type="number" inputMode={props.inputMode ?? "numeric"} disabled={disabled} readOnly={readOnly} onChange={(event) => { setTyped(event.target.value); onChange?.(event); }} />
+    <input {...props} aria-label={props["aria-label"] ?? label} ref={ref} type="number" inputMode={props.inputMode ?? "numeric"} disabled={disabled} readOnly={readOnly} onChange={(event) => { setTyped(event.target.value); onChange?.(event); }} />
     <button type="button" aria-label={`Increase ${label.toLowerCase()}`} title={`Increase ${label.toLowerCase()}`} disabled={Boolean(unavailable || (current !== "" && props.max !== undefined && value + step > Number(props.max)))} onClick={() => adjust(1)} className={cn(button, "rounded-r-[inherit] border-l border-[#dfe4e1]")}><Plus size={17} /></button>
   </span>;
 }

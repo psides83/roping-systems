@@ -153,7 +153,7 @@ export function ShortRoundFields({
                   className={`mt-1 ${inputClass}`}
                 />
               </label>
-              <label className="col-span-2 text-[10px] font-bold uppercase text-[#66716b] sm:col-span-1">
+              <div className="col-span-2 text-[10px] font-bold uppercase text-[#66716b] sm:col-span-1">
                 Come back
                 <NumberStepper label="Short-round comeback count"
                   min="1"
@@ -166,7 +166,7 @@ export function ShortRoundFields({
                   disabled={disabled}
                   className={`mt-1 ${inputClass}`}
                 />
-              </label>
+              </div>
               <button
                 type="button"
                 aria-label={`Remove comeback bracket ${index + 1}`}

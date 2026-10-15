@@ -267,6 +267,7 @@ export function EventDetailsDialog({
                 </p>
                 <div className="mt-3 max-w-48">
                   <Field
+                    as="div"
                     label="Number of arenas"
                     error={state.errors?.arenaCount?.[0]}
                   >
@@ -367,21 +368,23 @@ export function EventDetailsDialog({
 }
 
 function Field({
+  as: Tag = "label",
   label,
   error,
   children,
 }: {
+  as?: "label" | "div";
   label: string;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm font-semibold">
+    <Tag className="block text-sm font-semibold">
       {label}
       {children}
       {error ? (
         <span className="mt-1 block text-xs text-rose-700">{error}</span>
       ) : null}
-    </label>
+    </Tag>
   );
 }

@@ -45,3 +45,8 @@ test("Browser spinners are removed globally, especially from timer input and cor
     assert.match(source, /inputMode="decimal"/);
   }
 });
+
+test("numeric input has its own accessible name independently of the step buttons", () => {
+  assert.match(render({ defaultValue: 2 }), /<input[^>]*aria-label="Main rounds"/);
+  assert.match(render({ defaultValue: 2, "aria-label": "Arena count" }), /<input[^>]*aria-label="Arena count"/);
+});

@@ -295,7 +295,7 @@ function EventTemplateDialog({
             <fieldset className="space-y-4 rounded-md border border-[#dfe4e1] p-4"><legend className="px-1 text-base font-bold">2. Entries & rounds</legend>
             <ContextHelp title="Rounds, repeat entries, and attendance" guide="templates"><p>These settings work independently. A two-round roping with a maximum of two entries gives each accepted entry two main runs.</p><p>Count attendance once per roping, or once for each entry, according to your organization&apos;s rules.</p></ContextHelp>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-semibold">
+              <div className="block text-sm font-semibold">
                 Main rounds
                 <NumberStepper label="Main rounds"
                   name="numberOfRuns"
@@ -305,8 +305,8 @@ function EventTemplateDialog({
                   className={inputClass}
                   required
                 />
-              </label>
-              <label className="block text-sm font-semibold">
+              </div>
+              <div className="block text-sm font-semibold">
                 Maximum entries per contestant
                 <NumberStepper label="Maximum entries per contestant"
                   name="maximumEntries"
@@ -317,7 +317,7 @@ function EventTemplateDialog({
                   placeholder="No limit"
                 />
                 <span className="mt-2 block text-sm font-normal leading-6 text-[#66716b]">Applies to each contestant in this scheduled roping. Leave blank for no regular limit.</span>
-              </label>
+              </div>
               <label className="block text-sm font-semibold">
                 Member roping count
                 <select name="attendanceCountMode" defaultValue={template?.attendanceCountMode ?? "once_per_roping"} className={inputClass}>
@@ -338,7 +338,7 @@ function EventTemplateDialog({
             </fieldset>
             <fieldset className="space-y-4 rounded-md border border-[#dfe4e1] p-4"><legend className="px-1 text-base font-bold">3. Timing & order</legend>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-semibold">
+              <div className="block text-sm font-semibold">
                 Number of timers
                 <NumberStepper label="Number of timers"
                   name="timerCount"
@@ -348,7 +348,7 @@ function EventTemplateDialog({
                   className={inputClass}
                   required
                 />
-              </label>
+              </div>
               <label className="block text-sm font-semibold">
                 Official time uses
                 <select
@@ -361,7 +361,7 @@ function EventTemplateDialog({
                   <option value="longest">Longest timer</option>
                 </select>
               </label>
-              <label className="block text-sm font-semibold">
+              <div className="block text-sm font-semibold">
                 Minimum runs between entries
                 <NumberStepper label="Minimum runs between entries"
                   name="minimumRunsBetweenEntries"
@@ -371,7 +371,7 @@ function EventTemplateDialog({
                   className={inputClass}
                   required
                 />
-              </label>
+              </div>
             </div>
             <p className="text-sm leading-6 text-[#66716b]">Minimum runs between entries controls spacing for repeat contestants when building the draw. Review any spacing warnings before competition.</p>
             <div>

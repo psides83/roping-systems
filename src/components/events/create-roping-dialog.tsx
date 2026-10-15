@@ -223,7 +223,7 @@ export function CreateRopingDialog({
                       </span>
                     ) : null}
                   </label>
-                  <label className="block text-sm font-semibold">
+                  <div className="block text-sm font-semibold">
                     Number of arenas
                     <NumberStepper label="Number of arenas"
                       name="arenaCount"
@@ -236,7 +236,7 @@ export function CreateRopingDialog({
                       className={inputClass}
                       required
                     />
-                  </label>
+                  </div>
                 </div>
               </section>
 
