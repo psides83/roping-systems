@@ -93,6 +93,8 @@ export function ScheduledClassFields({
   eventEndDate,
   arenaCount,
   initialOccurrences = [],
+  heading = "Roping schedule",
+  description = "Add every actual roping in running order. A template may be used more than once.",
   error,
 }: {
   templates: EventTemplate[];
@@ -101,6 +103,8 @@ export function ScheduledClassFields({
   eventEndDate: string;
   arenaCount: number;
   initialOccurrences?: ScheduledOccurrenceDraft[];
+  heading?: string;
+  description?: string;
   error?: string;
 }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState(
@@ -268,16 +272,9 @@ export function ScheduledClassFields({
 
   return (
     <fieldset className="min-w-0">
+      <legend className="text-base font-bold">{heading}</legend>
       <input type="hidden" name="classOccurrences" value={serialized} />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <legend className="text-sm font-bold">Roping schedule</legend>
-          <p className="mt-1 text-xs text-[#758078]">
-            Add every actual roping in running order. A template may be used
-            more than once.
-          </p>
-        </div>
-      </div>
+      <p className="mt-1 text-sm leading-6 text-[#66716b]">{description}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-[#dfe4e1] bg-[#f7f8f7] p-3">
         <select

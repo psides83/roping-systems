@@ -50,3 +50,21 @@ test("mobile section navigation displays the active section and follows selected
   assert.deepEqual(navigated, ["/settings/setup"]);
   assert.equal(nodes(tree, node => node.props?.["aria-current"] === "page").length, 1);
 });
+
+test("dialog protects schedule changes stored in hidden fields without a change event", () => {
+  const form = {};
+  let schedule = "original", closed = 0, prompts = 0;
+  const { Dialog } = load("../src/components/ui/dialog.tsx", {
+    react: { useEffect() {}, useId: () => "dialog", useRef: value => ({ current: value instanceof Map ? new Map([[form, JSON.stringify([["classOccurrences", "original"]])]]) : value }) },
+  });
+  const previousWindow = globalThis.window, previousFormData = globalThis.FormData;
+  globalThis.window = { confirm: () => { prompts++; return false; } };
+  globalThis.FormData = class { *[Symbol.iterator]() { yield ["classOccurrences", schedule]; } };
+  try {
+    const tree = Dialog({ title: "Create event", description: "Schedule", onClose: () => closed++, children: null });
+    schedule = "reordered";
+    tree.props.onCancel({ preventDefault() {} });
+    assert.equal(prompts, 1);
+    assert.equal(closed, 0);
+  } finally { globalThis.window = previousWindow; globalThis.FormData = previousFormData; }
+});

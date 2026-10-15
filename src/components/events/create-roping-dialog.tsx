@@ -1,15 +1,14 @@
 "use client";
+import { Dialog } from "@/components/ui/dialog";
 import { ContextHelp } from "@/components/help/context-help";
 import { NumberStepper } from "@/components/ui/number-stepper";
 
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useId, useState } from "react";
 import {
-  CalendarPlus,
   CircleDollarSign,
   Copy,
   LoaderCircle,
   Plus,
-  X,
 } from "lucide-react";
 import {
   createRoping,
@@ -73,6 +72,7 @@ export function CreateRopingDialog({
   incentiveClassifications: IncentiveClassification[];
   initialValues?: RopingDraft;
 }) {
+  const slugHintId = useId();
   const isDuplicate = Boolean(initialValues);
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -87,6 +87,7 @@ export function CreateRopingDialog({
   const [entriesCloseAt, setEntriesCloseAt] = useState(
     initialValues?.entriesCloseAt ?? "",
   );
+  const [publicationState, setPublicationState] = useState(initialValues?.publicationState ?? "draft");
   const [arenaCount, setArenaCount] = useState(initialValues?.arenaCount ?? 1);
   const [state, action, pending] = useActionState(createRoping, initialState);
 
@@ -99,6 +100,7 @@ export function CreateRopingDialog({
     setEntriesOpenAt(initialValues?.entriesOpenAt ?? "");
     setEntriesCloseAt(initialValues?.entriesCloseAt ?? "");
     setArenaCount(initialValues?.arenaCount ?? 1);
+    setPublicationState(initialValues?.publicationState ?? "draft");
     setFormKey((current) => current + 1);
     setOpen(true);
   }
@@ -124,43 +126,9 @@ export function CreateRopingDialog({
         {isDuplicate ? "Duplicate event" : "Create event"}
       </button>
       {open ? (
-        <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
-          <button
-            aria-label="Close dialog"
-            className="absolute inset-0"
-            onClick={() => setOpen(false)}
-          />
-          <section
-            role="dialog"
-            aria-modal="true"
-            className="relative my-8 w-full max-w-4xl rounded-md bg-white shadow-2xl"
-          >
-            <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-bold">
-                  <CalendarPlus
-                    size={19}
-                    className="text-[var(--brand-accent-strong)]"
-                  />
-                  {isDuplicate
-                    ? "Duplicate roping event"
-                    : "Create roping event"}
-                </h2>
-                <p className="mt-1 text-sm text-[#66716b]">
-                  {isDuplicate
-                    ? `Review the copied setup from ${initialValues?.sourceTitle} before creating the new event.`
-                    : "Schedule the weekend, then add each actual roping in running order."}
-                </p>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]"
-              >
-                <X size={18} />
-              </button>
-            </header>
-
+        <Dialog wide title={isDuplicate ? "Duplicate event" : "Create event"}
+          description={isDuplicate ? `Review the copied setup from ${initialValues?.sourceTitle} before creating the new event.` : "Set the date and location, add your ropings, then choose who can see the event."}
+          busy={pending} onClose={() => setOpen(false)}>
             <form key={formKey} onSubmit={(event) => {
               event.preventDefault();
               if (pending) return;
@@ -176,8 +144,8 @@ export function CreateRopingDialog({
               ) : null}
               <section className="space-y-3">
                 <ContextHelp title="What am I creating?" guide="schedule-event"><p>An event is the full day or weekend. Each competition on its schedule is a roping copied from a reusable template. Saving an event, publishing it, and opening online entries are separate choices.</p></ContextHelp>
-                <h3 className="text-sm font-bold">Event details</h3>
-                <p className="mt-1 text-xs text-[#758078]">
+                <h3 className="text-base font-bold">1. Event details</h3>
+                <p className="mt-1 text-sm text-[#66716b]">
                   The event is the full day or weekend containing the scheduled
                   ropings below.
                 </p>
@@ -197,7 +165,7 @@ export function CreateRopingDialog({
                     />
                   </label>
                   <label className="block text-sm font-semibold">
-                    Public URL
+                    Public page address
                     <input
                       name="slug"
                       value={slug}
@@ -207,9 +175,11 @@ export function CreateRopingDialog({
                       }}
                       className={inputClass}
                       placeholder="fall-classic-weekend"
+                      aria-describedby={slugHintId}
                       required
                     />
                   </label>
+                  <p id={slugHintId} className="text-sm text-[#66716b] sm:col-span-2">The public page address is filled from the title. You can adjust it before creating the event.</p>
                   <label className="block text-sm font-semibold">
                     Event starts
                     <input
@@ -267,33 +237,11 @@ export function CreateRopingDialog({
                       required
                     />
                   </label>
-                  <label className="block text-sm font-semibold">
-                    Entries open
-                    <input
-                      name="entriesOpenAt"
-                      type="datetime-local"
-                      value={entriesOpenAt}
-                      onChange={(event) => setEntriesOpenAt(event.target.value)}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className="block text-sm font-semibold">
-                    Entries close
-                    <input
-                      name="entriesCloseAt"
-                      type="datetime-local"
-                      value={entriesCloseAt}
-                      onChange={(event) =>
-                        setEntriesCloseAt(event.target.value)
-                      }
-                      className={inputClass}
-                    />
-                  </label>
                 </div>
               </section>
 
               <section className="rounded-md border border-[#dfe4e1] p-4">
-                <h3 className="text-sm font-bold">Event location</h3>
+                <h3 className="text-base font-bold">2. Location</h3>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-semibold sm:col-span-2">
                     Venue
@@ -346,7 +294,10 @@ export function CreateRopingDialog({
                 </div>
               </section>
 
+              <section className="space-y-3">
               <ScheduledClassFields
+                heading="3. Roping schedule"
+                description="Add a template for each competition, then arrange the running order. A template can be used more than once. Its settings are copied into this event for you to review."
                 templates={divisions}
                 classifications={incentiveClassifications}
                 eventStartDate={startsAt.slice(0, 10)}
@@ -355,6 +306,8 @@ export function CreateRopingDialog({
                 initialOccurrences={initialValues?.occurrences}
                 error={state.errors?.classOccurrences?.[0]}
               />
+
+              </section>
 
               {!divisions.length ? (
                 <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -371,9 +324,9 @@ export function CreateRopingDialog({
                   />
                   <div>
                     <h3 className="text-sm font-bold">
-                      Once-per-contestant event charge
+                      4. Event charge (optional)
                     </h3>
-                    <p className="mt-1 text-xs leading-5 text-[#758078]">
+                    <p className="mt-1 text-sm leading-6 text-[#66716b]">
                       Charged once across the entire event, even when a roper
                       enters multiple ropings or days.
                     </p>
@@ -413,21 +366,54 @@ export function CreateRopingDialog({
               </section>
 
               <EventQualificationFields />
+              <section className="space-y-4 rounded-md border border-[#dfe4e1] p-4">
+                <div><h3 className="text-base font-bold">5. Visibility & online entries</h3><p className="mt-1 text-sm leading-6 text-[#66716b]">Publishing makes the event visible to the public. The entry dates below control when online entries are accepted.</p></div>
               <label className="block text-sm font-semibold">
-                Publication state
+                Public visibility
                 <select
                   name="publicationState"
-                  defaultValue={initialValues?.publicationState ?? "draft"}
+                  value={publicationState}
+                  onChange={(event) => setPublicationState(event.target.value as RopingDraft["publicationState"])}
                   className={inputClass}
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="unpublished">Unpublished</option>
+                  <option value="draft">Draft — hidden from the public</option>
+                  <option value="published">Published — visible to the public</option>
+                  <option value="unpublished">Unpublished — hidden from the public</option>
                 </select>
               </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-sm font-semibold">
+                    Entries open
+                    <input
+                      name="entriesOpenAt"
+                      type="datetime-local"
+                      value={entriesOpenAt}
+                      onChange={(event) => setEntriesOpenAt(event.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    Entries close
+                    <input
+                      name="entriesCloseAt"
+                      type="datetime-local"
+                      value={entriesCloseAt}
+                      onChange={(event) =>
+                        setEntriesCloseAt(event.target.value)
+                      }
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+                <p className="text-sm leading-6 text-[#66716b]">Entry dates are optional. You can review visibility and entry settings after creating the event.</p>
+              </section>
+              <div className="rounded-md bg-[#f4f6f5] p-4 text-sm leading-6">
+                <p className="font-bold">{publicationState === "published" ? "This event will be visible to the public." : "This event will stay hidden from the public."}</p>
+                <p className="text-[#526059]">{publicationState === "published" ? "Review the schedule and entry dates before creating it." : "Create it now, review the schedule, and publish when you are ready."}</p>
+              </div>
 
               {state.message ? (
-                <p
+                <p role={state.success ? "status" : "alert"}
                   className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
                 >
                   {state.message}
@@ -442,14 +428,15 @@ export function CreateRopingDialog({
               <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
-                  className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
+                  data-dialog-close
+                  disabled={pending}
+                  className="h-11 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={pending || !configured || !divisions.length}
-                  className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
+                  className="flex min-h-11 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {pending ? (
                     <LoaderCircle size={16} className="animate-spin" />
@@ -458,8 +445,7 @@ export function CreateRopingDialog({
                 </button>
               </div>
             </form>
-          </section>
-        </div>
+        </Dialog>
       ) : null}
     </>
   );

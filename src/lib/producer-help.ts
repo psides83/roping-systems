@@ -55,11 +55,11 @@ export const producerGuides: ProducerGuide[] = [
     before: "Have active templates and the classifications needed by their formats ready. Decide the event dates, venue, and number of arenas.",
     steps: [
       "Open Ropings and choose Create event. The event is the full day or weekend; each scheduled roping is a competition inside it.",
-      "Enter the event details and location. Set the online entry window if you plan to accept online requests.",
+      "Enter the event details and location. The public page address is filled from the event title and can be adjusted before saving.",
       "Add each actual roping from a template, choose its classification when required, and assign its date and arena. You can schedule the same template more than once.",
       "Choose a fixed start time or Follows previous. A follows roping needs an earlier roping in the same arena and day.",
       "Drag handles or use arrows to adjust running order. Inside the create-event form, submit the form to save the draft schedule. On a saved event, allowed reorder actions save automatically within the same day and arena.",
-      "Review event readiness and the public event information before opening entries or starting competition.",
+      "Review the optional event charge, public visibility, and online entry dates before choosing Create event. Draft events stay hidden until you publish them. Then review event readiness before opening entries or starting competition.",
     ],
     outcome: "The event has a saved schedule with clear dates, arenas, and running order. Reordering a saved schedule does not move a roping to another day or arena.",
     troubleshooting: "If a move is rejected, check the event status and any follows-previous dependency. Roping order cannot change after the event starts. Use the schedule editor for date or arena changes before competition.",
