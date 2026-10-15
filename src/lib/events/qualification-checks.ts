@@ -8,13 +8,13 @@ import { includeFinalsPositions } from "@/lib/finals-entry-eligibility";
 import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
 import { loadEffectiveRuleSet, buildRuleSetQualificationCheck } from "@/lib/events/rule-set-qualification";
 
-export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string, bonusEntries?: boolean) {
+export async function buildQualificationCheck(ropingId: string, seasonId: string, classKey: string, bonusEntries?: boolean, finalsOnly = false) {
   const producer = await getActiveProducer();
   if (!producer || (producer.role === "viewer" && !producer.eventManager)) throw new Error("Manager access is required.");
   const db = await createClient();
   const scope = await db.rpc("can_manage_event_roping", { target_roping: ropingId });
   if (scope.error || !scope.data) throw new Error("Management access for this roping is required.");
-  const ruleSet = await loadEffectiveRuleSet(ropingId, producer.id);
+  const ruleSet = finalsOnly ? null : await loadEffectiveRuleSet(ropingId, producer.id);
   if (ruleSet) return buildRuleSetQualificationCheck(ropingId, classKey, producer, ruleSet);
   const settings = await db.from("producers").select("standings_revision").eq("id", producer.id).single();
   const season = await db.from("producer_seasons").select("starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
@@ -30,7 +30,7 @@ export async function buildQualificationCheck(ropingId: string, seasonId: string
   const rows = includeFinalsPositions(standings, assigned, finals.profiles, classKey);
   const current = await db.from("roping_qualification_checks").select("bonus_entries_enabled").eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
   if (current.error) throw new Error("Unable to load bonus entry rules.");
-  const result = await db.rpc("save_roping_qualification_check_with_bonus", {
+  const result = await db.rpc(finalsOnly ? "save_finals_qualification_check" : "save_roping_qualification_check_with_bonus", {
     target_roping_id: ropingId, target_season_id: seasonId, target_class_key: classKey,
     expected_revision: settings.data.standings_revision, target_standings: rows,
     target_rule_updated_at: rule.data.updated_at,

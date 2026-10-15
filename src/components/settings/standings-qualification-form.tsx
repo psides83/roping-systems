@@ -14,8 +14,8 @@ export function StandingsQualificationForm({ season, classId, rule, canEdit }: {
   return <PersistentForm action={action} className="space-y-5 border-t border-[#dfe4e1] pt-5">
     <input type="hidden" name="season" value={season.id} /><input type="hidden" name="class" value={classId} />
     <fieldset disabled={!canEdit || pending} className="space-y-5">
-      <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="enabled" checked={enabled} onChange={event => setEnabled(event.target.checked)} />Qualification requirements</label>
-      <p className="text-sm leading-6 text-[#526059]">{enabled ? "Requirements apply to the selected season and classification after saving. Leave Top places blank for no rank limit." : "Saving with requirements unchecked removes this season and classification’s standings requirements."}</p>
+      <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="enabled" checked={enabled} onChange={event => setEnabled(event.target.checked)} />Finals qualification requirements</label>
+      <p className="text-sm leading-6 text-[#526059]">{enabled ? "Finals requirements apply to the selected season and classification after saving. Leave Top places blank for no rank limit." : "Saving with requirements unchecked removes this season and classification’s finals requirements."}</p>
       <div className="flex flex-wrap gap-4">
         <label className="text-sm font-semibold">Top places<input name="topPlaces" type="number" min={1} max={10000} defaultValue={rule?.top_places ?? ""} placeholder="No placing limit" className={input} /></label>
         <label className="text-sm font-semibold">Minimum ropings<input name="minimumRopings" type="number" min={0} max={10000} defaultValue={rule?.minimum_ropings ?? 0} required className={input} /></label>

@@ -1,5 +1,5 @@
 export type RequirementMatch = "all" | "any";
-export type QualificationOverride = "inherit" | "none" | "custom";
+export type QualificationOverride = "inherit" | "none" | "custom" | "finals";
 
 export function qualificationCutoffText(rule: { cutoff_on: string | null; attendance_cutoff_on?: string | null }) {
   return `Standings through ${rule.cutoff_on ?? "season end"} · Attendance through ${rule.attendance_cutoff_on ?? "season end"}`;
@@ -33,5 +33,5 @@ export function matchesQualificationRuleSet(
 }
 
 export function effectiveQualificationRuleSet(eventRuleId: string | null, mode: QualificationOverride, ropingRuleId: string | null) {
-  return mode === "none" ? null : mode === "custom" ? ropingRuleId : eventRuleId;
+  return mode === "none" || mode === "finals" ? null : mode === "custom" ? ropingRuleId : eventRuleId;
 }

@@ -11,6 +11,7 @@ import { loadAssignedFinalsTotals } from "@/lib/events/finals-assignment-data";
 import { qualificationNoticeText } from "@/lib/events/qualification-notice";
 import { formatCurrency } from "@/lib/utils";
 import { reviewFinalsEntry, qualificationCheckIsCurrent } from "@/lib/finals-entry-review";
+import { RopingQualificationDialog } from "@/components/events/roping-qualification-dialog";
 import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
 import { loadEffectiveRuleSet } from "@/lib/events/rule-set-qualification";
 import { QualificationRefreshButton } from "@/components/events/qualification-refresh-button";
@@ -44,8 +45,8 @@ export default async function QualificationPage({ params, searchParams }: PagePr
     <h1 className="text-2xl font-bold">{title} · Entry review</h1><p>{ruleSet ? `Qualification required: ${ruleSet.name}. Refresh qualification information before accepting entries.` : "This roping has no qualification requirements."}</p>
     {ruleSet && canManage && <QualificationRefreshButton ropingId={ropingId} />}
     {ruleSet && outlookClassKey && <StaffFinalsOutlook producer={producer} ropingId={ropingId} classKey={outlookClassKey} rule={ruleSet} normalEntries={roping.data.max_entries_per_roper} />}
-    {editable && <QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable />}
-    <Link href="/settings/standings" className="inline-block text-sm font-semibold underline">Class qualification settings</Link></section>;
+    {editable && <div className="flex flex-wrap gap-2"><QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable /><RopingQualificationDialog ropingId={ropingId} name={title} editable required={false} /></div>}
+    <Link href="/settings/standings" className="inline-block text-sm font-semibold underline">Finals Qualifications</Link></section>;
   const { season_id: seasonId, class_key: classKey } = check.data;
   const season = await db.from("producer_seasons").select("name,starts_on,ends_on").eq("id", seasonId).eq("producer_id", producer.id).single();
   const rule = ruleSet ? { data: ruleSet, error: null } : await db.from("standings_qualification_rules").select("top_places,minimum_ropings,cutoff_on,attendance_cutoff_on,earned_position_policy,updated_at")
@@ -101,7 +102,7 @@ export default async function QualificationPage({ params, searchParams }: PagePr
         top_places: rule.data?.top_places ?? null, minimum_ropings: rule.data?.minimum_ropings ?? null,
         cutoff_on: rule.data?.cutoff_on ?? null, attendance_cutoff_on: rule.data?.attendance_cutoff_on ?? null, requirements_available: available, requirement_match: ruleSet?.requirement_match })}</p></div>
       <div className="flex flex-wrap items-start gap-2">
-        {editable && <QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable />}
+        {editable && <div className="flex flex-wrap gap-2"><QualificationAssignmentDialog eventId={eventId} ropingId={ropingId} name={title} editable /><RopingQualificationDialog ropingId={ropingId} name={title} editable required={false} /></div>}
         {canManage && available && <QualificationRefreshButton ropingId={ropingId} />}
         <Link href={`/events/${eventId}/entries`} className="inline-flex h-9 items-center rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold">Manage entries</Link>
       </div></div>

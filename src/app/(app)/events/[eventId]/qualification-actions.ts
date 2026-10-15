@@ -18,11 +18,11 @@ export async function loadRopingQualification(ropingId: string) {
   const rules = await db.from("standings_qualification_rules").select("season_id,top_places,minimum_ropings,cutoff_on,attendance_cutoff_on,earned_position_policy")
     .eq("producer_id", producer.id).eq("class_key", classKey ?? "");
   const seasons = await db.from("producer_seasons").select("id,name").eq("producer_id", producer.id).order("starts_on", { ascending: false });
-  const current = await db.from("roping_qualification_checks").select("season_id,checked_at,bonus_entries_enabled")
+  const current = await db.from("roping_qualification_checks").select("season_id,checked_at,bonus_entries_enabled,rule_set_id")
     .eq("event_roping_id", ropingId).eq("producer_id", producer.id).maybeSingle();
   if (rules.error || seasons.error || current.error) throw new Error("Unable to load qualification setup.");
   return { seasons: seasons.data.filter((season) => rules.data.some((rule) => rule.season_id === season.id)),
-    rules: rules.data, current: current.data };
+    rules: rules.data, current: current.data?.rule_set_id ? null : current.data, replacingRuleSet: Boolean(current.data?.rule_set_id) };
 }
 
 export async function saveRopingQualification(ropingId: string, seasonId: string, bonusEntries = false): Promise<{ error?: string; success?: boolean }> {
@@ -34,9 +34,9 @@ export async function saveRopingQualification(ropingId: string, seasonId: string
       .eq("id", ropingId).eq("producer_id", producer.id).single();
     if (roping.error) return { error: "Roping not found." };
     if (!seasonId) {
-      const result = await db.rpc("save_roping_qualification_check", {
+      const result = await db.rpc("save_finals_qualification_check", {
         target_roping_id: ropingId, target_season_id: null, target_class_key: null,
-        expected_revision: 0, target_standings: [], target_rule_updated_at: null,
+        expected_revision: 0, target_standings: [], target_rule_updated_at: null, target_bonus_entries_enabled: false,
       });
       if (result.error) return { error: result.error.message };
     } else {
@@ -44,7 +44,7 @@ export async function saveRopingQualification(ropingId: string, seasonId: string
       const classKey = ["handicap", "four_d"].includes(roping.data.competition_format)
         ? `${roping.data.division_id}:${roping.data.competition_format}` : roping.data.classification_id;
       if (!classKey) return { error: "This roping needs a classification." };
-      await buildQualificationCheck(ropingId, seasonId, classKey, bonusEntries);
+      await buildQualificationCheck(ropingId, seasonId, classKey, bonusEntries, true);
     }
     revalidatePath(`/events/${roping.data.event_id}`);
     revalidatePath(`/events/${roping.data.event_id}/entries`);

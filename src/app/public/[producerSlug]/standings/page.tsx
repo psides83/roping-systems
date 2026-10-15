@@ -90,7 +90,7 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
                 <div className="mt-1 text-xs text-[#66716b]">{[row.profile?.city, row.profile?.state].filter(Boolean).join(", ")}</div>
                 <div className="mt-1 text-xs text-[#66716b] sm:hidden">{row.ropingsEntered} {row.ropingsEntered === 1 ? "roping" : "ropings"} · {finalsPositions.get(`${row.roperId}:${row.classId}`) ?? 0} earned positions</div>
                 {requirement ? <div className={`mt-1 text-xs font-semibold ${qualified.has(row.roperId) ? "text-emerald-700" : "text-[#66716b]"}`}>
-                  {qualified.has(row.roperId) ? "Meets standings requirements" : "Below standings requirements"}
+                  {qualified.has(row.roperId) ? "Meets finals rank & attendance requirements" : "Below finals rank / attendance requirements"}
                 </div> : null}
                 {selectedClass?.id.endsWith(":handicap") && row.profile?.handicap ?
                   <div className="mt-1 text-xs text-[#66716b]">{row.profile.handicap} · {Number(row.profile.handicapSeconds) > 0 ? "+" : ""}{Number(row.profile.handicapSeconds).toFixed(2)} sec</div> : null}

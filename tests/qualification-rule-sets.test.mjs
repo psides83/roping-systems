@@ -38,3 +38,8 @@ test("earned positions bypass only the requirements selected by the producer", (
   assert.equal(matchesQualificationRuleSet(roper, { ...rules, earned_position_policy: "rank_and_attendance" }), true);
   assert.equal(matchesQualificationRuleSet({ ...roper, rank: 8 }, { ...rules, requirement_match: "any", earned_position_policy: "rank" }), true);
 });
+
+test("finals assignment never inherits a non-finals event rule set", () => {
+  assert.equal(effectiveQualificationRuleSet("non-finals-event", "finals", null), null);
+  assert.equal(effectiveQualificationRuleSet("non-finals-event", "finals", "stale-rule"), null);
+});
