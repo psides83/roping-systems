@@ -33,3 +33,31 @@ method, and operating expenses are not captured here. All amounts show cents.
 All reads are scoped to the active producer and selected event; row pagination
 prevents large event reports from silently stopping at the API row limit. Failed
 reads throw instead of displaying misleading zero balances.
+
+## Closeout review workflow
+
+The review now includes outstanding entry charges and winnings still due, even
+when receipts and ledger markings agree. It also lists entry/payout differences,
+overpaid awards, unfinished ropings, unfinalized payouts, missing recipient
+acknowledgments, and outstanding sponsor pledges. Each item links to the relevant
+entry, payout, funding, or arena screen. Difference amounts are shown as positive
+review amounts with the direction explained in text.
+
+An event with no scheduled ropings prompts schedule review. With no review items,
+the report says **No review items found** rather than claiming the event is
+closed. No new closeout status or automatic financial adjustment is introduced.
+
+The summary explicitly includes stock-charge receipts in recorded payments.
+The comparative rows cover entry/event/stock charges, completed roping winnings,
+and sponsor commitments. All underlying calculations and finance permissions
+remain unchanged.
+
+### October 15, 2026 usability validation
+
+- All 563 application tests passed, including balances despite matching records,
+  discrepancy direction, competition/finalization links, sponsor pledges, empty
+  schedules, actionable review cards, and the qualified clear state.
+- ESLint, TypeScript, and production build passed.
+- Desktop and 390px phone review used the actual review component with isolated
+  sample data. The temporary preview route was removed before build/commit.
+- No real financial records changed. No database migration is required.
