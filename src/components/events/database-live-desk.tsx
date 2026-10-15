@@ -14,7 +14,7 @@ import { useDeskLeaveGuard } from "./use-desk-leave-guard";
 
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/navigation-pending";
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -137,6 +137,8 @@ export function DatabaseLiveDesk({
   const canTime = timingAllowed && timing.canWrite;
   const [orderedRuns, setOrderedRuns] = useState(runs);
   const [search, setSearch] = useState("");
+  const [drawExpanded, setDrawExpanded] = useState(false);
+  const drawPanelId = useId();
   const [deskChanging, setDeskChanging] = useState(false);
   const drawAction = generateDraw.bind(null, eventId);
   const [drawState, drawFormAction, drawPending] = useActionState<DrawOrderState, FormData>(drawAction, {});
@@ -229,16 +231,16 @@ export function DatabaseLiveDesk({
   }
 
   return (
-    <div className="space-y-5" data-desk-unsaved={dirty || orderPending ? "order" : undefined} data-desk-saving={orderPending}>
+    <div className="space-y-3 sm:space-y-5" data-desk-unsaved={dirty || orderPending ? "order" : undefined} data-desk-saving={orderPending}>
       <LiveDeskSelector eventId={eventId} ropings={divisions} selectedId={selectedDivisionId} round={selectedRound} onPendingChange={setDeskChanging} />
-      <div inert={deskChanging} aria-busy={deskChanging} className={`space-y-5 ${deskChanging ? "pointer-events-none opacity-50" : ""}`}>
-      <dl className="grid grid-cols-3 gap-3 border-y border-[#dfe4e1] py-3">
+      <div inert={deskChanging} aria-busy={deskChanging} className={`space-y-3 sm:space-y-5 ${deskChanging ? "pointer-events-none opacity-50" : ""}`}>
+      <dl aria-label="Round progress" className="flex flex-wrap gap-x-4 gap-y-1 border-b border-[#dfe4e1] py-2 sm:grid sm:grid-cols-3 sm:gap-3 sm:py-3">
         {[
-          ["Runs resolved", `${completeCount} of ${orderedRuns.length}`],
-          ["Remaining", String(pendingRuns.length)],
-          ["Reruns required", String(rerunCount)],
-        ].map(([label, value]) => (
-          <div key={label}><dt className="text-xs font-semibold text-[#66716b]">{label}</dt><dd className="mt-1 text-xl font-bold">{value}</dd></div>
+          ["Runs resolved", "Resolved", `${completeCount} / ${orderedRuns.length}`],
+          ["Remaining", "Remaining", String(pendingRuns.length)],
+          ["Reruns required", "Reruns", String(rerunCount)],
+        ].map(([label, shortLabel, value]) => (
+          <div key={label} className="flex items-baseline gap-1 sm:block"><dt className="text-xs font-semibold text-[#66716b]"><span className="sm:hidden">{shortLabel}</span><span className="hidden sm:inline">{label}</span></dt><dd className="text-sm font-bold tabular-nums sm:mt-1 sm:text-xl">{value}</dd></div>
         ))}
       </dl>
       {selectedDivision && eventStatus === "in_progress" && selectedDivision.eventDayStatus !== "completed" && mainRoundsComplete && orderedRuns.length > 0 && (!selectedDivision.shortRoundEnabled || (isShortRound && roundReadyToLock)) ? (
@@ -280,9 +282,11 @@ export function DatabaseLiveDesk({
         </Link>
       ) : null}
       {workflowState !== null || canManageDraw ? (
-        <div className="border-b border-[#e7ebe8] bg-[#fafbfa] px-4 py-3">
+        <details open={workflowState !== null || dirty} className="group/draw border-b border-[#e7ebe8] bg-[#fafbfa] px-4">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold [&::-webkit-details-marker]:hidden"><span>{dirty ? "Unsaved draw order" : drawReady ? "Draw tools · Order saved" : "Prepare the draw"}</span><ChevronDown size={17} className="shrink-0 transition-transform group-open/draw:rotate-180" /></summary>
+          <div className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-[#758078]">
+            <p className="text-sm text-[#66716b]">
               {isShortRound && drawReady
                 ? "Slowest aggregate runs first · leader runs last"
                 : drawLocked
@@ -440,11 +444,16 @@ export function DatabaseLiveDesk({
               {roundState.message}
             </p>
           ) : null}
-        </div>
+          </div>
+        </details>
 
       ) : null}
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="order-2 overflow-hidden rounded-md border border-[#dfe4e1] bg-white xl:order-1">
+        <button type="button" aria-expanded={drawExpanded} aria-controls={drawPanelId} onClick={() => setDrawExpanded(!drawExpanded)} className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold xl:hidden">
+          <span>{drawExpanded ? "Hide draw & results" : "View draw & results"} · {orderedRuns.length} entries</span><ChevronDown size={18} className={drawExpanded ? "rotate-180" : ""} />
+        </button>
+        <div id={drawPanelId} className={`${drawExpanded ? "block" : "hidden"} xl:block`}>
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#e7ebe8] p-4">
           <div>
             <h2 className="font-bold">{selectedDivision?.name}</h2>
@@ -474,13 +483,13 @@ export function DatabaseLiveDesk({
               ) : null}
             </div>
           </div>
-          <label className="flex h-9 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
+          <label className="flex min-h-11 items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#66716b]">
             <Search size={15} />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               aria-label="Search draw"
-              className="w-40 bg-transparent text-xs text-[#17201c] outline-none"
+              className="w-40 bg-transparent text-sm text-[#17201c] outline-none"
               placeholder="Find contestant"
             />
           </label>
@@ -680,9 +689,10 @@ export function DatabaseLiveDesk({
           {completeCount} resolved · {pendingRuns.length} remaining
           {rerunCount ? ` · ${rerunCount} rerun required` : ""}
         </div>
+        </div>
       </section>
 
-      <aside className="order-1 space-y-4 xl:order-2">
+      <aside aria-label="Current run and arena queue" className="order-1 min-w-0 space-y-4 xl:order-2">
         {currentRun ? (
           <RunEntryForm
             key={currentRun.id}
@@ -759,7 +769,7 @@ function ArenaQueue({
               key={run.id}
               className="grid grid-cols-[74px_1fr_auto] items-center gap-2 px-4 py-3 text-sm"
             >
-              <span className="text-[10px] font-bold uppercase text-[#758078]">
+              <span className="text-xs font-bold uppercase text-[#66716b]">
                 {index === 0 ? "On deck" : "Next up"}
               </span>
               <span className="min-w-0 truncate font-semibold">{run.name}</span>

@@ -105,18 +105,13 @@ export function RunEntryForm({
         }
         submitting.current = true;
       }}
-      className="rounded-md border border-[#e0c2b9] bg-white p-5"
+      className="rounded-lg border border-[#e0c2b9] bg-white p-4 sm:p-5"
     >
       <input type="hidden" name="timingSessionId" value={timing.sessionId} />
       <input type="hidden" name="runId" value={run.id} />
       <input type="hidden" name="penalty" value={penalty} />
-      <p className="mb-3 text-sm font-semibold text-[#526059]">{ropingName} · {roundLabel}</p>
-      <div role="status" aria-live="polite" className={`mb-4 rounded-md border p-3 text-sm font-semibold ${!online || draft.storageError || draft.stale || state.uncertain ? "border-amber-300 bg-amber-50 text-amber-900" : "border-[#d7ddda] bg-[#f4f6f5] text-[#526059]"}`}>
-        {pending ? "Saving result to server... Waiting for confirmation." : state.success ? "Saved to server." : draft.storageError ? "Draft is only held in this open page. Device storage could not be confirmed." : !online ? "Connection lost. Your draft stays on this device; reconnect before saving." : !draft.ready ? "Checking for a saved device draft..." : draft.stale ? "Recovered draft does not match this run's current setup. Review it before discarding." : draft.draft.submission ? "Save not confirmed. Retry the same result; the readings are held unchanged." : draft.restored ? "Recovered draft from this device. Review before saving." : unsaved ? "Draft saved on this device · Not yet saved to server" : "Ready for timer readings"}
-        {draft.storageError ? <p role="alert" className="mt-2">{draft.storageError}</p> : null}
-        {draft.stale ? <button type="button" onClick={draft.discard} className="mt-2 underline">Discard stale draft</button> : null}
-        {draft.draft.submission?.uncertain && !pending ? <button type="button" onClick={draft.discard} className="mt-2 underline">Discard device draft</button> : null}
-      </div>
+      <p className="mb-2 text-sm font-semibold text-[#526059]">{ropingName} · {roundLabel}</p>
+
       <p className="mb-1 text-xs font-bold uppercase text-[#66716b]">In the box</p>
       <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
         Draw {run.drawPosition ?? "-"} · Entry <EntryLabel number={run.entryNumber} />
@@ -131,14 +126,20 @@ export function RunEntryForm({
           </span>
         ) : null}
       </div>
-      <div className="mt-5">
+      <div role="status" aria-live="polite" className={`mt-3 rounded-md border px-3 py-2 text-sm font-semibold ${!online || draft.storageError || draft.stale || state.uncertain ? "border-amber-300 bg-amber-50 text-amber-900" : "border-[#d7ddda] bg-[#f4f6f5] text-[#526059]"}`}>
+        {pending ? "Saving result to server... Waiting for confirmation." : state.success ? "Saved to server." : draft.storageError ? "Draft is only held in this open page. Device storage could not be confirmed." : !online ? "Connection lost. Your draft stays on this device; reconnect before saving." : !draft.ready ? "Checking for a saved device draft..." : draft.stale ? "Recovered draft does not match this run's current setup. Review it before discarding." : draft.draft.submission ? "Save not confirmed. Retry the same result; the readings are held unchanged." : draft.restored ? "Recovered draft from this device. Review before saving." : unsaved ? "Draft saved on this device · Not yet saved to server" : "Ready for timer readings"}
+        {draft.storageError ? <p role="alert" className="mt-2">{draft.storageError}</p> : null}
+        {draft.stale ? <button type="button" onClick={draft.discard} className="mt-2 underline">Discard stale draft</button> : null}
+        {draft.draft.submission?.uncertain && !pending ? <button type="button" onClick={draft.discard} className="mt-2 underline">Discard device draft</button> : null}
+      </div>
+      <div className="mt-4">
         {run.competitionHold ? <div role="alert" className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{run.competitionHold}{run.membershipId && <a href={`/members/${run.membershipId}`} className="mt-2 block underline">Review roper record</a>}</div> : null}
         {run.fineBlocked ? <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">Competition blocked by an unpaid member fine. Record payment or approve a fine exception before this roper competes.</p> : null}
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase text-[#66716b]">
             Timer readings
           </p>
-          <p className="text-[10px] font-semibold text-[#758078]">
+          <p className="text-xs font-semibold text-[#66716b]">
             {methodLabel}
           </p>
         </div>
@@ -148,7 +149,7 @@ export function RunEntryForm({
               key={index}
               className="flex items-center gap-3 rounded-md border-2 border-[#bec7c2] px-3 focus-within:border-[var(--brand-accent)]"
             >
-              <span className="text-xs font-bold text-[#758078]">
+              <span className="text-xs font-bold text-[#66716b]">
                 T{index + 1}
               </span>
               <input
@@ -179,7 +180,7 @@ export function RunEntryForm({
                 className="h-14 min-w-0 flex-1 bg-transparent font-mono text-2xl font-bold outline-none placeholder:text-[#c9cecb] disabled:opacity-60"
                 placeholder="0.00"
               />
-              <span className="text-xs font-semibold text-[#758078]">sec</span>
+              <span className="text-xs font-semibold text-[#66716b]">sec</span>
             </label>
           ))}
         </div>
@@ -191,7 +192,7 @@ export function RunEntryForm({
             {isShortRound ? "Projected aggregate" : "Final run time"}
           </span>
           {isShortRound && run.carryTime !== null ? (
-            <span className="mt-1 block text-[10px] font-semibold text-[#758078]">
+            <span className="mt-1 block text-xs font-semibold text-[#66716b]">
               {run.carryTime.toFixed(2)} carry + {adjustedRunTime} run
             </span>
           ) : null}
@@ -234,7 +235,7 @@ export function RunEntryForm({
           value="no_time"
           formNoValidate
           disabled={editingBlocked || !online}
-          className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
           <AlertCircle size={15} /> No time
         </button>
@@ -243,7 +244,7 @@ export function RunEntryForm({
           value="disqualified"
           formNoValidate
           disabled={editingBlocked || !online}
-          className="flex h-10 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
           Disqualified
         </button>
@@ -252,7 +253,7 @@ export function RunEntryForm({
           value="turned_out"
           formNoValidate
           disabled={editingBlocked || !online}
-          className="flex h-10 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-md border border-[#d7ddda] text-xs font-semibold disabled:opacity-50"
         >
           <SkipForward size={15} /> Turn out
         </button>
@@ -261,7 +262,7 @@ export function RunEntryForm({
           value="rerun"
           formNoValidate
           disabled={editingBlocked || !online}
-          className="flex h-10 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 disabled:opacity-50"
         >
           Rerun required
         </button>
