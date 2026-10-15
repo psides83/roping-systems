@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { effectiveQualificationRuleSet, matchesQualificationRuleSet } from "../src/lib/qualification-rule-sets.ts";
+import { effectiveQualificationRuleSet, matchesQualificationRuleSet, qualificationRequirementsText } from "../src/lib/qualification-rule-sets.ts";
 
 const rules = { top_places: 15, minimum_ropings: 10, requirement_match: "all", earned_position_policy: "none" };
 
@@ -42,4 +42,10 @@ test("earned positions bypass only the requirements selected by the producer", (
 test("finals assignment never inherits a non-finals event rule set", () => {
   assert.equal(effectiveQualificationRuleSet("non-finals-event", "finals", null), null);
   assert.equal(effectiveQualificationRuleSet("non-finals-event", "finals", "stale-rule"), null);
+});
+
+test('published rule descriptions omit disabled OR conditions',()=>{
+ assert.equal(qualificationRequirementsText({...rules,minimum_ropings:0,requirement_match:'any'}),'Top 15 in standings');
+ assert.equal(qualificationRequirementsText({...rules,top_places:null,requirement_match:'any'}),'10 ropings attended');
+ assert.equal(qualificationRequirementsText({...rules,minimum_ropings:0,top_places:null}),'No attendance or rank requirement');
 });

@@ -1,5 +1,7 @@
 # Standings and finals usability — October 15, 2026
 
+This earlier design is superseded by [Unified qualification rules](unified-qualification-rules.md).
+
 Standings and finals settings now explain the difference between rank/attendance
 requirements, earned positions, and assignments to specific scheduled ropings.
 Both link to a task guide in Help & guides. Missing season/classification setup

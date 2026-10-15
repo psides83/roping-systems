@@ -6,6 +6,8 @@ export function qualificationCutoffText(rule: { cutoff_on: string | null; attend
 }
 
 export interface QualificationRuleSet {
+  is_finals?: boolean;
+  class_key?: string | null;
   id: string;
   name: string;
   season_id: string;
@@ -34,4 +36,9 @@ export function matchesQualificationRuleSet(
 
 export function effectiveQualificationRuleSet(eventRuleId: string | null, mode: QualificationOverride, ropingRuleId: string | null) {
   return mode === "none" || mode === "finals" ? null : mode === "custom" ? ropingRuleId : eventRuleId;
+}
+
+export function qualificationRequirementsText(rule: Pick<QualificationRuleSet, "minimum_ropings" | "top_places" | "requirement_match">) {
+  const conditions = [rule.minimum_ropings > 0 ? `${rule.minimum_ropings} ropings attended` : null, rule.top_places !== null ? `Top ${rule.top_places} in standings` : null].filter(Boolean);
+  return conditions.length ? conditions.join(rule.requirement_match === "any" ? " OR " : " AND ") : "No attendance or rank requirement";
 }

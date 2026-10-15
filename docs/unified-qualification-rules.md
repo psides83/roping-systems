@@ -1,0 +1,11 @@
+# Unified qualification rules
+
+Qualification rules is now the single setup screen for finals and other qualified ropings. The rule record has an `is_finals` boolean, presented as “Finals qualification rules — publish on public standings.” Saving a marked rule publishes its requirements for its season and class scope. Clearing the flag removes the public listing, while retaining the rule and event assignments. Publication does not itself assign an event or register a roper.
+
+The same editor contains attendance, rank, AND/OR matching, cutoff dates, earned-position bypass policy, and bonus-entry allowances. Events and individual ropings select from one rule picker. Finals positions remains a separate award/assignment tool. The old season/finals setup route redirects to Qualification rules; Carryover review remains accessible there. Removed the two obsolete settings/assignment form components.
+
+Migration 20261015180000_unified_finals_rule_sets.sql is applied. It converts old season/class finals requirements into named finals rule sets and points their existing roping assignments/checks to those records. Class scope and differing bonus-entry allowances are retained. Assignment validation is disabled only inside the conversion transaction and restored before commit; its normal accepted-entry/started-competition restrictions remain active. Old source revisions are retained so stale snapshots are not falsely marked fresh. Legacy rule records remain for history, with authenticated direct writes disabled.
+
+The public standings page reads only finals-marked rule sets through a restricted public function. It lists every applicable published finals rule; if several apply, it avoids choosing an arbitrary single qualification indicator. AND/OR descriptions omit disabled conditions. Ordinary rules are excluded from publication.
+
+Validation: 597 tests, lint, and production build passed. Rollback-only SQL checks validate publication/unpublication, season isolation, preservation of converted requirements and bonus allowances, assignment conversion, and restored assignment protections. Sample-data browser review at 390px verified unified navigation, the publication checkbox, and editor focus/Escape behavior. No sample form was submitted.

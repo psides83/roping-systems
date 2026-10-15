@@ -1,5 +1,7 @@
 # Finals and non-finals qualifications
 
+This earlier design is superseded by [Unified qualification rules](unified-qualification-rules.md).
+
 Roping setup now separates Finals Qualifications from Non-finals qualification rules.
 
 Finals Qualifications saves requirements per season and classification: rank, attendance, inclusive cutoffs, and earned-position bypass policy. Public standings describe those as finals rank/attendance requirements. On each scheduled roping, Finals qualification selects the finals season and whether assigned earned positions add bonus entries. Saving that selection explicitly marks the roping as finals so it does not inherit a non-finals event rule set.

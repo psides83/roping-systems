@@ -41,11 +41,11 @@ test("roping qualification presents inheritance, opt-out, and custom choices", (
 });
 
 
-test("assignment UI distinguishes non-finals rules from finals setup", () => {
+test("assignment UI uses one rule selector for finals and other events", () => {
  const html = renderAssignment("roping");
- assert.match(html, /Non-finals roping qualification/);
- assert.match(html, /Finals qualification control/);
- assert.match(html, /Manage non-finals qualification rules/);
+ assert.match(html, /Roping qualification/);
+ assert.match(html, /Finals rule sets are marked/);
+ assert.match(html, /Manage qualification rules/);
 });
 
 function renderRuleForm(existing) {
@@ -61,16 +61,17 @@ function renderRuleForm(existing) {
  },compiled,compiled.exports);
  return renderToStaticMarkup(React.createElement(compiled.exports.QualificationRuleSetForm,{rule:existing,editable:true,seasons:[{id:'season',name:'2026',starts_on:'2026-01-01',ends_on:'2026-12-31'}]}));
 }
-test('new non-finals rules use attendance and rank without finals bonus settings',()=>{
+test('qualification rules expose finals publication and earned-position settings together',()=>{
  const html=renderRuleForm();
- assert.match(html,/Create non-finals qualification rules/);
- assert.match(html,/For finals, use Finals Qualifications instead/);
- assert.doesNotMatch(html,/Earned qualifying positions|Existing finals-related settings/);
- assert.match(html,/name="earned_position_policy" value="none"/);
-});
-test('existing named rules retain finals settings with migration guidance',()=>{
- const html=renderRuleForm({...rule,earned_position_policy:'rank',bonus_entries_enabled:true});
- assert.match(html,/Existing finals-related settings/);
- assert.match(html,/preserved for existing events/);
+ assert.match(html,/Create qualification rules/);
+ assert.match(html,/name="is_finals"/);
+ assert.match(html,/publish on public standings/);
  assert.match(html,/Earned qualifying positions/);
+ assert.match(html,/Add earned positions to the normal entry allowance/);
+});
+test('finals flag and converted class scope survive editing',()=>{
+ const html=renderRuleForm({...rule,is_finals:true,class_key:'class',earned_position_policy:'rank',bonus_entries_enabled:true});
+ assert.match(html,/<input[^>]*name="is_finals"[^>]*checked/);
+ assert.match(html,/name="class_key" value="class"/);
+ assert.match(html,/retains its original classification scope/);
 });

@@ -45,9 +45,8 @@ test("assignment targets keep class, readiness, and lock restrictions", () => {
   assert.equal(options[2].props.disabled, true);
   assert.equal(nodes(tree, node => node.props?.name === "reason")[0].props.required, true);
 });
-test("standings requirements preserve values and read-only protection", () => {
-  const { StandingsQualificationForm } = load("../src/components/settings/standings-qualification-form.tsx", { react: { ...React, useState: initial => [initial, () => {}], useActionState: () => [{}, () => {}, false] } });
-  const tree = StandingsQualificationForm({ season: { id: "season", startsOn: "2026-01-01", endsOn: "2026-12-31" }, classId: "open", canEdit: false, rule: { top_places: 10, minimum_ropings: 4, cutoff_on: "2026-10-01", attendance_cutoff_on: "2026-10-02", earned_position_policy: "rank" } });
-  assert.equal(nodes(tree, node => node.type === "fieldset")[0].props.disabled, true);
-  for (const [name, value] of [["topPlaces",10],["minimumRopings",4],["cutoff","2026-10-01"],["attendanceCutoff","2026-10-02"],["earnedPositionPolicy","rank"]]) assert.equal(nodes(tree, node => node.props?.name === name)[0].props.defaultValue, value);
+test("retired standings settings redirects to unified qualification rules", () => {
+ let destination;
+ const { default: Page } = load("../src/app/(app)/settings/standings/page.tsx", { "next/navigation": {redirect: value => {destination=value;}} });
+ Page(); assert.equal(destination,"/settings/qualifications");
 });

@@ -6,6 +6,8 @@ import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 
 const schema = z.object({
+  is_finals: z.boolean(),
+  class_key: z.string().max(80).nullable(),
   name: z.string().trim().min(1).max(100),
   season_id: z.uuid(),
   top_places: z.number().int().positive().nullable(),
@@ -22,6 +24,7 @@ export async function saveQualificationRuleSet(id: string | null, form: FormData
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Producer administrator access is required." };
   if (id && !z.uuid().safeParse(id).success) return { error: "Invalid rule set." };
   const parsed = schema.safeParse({
+    is_finals: form.get("is_finals") === "on", class_key: typeof form.get("class_key") === "string" && form.get("class_key") ? String(form.get("class_key")) : null,
     name: form.get("name"), season_id: form.get("season_id"),
     top_places: form.get("top_places") ? Number(form.get("top_places")) : null,
     minimum_ropings: Number(form.get("minimum_ropings") ?? 0), cutoff_on: form.get("cutoff_on") || null,

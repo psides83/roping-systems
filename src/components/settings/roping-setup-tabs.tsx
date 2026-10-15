@@ -18,8 +18,7 @@ const tabs = [
   { id: "payouts", label: "Payouts", href: "/settings/payouts" },
   { id: "timing", label: "Timing & penalties", href: "/settings/timing" },
   { id: "watch", label: "Classification watch", href: "/settings/classification-watch" },
-  { id: "standings", label: "Finals Qualifications", href: "/settings/standings" },
-  { id: "qualifications", label: "Non-finals qualification rules", href: "/settings/qualifications" },
+  { id: "qualifications", label: "Qualification rules", href: "/settings/qualifications" },
   { id: "finals", label: "Finals positions", href: "/settings/finals" },
 ] as const;
 

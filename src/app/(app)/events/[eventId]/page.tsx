@@ -32,7 +32,6 @@ import { MobileActionMenu } from "@/components/ui/mobile-action-menu";
 import { EventStatusOverview } from "@/components/events/event-status-overview";
 import type { ShortRoundTiePolicy } from "@/components/events/short-round-settings";
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
-import { RopingQualificationDialog } from "@/components/events/roping-qualification-dialog";
 import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
 import { effectiveQualificationRuleSet, type QualificationOverride } from "@/lib/qualification-rule-sets";
 import { FinalsQualifierDialog } from "@/components/events/finals-qualifier-dialog";
@@ -1006,7 +1005,6 @@ export default async function RopingDetailPage({
                   <div className="flex flex-wrap gap-2">
                     {(featureEnabled(features, "qualifications") || qualificationRopings.has(division.id)) && <QualificationAssignmentDialog eventId={event.id} ropingId={division.id} name={division.name} editable={roundsEditable && isSupabaseConfigured()} />}
                     {(featureEnabled(features, "finals") || qualifierRopings.has(division.id)) && <FinalsQualifierDialog ropingId={division.id} name={division.name} editable={event.canManage && isSupabaseConfigured()} />}
-                    {(featureEnabled(features, "standings") || qualificationRopings.has(division.id)) && <RopingQualificationDialog ropingId={division.id} name={division.name} editable={roundsEditable && isSupabaseConfigured()} required={false} />}
                     {qualificationRopings.has(division.id) ? <Link href={`/events/${event.id}/qualification/${division.id}`} className="inline-flex h-9 items-center rounded-md border border-[#d7ddda] bg-white px-3 text-sm font-semibold">Entry review</Link> : null}
                     <ClassScheduleDialog
                       arenaName={division.arenaName}
