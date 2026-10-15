@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CircleDollarSign, Clock3, UserCheck, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, CircleDollarSign, UserCheck, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { events as demoRopings } from "@/data/demo";
 import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
-import { ProducerFeatureGate } from "@/components/settings/producer-features-context";
+import { DashboardAttention } from "@/components/dashboard/dashboard-attention";
+import { DashboardSetup } from "@/components/dashboard/dashboard-setup";
 import { createClient } from "@/lib/supabase/server";
 import type { RopingStatus, RopingSummary } from "@/types/domain";
 
@@ -80,19 +81,12 @@ export default async function DashboardPage() {
         <Link href={isSupabaseConfigured() ? `/events/${data.liveEvent.id}/live` : "/events/preview/live"} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-semibold text-white">Open event desk<ArrowRight size={16} /></Link>
       </div>
     </section>}
-    <section aria-labelledby="attention-title" className="rounded-lg border border-[#dfe4e1] bg-white p-5">
-      <div className="flex items-center gap-2"><Clock3 size={18} className="text-[var(--brand-accent-strong)]" /><h2 id="attention-title" className="font-bold">Needs attention</h2></div>
-      <div className="mt-3 divide-y divide-[#e7ebe8]">
-        <ProducerFeatureGate feature="require_memberships">{data.pendingMembers > 0 && <Link href="/members?status=pending" className="flex min-h-14 items-center justify-between gap-4 py-3 hover:text-[var(--brand-accent-strong)]"><div><p className="text-sm font-semibold">{data.pendingMembers} {data.pendingMembers === 1 ? "membership needs" : "memberships need"} review</p><p className="mt-1 text-sm text-[#66716b]">Review pending applications and approvals.</p></div><ArrowRight size={18} className="shrink-0" /></Link>}</ProducerFeatureGate>
-        {data.unpaidEvents.map(event => <Link key={event.id} href={`/events/${event.id}/entries?payment=unpaid#entry-ledger`} className="flex min-h-14 items-center justify-between gap-4 py-3 hover:text-[var(--brand-accent-strong)]"><div className="min-w-0"><p className="truncate text-sm font-semibold">{event.title}</p><p className="mt-1 text-sm text-[#66716b]">{event.count} unpaid {event.count === 1 ? "entry" : "entries"} · Review payments</p></div><ArrowRight size={18} className="shrink-0" /></Link>)}
-        {!data.pendingMembers && !data.unpaidEntries && <p className="py-3 text-sm text-[#66716b]">No pending approvals or unpaid entries to review.</p>}
-      </div>
-      <Link href="/settings/setup" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--brand-accent-strong)]">Review setup checklist<ArrowRight size={16} /></Link>
-    </section>
+    <DashboardSetup />
+    <DashboardAttention pendingMembers={data.pendingMembers} unpaidEvents={data.unpaidEvents} />
     <section aria-label="Producer activity" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{stats.map(stat => { const Icon = stat.icon; return <div key={stat.label} className="rounded-lg border border-[#dfe4e1] bg-white p-5"><div className="flex items-start justify-between gap-2"><div><p className="text-sm text-[#66716b]">{stat.label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{stat.value}</p></div><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${stat.color}`}><Icon size={19} /></span></div><p className="mt-3 text-sm text-[#66716b]">{stat.detail}</p></div>; })}</section>
     <section className="rounded-lg border border-[#dfe4e1] bg-white">
       <header className="flex items-center justify-between gap-3 border-b border-[#e7ebe8] p-5"><div><h2 className="font-bold">Recent &amp; scheduled events</h2><p className="mt-1 text-sm text-[#66716b]">Latest event dates first</p></div><Link href="/events" className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--brand-accent-strong)]">View all</Link></header>
-      <div className="divide-y divide-[#e7ebe8]">{data.schedule.map(event => <Link key={event.id} href={isSupabaseConfigured() ? `/events/${event.id}` : event.status === "in_progress" ? "/events/preview/live" : "/events"} className="flex flex-wrap items-center gap-3 p-5 hover:bg-[#fafbfa]"><div className="min-w-0 flex-1"><p className="font-semibold">{event.title}</p><p className="mt-1 text-sm text-[#66716b]">{event.date} · {event.location}</p></div><StatusPill status={event.status} /></Link>)}{!data.schedule.length && <div className="p-6"><p className="font-semibold">Create your first event</p><p className="mt-1 text-sm text-[#66716b]">Start with the setup checklist, then add an event and its roping schedule.</p><Link href="/events" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--brand-accent-strong)]">Manage events<ArrowRight size={16} /></Link></div>}</div>
+      <div className="divide-y divide-[#e7ebe8]">{data.schedule.map(event => <Link key={event.id} href={isSupabaseConfigured() ? `/events/${event.id}` : event.status === "in_progress" ? "/events/preview/live" : "/events"} className="flex flex-wrap items-center gap-3 p-5 hover:bg-[#fafbfa]"><div className="min-w-0 flex-1"><p className="font-semibold">{event.title}</p><p className="mt-1 text-sm text-[#66716b]">{event.date} · {event.location}</p></div><StatusPill status={event.status} /></Link>)}{!data.schedule.length && <div className="p-6"><p className="font-semibold">Create your first event</p><p className="mt-1 text-sm text-[#66716b]">Add an event, then build its roping schedule.</p><Link href="/events" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--brand-accent-strong)]">Manage events<ArrowRight size={16} /></Link></div>}</div>
     </section>
   </div>;
 }

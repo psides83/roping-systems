@@ -4,7 +4,6 @@ import { useProducerFeatures } from "./producer-features-context";
 import { featureEnabled } from "@/lib/producer-features";
 
 const tabs = [
-  { id: "setup", label: "Setup checklist", href: "/settings/setup" },
   {
     id: "classifications",
     label: "Divisions & classifications",

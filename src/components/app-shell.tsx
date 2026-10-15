@@ -237,7 +237,6 @@ export function AppShell({
             const active =
               item.name === "Roping setup"
                 ? [
-                    "/settings/setup",
                     "/settings/classifications",
                     "/settings/roping-templates",
                     "/settings/payouts",
