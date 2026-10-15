@@ -266,6 +266,8 @@ export default async function DivisionSettingsPage() {
         <TemplateOrderList enabled={configured && canEdit} items={divisions.map((division) => ({
           id: division.id,
           name: division.name,
+          groupId: division.disciplineId ?? "other",
+          groupName: division.divisionName ?? divisionOptions.find(item => item.id === division.disciplineId)?.name ?? "Other templates",
           content: (
           <article
             key={division.id}

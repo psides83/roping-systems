@@ -44,7 +44,7 @@ export const producerGuides: ProducerGuide[] = [
       "Review timing, order, short-round settings, fees, and payout schedules, then save. Duplicate a template when you need another version without changing its existing defaults.",
       "For an existing event, open its template-update review and compare the changes before applying them. Review updates to events with entries carefully; some updates are blocked to protect activity or payments already recorded.",
     ],
-    outcome: "New ropings copy the saved defaults. Editing a template does not silently replace settings in existing scheduled ropings. Dragging templates changes their list order and saves that order automatically.",
+    outcome: "New ropings copy the saved defaults. Editing a template does not silently replace settings in existing scheduled ropings. Templates stay grouped by division. Choose Reorder in a division, drag the compact rows, then choose Save order. Cancel discards the draft order.",
     troubleshooting: "If a setting is unavailable, check the producer's feature settings and the chosen format. Inactive templates are retained but are not offered for new ropings. A regular entry allowance and earned finals bonus positions are separate concepts.",
     destination: { label: "Open roping templates", href: "/settings/roping-templates" }, related: ["first-setup", "schedule-event", "payouts"],
   },
