@@ -123,10 +123,10 @@ export const producerGuides: ProducerGuide[] = [
     before: "Decide what should be visible to ropers. Only staff with the required access can change publication and result-finality settings.",
     steps: [
       "Treat event progress, public visibility, and result finality as separate decisions. Scheduled or In progress describes operations; Draft or Published describes visibility; unofficial or official describes results.",
-      "Review an event's public information and publication controls before sharing its public link. Set the online entry window separately; publishing does not replace the entry-opening and closing rules.",
+      "On the event overview, review Event progress, Public visibility, and Results. Select a visibility setting and choose Save to apply it; an unsaved choice has not changed the public page. Set the online entry window separately.",
       "For public rules or a news bulletin, edit the draft and use Preview to check its content. Save draft preserves work without replacing the published version.",
       "Choose Publish only when the draft is ready for the public. Unpublish hides published content while retaining the draft.",
-      "Use the public page to verify what ropers can see after a publication change. Follow the event's official-results workflow when competition results are ready to be final.",
+      "Use the public page to verify what ropers can see after a publication change. Mark results official runs a final readiness check and completes the event. It keeps the saved public visibility; hidden results stay hidden until the event is published.",
     ],
     outcome: "Staff can tell whether an event is operating, whether it is publicly visible, and whether its results are official without treating those as one status.",
     troubleshooting: "If an event is missing from the public page, review its visibility and publication settings. If entries are unavailable, also check the entry window, eligibility, and whether online entries are enabled.",

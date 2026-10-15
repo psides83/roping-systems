@@ -29,7 +29,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { MobileActionMenu } from "@/components/ui/mobile-action-menu";
-import { StatusPill } from "@/components/ui/status-pill";
+import { EventStatusOverview } from "@/components/events/event-status-overview";
 import type { ShortRoundTiePolicy } from "@/components/events/short-round-settings";
 import { ClassScheduleDialog } from "@/components/events/class-schedule-dialog";
 import { QualificationAssignmentDialog } from "@/components/events/qualification-assignment-dialog";
@@ -855,14 +855,10 @@ export default async function RopingDetailPage({
           </>
         }
       />
-      <div className="flex flex-wrap items-center gap-3">
-        <StatusPill status={event.status} />
-        <span className="text-xs font-semibold text-[#758078]">
-          Results: {event.resultStatus}
-        </span>
-        <EventPublicationControl key={event.publicationState} eventId={event.id} publicationState={event.publicationState} enabled={event.canManage && isSupabaseConfigured()} />
-        <EventOfficialResultsControl eventId={event.id} status={event.status} resultStatus={event.resultStatus} enabled={event.canManage && isSupabaseConfigured()} />
-      </div>
+      <EventStatusOverview status={event.status} publicationState={event.publicationState} resultStatus={event.resultStatus}
+        visibilityControl={<EventPublicationControl key={event.publicationState} eventId={event.id} publicationState={event.publicationState} enabled={event.canManage && isSupabaseConfigured()} />}
+        resultsControl={event.resultStatus !== "official" ? <EventOfficialResultsControl eventId={event.id} status={event.status} resultStatus={event.resultStatus} enabled={event.canManage && isSupabaseConfigured()} /> : null}
+      />
       <section aria-label="Event dashboard" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {dashboardMetrics.map((metric) => (
           <Metric key={metric.label} {...metric} />
@@ -1190,9 +1186,9 @@ export default async function RopingDetailPage({
             Public listing
           </h2>
           <p className="mt-3 text-sm leading-6 text-[#66716b]">
-            {event.isPublic
-              ? "This roping appears on the producer’s public schedule. Draw and results publication remain separately controlled."
-              : "This roping is private and does not appear on the public schedule."}
+            {event.publicationState === "published"
+              ? "This event, its draw, and recorded results are visible on the producer’s public page. Results can be visible before they are official."
+              : "This event is hidden from the producer’s public page."}
           </p>
         </div>
       </section>
