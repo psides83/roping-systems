@@ -18,6 +18,7 @@ function harness(result = { success: true, message: "Template order saved." }, e
       useRef(initial) { const index = refIndex++; return refs[index] ??= { current: initial }; },
       useTransition: () => [false, callback => tasks.push(callback())],
     };
+    if (name === "@/components/ui/unsaved-changes-guard") return { UnsavedChangesGuard: "unsaved-guard" };
     if (name === "@/lib/template-order") return { moveTemplate, replaceTemplateGroupOrder };
     if (name === "lucide-react") return { ArrowDown: "down", ArrowUp: "up", GripVertical: "grip" };
     if (name.endsWith("/actions")) return { reorderRopingTemplates: async ids => { saves.push(ids); if (result instanceof Error) throw result; return result; } };
@@ -36,6 +37,7 @@ function harness(result = { success: true, message: "Template order saved." }, e
   return { render, saves, refs, done: () => Promise.all(tasks), states,
     button: (tree, label) => nodes(tree, node => node.props?.["aria-label"] === label || node.type === "button" && node.props?.children === label)[0],
     buttons: tree => nodes(tree, node => node.type === "button"),
+    guard: tree => nodes(tree, node => node.type === "unsaved-guard")[0],
   };
 }
 
@@ -86,4 +88,17 @@ test("pointer drag updates draft on release and never autosaves", () => {
   handle.onPointerUp();
   assert.deepEqual(h.states[2], ["b", "c", "a"]); assert.deepEqual(h.saves, []);
  } finally { globalThis.window = original; }
+});
+
+
+test("template reorder warns only while an unsaved draft exists", async () => {
+ const h = harness();
+ assert.equal(h.guard(h.render()).props.dirty, false);
+ begin(h); assert.equal(h.guard(h.render()).props.dirty, false);
+ move(h); assert.equal(h.guard(h.render()).props.dirty, true);
+ h.button(h.render(), "Save order").props.onClick(); await h.done();
+ assert.equal(h.guard(h.render()).props.dirty, false);
+ const cancelled = harness(); begin(cancelled); move(cancelled);
+ cancelled.button(cancelled.render(), "Cancel").props.onClick();
+ assert.equal(cancelled.guard(cancelled.render()).props.dirty, false);
 });

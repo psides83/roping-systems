@@ -14,20 +14,29 @@ export function FinalReadinessCheck({ eventId, ropingId, onReady }: { eventId: s
     let active = true;
     onReady(false);
     startTransition(async () => {
-      const next = await getFinalReadiness(eventId, ropingId);
-      if (active) { setResult(next); onReady(Boolean(next.summary && !next.summary.blocked)); }
+      try {
+        const next = await getFinalReadiness(eventId, ropingId);
+        if (active) { setResult(next); onReady(Boolean(next.summary && !next.summary.blocked)); }
+      } catch {
+        if (active) setResult({ message: "Unable to check event readiness. Check your connection and try again. Completion stays unavailable until the check succeeds." });
+      }
     });
     return () => { active = false; };
   }, [eventId, ropingId, onReady]);
   function refresh() {
+    setResult({});
     onReady(false);
     startTransition(async () => {
-      const next = await getFinalReadiness(eventId, ropingId);
-      setResult(next); onReady(Boolean(next.summary && !next.summary.blocked));
+      try {
+        const next = await getFinalReadiness(eventId, ropingId);
+        setResult(next); onReady(Boolean(next.summary && !next.summary.blocked));
+      } catch {
+        setResult({ message: "Unable to check event readiness. Check your connection and try again. Completion stays unavailable until the check succeeds." });
+      }
     });
   }
   return <section aria-label="Final readiness check" aria-busy={pending} className="space-y-3 border-y border-[#dfe4e1] py-4">
-    <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-bold">Final readiness check</h3><button type="button" onClick={refresh} disabled={pending} title="Refresh readiness check" aria-label="Refresh readiness check" className="grid h-9 w-9 place-items-center rounded-md border disabled:opacity-50"><RefreshCw size={16} /></button></div>
+    <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-bold">Final readiness check</h3><button type="button" onClick={refresh} disabled={pending} title="Refresh readiness check" aria-label="Refresh readiness check" className="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-semibold disabled:opacity-50"><RefreshCw size={16} />{result.message ? "Retry check" : "Refresh"}</button></div>
     {pending ? <p role="status" className="flex items-center gap-2 py-3 text-sm font-semibold"><LoaderCircle className="animate-spin" size={20} />Checking runs and payouts...</p> : result.message ? <p role="alert" className="text-sm text-rose-700">{result.message}</p> : result.summary ? <>
       <p role="status" className={`text-sm font-semibold ${result.summary.blocked ? "text-rose-700" : "text-emerald-700"}`}>{result.summary.pending} unresolved runs · {result.summary.reruns} reruns required</p>
       <div className="text-sm text-[#526059]">

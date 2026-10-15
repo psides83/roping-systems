@@ -24,7 +24,10 @@ export function SetupReadinessForm({ eventId, mode, action, children, pending, s
   }
   function refresh() {
     setResult({});
-    check(async () => setResult(await getSetupReadiness(eventId, mode ?? "publish")));
+    check(async () => {
+      try { setResult(await getSetupReadiness(eventId, mode ?? "publish")); }
+      catch { setResult({ message: "Unable to check event setup. Check your connection and try again. Nothing has been published or started." }); }
+    });
   }
   useEffect(() => {
     if (!open) return;
@@ -50,7 +53,7 @@ export function SetupReadinessForm({ eventId, mode, action, children, pending, s
     {open ? <div className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-black/45 p-4">
       <section role="dialog" aria-modal="true" aria-labelledby={`setup-review-${mode}`} className="my-6 w-full max-w-xl rounded-md bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3"><h2 id={`setup-review-${mode}`} className="text-lg font-bold">{mode === "start" ? "Start event review" : "Publish event review"}</h2><button ref={close} type="button" disabled={pending} onClick={() => setOpen(false)} aria-label="Close review" className="grid h-10 w-10 shrink-0 place-items-center"><X size={20} /></button></div>
-        <div className="my-4 flex items-center justify-between gap-2"><p className="text-sm text-[#66716b]">{mode === "start" ? "Check the setup before opening competition." : "Check the schedule before making it public."}</p><button type="button" onClick={refresh} disabled={checking || pending} aria-label="Refresh setup review" className="grid h-10 w-10 shrink-0 place-items-center rounded-md border"><RefreshCw size={17} /></button></div>
+        <div className="my-4 flex items-center justify-between gap-2"><p className="text-sm text-[#66716b]">{mode === "start" ? "Check the setup before opening competition." : "Check the schedule before making it public."}</p><button type="button" onClick={refresh} disabled={checking || pending} aria-label="Refresh setup review" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-semibold"><RefreshCw size={17} />{result.message ? "Retry check" : "Refresh"}</button></div>
         {checking ? <p role="status" className="flex items-center gap-3 rounded-md bg-gray-50 p-6 font-semibold"><LoaderCircle className="animate-spin" />Checking schedules, payouts and templates...</p> : result.message ? <p role="alert" className="text-rose-700">{result.message}</p> : result.issues ? <div className="max-h-[50vh] space-y-4 overflow-y-auto">
           {!result.issues.length ? <p className="flex items-center gap-2 py-4 font-semibold text-emerald-700"><CheckCircle2 size={20} />Setup checks passed</p> : (["blocker", "warning"] as const).map((severity) => {
             const issues = result.issues!.filter((issue) => issue.severity === severity);

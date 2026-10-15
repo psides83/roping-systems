@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type ReactNode } from "react";
 import { GripVertical, ListOrdered } from "lucide-react";
 import { reorderRopingTemplates } from "@/app/(app)/settings/roping-templates/actions";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes-guard";
 import { moveTemplate, replaceTemplateGroupOrder } from "@/lib/template-order";
 
 type TemplateItem = { id: string; name: string; groupId: string; groupName: string; content: ReactNode };
@@ -41,7 +42,9 @@ function OrderedTemplates({ items, enabled }: { items: TemplateItem[]; enabled: 
     });
   }
 
+  const dirty = editing !== null && draft.some((id, index) => id !== order.filter(item => byId.get(item)!.groupId === editing)[index]);
   return <div className="space-y-8">
+    <UnsavedChangesGuard dirty={dirty} saving={pending} />
     <p role="status" className={message ? "text-sm text-[#526059]" : "sr-only"}>{message}</p>
     {groups.map(([groupId, groupName]) => {
       const ids = order.filter(id => byId.get(id)!.groupId === groupId);
