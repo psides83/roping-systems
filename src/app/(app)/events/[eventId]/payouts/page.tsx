@@ -5,6 +5,7 @@ import { Banknote, Users } from "lucide-react";
 import { initializePayoutPlans } from "./actions";
 import { PayoutRegisterData } from "@/components/events/payout-register-data";
 import { RopingFundingData } from "@/components/events/roping-funding-data";
+import { ContextHelp } from "@/components/help/context-help";
 import { PageHeader } from "@/components/ui/page-header";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { getActiveProducer } from "@/lib/producers";
@@ -252,13 +253,16 @@ export default async function EventPayoutsPage({
       <PageHeader
         eyebrow="Event payouts"
         title={roping.title}
-        description="Live projections use paid entries, separately selected side pots and insurance, payout-contributing charges, and added money."
+        description="Review projected winnings, finalize each roping, then record payments in the payout register."
       />
-      <section className="space-y-3">
-        <h2 className="text-lg font-bold">Finalize Roping Payouts</h2>
-        {payoutGroups.map(group => <details key={group[0].ropingDivisionId} className="rounded-md border border-[#dfe4e1]"><summary className="cursor-pointer p-4 font-semibold">{group[0].division}</summary><RopingFundingData ropingId={group[0].ropingDivisionId} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)}/></details>)}
-      </section>
-      <PayoutRegisterData eventId={eventId} producerId={producer.id} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)} />
+      <nav aria-label="Payout workflow" className="grid gap-2 sm:grid-cols-3">
+        <a href="#payout-projections" className="rounded-md border border-[#dfe4e1] bg-white p-4 text-sm font-semibold hover:bg-[#f7f8f7]">1. Review projections<span className="mt-1 block font-normal text-[#66716b]">Calculated winnings may still change.</span></a>
+        <a href="#payout-finalization" className="rounded-md border border-[#dfe4e1] bg-white p-4 text-sm font-semibold hover:bg-[#f7f8f7]">2. Finalize payouts<span className="mt-1 block font-normal text-[#66716b]">Lock each completed roping&apos;s awards.</span></a>
+        <a href="#payout-register" className="rounded-md border border-[#dfe4e1] bg-white p-4 text-sm font-semibold hover:bg-[#f7f8f7]">3. Record payments<span className="mt-1 block font-normal text-[#66716b]">Record money paid and track receipts.</span></a>
+      </nav>
+      <ContextHelp title="How projections, finalization, and payments differ" guide="payouts"><p>Projections use paid entries, selected optional pools, payout-contributing charges, and added money. They may change as competition and funding records change.</p><p>Finalize payouts after reviewing each completed roping. Then record money actually paid in the register. Receipt confirmation records the recipient&apos;s acknowledgment separately.</p></ContextHelp>
+      <section id="payout-projections" className="scroll-mt-6 space-y-4">
+        <div><h2 className="text-lg font-bold">1. Review projections</h2><p className="mt-1 text-sm leading-6 text-[#526059]">Calculated awards from the current entries, results, and funding. These figures do not mean a payment has been recorded.</p></div>
       {calculated.length ? (
         <section className="space-y-5">
           {payoutGroups.map((group) => {
@@ -275,7 +279,7 @@ export default async function EventPayoutsPage({
                 summary={
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase text-[var(--brand-accent-strong)]">
+                    <p className="text-xs font-bold uppercase text-[var(--brand-accent-strong)]">
                       Scheduled roping
                     </p>
                     <h2 className="mt-1 text-lg font-bold">
@@ -324,6 +328,13 @@ export default async function EventPayoutsPage({
           </PersistentForm>
         </section>
       )}
+      </section>
+      <section id="payout-finalization" className="scroll-mt-6 space-y-3">
+        <h2 className="text-lg font-bold">2. Finalize payouts</h2>
+        <p className="text-sm leading-6 text-[#526059]">Review added money and complete each roping before finalizing. Finalization locks results and payout settings; it does not record money paid to a contestant.</p>
+        {payoutGroups.map(group => <details key={group[0].ropingDivisionId} className="rounded-md border border-[#dfe4e1]"><summary className="cursor-pointer p-4 font-semibold">{group[0].division}</summary><RopingFundingData ropingId={group[0].ropingDivisionId} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)}/></details>)}
+      </section>
+      <PayoutRegisterData eventId={eventId} producerId={producer.id} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)} />
     </div>
   );
 }
@@ -354,13 +365,13 @@ function PayoutPlanSection({
         </div>
         <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
           <div>
-            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[#758078]">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#758078]">
               <Users size={13} /> Entries
             </p>
             <p className="mt-1 text-xl font-bold">{plan.entryCount}</p>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase text-[#758078]">
+            <p className="text-xs font-bold uppercase text-[#758078]">
               Payout pool
             </p>
             <p className="mt-1 text-xl font-bold">
@@ -440,7 +451,7 @@ function PayoutResults({
   );
   return (
     <section className="border-t border-[#e7ebe8] p-5">
-      <h3 className="text-sm font-bold">Current money winners</h3>
+      <h3 className="text-sm font-bold">Projected money winners</h3>
       {plan.feeKind === "insurance" ? (
         <p className="mt-1 text-xs leading-5 text-[#758078]">
           Main-money winners are excluded within each go and the aggregate.
@@ -549,7 +560,7 @@ function PayoutBreakdown({ plan }: { plan: PayoutPlan }) {
     <div className="divide-y divide-[#e7ebe8]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] text-left text-sm">
-          <thead className="bg-[#f7f8f7] text-[10px] font-bold uppercase text-[#758078]">
+          <thead className="bg-[#f7f8f7] text-xs font-bold uppercase text-[#758078]">
             <tr>
               <th className="px-5 py-3">Go-round place</th>
               <th className="px-3 py-3">Split</th>

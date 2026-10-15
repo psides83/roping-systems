@@ -1,8 +1,9 @@
 "use client";
 
+import { Dialog } from "@/components/ui/dialog";
 import { PersistentForm } from "@/components/ui/persistent-form";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { Banknote, LoaderCircle, X } from "lucide-react";
+import { useState, useTransition } from "react";
+import { LoaderCircle } from "lucide-react";
 import { recordRoperPayout, updatePayoutReceipt } from "@/app/(app)/events/[eventId]/payouts/actions";
 import { formatCurrency } from "@/lib/utils";
 
@@ -16,12 +17,10 @@ export interface PaymentDialogTarget {
 export function PayoutPaymentDialog({ eventId, ropingId, target, onClose }: {
   eventId: string; ropingId: string | null; target: PaymentDialogTarget; onClose: () => void;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
   const [reference] = useState(() => crypto.randomUUID());
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const reversing = Boolean(target.receiptId);
-  useEffect(() => { ref.current?.showModal(); }, []);
   function submit(form: FormData) {
     setError("");
     startTransition(async () => {
@@ -34,14 +33,8 @@ export function PayoutPaymentDialog({ eventId, ropingId, target, onClose }: {
       } catch { setError("Unable to save the payment. Please try again."); }
     });
   }
-  const input = "h-10 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm";
-  return <dialog ref={ref} onCancel={(event) => { if (pending) event.preventDefault(); else onClose(); }}
-    onClick={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}
-    aria-labelledby="payout-dialog-title" className="fixed inset-0 m-auto max-h-[90dvh] w-[min(94vw,540px)] overflow-y-auto rounded-lg border border-[#dfe4e1] bg-white p-0 text-[#19231d] shadow-xl backdrop:bg-black/40">
-    <header className="flex items-start justify-between gap-4 border-b border-[#dfe4e1] p-5">
-      <div><h2 id="payout-dialog-title" className="flex items-center gap-2 text-lg font-bold"><Banknote size={20} />{reversing ? "Reverse payment" : "Record payout"}</h2><p className="mt-1 text-sm text-[#66716b]">{target.name}</p></div>
-      <button type="button" onClick={onClose} disabled={pending} aria-label="Close" title="Close" className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#eef1ef]"><X size={20} /></button>
-    </header>
+  const input = "h-11 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm";
+  return <Dialog title={reversing ? "Reverse payment" : "Record payout"} description={`${target.name} · ${reversing ? "Reverse a recorded payment with a reason. This does not transfer money." : "Record money already paid. This records the payout; it does not send money."}`} busy={pending} onClose={onClose}>
     <PersistentForm action={submit} aria-busy={pending} className="space-y-5 p-5">
       <fieldset disabled={pending} className="space-y-5">
       {reversing ? <label className="block text-sm font-semibold">Reason for reversal<textarea autoFocus name="reason" required maxLength={1000} rows={3} className="mt-2 block w-full rounded-md border border-[#ccd4d0] p-3" /></label> : <>
@@ -57,9 +50,9 @@ export function PayoutPaymentDialog({ eventId, ropingId, target, onClose }: {
       {error ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       </fieldset>
       <footer className="flex justify-end gap-2 border-t border-[#dfe4e1] pt-4">
-        <button type="button" disabled={pending} onClick={onClose} className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button>
-        <button disabled={pending} className="flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-60">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}{pending ? "Saving..." : reversing ? "Reverse payment" : "Record payout"}</button>
+        <button type="button" disabled={pending} data-dialog-close className="h-11 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold">Cancel</button>
+        <button disabled={pending} className="flex min-h-11 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-60">{pending ? <LoaderCircle size={16} className="animate-spin" /> : null}{pending ? "Saving..." : reversing ? "Reverse payment" : "Record payout"}</button>
       </footer>
     </PersistentForm>
-  </dialog>;
+  </Dialog>;
 }
