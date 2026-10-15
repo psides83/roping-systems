@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContextHelp } from "@/components/help/context-help";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
@@ -17,7 +18,7 @@ export default async function FinalsPositionsPage({ searchParams }: PageProps<"/
   const seasons = await db.from("producer_seasons").select("id,name,starts_on,ends_on").eq("producer_id", producer.id).order("starts_on", { ascending: false });
   if (seasons.error) throw new Error("Unable to load seasons.");
   const season = seasons.data.find((season) => season.id === query.season) ?? seasons.data[0];
-  if (!season) return <p>Create a producer season before configuring finals qualifiers.</p>;
+  if (!season) return <div className="space-y-5"><h1 className="text-2xl font-bold">Finals positions</h1><RopingSetupTabs active="finals" /><section className="space-y-3 rounded-md border border-[#dfe4e1] bg-white p-5"><h2 className="font-bold">Create a season first</h2><p className="text-sm leading-6 text-[#526059]">Earned positions and their assignments are tracked within a season.</p><Link href="/settings?tab=seasons" className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-semibold">Manage seasons</Link></section></div>;
   const results = await loadFinalsQualifications(producer.slug, season.id);
   const ropingIds = [...new Set(results.rules.map((rule) => rule.ropingId))];
   const ropings = ropingIds.length ? await db.from("event_ropings").select("id,event_id,name,scheduled_date").eq("producer_id", producer.id).in("id", ropingIds) : { data: [], error: null };
@@ -53,8 +54,9 @@ export default async function FinalsPositionsPage({ searchParams }: PageProps<"/
       ready: ready.get(item.id) === classId, locked: item.scheduled_date < today || ["in_progress", "completed"].includes(item.event_day_status) || ["completed", "cancelled"].includes(event.status) || !!item.payouts_finalized_at };
   });
   const slots = finalsPositionSlots(results.awards, assignments, season.ends_on, today);
-  return <div className="space-y-5"><h1 className="text-2xl font-bold">Finals positions</h1><RopingSetupTabs active="finals" />
-    <form className="flex flex-wrap items-end gap-3"><label className="grid gap-2 text-sm font-semibold">Season<select name="season" defaultValue={season.id} className="h-10 max-w-full rounded-md border bg-white px-3">{seasons.data.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label><button className="h-10 rounded-md border bg-white px-3 text-sm font-semibold">View</button></form>
+  return <div className="space-y-5"><h1 className="text-2xl font-bold">Finals positions</h1><p className="text-sm leading-6 text-[#526059]">Review earned positions, assign them to matching ropings, and resolve qualifier decisions for the selected season.</p><RopingSetupTabs active="finals" />
+    <ContextHelp title="How earned positions become usable entries" guide="standings-finals"><p>Earning a position and assigning it are separate steps. Choose a matching roping with bonus entries enabled, save an assignment with a reason, and review eligibility on the target entry screen.</p><p>Unassigned positions expire after the season ends. Started or closed target ropings lock assignment changes.</p></ContextHelp>
+    <form className="flex flex-wrap items-end gap-3"><label className="grid gap-2 text-sm font-semibold">Season<select name="season" defaultValue={season.id} className="h-11 max-w-full rounded-md border bg-white px-3">{seasons.data.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label><button className="h-11 rounded-md border bg-white px-3 text-sm font-semibold">View</button></form>
     {producer.role !== "viewer" && <ManualFinalsAward seasonId={season.id} members={memberOptions} classes={classes} date={today < season.starts_on ? season.starts_on : today > season.ends_on ? season.ends_on : today} />}
     <FinalsPositionAssignments slots={slots} targets={targets} members={Object.fromEntries(names)} classes={Object.fromEntries(classNames)} seasonId={season.id} endsOn={season.ends_on} canEdit={producer.role !== "viewer"} />
     <section><h2 className="mb-3 font-semibold">Earned bonus positions · {rows.length} members and classes</h2><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-[#eef1ef]"><tr><th className="p-3">Member</th><th className="p-3">Finals class</th><th className="p-3 text-right">Positions</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.memberId}:${row.classId}`} className="border-b"><td className="p-3 font-semibold"><Link href={`/members/${row.memberId}`}>{names.get(row.memberId) ?? "Member"}</Link></td><td className="p-3">{classNames.get(row.classId) ?? "Class"}</td><td className="p-3 text-right tabular-nums">{row.positions}</td></tr>)}</tbody></table>{!rows.length && <p className="p-5 text-sm text-[#66716b]">No finals positions earned in this season yet.</p>}</div></section>

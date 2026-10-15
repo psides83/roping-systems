@@ -133,6 +133,23 @@ export const producerGuides: ProducerGuide[] = [
     destination: { label: "Open events", href: "/events" }, related: ["schedule-event", "entries", "live-desk"],
   },
   {
+    id: "standings-finals", title: "Set qualification requirements and assign finals positions", category: "Before the event",
+    summary: "Distinguish standings eligibility, earned positions, and assignments to scheduled ropings.",
+    keywords: ["standings", "finals", "bonus entries", "attendance", "rank", "cutoff", "expired", "assignment"],
+    before: "Create a producer season and the needed divisions/classifications. Owners and administrators manage standings requirements; finals actions require the relevant staff access.",
+    steps: [
+      "Open Roping setup → Standings and choose the season and classification before editing requirements.",
+      "Set rank, attendance, and cutoff requirements, and review which requirements earned bonus entries must meet. Choose Save requirements; saving with requirements unchecked removes that season and class rule.",
+      "Open Finals positions for the season to review earned positions, qualifying-result issues, and manual award history.",
+      "Use the assignment statuses or Show all positions to find an award. Pending means it has not been assigned; Needs review means its assigned class no longer matches.",
+      "Expand a position, choose a matching scheduled roping with bonus entries enabled, enter a reason, and choose Save assignment. Then use Target entry review to check eligibility.",
+      "Review ties and other qualifier decisions separately. Unassigned positions expire after the season ends; started or closed target ropings lock assignment changes.",
+    ],
+    outcome: "Saved standings requirements and earned-position assignments are separate, visible decisions. An earned position is not automatically a usable entry in every roping.",
+    troubleshooting: "If no ready target appears, check the class, qualification setup, bonus-entry setting, date, and roping status. Show all positions to recover from an empty filter. A viewer cannot change assignments.",
+    destination: { label: "Open standings qualification", href: "/settings/standings" }, related: ["first-setup", "templates", "staff-access"],
+  },
+  {
     id: "staff-access", title: "Understand staff access and timing handoffs", category: "Getting started",
     summary: "Give staff the right responsibilities and explain unavailable controls.",
     keywords: ["permission", "role", "disabled", "viewer", "entry office", "timing staff", "treasurer", "arena assignment"],

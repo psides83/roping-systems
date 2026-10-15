@@ -4,6 +4,7 @@ import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { StandingsQualificationForm } from "@/components/settings/standings-qualification-form";
 import Link from "next/link";
+import { ContextHelp } from "@/components/help/context-help";
 
 export default async function StandingsSettings({ searchParams }: PageProps<"/settings/standings">) {
   const producer = await getActiveProducer();
@@ -29,11 +30,13 @@ export default async function StandingsSettings({ searchParams }: PageProps<"/se
   if (rule?.error) throw new Error("Unable to load qualification requirements.");
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Standings qualification</h1><Link href="/settings/standings/carryovers" className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-4 text-sm font-semibold">Carryover review</Link></div>
+    <p className="text-sm leading-6 text-[#526059]">Set season-specific rank and attendance requirements. Choose the season and classification before editing.</p>
     <RopingSetupTabs active="standings" />
+    <ContextHelp title="Standings qualification or earned finals positions?" guide="standings-finals"><p>Standings requirements control rank, attendance, and cutoff dates. Earned finals positions are separate awards that can be assigned to a scheduled roping.</p><p>Review the bonus-entry policy below to decide which standings requirements still apply to an earned position.</p></ContextHelp>
     {season && selected ? <>
       <StandingsFilters key={`${season.id}:${selected.id}`} seasons={seasons.data} classes={uniqueClasses} seasonId={season.id} classId={selected.id} search="" includeSearch={false} />
       <StandingsQualificationForm key={`${season.id}:${selected.id}`} season={{ id: season.id, startsOn: season.starts_on, endsOn: season.ends_on }}
         classId={selected.id} rule={rule?.data ?? undefined} canEdit={["owner", "admin"].includes(producer.role)} />
-    </> : <p>Create a season and classifications first.</p>}
+    </> : <section className="space-y-3 rounded-md border border-[#dfe4e1] bg-white p-5"><h2 className="font-bold">Set up a season and classifications first</h2><p className="text-sm leading-6 text-[#526059]">Requirements are saved for a season and class. Add the missing setup, then return here to choose both.</p><div className="flex flex-wrap gap-3"><Link href="/settings?tab=seasons" className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-semibold">Manage seasons</Link><Link href="/settings/classifications" className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-semibold">Manage divisions & classifications</Link></div></section>}
   </div>;
 }
