@@ -1,3 +1,4 @@
+import { HelpLink } from "@/components/help/help-link";
 import { TemplateOrderList } from "@/components/settings/template-order-list";
 import { Check, ChevronDown, CircleDollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -252,12 +253,12 @@ export default async function DivisionSettingsPage() {
         title="Roping templates"
         description="Build reusable format templates for each division. Choose the classification and schedule when adding each actual roping to an event."
         actions={
-          <CreateDivisionDialog
+          <><HelpLink guide="templates" label="Template guide" /><CreateDivisionDialog
             configured={configured && canEdit}
             divisions={divisionOptions}
             payoutSchedules={payoutSchedules}
             classifications={classificationOptions}
-          />
+          /></>
         }
       />
       <RopingSetupTabs active="templates" />

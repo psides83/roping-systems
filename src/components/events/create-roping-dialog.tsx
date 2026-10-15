@@ -1,4 +1,5 @@
 "use client";
+import { ContextHelp } from "@/components/help/context-help";
 import { NumberStepper } from "@/components/ui/number-stepper";
 
 import { startTransition, useActionState, useEffect, useState } from "react";
@@ -173,11 +174,12 @@ export function CreateRopingDialog({
                   event are not copied.
                 </p>
               ) : null}
-              <section>
+              <section className="space-y-3">
+                <ContextHelp title="What am I creating?" guide="schedule-event"><p>An event is the full day or weekend. Each competition on its schedule is a roping copied from a reusable template. Saving an event, publishing it, and opening online entries are separate choices.</p></ContextHelp>
                 <h3 className="text-sm font-bold">Event details</h3>
                 <p className="mt-1 text-xs text-[#758078]">
                   The event is the full day or weekend containing the scheduled
-                  events below.
+                  ropings below.
                 </p>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-semibold">
@@ -373,7 +375,7 @@ export function CreateRopingDialog({
                     </h3>
                     <p className="mt-1 text-xs leading-5 text-[#758078]">
                       Charged once across the entire event, even when a roper
-                      enters multiple events or days.
+                      enters multiple ropings or days.
                     </p>
                   </div>
                 </div>

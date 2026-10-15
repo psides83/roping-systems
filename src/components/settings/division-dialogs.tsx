@@ -1,4 +1,5 @@
 "use client";
+import { ContextHelp } from "@/components/help/context-help";
 import { Dialog } from "@/components/ui/dialog";
 import { PersistentForm } from "@/components/ui/persistent-form";
 import { NumberStepper } from "@/components/ui/number-stepper";
@@ -279,6 +280,7 @@ function EventTemplateDialog({
                 placeholder="Eligibility or event setup notes"
               />
             </label>
+            <ContextHelp title="Rounds, repeat entries, and attendance" guide="templates"><p>These settings work independently. A two-round roping with a maximum of two entries gives each accepted entry two main runs.</p><p>Count attendance once per roping, or once for each entry, according to your organization&apos;s rules.</p></ContextHelp>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
                 Member roping count
@@ -308,6 +310,7 @@ function EventTemplateDialog({
                   className={inputClass}
                   placeholder="No limit"
                 />
+                <span className="mt-2 block text-sm font-normal leading-6 text-[#66716b]">Applies to each contestant in this scheduled roping. Leave blank for no regular limit.</span>
               </label>
               <label className="block text-sm font-semibold">
                 Minimum runs between entries
@@ -724,6 +727,7 @@ function FeeDialog({
                 </select>
               </label>
             </div>
+            <ContextHelp title="Required fees, displayed prices, and payout pools" guide="payouts"><p>Required with the entry makes a charge mandatory rather than optional; it does not record a payment. Include in displayed entry price controls how the price is presented.</p><p>Include in the main payout pool determines whether the charge contributes to the main purse. Side pots and insurance use separate payout pools; added-money fund charges are tracked in their selected fund.</p></ContextHelp>
             {kind === "added_money" ? <>
               <input type="hidden" name="scope" value="entry" />
               <label className="block text-sm font-semibold">Fund tracking

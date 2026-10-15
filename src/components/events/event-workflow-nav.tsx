@@ -1,8 +1,10 @@
+import { HelpLink } from "@/components/help/help-link";
 import Link from "next/link";
 import { ArrowLeft, Banknote, ClipboardList, LayoutDashboard, PanelsTopLeft, Printer, Radio } from "lucide-react";
 import { NavigationPending } from "@/components/ui/navigation-pending";
 
 export function EventWorkflowNav({ eventId, active, documentRopingId, documentRound }: { eventId: string; active: "event" | "entries" | "live" | "payouts" | "documents" | "arenas"; documentRopingId?: string; documentRound?: number }) {
+  const helpGuide = active === "entries" ? "entries" : active === "payouts" ? "payouts" : active === "live" || active === "arenas" ? "live-desk" : active === "documents" ? "print-documents" : "schedule-event";
   const documentQuery = new URLSearchParams();
   if (active === "live") { documentQuery.set("type", "timer"); if (documentRopingId) documentQuery.set("roping", documentRopingId); if (documentRound) documentQuery.set("round", String(documentRound)); }
   if (active === "entries") documentQuery.set("type", "entries");
@@ -19,5 +21,6 @@ export function EventWorkflowNav({ eventId, active, documentRopingId, documentRo
     <Link href="/events" className="inline-flex min-h-10 items-center gap-2 text-[#66716b]"><ArrowLeft size={16} />Events</Link>
     <div className="flex max-w-full gap-1 overflow-x-auto">{steps.map(({ id, label, path, icon: Icon }) => <Link key={id} href={`/events/${eventId}${path}`} aria-current={active === id ? "page" : undefined}
       className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 ${active === id ? "bg-[#eef1ef] text-[#17201c]" : "text-[#66716b] hover:bg-[#f5f7f6]"}`}><Icon size={16} /><span>{label}</span><NavigationPending label={`Loading ${label.toLowerCase()}`} /></Link>)}</div>
+    <HelpLink guide={helpGuide} label="Help with this screen" />
   </nav>;
 }

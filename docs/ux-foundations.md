@@ -38,6 +38,7 @@ The review remains the roadmap for those phases.
 - Browser checks use demo data. The database regression scripts for the earlier
   template/sponsor reorder migrations still require a running development database.
 
-The two reorder migrations must be applied in the target database to enable
-those previously added reorder actions. This UI batch introduces no additional
-schema migration.
+The two reorder migrations were subsequently applied to the linked Supabase
+project on October 15, 2026 during the help-and-guides batch. Other environments
+still need those migrations to enable reorder actions. This UI batch itself
+introduces no additional schema migration.

@@ -8,6 +8,7 @@ import {
   ChartNoAxesCombined,
   ChevronDown,
   CircleDollarSign,
+  CircleHelp,
   Gauge,
   Menu,
   PiggyBank,
@@ -144,7 +145,7 @@ export function AppShell({
         aria-modal={!desktop && open ? true : undefined}
         aria-label="Main navigation"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[244px] flex-col brand-primary-fill text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-[244px] flex-col overflow-y-auto brand-primary-fill text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -268,6 +269,7 @@ export function AppShell({
           })}
         </nav>
         <div className="border-t border-white/10 p-3">
+          <Link href="/help" onClick={() => setOpen(false)} aria-current={pathname.startsWith("/help") ? "page" : undefined} className={cn("flex h-11 items-center gap-3 rounded-md px-3 text-sm", pathname.startsWith("/help") ? "bg-white text-[#17201c]" : "brand-muted hover:bg-white/[0.07] brand-hover")}><CircleHelp size={18} />Help &amp; guides<NavigationPending className="ml-auto" /></Link>
           {platformOwner && <Link href="/platform" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-md px-3 text-sm brand-muted hover:bg-white/[0.07] brand-hover"><ShieldCheck size={18} />Platform Admin</Link>}
           <Link
             href="/settings"
