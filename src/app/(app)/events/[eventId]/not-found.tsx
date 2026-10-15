@@ -1,0 +1,2 @@
+import { UnavailableRecord } from "@/components/ui/unavailable-record";
+export default function NotFound() { return <UnavailableRecord title="This event record is not available" description="The event or requested record may no longer be available, or your current producer or staff access may not include it. Return to events and reopen the record from there." href="/events" label="Return to events" />; }
