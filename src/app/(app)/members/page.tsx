@@ -1,3 +1,4 @@
+import { MemberNavigation } from "@/components/members/member-navigation";
 import Link from "next/link";
 import { ProducerFeatureGate } from "@/components/settings/producer-features-context";
 import { MemberList } from "@/components/members/member-list";
@@ -172,6 +173,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
           /></div>
         }
       />
+      <MemberNavigation active="directory" />
       <ContextHelp title={requireMemberships ? "Membership status, classifications, and account access" : "Roper records and account access"} guide="first-setup"><p>{requireMemberships ? "Membership status tracks approval and standing with your producer. Classifications describe the divisions and classes a roper competes in. Review the full record for eligibility, holds, and any exceptions before competition." : "A roper record stores contact details, classifications, and competition history. Review the full record for eligibility and any competition holds."}</p><p>Account connections link a roper record to an online login. Creating a record does not by itself create a login or grant producer staff access.</p></ContextHelp>
       <div className={`grid gap-3 ${requireMemberships ? "sm:grid-cols-3" : ""}`}>
 

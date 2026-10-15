@@ -242,12 +242,10 @@ export function AppShell({
                     "/settings/roping-templates",
                     "/settings/payouts",
                     "/settings/timing",
-                    "/settings/classification-watch",
                     "/settings/standings",
                     "/settings/qualifications",
-                    "/settings/finals",
                   ].some((href) => pathname === href)
-                : item.href === currentNavigationHref;
+                : item.href === currentNavigationHref || (item.href === "/members" && ["/settings/classification-watch", "/settings/finals"].includes(pathname));
             const Icon = item.icon;
             return (
               <Link

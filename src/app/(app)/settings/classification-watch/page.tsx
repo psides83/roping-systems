@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
-import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
+import { MemberNavigation } from "@/components/members/member-navigation";
 import { ClassificationWatchRules } from "@/components/settings/classification-watch-rules";
 import { ClassificationWatchEvidence } from "@/components/members/classification-watch-evidence";
 import { getActiveProducer } from "@/lib/producers";
@@ -17,8 +17,8 @@ export default async function ClassificationWatchPage() {
   const classes = await db.from("classifications").select("id,name,division_id,divisions!inner(name)").eq("producer_id", producer.id).order("rank", { ascending: false });
   if (settings.error || rules.error || classes.error) throw new Error("Unable to load classification watch settings.");
   return <div className="space-y-6">
-    <PageHeader eyebrow="Roping setup" title="Classification watch" description="Optional fast-run evidence based on each member’s classification, including entered-down ropings. Each qualifying run counts. Classification moves always require staff approval." />
-    <RopingSetupTabs active="watch" />
+    <PageHeader eyebrow="Roper management" title="Classification watch" description="Optional fast-run evidence based on each member’s classification, including entered-down ropings. Each qualifying run counts. Classification moves always require staff approval." />
+    <MemberNavigation active="watch" />
     <ClassificationWatchRules rules={rules.data as WatchRule[]} classifications={classes.data as unknown as Array<{ id: string; name: string; division_id: string; divisions: { name: string } }>} enabled={settings.data.classification_watch_enabled} canEdit={producer.role !== "viewer"} canConfigure={["owner", "admin"].includes(producer.role)} />
     <ClassificationMoveBackSettings enabled={settings.data.classification_move_back_enabled} minimumRopings={settings.data.classification_move_back_min_ropings} canEdit={["owner", "admin"].includes(producer.role)} />
     <ClassificationWatchEvidence />
