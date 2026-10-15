@@ -29,10 +29,11 @@ export default async function StandingsSettings({ searchParams }: PageProps<"/se
     .eq("producer_id", producer.id).eq("season_id", season.id).eq("class_key", selected.id).maybeSingle() : null;
   if (rule?.error) throw new Error("Unable to load qualification requirements.");
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Standings qualification</h1><Link href="/settings/standings/carryovers" className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-4 text-sm font-semibold">Carryover review</Link></div>
-    <p className="text-sm leading-6 text-[#526059]">Set season-specific rank and attendance requirements. Choose the season and classification before editing.</p>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Season eligibility</h1><Link href="/settings/standings/carryovers" className="inline-flex h-10 items-center rounded-md border border-[#ccd4d0] bg-white px-4 text-sm font-semibold">Carryover review</Link></div>
+    <p className="text-sm leading-6 text-[#526059]">Set qualification requirements for one season and classification. These determine the qualification labels on public standings; they do not change how winnings or rank are calculated.</p>
     <RopingSetupTabs active="standings" />
-    <ContextHelp title="Standings qualification or earned finals positions?" guide="standings-finals"><p>Standings requirements control rank, attendance, and cutoff dates. Earned finals positions are separate awards that can be assigned to a scheduled roping.</p><p>Review the bonus-entry policy below to decide which standings requirements still apply to an earned position.</p></ContextHelp>
+    <ContextHelp title="Season eligibility or event qualification rules?" guide="qualification-rules"><p>These requirements are also used by a roping’s season-and-class entry review when no named qualification rule set is assigned.</p><p>For an event with its own requirements, create a named rule set in Qualification rules and assign it to the event or roping. That rule set controls the event’s entry review instead; it does not replace these public standings labels.</p><p>Earned finals positions are separate awards. The bonus-entry policy below controls which season requirements those positions can bypass.</p></ContextHelp>
+    <Link href="/settings/qualifications" className="inline-flex min-h-11 items-center text-sm font-semibold underline">Set up event qualification rules</Link>
     {season && selected ? <>
       <StandingsFilters key={`${season.id}:${selected.id}`} seasons={seasons.data} classes={uniqueClasses} seasonId={season.id} classId={selected.id} search="" includeSearch={false} />
       <StandingsQualificationForm key={`${season.id}:${selected.id}`} season={{ id: season.id, startsOn: season.starts_on, endsOn: season.ends_on }}
