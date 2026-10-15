@@ -38,7 +38,7 @@ const navigation = [
   { name: "Reports & exports", href: "/reports", icon: ChartNoAxesCombined },
   {
     name: "Roping setup",
-    href: "/settings/setup",
+    href: "/settings/classifications",
     icon: SlidersHorizontal,
   },
 ];
