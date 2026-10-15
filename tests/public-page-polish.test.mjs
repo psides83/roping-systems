@@ -39,7 +39,7 @@ test("Mobile full results retain entry, aggregate, progress, and ordered winning
 test("Missing fixed start times do not falsely follow another roping", () => {
   const { PublicClassSchedule } = component("public-class-schedule", {
     "@/lib/events/arena-schedule": { groupScheduleByArena: (events) => [{ name: "Arena 1", ropings: events }] },
-    "@/lib/events/qualification-notice": { qualificationNoticeText: () => "" },
+    "./public-roping-qualification": { PublicRopingQualification: () => null },
   });
   const render = (scheduleType) => renderToStaticMarkup(React.createElement(PublicClassSchedule, {
     events: [{ id: "roping", name: "Open Breakaway", scheduleType, startsAt: null, eventDayStatus: "scheduled", followsRopingName: "#11 Tie-down" }],

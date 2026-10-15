@@ -1,6 +1,6 @@
 import type { PublicEvent } from "@/lib/events/public-event-data";
 import { groupScheduleByArena } from "@/lib/events/arena-schedule";
-import { qualificationNoticeText } from "@/lib/events/qualification-notice";
+import { PublicRopingQualification } from "./public-roping-qualification";
 
 export function PublicClassSchedule({
   events,
@@ -46,8 +46,8 @@ export function PublicClassSchedule({
           >
             <span className="block min-w-0 font-semibold">
               <span className="block break-words">{roping.name}</span>
-              {roping.qualification ? <span className="mt-1 block font-normal leading-5 text-[#66716b]">{qualificationNoticeText(roping.qualification)}</span> : null}
             </span>
+            {roping.qualification && <PublicRopingQualification notice={roping.qualification} />}
             <span className="block min-w-0 break-words text-xs leading-5 text-[#66716b]">
               <span className="block">
                 {displayStart

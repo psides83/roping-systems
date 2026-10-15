@@ -32,9 +32,9 @@ export function PublicScheduledEvent({ event, producerSlug, timezone, configured
         </div>
       </header>
       <PublicEventInformation event={event} timezone={timezone} />
-      <details className="group/schedule mt-4">
+      <details open={event.scheduledRopings.some(roping => Boolean(roping.qualification))} className="group/schedule mt-4">
         <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-semibold text-[var(--brand-accent-strong)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] [&::-webkit-details-marker]:hidden">
-          Roping schedule
+          {event.scheduledRopings.some(roping => Boolean(roping.qualification)) ? "Roping schedule & qualification requirements" : "Roping schedule"}
           <span className="text-xs font-normal text-[#66716b]">{event.scheduledRopings.length} {event.scheduledRopings.length === 1 ? "roping" : "ropings"}</span>
           <ChevronDown size={16} className="transition-transform group-open/schedule:rotate-180 motion-reduce:transition-none" />
         </summary>

@@ -1,4 +1,8 @@
 export interface QualificationNotice {
+  rule_name?: string;
+  season_ends_on?: string;
+  earned_position_policy?: "none" | "rank" | "rank_and_attendance";
+  bonus_entries_enabled?: boolean;
   event_roping_id: string;
   season_name: string;
   top_places: number | null;
