@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { SectionNavigation } from "@/components/ui/section-navigation";
 import { useProducerFeatures } from "./producer-features-context";
 import { featureEnabled } from "@/lib/producer-features";
 
@@ -21,10 +21,5 @@ export const producerSettingsTabs = [
 
 export function ProducerSettingsTabs({ active }: { active: (typeof producerSettingsTabs)[number]["id"] }) {
   const features = useProducerFeatures();
-  return <nav aria-label="Producer settings" className="flex min-w-0 gap-1 overflow-x-auto border-b border-[#d7ddda]">
-    {producerSettingsTabs.filter(tab => tab.id === active || featureEnabled(features, tab.id)).map((tab) => <Link key={tab.id} href={tab.href} aria-current={active === tab.id ? "page" : undefined}
-      className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--brand-accent)] ${active === tab.id ? "border-[var(--brand-accent)] text-[#17201c]" : "border-transparent text-[#66716b] hover:border-[#ccd4d0] hover:text-[#17201c]"}`}>
-      {tab.label}
-    </Link>)}
-  </nav>;
+  return <SectionNavigation label="Producer settings" active={active} items={producerSettingsTabs.filter(tab => tab.id === active || featureEnabled(features, tab.id))} />;
 }

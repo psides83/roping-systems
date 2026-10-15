@@ -26,11 +26,15 @@ type PaymentStatus = "unpaid" | "paid_cash" | "comped" | "refunded";
 
 export default async function EventEntriesPage({
   params,
+  searchParams,
 }: PageProps<"/events/[eventId]/entries">) {
   const { eventId } = await params;
+  const query = await searchParams;
+  const initialPaymentFilter = query.payment === "unpaid" ? "unpaid" : "all";
   if (!isSupabaseConfigured()) {
     return (
       <EntriesWorkspace
+      initialPaymentFilter={initialPaymentFilter}
         eventId={eventId}
         title="Fall Classic"
         divisions={[
@@ -549,6 +553,7 @@ export default async function EventEntriesPage({
   if (officePermission.error || management.error || collection.error || adjustment.error) throw new Error("Unable to check entry office access.");
   return (
     <EntriesWorkspace
+      initialPaymentFilter={initialPaymentFilter}
       eventId={eventId}
       title={roping.title}
       divisions={divisions}
@@ -567,6 +572,7 @@ export default async function EventEntriesPage({
 }
 
 function EntriesWorkspace({
+  initialPaymentFilter,
   eventId,
   title,
   divisions,
@@ -581,6 +587,7 @@ function EntriesWorkspace({
   requireMemberships = true,
   canApproveMemberships = false,
 }: {
+  initialPaymentFilter?: string;
   eventId: string;
   requireMemberships?: boolean;
   canApproveMemberships?: boolean;
@@ -685,6 +692,8 @@ function EntriesWorkspace({
       <OnlineEntryRequestList eventId={eventId} requests={requests} enabled={canOffice} manager={canEdit} />
       {canOffice && <RopingWaitlists eventId={eventId} manager={canEdit} />}
       <EntryLedger
+        key={initialPaymentFilter}
+        initialPaymentFilter={initialPaymentFilter}
         eventId={eventId}
         contestants={contestants}
         divisions={divisions.map(({ id, name }) => ({ id, name }))}

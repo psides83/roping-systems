@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ReorderHandle } from "@/components/ui/reorder-handle";
+import { moveItem } from "@/lib/reorder";
+import { useId, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -245,14 +247,13 @@ export function ScheduledClassFields({
     );
   }
 
+  const orderGroup = useId();
   function moveOccurrence(key: string, targetKey: string) {
     setOccurrences((current) => {
       const index = current.findIndex((item) => item.key === key);
       const target = current.findIndex((item) => item.key === targetKey);
-      if (target < 0 || target >= current.length) return current;
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
+      if (index < 0 || target < 0 || current[index].arenaName !== current[target].arenaName) return current;
+      return moveItem(current, index, target);
     });
   }
 
@@ -381,6 +382,8 @@ export function ScheduledClassFields({
           return (
             <section
               key={occurrence.key}
+              data-reorder-id={occurrence.key}
+              data-reorder-group={`${orderGroup}:${group.name}`}
               className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
             >
               <header className="flex items-start gap-3 border-b border-[#e7ebe8] p-4">
@@ -407,6 +410,7 @@ export function ScheduledClassFields({
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  <ReorderHandle id={occurrence.key} group={`${orderGroup}:${group.name}`} label={template.name} onMove={target => moveOccurrence(occurrence.key, target)} />
                   <IconButton
                     label={collapsed ? "Expand roping" : "Collapse roping"}
                     expanded={!collapsed}

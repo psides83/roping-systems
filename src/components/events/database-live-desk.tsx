@@ -1,4 +1,7 @@
 "use client";
+
+import { ReorderHandle } from "@/components/ui/reorder-handle";
+import { moveItem } from "@/lib/reorder";
 import { PersistentForm } from "@/components/ui/persistent-form";
 import { EntryLabel, useEntryLabelStyle } from "./entry-label";
 import { formatEntryLabel } from "@/lib/entry-labels";
@@ -536,6 +539,8 @@ export function DatabaseLiveDesk({
                 return (
                   <tr
                     key={run.id}
+                    data-reorder-id={run.id}
+                    data-reorder-group={`draw:${eventId}:${selectedDivisionId}:${selectedRound}`}
                     className={cn(
                       currentRun?.id === run.id &&
                         "bg-[#fff6f2] ring-1 ring-inset ring-[#e8ad9c]",
@@ -548,6 +553,8 @@ export function DatabaseLiveDesk({
                         </span>
                         {canManageDraw && drawReady && !normalizedSearch ? (
                           <span className="flex gap-1">
+                            <ReorderHandle id={run.id} group={`draw:${eventId}:${selectedDivisionId}:${selectedRound}`} label={`${run.name}, entry ${run.entryNumber}`} disabled={orderPending}
+                              onMove={target => setOrderedRuns(current => moveItem(current, current.findIndex(item => item.id === run.id), current.findIndex(item => item.id === target)))} />
                             <button
                               type="button"
                               onClick={() => moveRun(run.id, -1)}

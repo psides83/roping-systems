@@ -70,6 +70,7 @@ export interface FeeTemplateSummary {
 
 export interface DivisionTemplateSummary {
   id: string;
+  updatedAt?: string;
   name: string;
   description: string;
   maximumEntriesPerPerson: number | null;

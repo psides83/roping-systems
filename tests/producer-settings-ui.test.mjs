@@ -13,6 +13,10 @@ function component(path, overrides={}) {
   const source=transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText;
   const imports=(name)=> {
     if (name in overrides) return overrides[name];
+    if (name==='@/components/ui/section-navigation') return component('../src/components/ui/section-navigation.tsx', {
+      'next/navigation': {useRouter:()=>({push:()=>{}})},
+      'nextjs-nav-guard': {NavigationGuardLink:({children,...props})=>React.createElement('a',props,children)},
+    });
     if (name==='next/link') return {default:({children,...props})=>React.createElement('a',props,children)};
     return (name === "@/components/ui/persistent-form" ? { PersistentForm: "form" } : require(name));
   };

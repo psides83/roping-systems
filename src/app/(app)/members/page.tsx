@@ -138,7 +138,9 @@ async function getMemberPageData(): Promise<{
   };
 }
 
-export default async function MembersPage() {
+export default async function MembersPage({ searchParams }: PageProps<"/members">) {
+  const query = await searchParams;
+  const initialStatus = query.status === "pending" ? "pending" : "";
   const configured = isSupabaseConfigured();
   const { members, divisions, canEdit } = await getMemberPageData();
   const producer = await getActiveProducer();
@@ -191,7 +193,7 @@ export default async function MembersPage() {
           </p>
         </div>}
       </div>
-      <MemberList members={members} requireMemberships={requireMemberships} head={
+      <MemberList key={initialStatus} initialStatus={initialStatus} members={members} requireMemberships={requireMemberships} head={
             <thead className="bg-[#f7f8f7] text-[11px] font-bold uppercase text-[#758078]">
               <tr>
                 <th className="px-5 py-3">{requireMemberships ? "Member" : "Roper"}</th>

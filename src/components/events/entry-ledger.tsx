@@ -88,6 +88,7 @@ const paymentStyles: Record<PaymentSummary, string> = {
 };
 
 export function EntryLedger({
+  initialPaymentFilter = "all",
   eventId,
   contestants,
   divisions,
@@ -96,6 +97,7 @@ export function EntryLedger({
   canCollect = canOffice,
   canAdjust = canEdit,
 }: {
+  initialPaymentFilter?: string;
   eventId: string;
   contestants: LedgerContestant[];
   divisions: TransferDivision[];
@@ -105,13 +107,13 @@ export function EntryLedger({
   canAdjust?: boolean;
 }) {
   const [search, setSearch] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState(initialPaymentFilter);
   const [checkInFilter, setCheckInFilter] = useState("all");
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return contestants.filter((contestant) => {
       const matchesPayment =
-        paymentFilter === "all" || contestant.paymentStatus === paymentFilter;
+        paymentFilter === "all" || contestant.paymentStatus === paymentFilter || (paymentFilter === "unpaid" && contestant.entries.some(entry => entry.paymentStatus === "unpaid"));
       const matchesCheckIn =
         checkInFilter === "all" ||
         (checkInFilter === "checked_in" && contestant.checkedIn) ||
@@ -128,7 +130,7 @@ export function EntryLedger({
   }, [checkInFilter, contestants, paymentFilter, search]);
 
   return (
-    <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+    <section id="entry-ledger" className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
       <div className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] p-4">
         <label className="flex h-10 w-80 max-w-full items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
           <Search size={17} />

@@ -54,3 +54,16 @@ export async function deleteSponsor(id:string,revision:number):Promise<SponsorSt
   if(removed.data.logo_path) await db.storage.from(sponsorBucket).remove([removed.data.logo_path]);
   refresh();return {success:true};
 }
+
+export async function reorderSponsors(ids: string[], revisions: number[]): Promise<SponsorState> {
+  if (!z.array(z.uuid()).min(1).max(10000).safeParse(ids).success || new Set(ids).size !== ids.length ||
+      !z.array(z.number().int().positive()).length(ids.length).safeParse(revisions).success) return { message: "Refresh the sponsor list and try again." };
+  const access = await context();
+  if (!access) return { message: "Owner or administrator access is required." };
+  const { error } = await access.db.rpc("reorder_producer_sponsors", {
+    target_producer_id: access.producer.id, ordered_sponsor_ids: ids, expected_revisions: revisions,
+  });
+  if (error) return { message: error.message };
+  refresh();
+  return { success: true, message: "Sponsor order saved." };
+}

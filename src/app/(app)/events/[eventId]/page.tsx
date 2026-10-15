@@ -927,6 +927,8 @@ export default async function RopingDetailPage({
             <details
               key={division.id}
               id={`roping-${division.id}`}
+              data-reorder-id={division.id}
+              data-reorder-group={`schedule:${event.id}:${date}:${group.name}`}
               className="group scroll-mt-6 overflow-hidden rounded-md border border-[#dfe4e1] bg-white open:shadow-sm target:border-[var(--brand-accent)]"
             >
               <summary className="flex cursor-pointer list-none items-start gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden sm:items-center">
@@ -937,6 +939,7 @@ export default async function RopingDetailPage({
                   eventId={event.id}
                   ropingId={division.id}
                   ropingName={division.name}
+                  orderGroup={`schedule:${event.id}:${date}:${group.name}`}
                   canMoveUp={
                     index > 0 &&
                     group.ropings[index - 1].scheduledDateValue ===

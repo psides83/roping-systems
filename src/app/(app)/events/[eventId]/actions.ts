@@ -286,17 +286,20 @@ const moveEventRopingSchema = z.object({
   eventId: z.uuid(),
   ropingId: z.uuid(),
   direction: z.enum(["up", "down"]),
+  targetRopingId: z.uuid().optional(),
 });
 
 export async function moveEventRoping(
   eventId: string,
   ropingId: string,
   direction: "up" | "down",
+  targetRopingId?: string,
 ): Promise<EventScheduleFormState> {
   const parsed = moveEventRopingSchema.safeParse({
     eventId,
     ropingId,
     direction,
+    targetRopingId,
   });
   if (!parsed.success) return { message: "Choose a valid roping to move." };
 
@@ -325,6 +328,7 @@ export async function moveEventRoping(
     if (candidate.arena_name === currentRoping.arena_name) break;
     adjacentIndex += step;
   }
+  if (parsed.data.targetRopingId) adjacentIndex = orderedRopings.findIndex(roping => roping.id === parsed.data.targetRopingId);
   const adjacentRoping = orderedRopings[adjacentIndex];
   if (
     !adjacentRoping ||
@@ -333,15 +337,18 @@ export async function moveEventRoping(
   )
     return { message: "Ropings can only be reordered within the same day and arena." };
 
-  [orderedRopings[currentIndex], orderedRopings[adjacentIndex]] = [
-    orderedRopings[adjacentIndex],
-    orderedRopings[currentIndex],
-  ];
+  const group = orderedRopings.filter(roping => roping.scheduled_date === currentRoping.scheduled_date && roping.arena_name === currentRoping.arena_name);
+  const from = group.findIndex(roping => roping.id === currentRoping.id);
+  const to = group.findIndex(roping => roping.id === adjacentRoping.id);
+  group.splice(from, 1);
+  group.splice(to, 0, currentRoping);
+  let position = 0;
+  const reordered = orderedRopings.map(roping => roping.scheduled_date === currentRoping.scheduled_date && roping.arena_name === currentRoping.arena_name ? group[position++] : roping);
   const { error: reorderError } = await supabase.rpc(
     "reorder_event_ropings",
     {
       target_event_id: parsed.data.eventId,
-      ordered_event_roping_ids: orderedRopings.map((roping) => roping.id),
+      ordered_event_roping_ids: reordered.map((roping) => roping.id),
     },
   );
   if (reorderError) return { message: reorderError.message };

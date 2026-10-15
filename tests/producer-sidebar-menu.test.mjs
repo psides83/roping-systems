@@ -41,7 +41,7 @@ test("producer menu opens for mouse hover, retains touch click, and closes outsi
   globalThis.Node = Object;
   globalThis.document = { addEventListener: (name, handler) => listeners.set(name, handler), removeEventListener: name => listeners.delete(name) };
   try {
-    const cleanup = effects[0]();
+    const cleanup = effects.at(-1)();
     listeners.get("pointerdown")({ target: inside }); assert.equal(updates.length, 0);
     listeners.get("pointerdown")({ target: {} }); assert.equal(updates.pop(), false);
     wrapper.props.onPointerLeave({ pointerType: "mouse" }); assert.equal(updates.pop(), false);

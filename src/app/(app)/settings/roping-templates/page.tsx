@@ -1,3 +1,4 @@
+import { TemplateOrderList } from "@/components/settings/template-order-list";
 import { Check, ChevronDown, CircleDollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
@@ -37,6 +38,7 @@ const roundOrderLabels: Record<RoundOrderMethod, string> = {
 
 async function getDivisionData(): Promise<{
   divisions: DivisionTemplateSummary[];
+  timezone: string;
   payoutSchedules: Array<{
     id: string;
     name: string;
@@ -49,6 +51,7 @@ async function getDivisionData(): Promise<{
 }> {
   if (!isSupabaseConfigured())
     return {
+      timezone: "America/Chicago",
       divisions: demoDivisions.map((division) => ({
         ...division,
         numberOfRuns: division.numberOfRuns ?? 1,
@@ -77,6 +80,7 @@ async function getDivisionData(): Promise<{
   const producer = await getActiveProducer();
   if (!producer)
     return {
+      timezone: "America/Chicago",
       divisions: [],
       payoutSchedules: [],
       divisionOptions: [],
@@ -94,7 +98,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("roping_templates")
       .select(
-        "id, name, description, division_id, available_division_ids, main_round_count, cattle_draw_enabled, attendance_count_mode, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, updated_at, division_id, available_division_ids, main_round_count, cattle_draw_enabled, attendance_count_mode, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("producer_id", producer.id)
       .order("sort_order")
@@ -136,6 +140,7 @@ async function getDivisionData(): Promise<{
   const { data: funds, error: fundError } = await supabase.from("producer_funds").select("id,name").eq("producer_id",producer.id).eq("is_active",true).order("name");
   if (fundError) throw new Error(`Unable to load funds: ${fundError.message}`);
   return {
+    timezone: producer.timezone,
     canEdit: producer.role !== "viewer",
     funds: funds ?? [],
     payoutSchedules: (schedules ?? []).map((schedule) => ({
@@ -155,6 +160,7 @@ async function getDivisionData(): Promise<{
     })),
     divisions: data.map((division) => ({
       id: division.id,
+      updatedAt: division.updated_at,
       name: division.name,
       description: division.description ?? "",
       maximumEntriesPerPerson: division.max_entries_per_roper,
@@ -231,23 +237,13 @@ export default async function DivisionSettingsPage() {
   const configured = isSupabaseConfigured();
   const {
     divisions,
+    timezone,
     payoutSchedules,
     divisionOptions,
     classificationOptions,
     canEdit,
     funds,
   } = await getDivisionData();
-  const templateGroups = new Map<string, { name: string; templates: DivisionTemplateSummary[] }>();
-  for (const division of divisionOptions) {
-    templateGroups.set(division.id, { name: division.name, templates: [] });
-  }
-  for (const template of divisions) {
-    const shared = (template.availableDivisionIds?.length ?? 0) > 1;
-    const key = shared ? "shared" : template.disciplineId ?? template.divisionName ?? "unassigned";
-    const group = templateGroups.get(key) ?? { name: shared ? "Shared across divisions" : template.divisionName || "Unassigned division", templates: [] };
-    group.templates.push(template);
-    templateGroups.set(key, group);
-  }
 
   return (
     <div className="space-y-6">
@@ -266,21 +262,16 @@ export default async function DivisionSettingsPage() {
       />
       <RopingSetupTabs active="templates" />
       <section className="space-y-4">
-        {Array.from(templateGroups, ([id, group]) => group.templates.length ? (
-          <section key={id} className="space-y-4">
-            <header className="flex flex-wrap items-baseline gap-3 border-b border-[#dfe4e1] pb-3">
-              <h2 className="text-lg font-bold">{group.name}</h2>
-              <span className="text-xs font-medium text-[#66716b]">
-                {group.templates.length} {group.templates.length === 1 ? "template" : "templates"}
-              </span>
-            </header>
-        {group.templates.map((division) => (
+        <TemplateOrderList enabled={configured && canEdit} items={divisions.map((division) => ({
+          id: division.id,
+          name: division.name,
+          content: (
           <article
             key={division.id}
             className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white"
           >
-            <div className="flex items-start gap-3 border-b border-[#e7ebe8] p-5">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-4 border-b border-[#e7ebe8] p-5 sm:flex-row sm:items-start">
+              <div className="min-w-0 w-full flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-base font-bold">{division.name}</h3>
                   <span
@@ -303,16 +294,17 @@ export default async function DivisionSettingsPage() {
                 <p className="mt-1 text-sm text-[#66716b]">
                   {division.description || "No description"}
                 </p>
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-[#758078]">
-                  <span>{division.attendanceCountMode === "per_entry" ? "Each entry counts toward attendance" : "Attendance counts once per roping"}</span>
+                {division.updatedAt && (
+                  <p className="mt-2 text-xs text-[#758078]">
+                    As of <time dateTime={division.updatedAt}>{new Intl.DateTimeFormat("en-US", {
+                      month: "long", day: "numeric", year: "numeric", timeZone: timezone,
+                    }).format(new Date(division.updatedAt))}</time>
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]">
                   <span>
                     {division.numberOfRuns}{" "}
                     {division.numberOfRuns === 1 ? "round" : "rounds"}
-                  </span>
-                  <span>
-                    {division.cattleDrawEnabled
-                      ? "Drawn cattle"
-                      : "Cattle run in order"}
                   </span>
                   <span>
                     {division.maximumEntriesPerPerson
@@ -321,6 +313,17 @@ export default async function DivisionSettingsPage() {
                   </span>
                   <span>
                     {division.allowGuests ? "Guests allowed" : "Members only"}
+                  </span>
+
+                </div>
+                <details className="mt-3 text-sm text-[#66716b]">
+                  <summary className="min-h-9 cursor-pointer font-semibold">Timing &amp; competition details</summary>
+                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                    <span>{division.attendanceCountMode === "per_entry" ? "Each entry counts toward attendance" : "Attendance counts once per roping"}</span>
+                  <span>
+                    {division.cattleDrawEnabled
+                      ? "Drawn cattle"
+                      : "Cattle run in order"}
                   </span>
                   <span>
                     {division.minimumRunsBetweenEntries
@@ -338,9 +341,10 @@ export default async function DivisionSettingsPage() {
                       ? `Short round · ${division.shortRoundBrackets?.length ?? 0} comeback ${division.shortRoundBrackets?.length === 1 ? "range" : "ranges"}`
                       : "No short round"}
                   </span>
-                </div>
+                  </div>
+                </details>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2 self-end sm:self-start">
                 <DuplicateDivisionButton
                   configured={configured && canEdit}
                   template={division}
@@ -432,9 +436,8 @@ export default async function DivisionSettingsPage() {
               </div>
             </details>
           </article>
-        ))}
-          </section>
-        ) : null)}
+          ),
+        }))} />
         {!divisions.length ? (
           <div className="rounded-md border border-dashed border-[#cbd2ce] bg-white p-10 text-center">
             <p className="font-semibold">Create your first roping template</p>
@@ -450,8 +453,8 @@ export default async function DivisionSettingsPage() {
           Roping templates are producer-specific
         </p>
         <p className="mt-1 text-xs text-[#758078]">
-          Changes here become defaults for new events and do not alter past
-          events.
+          Changes become defaults for new ropings. Existing scheduled ropings
+          keep their settings until you review and apply a template update.
         </p>
       </div>
     </div>

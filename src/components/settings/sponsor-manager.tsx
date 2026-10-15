@@ -1,20 +1,34 @@
 "use client";
 
+import { ReorderHandle } from "@/components/ui/reorder-handle";
+import { moveItem } from "@/lib/reorder";
 import { PersistentForm } from "@/components/ui/persistent-form";
 import Image from "next/image";
 import { useActionState,useEffect,useRef,useState,useTransition } from "react";
 import { ImagePlus,LoaderCircle,Pencil,Plus,Trash2,Upload,X } from "lucide-react";
-import { deleteSponsor,saveSponsor,type SponsorState } from "@/app/(app)/settings/sponsors/actions";
+import { reorderSponsors,deleteSponsor,saveSponsor,type SponsorState } from "@/app/(app)/settings/sponsors/actions";
 import { NumberStepper } from "@/components/ui/number-stepper";
 import { sponsorLogoLimit,type ProducerSponsor } from "@/lib/producer-sponsors";
 
 type Sponsor=ProducerSponsor & {logoUrl:string|null};
 export function SponsorManager({sponsors}:{sponsors:Sponsor[]}){
   const [editing,setEditing]=useState<Sponsor|"new"|null>(null);
+  const [status,setStatus]=useState("");
   const [error,setError]=useState("");const [pending,startTransition]=useTransition();
+  function reorder(id: string, target: string) {
+    const next = moveItem(sponsors, sponsors.findIndex(item => item.id === id), sponsors.findIndex(item => item.id === target));
+    setError("");
+    setStatus("Saving order…");
+    startTransition(async () => {
+      try { const result = await reorderSponsors(next.map(item => item.id), next.map(item => item.revision)); setError(result.success ? "" : result.message ?? "Unable to save order."); setStatus(result.success ? "Sponsor order saved." : "Order was not saved."); }
+      catch { setError("Unable to save order. Please try again."); setStatus("Order was not saved."); }
+    });
+  }
   return <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">{sponsors.length} {sponsors.length===1?"sponsor":"sponsors"}</h2><button type="button" onClick={()=>setEditing("new")} className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-3 text-sm font-semibold text-white"><Plus size={16}/>Add sponsor</button></div>
+    <p role="status" className="text-sm text-[#66716b]">{status || "Drag a handle to change the public display order. Order saves automatically."}</p>
     {error && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
-    <div className="divide-y border-y">{sponsors.map(sponsor=><article key={sponsor.id} className="flex flex-wrap items-center gap-4 py-4">
+    <div className="divide-y border-y">{sponsors.map(sponsor=><article key={sponsor.id} data-reorder-id={sponsor.id} data-reorder-group="sponsors" className="flex flex-wrap items-center gap-4 py-4">
+      <ReorderHandle id={sponsor.id} group="sponsors" label={sponsor.name} disabled={pending || Boolean(editing)} onMove={target => reorder(sponsor.id, target)} />
       <div className="grid h-20 w-28 shrink-0 place-items-center rounded-md border bg-white p-2">{sponsor.logoUrl?<Image src={sponsor.logoUrl} alt={`${sponsor.name} logo`} width={112} height={80} unoptimized className="h-full w-full object-contain"/>:<ImagePlus size={25} className="text-[#758078]"/>}</div>
       <div className="min-w-0 flex-1"><h3 className="break-words font-semibold">{sponsor.name}</h3><p className="mt-1 text-xs text-[#66716b]">Position {sponsor.sort_order} · {sponsor.is_active?"Public":"Hidden"}</p>{sponsor.website_url && <a href={sponsor.website_url} target="_blank" rel="noopener noreferrer" className="mt-1 block break-all text-sm text-[#66716b] hover:underline">{sponsor.website_url}</a>}</div>
       <div className="flex gap-2"><button type="button" onClick={()=>setEditing(sponsor)} title="Edit sponsor" aria-label={`Edit ${sponsor.name}`} className="grid h-11 w-11 place-items-center rounded-md border bg-white"><Pencil size={17}/></button><button type="button" disabled={pending} title="Remove sponsor" aria-label={`Remove ${sponsor.name}`} onClick={()=>{

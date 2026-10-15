@@ -6,12 +6,12 @@ import Papa from "papaparse";
 import type { MemberSummary } from "@/types/domain";
 import { matchesSearch } from "@/lib/list-controls";
 
-export function MemberList({ members, rows, head, requireMemberships = true }: { members: MemberSummary[]; rows: ReactNode[]; head: ReactNode; requireMemberships?: boolean }) {
+export function MemberList({ members, rows, head, requireMemberships = true, initialStatus = "" }: { members: MemberSummary[]; rows: ReactNode[]; head: ReactNode; requireMemberships?: boolean; initialStatus?: string }) {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(initialStatus);
   const [classification, setClassification] = useState("");
   const [sort, setSort] = useState("name");
-  const [filters, setFilters] = useState(false);
+  const [filters, setFilters] = useState(Boolean(initialStatus));
   const [page, setPage] = useState(0);
   const options = [...new Set(members.flatMap((member) => member.classifications?.map((item) => `${item.discipline}: ${item.name}`) ?? []))].sort();
   const filtered = members.map((member, index) => ({ member, index })).filter(({ member }) =>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ReorderHandle } from "@/components/ui/reorder-handle";
 import { useState, useTransition } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { moveEventRoping } from "@/app/(app)/events/[eventId]/actions";
@@ -11,6 +12,7 @@ export function EventRopingOrderControls({
   canMoveUp,
   canMoveDown,
   enabled,
+  orderGroup,
 }: {
   eventId: string;
   ropingId: string;
@@ -18,19 +20,23 @@ export function EventRopingOrderControls({
   canMoveUp: boolean;
   canMoveDown: boolean;
   enabled: boolean;
+  orderGroup: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
 
-  function move(direction: "up" | "down") {
+  function move(direction: "up" | "down", target?: string) {
     startTransition(async () => {
-      const result = await moveEventRoping(eventId, ropingId, direction);
-      setMessage(result.success ? "" : (result.message ?? "Unable to reorder."));
+      try {
+        const result = await moveEventRoping(eventId, ropingId, direction, target);
+        setMessage(result.success ? "Order saved." : (result.message ?? "Unable to reorder."));
+      } catch { setMessage("Unable to save the order. Please try again."); }
     });
   }
 
   return (
     <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+      <ReorderHandle id={ropingId} group={orderGroup} label={ropingName} disabled={!enabled || pending || (!canMoveUp && !canMoveDown)} onMove={target => move("up", target)} />
       <button
         type="button"
         disabled={!enabled || !canMoveUp || pending}
@@ -57,9 +63,9 @@ export function EventRopingOrderControls({
       >
         <ArrowDown size={14} />
       </button>
-      {message ? (
-        <span role="alert" className="max-w-44 text-xs font-medium text-rose-700">
-          {message}
+      {pending || message ? (
+        <span role="status" className="max-w-44 text-xs font-medium text-[#66716b]">
+          {pending ? "Saving order…" : message}
         </span>
       ) : null}
     </div>

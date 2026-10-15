@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { ReorderHandle } from "@/components/ui/reorder-handle";
+import { moveItem } from "@/lib/reorder";
+import { useId, useEffect, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2, Eye, Save, Upload, X } from "lucide-react";
 import { saveRules } from "@/app/(app)/settings/rules/actions";
 import { rulesPublishErrors, type RulesDocument } from "@/lib/producer-rules";
@@ -18,6 +20,7 @@ function move<T>(items: T[], index: number, direction: number) {
 }
 
 export function RulesEditor({ initial, initialRevision, initialPublished, kind = "rules", saveAction = saveRules }: { initial: RulesDocument; initialRevision: number; initialPublished: boolean; kind?: "rules" | "bulletin"; saveAction?: typeof saveRules }) {
+  const orderGroup = useId();
   const noun = kind === "bulletin" ? "Bulletin" : "Rules";
   const [document, setDocument] = useState(initial);
   const [saved, setSaved] = useState(JSON.stringify(initial));
@@ -64,13 +67,13 @@ export function RulesEditor({ initial, initialRevision, initialPublished, kind =
         <label className="text-sm font-semibold">{kind === "bulletin" ? "Bulletin date" : "Effective date (optional)"}<input className={field} type="date" value={document.effectiveOn} onChange={(event) => update({ effectiveOn: event.target.value })} /></label>
       </div>
       <RuleTextEditor disabled={pending} label="Introduction (optional)" value={document.introduction} onChange={(introduction) => update({ introduction })} />
-      <div className="space-y-4">{document.sections.map((section, index) => <details key={section.id} className="rounded-md border border-[#d7ddda] bg-white p-4">
-        <summary className="cursor-pointer break-words font-semibold">{index + 1}. {section.title || "Untitled section"}{!section.title.trim() || (!section.content.trim() && !section.subsections.length) ? <span className="ml-2 text-xs text-amber-800">Incomplete</span> : null}</summary>
+      <div className="space-y-4">{document.sections.map((section, index) => <details key={section.id} data-reorder-id={section.id} data-reorder-group={orderGroup} className="rounded-md border border-[#d7ddda] bg-white p-4">
+        <summary className="cursor-pointer break-words font-semibold"><ReorderHandle id={section.id} group={orderGroup} label={section.title || "Untitled section"} disabled={pending} onMove={target => update({ sections: moveItem(document.sections, index, document.sections.findIndex(item => item.id === target)) })} /> {index + 1}. {section.title || "Untitled section"}{!section.title.trim() || (!section.content.trim() && !section.subsections.length) ? <span className="ml-2 text-xs text-amber-800">Incomplete</span> : null}</summary>
         <div className="mt-4 space-y-4">
           <div className="flex flex-wrap items-end gap-3"><label className="min-w-0 text-sm font-semibold">Section heading<input className={field} value={section.title} maxLength={150} onChange={(event) => sectionChange(section.id, { title: event.target.value })} /></label><OrderButtons index={index} length={document.sections.length} onMove={(direction) => update({ sections: move(document.sections, index, direction) })} onDelete={() => { if (window.confirm(`Delete ${section.title || "this section"} and its subsections?`)) update({ sections: document.sections.filter((item) => item.id !== section.id) }); }} /></div>
           <RuleTextEditor disabled={pending} label="Section text" value={section.content} onChange={(content) => sectionChange(section.id, { content })} />
-          {section.subsections.map((child, childIndex) => <div key={child.id} className="space-y-3 border-t border-[#dfe4e1] pt-4">
-            <div className="flex flex-wrap items-end gap-3"><label className="min-w-0 text-sm font-semibold">Subsection heading<input className={field} value={child.title} maxLength={150} onChange={(event) => sectionChange(section.id, { subsections: section.subsections.map((item) => item.id === child.id ? { ...item, title: event.target.value } : item) })} /></label><OrderButtons index={childIndex} length={section.subsections.length} onMove={(direction) => sectionChange(section.id, { subsections: move(section.subsections, childIndex, direction) })} onDelete={() => { if (window.confirm(`Delete ${child.title || "this subsection"}?`)) sectionChange(section.id, { subsections: section.subsections.filter((item) => item.id !== child.id) }); }} /></div>
+          {section.subsections.map((child, childIndex) => <div key={child.id} data-reorder-id={child.id} data-reorder-group={`${orderGroup}:${section.id}`} className="space-y-3 border-t border-[#dfe4e1] pt-4">
+            <div className="flex flex-wrap items-end gap-3"><label className="min-w-0 text-sm font-semibold">Subsection heading<input className={field} value={child.title} maxLength={150} onChange={(event) => sectionChange(section.id, { subsections: section.subsections.map((item) => item.id === child.id ? { ...item, title: event.target.value } : item) })} /></label><ReorderHandle id={child.id} group={`${orderGroup}:${section.id}`} label={child.title || "Untitled subsection"} disabled={pending} onMove={target => sectionChange(section.id, { subsections: moveItem(section.subsections, childIndex, section.subsections.findIndex(item => item.id === target)) })} /><OrderButtons index={childIndex} length={section.subsections.length} onMove={(direction) => sectionChange(section.id, { subsections: move(section.subsections, childIndex, direction) })} onDelete={() => { if (window.confirm(`Delete ${child.title || "this subsection"}?`)) sectionChange(section.id, { subsections: section.subsections.filter((item) => item.id !== child.id) }); }} /></div>
             <RuleTextEditor disabled={pending} label="Subsection text" value={child.content} onChange={(content) => sectionChange(section.id, { subsections: section.subsections.map((item) => item.id === child.id ? { ...item, content } : item) })} />
           </div>)}
           <button type="button" className={button} disabled={section.subsections.length >= 30} onClick={() => sectionChange(section.id, { subsections: [...section.subsections, { id: crypto.randomUUID(), title: "", content: "" }] })}><Plus size={16} />Add subsection</button>

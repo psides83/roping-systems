@@ -563,3 +563,18 @@ export async function deleteFee(feeId: string): Promise<SettingsFormState> {
   revalidatePath("/settings/roping-templates");
   return { success: true, message: "Fee or option deleted." };
 }
+
+export async function reorderRopingTemplates(templateIds: string[]): Promise<SettingsFormState> {
+  const parsed = z.array(z.uuid()).min(1).refine(ids => new Set(ids).size === ids.length).safeParse(templateIds);
+  if (!parsed.success) return { message: "Refresh the page and try ordering the templates again." };
+  const context = await getManagerContext();
+  if (!context) return { message: "Manager access is required." };
+  const { error } = await context.supabase.rpc("reorder_roping_templates", {
+    target_producer_id: context.producer.id,
+    ordered_template_ids: parsed.data,
+  });
+  if (error) return { message: error.message };
+  revalidatePath("/settings/roping-templates");
+  revalidatePath("/events", "layout");
+  return { success: true, message: "Template order saved." };
+}

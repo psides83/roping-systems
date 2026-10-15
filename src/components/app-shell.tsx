@@ -37,7 +37,7 @@ const navigation = [
   { name: "Reports & exports", href: "/reports", icon: ChartNoAxesCombined },
   {
     name: "Roping setup",
-    href: "/settings/classifications",
+    href: "/settings/setup",
     icon: SlidersHorizontal,
   },
 ];
@@ -67,6 +67,33 @@ export function AppShell({
   const features = useProducerFeatures();
   const [open, setOpen] = useState(false);
   const [producerMenuOpen, setProducerMenuOpen] = useState(false);
+  const [desktop, setDesktop] = useState(false);
+  const sidebar = useRef<HTMLElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!open || desktop) return;
+    const trigger = menuButton.current;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    sidebar.current?.querySelector<HTMLElement>("a,button")?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setOpen(false); return; }
+      if (event.key !== "Tab") return;
+      const items = Array.from(sidebar.current?.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not([type="hidden"]):not(:disabled)') ?? []).filter(item => item.getClientRects().length > 0);
+      const first = items[0]; const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", keyboard);
+    return () => { document.removeEventListener("keydown", keyboard); document.body.style.overflow = previous; trigger?.focus(); };
+  }, [open, desktop]);
   const producerMenuRef = useRef<HTMLDivElement>(null);
   const producerMenuPinned = useRef(false);
   useEffect(() => {
@@ -109,6 +136,13 @@ export function AppShell({
         />
       ) : null}
       <aside
+        ref={sidebar}
+        id="producer-navigation"
+        inert={!desktop && !open}
+        aria-hidden={!desktop && !open ? true : undefined}
+        role={!desktop && open ? "dialog" : undefined}
+        aria-modal={!desktop && open ? true : undefined}
+        aria-label="Main navigation"
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[244px] flex-col brand-primary-fill text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
@@ -202,10 +236,15 @@ export function AppShell({
             const active =
               item.name === "Roping setup"
                 ? [
+                    "/settings/setup",
                     "/settings/classifications",
                     "/settings/roping-templates",
                     "/settings/payouts",
                     "/settings/timing",
+                    "/settings/classification-watch",
+                    "/settings/standings",
+                    "/settings/qualifications",
+                    "/settings/finals",
                   ].some((href) => pathname === href)
                 : item.href === currentNavigationHref;
             const Icon = item.icon;
@@ -232,6 +271,7 @@ export function AppShell({
           {platformOwner && <Link href="/platform" onClick={() => setOpen(false)} className="flex h-10 items-center gap-3 rounded-md px-3 text-sm brand-muted hover:bg-white/[0.07] brand-hover"><ShieldCheck size={18} />Platform Admin</Link>}
           <Link
             href="/settings"
+            onClick={() => setOpen(false)}
             className="flex h-10 items-center gap-3 rounded-md px-3 text-sm brand-muted hover:bg-white/[0.07] brand-hover"
           >
             <Settings size={18} /> Settings
@@ -263,6 +303,9 @@ export function AppShell({
             <button
               className="grid h-9 w-9 place-items-center rounded-md border border-[#dfe4e1] lg:hidden"
               onClick={() => setOpen(true)}
+              ref={menuButton}
+              aria-expanded={open}
+              aria-controls="producer-navigation"
               aria-label="Open navigation"
             >
               <Menu size={19} />
@@ -272,7 +315,7 @@ export function AppShell({
                 {producerName}
               </p>
               <p className="hidden text-xs text-[#758078] sm:block">
-                {demo ? "Preview data" : "2026 season"}
+                {demo ? "Preview data" : "Producer workspace"}
               </p>
             </div>
           </div>

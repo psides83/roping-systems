@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/dialog";
 import { PersistentForm } from "@/components/ui/persistent-form";
 import { NumberStepper } from "@/components/ui/number-stepper";
 import { useProducerFeatures } from "@/components/settings/producer-features-context";
@@ -11,7 +12,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Check, Copy, LoaderCircle, Pencil, Plus, X } from "lucide-react";
+import { Check, Copy, LoaderCircle, Pencil, Plus } from "lucide-react";
 import {
   createDivision,
   createFee,
@@ -65,53 +66,11 @@ interface PayoutOption {
   competitionFormat: "standard" | "four_d";
 }
 
-function DialogFrame({
-  title,
-  description,
-  close,
-  children,
-}: {
-  title: string;
-  description: string;
-  close: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-black/45 p-4">
-      <button
-        aria-label="Close dialog"
-        className="absolute inset-0"
-        onClick={close}
-      />
-      <section
-        role="dialog"
-        aria-modal="true"
-        className="relative my-8 w-full max-w-2xl rounded-md bg-white shadow-2xl"
-      >
-        <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
-          <div>
-            <h2 className="text-lg font-bold">{title}</h2>
-            <p className="mt-1 text-sm leading-5 text-[#66716b]">
-              {description}
-            </p>
-          </div>
-          <button
-            onClick={close}
-            aria-label="Close"
-            className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]"
-          >
-            <X size={18} />
-          </button>
-        </header>
-        {children}
-      </section>
-    </div>
-  );
-}
 
 function FormMessage({ state }: { state: SettingsFormState }) {
   return state.message ? (
     <p
+      role={state.success ? "status" : "alert"}
       className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
     >
       {state.message}
@@ -169,7 +128,12 @@ function EventTemplateDialog({
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setAvailableDivisionIds(template?.availableDivisionIds ?? [template?.disciplineId ?? divisions[0]?.id ?? ""].filter(Boolean));
+          setCompetitionFormat(template?.competitionFormat ?? "standard");
+          setHandicapClassificationIds(new Set(Object.keys(template?.handicapRules ?? {})));
+          setOpen(true);
+        }}
         className={
           isEditing
             ? "grid h-9 w-9 place-items-center rounded-md border border-[#d7ddda] hover:bg-[#f7f8f7]"
@@ -186,12 +150,13 @@ function EventTemplateDialog({
         )}
       </button>
       {open ? (
-        <DialogFrame
+        <Dialog
           title={
             isEditing ? `Edit ${template?.name}` : "Create roping template"
           }
           description="Define reusable format, entry, timing, fee, and payout defaults for the selected divisions."
-          close={() => setOpen(false)}
+          onClose={() => setOpen(false)}
+          busy={pending}
         >
           <PersistentForm ref={formRef} action={action} className="space-y-4 p-5">
             <input type="hidden" name="disciplineId" value={availableDivisionIds[0] ?? ""} />
@@ -484,6 +449,7 @@ function EventTemplateDialog({
                 Active for new events
               </label>
             </div>
+            <p className="text-sm leading-6 text-[#66716b]">Save changes to update this template. Existing scheduled ropings keep their settings until you review and apply the update.</p>
             <FormMessage state={state} />
             {!configured ? (
               <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
@@ -505,6 +471,7 @@ function EventTemplateDialog({
               ) : null}
               <button
                 type="button"
+                data-dialog-close
                 onClick={() => setOpen(false)}
                 className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
               >
@@ -521,7 +488,7 @@ function EventTemplateDialog({
               </button>
             </div>
           </PersistentForm>
-        </DialogFrame>
+        </Dialog>
       ) : null}
     </>
   );
@@ -653,7 +620,12 @@ function FeeDialog({
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setKind(fee?.kind ?? "standard");
+          setFundTracking(fee?.fundTracking ?? "general");
+          setIsRequired(fee?.isRequired ?? true);
+          setOpen(true);
+        }}
         className={
           isEditing
             ? "grid h-8 w-8 place-items-center rounded-md hover:bg-[#f1f3f2]"
@@ -670,14 +642,15 @@ function FeeDialog({
         )}
       </button>
       {open ? (
-        <DialogFrame
+        <Dialog
           title={
             isEditing
               ? `Edit ${fee?.title}`
               : `Add fee or option to ${divisionName}`
           }
           description="Configure a required fee, optional insurance, side pot, or another event option."
-          close={() => setOpen(false)}
+          onClose={() => setOpen(false)}
+          busy={pending}
         >
           <PersistentForm action={action} className="space-y-4 p-5">
             <input type="hidden" name="divisionId" value={divisionId} />
@@ -827,6 +800,7 @@ function FeeDialog({
                 </p>
               )}
             </div>
+            <p className="text-sm leading-6 text-[#66716b]">Save changes to update this template. Existing scheduled ropings keep their settings until you review and apply the update.</p>
             <FormMessage state={state} />
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ebe8] pt-4">
               {fee ? (
@@ -843,6 +817,7 @@ function FeeDialog({
               ) : null}
               <button
                 type="button"
+                data-dialog-close
                 onClick={() => setOpen(false)}
                 className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
               >
@@ -864,7 +839,7 @@ function FeeDialog({
               </button>
             </div>
           </PersistentForm>
-        </DialogFrame>
+        </Dialog>
       ) : null}
     </>
   );

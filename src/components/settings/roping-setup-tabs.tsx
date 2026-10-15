@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { SectionNavigation } from "@/components/ui/section-navigation";
 import { useProducerFeatures } from "./producer-features-context";
 import { featureEnabled } from "@/lib/producer-features";
 
@@ -29,25 +29,5 @@ export function RopingSetupTabs({
   active: (typeof tabs)[number]["id"];
 }) {
   const features = useProducerFeatures();
-  return (
-    <nav
-      aria-label="Roping setup"
-      className="flex gap-1 overflow-x-auto border-b border-[#d7ddda]"
-    >
-      {tabs.filter(tab => tab.id === active || featureEnabled(features, tab.id)).map((tab) => (
-        <Link
-          key={tab.id}
-          href={tab.href}
-          aria-current={active === tab.id ? "page" : undefined}
-          className={
-            active === tab.id
-              ? "shrink-0 border-b-2 border-[var(--brand-accent)] px-4 py-3 text-sm font-bold text-[#17201c]"
-              : "shrink-0 px-4 py-3 text-sm font-semibold text-[#66716b]"
-          }
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
-  );
+  return <SectionNavigation label="Roping setup" active={active} items={tabs.filter(tab => tab.id === active || featureEnabled(features, tab.id))} />;
 }
