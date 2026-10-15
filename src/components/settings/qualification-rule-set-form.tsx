@@ -10,13 +10,14 @@ import { CutoffDateLabel } from "@/components/settings/cutoff-date-label";
 
 const control = "mt-2 block h-11 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm";
 
-export function QualificationRuleSetForm({ rule, seasons, editable }: { rule?: QualificationRuleSet; seasons: { id: string; name: string; starts_on: string; ends_on: string }[]; editable: boolean }) {
+export function QualificationRuleSetForm({ rule, seasons, editable, finalsRule }: { finalsRule?: { id: string; name: string; seasonName: string }; rule?: QualificationRuleSet; seasons: { id: string; name: string; starts_on: string; ends_on: string }[]; editable: boolean }) {
   const helpId = useId();
+  const anotherFinals = finalsRule && finalsRule.id !== rule?.id;
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
-  const [seasonId, setSeasonId] = useState(rule?.season_id ?? seasons[0]?.id ?? "");
+  const [seasonId, setSeasonId] = useState(rule?.season_id ?? "");
   const season = seasons.find((item) => item.id === seasonId);
   return <>
     <button disabled={!editable} type="button" onClick={() => { setOpen(true); setError(""); setDeleting(false); }} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] bg-white px-3 text-sm font-semibold disabled:opacity-50">{rule ? <Pencil size={15} /> : <Plus size={15} />}{rule ? "Edit" : "Create rule set"}</button>
@@ -27,10 +28,10 @@ export function QualificationRuleSetForm({ rule, seasons, editable }: { rule?: Q
             <p className="text-sm leading-6 text-[#526059]">Save this rule set, then assign it to an event or individual roping. Mark it as finals to publish its requirements on the public standings page.</p>
             <input type="hidden" name="class_key" value={rule?.class_key ?? ""} />
             {rule?.class_key && <p className="text-sm text-[#66716b]">This converted rule retains its original classification scope. Its name identifies that class.</p>}
-            <label className="flex min-h-11 items-center gap-3 text-sm font-semibold"><input type="checkbox" name="is_finals" defaultChecked={rule?.is_finals ?? false} />Finals qualification rules — publish on public standings</label>
-            <p className="text-sm leading-6 text-[#66716b]">Publishing identifies this as a finals rule set. It does not assign the rules to an event or register any roper.</p>
+            <label className="flex min-h-11 items-center gap-3 text-sm font-semibold"><input type="checkbox" name="is_finals" disabled={Boolean(anotherFinals)} defaultChecked={rule?.is_finals ?? false} aria-describedby={`${helpId}-finals`} />Finals qualification rules — publish on public standings</label>
+            <p id={`${helpId}-finals`} className="text-sm leading-6 text-[#66716b]">{anotherFinals ? `${finalsRule.name} (${finalsRule.seasonName}) is already the finals rule. Clear its finals setting before marking a different rule as finals.` : "Only one rule can be designated as finals for your producer. Choose its season below. Publishing does not assign the rule to an event or register any roper."}</p>
             <label className="block text-sm font-semibold">Name<input name="name" defaultValue={rule?.name} required maxLength={100} className={control} /></label>
-            <div className="flex flex-wrap gap-4"><label className="text-sm font-semibold">Season<select name="season_id" value={seasonId} onChange={(e) => setSeasonId(e.target.value)} required className={control}>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="text-sm font-semibold"><CutoffDateLabel /><input name="cutoff_on" type="date" defaultValue={rule?.cutoff_on ?? ""} min={season?.starts_on} max={season?.ends_on} className={control} /></label><label className="text-sm font-semibold"><CutoffDateLabel kind="attendance" /><input name="attendance_cutoff_on" type="date" defaultValue={rule?.attendance_cutoff_on ?? ""} min={season?.starts_on} max={season?.ends_on} className={control} /></label></div>
+            <div className="flex flex-wrap gap-4"><label className="text-sm font-semibold">Season (required)<select name="season_id" value={seasonId} onChange={(e) => setSeasonId(e.target.value)} required className={control}><option value="" disabled>Choose a season</option>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="text-sm font-semibold"><CutoffDateLabel /><input name="cutoff_on" type="date" defaultValue={rule?.cutoff_on ?? ""} min={season?.starts_on} max={season?.ends_on} className={control} /></label><label className="text-sm font-semibold"><CutoffDateLabel kind="attendance" /><input name="attendance_cutoff_on" type="date" defaultValue={rule?.attendance_cutoff_on ?? ""} min={season?.starts_on} max={season?.ends_on} className={control} /></label></div>
             <p className="text-sm leading-6 text-[#66716b]">Cutoff dates include that day. Leave either date blank to use the end of the selected season.</p>
             <div className="flex flex-wrap gap-4"><label className="text-sm font-semibold">Minimum ropings<input name="minimum_ropings" aria-describedby={`${helpId}-regular`} type="number" min={0} max={10000} defaultValue={rule?.minimum_ropings ?? 0} required className={`${control} w-28`} /></label><label className="text-sm font-semibold">Top standings places<input name="top_places" aria-describedby={`${helpId}-regular`} type="number" min={1} defaultValue={rule?.top_places ?? ""} placeholder="No limit" className={`${control} w-32`} /></label></div>
             <p id={`${helpId}-regular`} className="text-sm leading-6 text-[#66716b]">Minimum ropings is the attendance requirement: 0 means none. Top standings places is the rank limit: blank means none. Attendance follows each roping’s attendance-count setting.</p>

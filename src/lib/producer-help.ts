@@ -141,7 +141,7 @@ export const producerGuides: ProducerGuide[] = [
       "Open Qualification rules and create or edit a named rule set. Choose the season whose official results and attendance should count.",
       "Set minimum ropings and top standings places. A minimum of 0 disables attendance requirements; blank top places disables the rank limit. Choose AND for both enabled requirements or OR for either.",
       "Set standings and attendance cutoff dates separately. Dates include that day; blank uses season end. Attendance follows each source roping’s attendance-count setting.",
-      "For finals, check Finals qualification rules — publish on public standings. Saving publishes that rule set’s requirements for its season and applicable class. Uncheck it to remove that public finals listing without deleting the rule set.",
+      "For finals, check Finals qualification rules — publish on public standings and select its season. Only one rule per producer can be designated as finals. Clear the existing rule’s finals flag before selecting a replacement. Unchecking removes its public finals listing without deleting the rule or event assignments.",
       "Choose how assigned earned positions can bypass requirements and whether they add bonus entries. These settings do not register a roper automatically.",
       "Select the rule set on the event or individual roping. Individual ropings can inherit the event rules, select another set, or turn qualification off. Review entry eligibility before accepting requests.",
     ],

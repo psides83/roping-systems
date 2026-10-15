@@ -23,6 +23,7 @@ export async function saveQualificationRuleSet(id: string | null, form: FormData
   const producer = await getActiveProducer();
   if (!producer || !["owner", "admin"].includes(producer.role)) return { error: "Producer administrator access is required." };
   if (id && !z.uuid().safeParse(id).success) return { error: "Invalid rule set." };
+  if (!z.uuid().safeParse(form.get("season_id")).success) return { error: "Choose a season for these qualification rules." };
   const parsed = schema.safeParse({
     is_finals: form.get("is_finals") === "on", class_key: typeof form.get("class_key") === "string" && form.get("class_key") ? String(form.get("class_key")) : null,
     name: form.get("name"), season_id: form.get("season_id"),
@@ -37,7 +38,7 @@ export async function saveQualificationRuleSet(id: string | null, form: FormData
   const result = id
     ? await db.from("qualification_rule_sets").update(parsed.data).eq("id", id).eq("producer_id", producer.id).select("id").single()
     : await db.from("qualification_rule_sets").insert({ ...parsed.data, producer_id: producer.id });
-  if (result.error) return { error: result.error.message };
+  if (result.error) return { error: result.error.code === "23505" && result.error.message.includes("qualification_rule_sets_one_finals_per_producer") ? "A finals qualification rule already exists. Clear its finals setting before choosing another." : result.error.message };
   revalidatePath("/settings/qualifications");
   revalidatePath("/events", "layout");
   revalidatePath("/public", "layout");

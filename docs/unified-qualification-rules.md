@@ -9,3 +9,9 @@ Migration 20261015180000_unified_finals_rule_sets.sql is applied. It converts ol
 The public standings page reads only finals-marked rule sets through a restricted public function. It lists every applicable published finals rule; if several apply, it avoids choosing an arbitrary single qualification indicator. AND/OR descriptions omit disabled conditions. Ordinary rules are excluded from publication.
 
 Validation: 597 tests, lint, and production build passed. Rollback-only SQL checks validate publication/unpublication, season isolation, preservation of converted requirements and bonus allowances, assignment conversion, and restored assignment protections. Sample-data browser review at 390px verified unified navigation, the publication checkbox, and editor focus/Escape behavior. No sample form was submitted.
+
+## Single finals designation
+
+Only one qualification rule per producer may be marked as finals, across all seasons. Migration 20261015200000_one_finals_rule_per_producer.sql enforces this with a partial unique index, including concurrent writes. The existing finals rule remains unchanged. Other rules explain which rule already holds the designation and disable their finals checkbox. Clear the current flag before designating a replacement.
+
+A new rule starts with Choose a season and requires an explicit selection. Existing rules retain their selected season; server validation and existing database constraints enforce a valid producer season. Latest validation: 608 tests, lint, production build, and rollback-only database checks passed for duplicate inserts/updates, missing seasons, explicit replacement, and publication regression coverage.

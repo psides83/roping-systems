@@ -48,7 +48,7 @@ test("assignment UI uses one rule selector for finals and other events", () => {
  assert.match(html, /Manage qualification rules/);
 });
 
-function renderRuleForm(existing) {
+function renderRuleForm(existing, finalsRule) {
  const compiled = { exports: {} }; let index = 0;
  const code = ts.transpileModule(readFileSync(new URL('../src/components/settings/qualification-rule-set-form.tsx', import.meta.url),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  new Function('require','module','exports',code)(name => {
@@ -59,7 +59,7 @@ function renderRuleForm(existing) {
   if(name.endsWith('/actions'))return {};
   return require(name);
  },compiled,compiled.exports);
- return renderToStaticMarkup(React.createElement(compiled.exports.QualificationRuleSetForm,{rule:existing,editable:true,seasons:[{id:'season',name:'2026',starts_on:'2026-01-01',ends_on:'2026-12-31'}]}));
+ return renderToStaticMarkup(React.createElement(compiled.exports.QualificationRuleSetForm,{rule:existing,finalsRule,editable:true,seasons:[{id:'season',name:'2026',starts_on:'2026-01-01',ends_on:'2026-12-31'}]}));
 }
 test('qualification rules expose finals publication and earned-position settings together',()=>{
  const html=renderRuleForm();
@@ -74,4 +74,22 @@ test('finals flag and converted class scope survive editing',()=>{
  assert.match(html,/<input[^>]*name="is_finals"[^>]*checked/);
  assert.match(html,/name="class_key" value="class"/);
  assert.match(html,/retains its original classification scope/);
+});
+
+test('another designated finals rule disables the finals checkbox with an explanation',()=>{
+ const html=renderRuleForm(undefined,{id:'current',name:'Season Finals',seasonName:'2026'});
+ assert.match(html.match(/<input[^>]*name="is_finals"[^>]*>/)?.[0] ?? "", /disabled/);
+ assert.match(html,/Season Finals \(2026\) is already the finals rule/);
+ assert.match(html,/Clear its finals setting before marking a different rule/);
+});
+test('new rules require an explicit season selection',()=>{
+ const html=renderRuleForm();
+ assert.match(html,/Season \(required\)/);
+ assert.match(html,/<select[^>]*name="season_id"[^>]*required/);
+ assert.match(html,/<option value="" disabled="" selected="">Choose a season/);
+});
+test('the current finals rule remains editable',()=>{
+ const html=renderRuleForm({...rule,id:'current',is_finals:true},{id:'current',name:'Season Finals',seasonName:'2026'});
+ const checkbox=html.match(/<input[^>]*name="is_finals"[^>]*>/)?.[0];
+ assert.ok(checkbox);assert.match(checkbox,/checked/);assert.doesNotMatch(checkbox,/disabled/);
 });
