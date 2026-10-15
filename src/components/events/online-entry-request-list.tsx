@@ -46,13 +46,13 @@ export function OnlineEntryRequestList({
 }) {
   if (!requests.length) return null;
   return (
-    <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+    <section id="online-requests" className="scroll-mt-6 overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
       <div className="border-b border-[#e7ebe8] px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-bold">Online requests</h2>
-            <p className="mt-1 text-xs text-[#758078]">
-              Review before entries, charges, and runs are created
+            <p className="mt-1 text-sm leading-6 text-[#526059]">
+              Not yet entered. Accept a request to create entries, charges, and runs.
             </p>
           </div>
           <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">

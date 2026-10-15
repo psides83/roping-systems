@@ -15,6 +15,7 @@ import {
   type LedgerContestant,
 } from "@/components/events/entry-ledger";
 import { OnlineEntryRequestList } from "@/components/events/online-entry-request-list";
+import { ContextHelp } from "@/components/help/context-help";
 import { PageHeader } from "@/components/ui/page-header";
 import { getActiveProducer } from "@/lib/producers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -652,7 +653,7 @@ function EntriesWorkspace({
       <PageHeader
         eyebrow="Event entries"
         title={title}
-        description="Review online requests, check in contestants, and keep the cash ledger current."
+        description="Accept requests, record arrival, and track entry charges and payments."
         actions={
           <EntryFormDialog
             eventId={eventId}
@@ -665,7 +666,8 @@ function EntriesWorkspace({
           />
         }
       />
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <ContextHelp title="How requests, check-in, and payments work" guide="entries"><p>Online requests wait for review. Accepting a request creates entries, charges, and runs. Pending requests are not included in the entry totals below.</p><p>Check-in records that a contestant has arrived. Record cash when money is received; a payment-status adjustment does not create a cash receipt.</p></ContextHelp>
+      <section aria-label="Entry totals" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Total entries"
           value={String(totalEntries)}
@@ -683,9 +685,9 @@ function EntriesWorkspace({
           icon={CircleDollarSign}
         />
         <Metric
-          label="Cash marked paid"
+          label="Paid / marked paid"
           value={formatCurrency(cashCollected)}
-          detail={`${requests.length} online ${requests.length === 1 ? "request" : "requests"}`}
+          detail="Includes paid status; cash receipts are shown in payment history."
           icon={Banknote}
         />
       </section>

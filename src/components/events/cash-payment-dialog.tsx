@@ -1,5 +1,6 @@
 "use client";
 
+import { Dialog } from "@/components/ui/dialog";
 import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
@@ -9,7 +10,6 @@ import {
   LoaderCircle,
   Printer,
   RotateCcw,
-  X,
 } from "lucide-react";
 import {
   recordCashPayment,
@@ -48,6 +48,7 @@ export function CashPaymentDialog({
   canVoid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [voidPending, setVoidPending] = useState(false);
   const boundAction = recordCashPayment.bind(null, eventId, personId);
   const [state, action, pending] = useActionState<
     CashPaymentFormState,
@@ -60,6 +61,8 @@ export function CashPaymentDialog({
     return () => window.clearTimeout(timeoutId);
   }, [state]);
 
+  const busy = pending || voidPending;
+
   if (!balanceDueCents && !payments.length) return null;
 
   return (
@@ -68,42 +71,14 @@ export function CashPaymentDialog({
         type="button"
         onClick={() => setOpen(true)}
         disabled={!enabled}
-        className="mt-2 flex h-8 items-center gap-1.5 rounded-md border border-[#ccd4d0] bg-white px-2.5 text-[11px] font-semibold text-[#46524b] disabled:opacity-50"
+        className="mt-2 flex min-h-11 items-center gap-1.5 rounded-md border border-[#ccd4d0] bg-white px-2.5 text-sm font-semibold text-[#46524b] disabled:opacity-50"
       >
         {balanceDueCents ? <Banknote size={13} /> : <History size={13} />}
         {balanceDueCents ? "Record cash" : "Payment history"}
       </button>
       {open ? (
-        <div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-black/45 p-4">
-          <button
-            type="button"
-            aria-label="Close dialog"
-            className="absolute inset-0"
-            onClick={() => setOpen(false)}
-          />
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`cash-payment-${personId}`}
-            className="relative my-8 w-full max-w-lg rounded-md bg-white shadow-2xl"
-          >
-            <header className="flex items-start justify-between border-b border-[#e1e6e3] p-5">
-              <div>
-                <h2 id={`cash-payment-${personId}`} className="font-bold">
-                  Cash payments
-                </h2>
-                <p className="mt-1 text-sm text-[#66716b]">{contestantName}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="grid h-9 w-9 place-items-center rounded-md hover:bg-[#f0f2f1]"
-              >
-                <X size={18} />
-              </button>
-            </header>
-            <div className="space-y-5 p-5">
+        <Dialog title="Cash payments" description={`${contestantName} · Record cash received or review receipts. Payment status adjustments are managed separately.`} busy={busy} onClose={() => setOpen(false)}>
+            <fieldset disabled={busy} className="min-w-0 space-y-5 p-5">
               {balanceDueCents ? (
                 <PersistentForm action={action} className="space-y-4">
                   <div className="rounded-md bg-[#f3f5f4] px-4 py-3">
@@ -145,7 +120,7 @@ export function CashPaymentDialog({
                   {state.message ? (
                     <p
                       className={`rounded-md border p-3 text-sm ${state.success ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
-                      aria-live="polite"
+                      role={state.success ? "status" : "alert"}
                     >
                       {state.message}
                     </p>
@@ -153,14 +128,15 @@ export function CashPaymentDialog({
                   <div className="flex justify-end gap-2 border-t border-[#e7ebe8] pt-4">
                     <button
                       type="button"
-                      onClick={() => setOpen(false)}
-                      className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
+                      data-dialog-close
+                      disabled={busy}
+                      className="h-11 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
                     >
                       Cancel
                     </button>
                     <button
                       disabled={pending}
-                      className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
+                      className="flex min-h-11 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
                     >
                       {pending ? (
                         <LoaderCircle size={16} className="animate-spin" />
@@ -215,7 +191,9 @@ export function CashPaymentDialog({
                           <Link
                             href={`/events/${eventId}/entries/payments/${payment.id}/receipt`}
                             target="_blank"
-                            className="flex h-8 items-center gap-1.5 rounded-md border border-[#ccd4d0] bg-white px-2.5 text-xs font-semibold text-[#46524b]"
+                            rel="noopener noreferrer"
+                            aria-label="Payment receipt (opens in a new tab)"
+                            className="flex min-h-11 items-center gap-1.5 rounded-md border border-[#ccd4d0] bg-white px-2.5 text-xs font-semibold text-[#46524b]"
                           >
                             <Printer size={13} /> Receipt
                           </Link>
@@ -223,6 +201,7 @@ export function CashPaymentDialog({
                             <VoidPaymentForm
                               eventId={eventId}
                               paymentId={payment.id}
+                              onPendingChange={setVoidPending}
                             />
                           ) : null}
                         </div>
@@ -231,9 +210,8 @@ export function CashPaymentDialog({
                   </div>
                 </section>
               ) : null}
-            </div>
-          </section>
-        </div>
+            </fieldset>
+        </Dialog>
       ) : null}
     </>
   );
@@ -242,9 +220,11 @@ export function CashPaymentDialog({
 function VoidPaymentForm({
   eventId,
   paymentId,
+  onPendingChange,
 }: {
   eventId: string;
   paymentId: string;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const boundAction = voidCashPayment.bind(null, eventId, paymentId);
@@ -253,12 +233,14 @@ function VoidPaymentForm({
     FormData
   >(boundAction, {});
 
+  useEffect(() => { onPendingChange(pending); return () => onPendingChange(false); }, [pending, onPendingChange]);
+
   if (!confirming)
     return (
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="flex h-8 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2.5 text-xs font-semibold text-rose-700"
+        className="flex min-h-11 items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2.5 text-xs font-semibold text-rose-700"
       >
         <RotateCcw size={13} /> Void payment
       </button>
@@ -277,24 +259,25 @@ function VoidPaymentForm({
           minLength={5}
           maxLength={240}
           autoFocus
-          className="mt-2 h-9 w-full rounded-md border border-rose-200 bg-white px-2 text-sm text-[#17201c]"
+          className="mt-2 h-11 w-full rounded-md border border-rose-200 bg-white px-2 text-sm text-[#17201c]"
           placeholder="Payment entered twice"
         />
       </label>
       {state.message ? (
-        <p className="mt-2 text-xs text-rose-800">{state.message}</p>
+        <p role={state.success ? "status" : "alert"} className="mt-2 text-sm text-rose-800">{state.message}</p>
       ) : null}
       <div className="mt-2 flex justify-end gap-2">
         <button
           type="button"
+          disabled={pending}
           onClick={() => setConfirming(false)}
-          className="h-8 px-2 text-xs font-semibold"
+          className="min-h-11 px-2 text-xs font-semibold"
         >
           Cancel
         </button>
         <button
           disabled={pending}
-          className="h-8 rounded-md bg-rose-700 px-3 text-xs font-bold text-white disabled:opacity-50"
+          className="min-h-11 rounded-md bg-rose-700 px-3 text-xs font-bold text-white disabled:opacity-50"
         >
           {pending ? "Voiding..." : "Confirm void"}
         </button>

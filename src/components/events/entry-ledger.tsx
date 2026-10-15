@@ -76,7 +76,7 @@ const paymentLabels: Record<PaymentSummary, string> = {
   paid_cash: "Paid cash",
   comped: "Comped",
   refunded: "Refunded",
-  mixed: "Mixed",
+  mixed: "Mixed statuses",
 };
 
 const paymentStyles: Record<PaymentSummary, string> = {
@@ -131,63 +131,68 @@ export function EntryLedger({
 
   return (
     <section id="entry-ledger" className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+      <header className="space-y-1 border-b border-[#e7ebe8] p-4">
+        <h2 className="font-bold">Entries & payments</h2>
+        <p className="text-sm leading-6 text-[#526059]">Accepted online requests and office entries appear here. Check-in records arrival; recording cash creates a payment receipt.</p>
+      </header>
       <div className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] p-4">
-        <label className="flex h-10 w-80 max-w-full items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
+        <label className="flex min-h-11 w-80 max-w-full items-center gap-2 rounded-md border border-[#d7ddda] px-3 text-[#758078]">
           <Search size={17} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="min-w-0 flex-1 bg-transparent text-sm text-[#17201c] outline-none"
-            placeholder="Search contestant, member number, or class"
+            aria-label="Search entries"
+            placeholder="Name, member number, or roping"
           />
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#66716b]">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#66716b]">
             Payment
             <select
               value={paymentFilter}
               onChange={(event) => setPaymentFilter(event.target.value)}
-              className="h-10 max-w-full rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
+              className="h-11 max-w-full rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
             >
               <option value="all">All statuses</option>
               <option value="unpaid">Unpaid</option>
               <option value="paid_cash">Paid cash</option>
               <option value="comped">Comped</option>
               <option value="refunded">Refunded</option>
-              <option value="mixed">Mixed</option>
+              <option value="mixed">Mixed statuses</option>
             </select>
           </label>
-          <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#66716b]">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#66716b]">
             Arrival
             <select
               value={checkInFilter}
               onChange={(event) => setCheckInFilter(event.target.value)}
-              className="h-10 max-w-full rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
+              className="h-11 max-w-full rounded-md border border-[#d7ddda] bg-white px-3 text-sm text-[#17201c]"
             >
               <option value="all">Everyone</option>
               <option value="checked_in">Checked in</option>
               <option value="not_checked_in">Not checked in</option>
             </select>
           </label>
-          <span className="text-xs font-semibold text-[#758078]">
-            {filtered.length} of {contestants.length}
-          </span>
+          <span role="status" className="text-sm font-semibold text-[#66716b]">{filtered.length} of {contestants.length} contestants</span>
+          {search || paymentFilter !== "all" || checkInFilter !== "all" ? <button type="button" onClick={() => { setSearch(""); setPaymentFilter("all"); setCheckInFilter("all"); }} className="min-h-11 rounded-md border border-[#d7ddda] px-3 text-sm font-semibold">Clear filters</button> : null}
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1120px] text-left">
-          <thead className="bg-[#f7f8f7] text-[11px] font-bold uppercase text-[#758078]">
+        <table className="block w-full text-left lg:table lg:min-w-[1120px]">
+          <caption className="sr-only">Contestant entries, arrival, charges, and payments</caption>
+          <thead className="hidden bg-[#f7f8f7] text-xs font-bold uppercase text-[#66716b] lg:table-header-group">
             <tr>
-              <th className="px-5 py-3">Contestant</th>
-              <th className="px-5 py-3">Entries</th>
-              <th className="px-5 py-3">Ropings</th>
-              <th className="px-5 py-3">Arrival</th>
-              <th className="px-5 py-3">Payment</th>
-              <th className="px-5 py-3 text-right">Total</th>
-              <th className="px-5 py-3 text-right">Adjustments</th>
+              <th scope="col" className="px-5 py-3">Contestant</th>
+              <th scope="col" className="px-5 py-3">Entries</th>
+              <th scope="col" className="px-5 py-3">Ropings</th>
+              <th scope="col" className="px-5 py-3">Arrival</th>
+              <th scope="col" className="px-5 py-3">Payment</th>
+              <th scope="col" className="px-5 py-3 text-right">Charges</th>
+              <th scope="col" className="px-5 py-3 text-right">Adjustments</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#e7ebe8]">
+          <tbody className="block lg:table-row-group divide-y divide-[#e7ebe8]">
             {filtered.map((contestant) => (
               <ContestantRow
                 key={contestant.personId}
@@ -201,14 +206,14 @@ export function EntryLedger({
               />
             ))}
             {!filtered.length ? (
-              <tr>
+              <tr className="block lg:table-row">
                 <td
                   colSpan={7}
-                  className="px-5 py-12 text-center text-sm text-[#758078]"
+                  className="block px-5 py-12 text-center text-sm text-[#66716b] lg:table-cell"
                 >
                   {contestants.length
                     ? "No contestants match these filters."
-                    : "No entries have been received yet."}
+                    : "No accepted or office entries yet. Accept an online request above or add an office entry to begin."}
                 </td>
               </tr>
             ) : null}
@@ -240,18 +245,19 @@ function ContestantRow({
     (entry) => entry.competitionStatus === "active",
   );
   return (
-    <tr className="align-top">
-      <td className="px-5 py-4">
+    <tr className="grid grid-cols-2 gap-x-3 gap-y-4 p-4 align-top lg:table-row lg:p-0">
+      <td className="col-span-2 min-w-0 lg:table-cell lg:px-5 lg:py-4">
         <p className="text-sm font-bold">{contestant.name}</p>
-        <p className="mt-1 font-mono text-[11px] text-[#758078]">
+        <p className="mt-1 font-mono text-xs text-[#66716b]">
           {contestant.memberNumber ?? "Guest"}
         </p>
         {canOffice ? <ContestantContactDialog eventId={eventId} roperId={contestant.personId} email={contestant.email ?? null} phone={contestant.phone ?? null} /> : null}
       </td>
-      <td className="px-5 py-4 text-sm font-semibold">
+      <td className="hidden px-5 py-4 text-sm font-semibold lg:table-cell">
         {contestant.entries.length}
       </td>
-      <td className="max-w-sm px-5 py-4">
+      <td className="col-span-2 min-w-0 lg:table-cell lg:max-w-sm lg:px-5 lg:py-4">
+        <p className="mb-2 text-xs font-bold text-[#66716b] lg:hidden">Ropings · {contestant.entries.length} {contestant.entries.length === 1 ? "entry" : "entries"}</p>
         <div className="flex flex-wrap gap-1.5">
           {contestant.entries.map((entry) => (
             <div
@@ -322,7 +328,8 @@ function ContestantRow({
           ))}
         </div>
       </td>
-      <td className="px-5 py-4">
+      <td className="min-w-0 lg:table-cell lg:px-5 lg:py-4">
+        <p className="mb-2 text-xs font-bold text-[#66716b] lg:hidden">Arrival</p>
         <ContestantCheckInButton
           eventId={eventId}
           personId={contestant.personId}
@@ -332,18 +339,19 @@ function ContestantRow({
           enabled={canOffice && (hasActiveEntries || contestant.checkedIn)}
         />
       </td>
-      <td className="px-5 py-4">
+      <td className="min-w-0 lg:table-cell lg:px-5 lg:py-4">
+        <p className="mb-2 text-xs font-bold text-[#66716b] lg:hidden">Payment</p>
         <span
           className={`inline-flex rounded-md px-2.5 py-1 text-xs font-bold ${paymentStyles[contestant.paymentStatus]}`}
         >
           {paymentLabels[contestant.paymentStatus]}
         </span>
-        <p className="mt-2 text-[11px] text-[#66716b]">
-          {formatCurrency(contestant.amountPaidCents)} received
-          {contestant.balanceDueCents
-            ? ` · ${formatCurrency(contestant.balanceDueCents)} due`
-            : " · Paid in full"}
+        <p className="mt-2 text-sm leading-5 text-[#526059]">
+          {contestant.amountPaidCents > 0 && !contestant.payments.some(payment => !payment.voided)
+            ? "Marked paid · No cash receipt recorded"
+            : `${formatCurrency(contestant.amountPaidCents)} cash recorded`}
         </p>
+        <p className="mt-1 text-sm font-semibold tabular-nums">{contestant.balanceDueCents ? `${formatCurrency(contestant.balanceDueCents)} due` : "No balance due"}</p>
         <CashPaymentDialog
           eventId={eventId}
           personId={contestant.personId}
@@ -354,19 +362,19 @@ function ContestantRow({
           canVoid={canAdjust}
         />
       </td>
-      <td className="px-5 py-4 text-right">
-        <p className="text-sm font-bold">
-          {formatCurrency(contestant.totalCents)}
+      <td className="col-span-2 min-w-0 border-t border-[#e7ebe8] pt-3 lg:table-cell lg:border-0 lg:px-5 lg:py-4 lg:text-right">
+        <p className="text-sm font-bold tabular-nums">
+          <span className="font-normal text-[#66716b] lg:hidden">Charges: </span>{formatCurrency(contestant.totalCents)}
         </p>
         <details className="group mt-2 text-left">
-          <summary className="flex cursor-pointer list-none items-center justify-end gap-1 text-xs font-semibold text-[#66716b]">
+          <summary className="flex cursor-pointer list-none items-center lg:justify-end gap-1 text-sm font-semibold text-[#66716b]">
             Fee breakdown
             <ChevronDown
               size={14}
               className="transition-transform group-open:rotate-180"
             />
           </summary>
-          <div className="mt-2 min-w-56 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-3">
+          <div className="mt-2 w-full lg:min-w-56 rounded-md border border-[#e1e6e3] bg-[#fafbfa] p-3">
             {contestant.charges.map((charge) => (
               <div
                 key={charge.id}
@@ -399,9 +407,10 @@ function ContestantRow({
           </div>
         </details>
       </td>
-      <td className="px-5 py-4 text-right">
+      <td className={canAdjust ? "col-span-2 min-w-0 border-t border-[#e7ebe8] pt-3 lg:table-cell lg:border-0 lg:px-5 lg:py-4 lg:text-right" : "hidden px-5 py-4 text-right lg:table-cell"}>
         {canAdjust ? <details className="group">
           <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-semibold text-[#66716b]">Adjust payment status<ChevronDown size={15} className="transition-transform group-open:rotate-180" /></summary>
+          <p className="mb-2 max-w-xs text-sm leading-6 text-[#66716b]">Status adjustments do not create or void cash receipts. Use Record cash to record money received.</p>
           <PaymentForm eventId={eventId} contestant={contestant} canEdit={canAdjust} />
         </details> : <span className="text-xs text-[#758078]">-</span>}
       </td>
