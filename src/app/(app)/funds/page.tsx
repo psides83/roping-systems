@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Filter, PiggyBank, ChevronDown } from "lucide-react";
 import { getActiveProducer } from "@/lib/producers";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/utils";
+import { ContextHelp } from "@/components/help/context-help";
+import { formatCurrencyExact as formatCurrency } from "@/lib/utils";
 import { seasonCalendarDate } from "@/lib/seasons";
 import { addedMoneyFunds, type AddedMoneyContribution } from "@/lib/added-money";
 import { FundAccounts } from "@/components/funds/fund-accounts";
@@ -28,20 +29,23 @@ export default async function FundsPage({ searchParams }: { searchParams: Promis
   return <div className="space-y-6">
     <header className="flex flex-wrap items-center justify-between gap-4">
       <h1 className="flex items-center gap-2 text-2xl font-bold"><PiggyBank size={24} />Added-money funds</h1>
+    </header>
+    <ContextHelp title="Account balances or contribution activity?" guide="payouts"><p>Fund accounts show current balances across all seasons. Reserved money is committed to ropings; available money is the balance less reservations.</p><p>The season filter below applies to fee contribution activity. Contributions and account balances are separate views and should not be added together.</p></ContextHelp>
+    <FundAccounts producerId={producer.id} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)} />
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-bold">Contribution activity</h2><p className="mt-1 text-sm text-[#66716b]">{selected ? `${selected.name} · ${selected.starts_on} through ${selected.ends_on}` : "All seasons"} · Fee contribution totals for this period</p></div>
       <form className="flex flex-wrap items-end gap-2">
-        <label className="grid gap-1 text-xs font-semibold text-[#66716b]">Season<select name="season" defaultValue={selected?.id ?? "all"} className="h-10 w-56 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm text-[#19231d]">
+        <label className="grid gap-1 text-sm font-semibold text-[#66716b]">Season<select name="season" defaultValue={selected?.id ?? "all"} className="h-11 w-56 max-w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-sm text-[#19231d]">
           <option value="all">All seasons</option>{seasons?.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
         </select></label>
-        <button aria-label="Apply season filter" title="Apply season filter" className="grid h-10 w-10 place-items-center rounded-md border border-[#ccd4d0] bg-white"><Filter size={17} /></button>
+        <button aria-label="Apply season filter" title="Apply season filter" className="inline-flex min-h-11 items-center gap-2 px-3 rounded-md border border-[#ccd4d0] bg-white"><Filter size={17} />Apply</button>
       </form>
-    </header>
-    <FundAccounts producerId={producer.id} canManage={producer.role !== "viewer" || Boolean(producer.treasurer)} />
-    <section className="flex flex-wrap gap-x-12 gap-y-4 border-y border-[#dfe4e1] py-5">
+    </div>
+    <section aria-label="Contribution totals" className="flex flex-wrap gap-x-12 gap-y-4 border-y border-[#dfe4e1] py-5">
       <div><p className="text-sm text-[#66716b]">Collected contributions</p><p className="mt-1 text-2xl font-bold">{formatCurrency(collected)}</p></div>
       <div><p className="text-sm text-[#66716b]">Unpaid contributions</p><p className="mt-1 text-2xl font-bold">{formatCurrency(pending)}</p></div>
       <div><p className="text-sm text-[#66716b]">Funds</p><p className="mt-1 text-2xl font-bold">{funds.length}</p></div>
     </section>
-    {!funds.length ? <div className="py-8"><h2 className="font-bold">No added-money contributions in this period</h2><Link href="/settings/roping-templates" className="mt-3 inline-block text-sm font-semibold text-[var(--brand-accent-strong)]">Roping templates</Link></div> : null}
+    {!funds.length ? <div className="py-8"><h2 className="font-bold">No added-money contributions in this period</h2><p className="mt-2 text-sm text-[#66716b]">Try another season or review the added-money fees configured on your roping templates.</p><Link href="/funds?season=all" className="mt-3 mr-4 inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-semibold">View all seasons</Link><Link href="/settings/roping-templates" className="mt-3 inline-block text-sm font-semibold text-[var(--brand-accent-strong)]">Roping templates</Link></div> : null}
     <div className="divide-y divide-[#dfe4e1]">{funds.map((fund) => <details key={fund.key} className="group py-4">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
         <ChevronDown size={18} className="shrink-0 transition-transform group-open:rotate-180" />
@@ -49,7 +53,7 @@ export default async function FundsPage({ searchParams }: { searchParams: Promis
         <span className="text-right"><span className="block text-lg font-bold">{formatCurrency(fund.collected)}</span><span className="block text-xs text-[#66716b]">{formatCurrency(fund.pending)} unpaid</span></span>
       </summary>
       <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm">
-        <thead className="border-b border-[#dfe4e1] text-xs uppercase text-[#758078]"><tr><th className="py-3 pr-4">Date</th><th className="py-3 pr-4">Event / Fee</th><th className="py-3 pr-4 text-right">Paid entries</th><th className="py-3 pr-4 text-right">Collected</th><th className="py-3 text-right">Unpaid</th></tr></thead>
+        <thead className="border-b border-[#dfe4e1] text-xs uppercase text-[#66716b]"><tr><th scope="col" className="py-3 pr-4">Date</th><th scope="col" className="py-3 pr-4">Event / Fee</th><th scope="col" className="py-3 pr-4 text-right">Paid entries</th><th scope="col" className="py-3 pr-4 text-right">Collected</th><th scope="col" className="py-3 text-right">Unpaid</th></tr></thead>
         <tbody className="divide-y divide-[#e7ebe8]">{fund.rows.map((row, index) => <tr key={`${row.event_id}-${row.roping_date}-${row.fee_title}-${index}`}>
           <td className="py-3 pr-4">{row.roping_date}</td><td className="py-3 pr-4"><Link href={`/events/${row.event_id}`} className="font-semibold hover:underline">{row.event_title}</Link><p className="mt-1 text-xs text-[#66716b]">{row.fee_title}</p></td><td className="py-3 pr-4 text-right">{row.paid_entries}</td><td className="py-3 pr-4 text-right font-semibold">{formatCurrency(Number(row.collected_cents))}</td><td className="py-3 text-right text-[#66716b]">{formatCurrency(Number(row.pending_cents))}</td>
         </tr>)}</tbody>

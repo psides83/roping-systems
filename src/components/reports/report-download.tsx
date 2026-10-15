@@ -6,6 +6,7 @@ export function ReportDownload({ href, disabled }: { href: string; disabled?: bo
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   async function download() {
+    if (disabled || pending) return;
     setPending(true); setError("");
     try {
       const response = await fetch(href, { cache: "no-store" });
@@ -19,7 +20,7 @@ export function ReportDownload({ href, disabled }: { href: string; disabled?: bo
     } catch (error) { setError(error instanceof Error ? error.message : "Unable to download report."); }
     finally { setPending(false); }
   }
-  return <div><button type="button" onClick={download} disabled={disabled || pending} aria-busy={pending} className="inline-flex h-10 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-50">
+  return <div><button type="button" onClick={download} disabled={disabled || pending} aria-busy={pending} className="inline-flex min-h-11 items-center gap-2 rounded-md brand-primary-fill px-4 text-sm font-semibold text-white disabled:opacity-50">
     {pending ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}{pending ? "Preparing export…" : "Download CSV"}</button>
     <span role="status" className="sr-only">{pending ? "Preparing report download" : ""}</span>{error && <p role="alert" className="mt-2 max-w-sm text-sm text-red-700">{error}</p>}</div>;
 }
