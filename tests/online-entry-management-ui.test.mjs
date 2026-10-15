@@ -8,13 +8,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { summarizeOnlineEntryOptions } from "../src/lib/online-entry-summary.ts";
 const require = createRequire(import.meta.url);
 
-function load(file, name, { state = {}, confirming = false } = {}) {
+function load(file, name, { state = {}, confirming = false, onAction, failSubmit = false } = {}) {
   const loaded = { exports: {} };
   const source = transpileModule(readFileSync(new URL(`../src/components/${file}.tsx`, import.meta.url), "utf8"), { compilerOptions: { module: ModuleKind.CommonJS, jsx: JsxEmit.ReactJSX } }).outputText;
   new Function("require", "module", "exports", source)((id) => {
-    if (id === "react") return { ...React, useActionState: () => [state, undefined, false], useState: confirming ? () => [true, () => {}] : React.useState };
+    if (id === "react") return { ...React, useActionState: action => { onAction?.(action); return [state, undefined, false]; }, useState: confirming ? () => [true, () => {}] : React.useState };
+    if (id === "@/components/ui/public-form-feedback") return { PublicFormFeedback: load("ui/public-form-feedback", "PublicFormFeedback"), PublicFormConfirmation: load("ui/public-form-feedback", "PublicFormConfirmation") };
     if (id === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
-    if (id.endsWith("/actions")) return { submitOnlineEntry: () => {}, updateOnlineEntryRequest: () => {}, withdrawOnlineEntryRequest: () => {} };
+    if (id.endsWith("/actions")) return { submitOnlineEntry: async () => { if (failSubmit) throw new Error("connection lost"); return {}; }, updateOnlineEntryRequest: () => {}, withdrawOnlineEntryRequest: () => {} };
     if (id.endsWith("online-entry-summary")) return { summarizeOnlineEntryOptions };
     if (id.endsWith("utils")) return { formatCurrency: (cents) => `$${(cents / 100).toFixed(2)}` };
     if (id.endsWith("phone-input")) return { PhoneInput: ({ defaultValue, name }) => React.createElement("input", { name, defaultValue }) };
@@ -95,4 +96,22 @@ test("informal roper entry forms do not advertise a membership requirement", () 
   assert.match(html,/No membership required/);
   assert.match(html,/Roper number \(if known\)/);
   assert.doesNotMatch(html,/Membership approval required before competing/);
+});
+
+test("entry failures link summary errors to invalid fields and explain recovery", () => {
+ const Form = load("events/online-entry-form", "OnlineEntryForm", { state: { message: "Review your request", errors: { email: ["Enter a valid email"], divisionIds: ["Choose a roping"] } } });
+ const html = renderToStaticMarkup(React.createElement(Form, { producerSlug: "producer", eventSlug: "event", allowGuests: false, divisions }));
+ assert.match(html, /role="alert"/); assert.match(html, /Email: Enter a valid email/);
+ assert.match(html, /aria-describedby="email-error"/); assert.match(html, /aria-describedby="divisionIds-error"/);
+ assert.match(html, /Select at least one roping above/);
+});
+
+
+test("entry transport failure returns recoverable feedback instead of throwing away the form", async () => {
+ let action;
+ const Form = load("events/online-entry-form", "OnlineEntryForm", { failSubmit: true, onAction: value => { action = value; } });
+ renderToStaticMarkup(React.createElement(Form, { producerSlug: "producer", eventSlug: "event", allowGuests: false, divisions }));
+ const result = await action({}, new FormData());
+ assert.match(result.message, /Check My entry requests before trying again/);
+ assert.notEqual(result.success, true);
 });

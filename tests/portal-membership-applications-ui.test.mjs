@@ -7,13 +7,14 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { getStandardMembershipField } from "../src/lib/membership-forms.ts";
 const require = createRequire(import.meta.url);
-function load(file, name, state = {}) {
+function load(file, name, state = {}, { onAction, failSubmit = false } = {}) {
   const loaded = { exports: {} };
   const source = transpileModule(readFileSync(new URL(`../src/components/${file}.tsx`, import.meta.url), "utf8"), { compilerOptions: { module: ModuleKind.CommonJS, jsx: JsxEmit.ReactJSX } }).outputText;
   new Function("require", "module", "exports", source)((id) => {
+    if (id === "@/components/ui/public-form-feedback") return { PublicFormFeedback: load("ui/public-form-feedback", "PublicFormFeedback"), PublicFormConfirmation: load("ui/public-form-feedback", "PublicFormConfirmation") };
     if (id === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
-    if (id === "react") return { ...React, useActionState: () => [state, undefined, false] };
-    if (id.endsWith("/actions")) return {};
+    if (id === "react") return { ...React, useActionState: action => { onAction?.(action); return [state, undefined, false]; } };
+    if (id.endsWith("/actions")) return { submitMembershipApplication: async () => { if (failSubmit) throw new Error("connection lost"); return {}; } };
     if (id === "@/lib/membership-forms") return { getStandardMembershipField };
     if (id === "@/components/ui/phone-input") return { PhoneInput: ({ defaultValue, name }) => React.createElement("input", { name, defaultValue }) };
     if (id.endsWith("private-receipt-code")) return { PrivateReceiptCode: ({ code }) => React.createElement("textarea", { readOnly: true, value: code }) };
@@ -70,4 +71,26 @@ test("approval success replaces the form with a link to the member", () => {
   const Saved = load("members/review-membership-application", "ReviewMembershipApplication", { success: true, membershipId: "member" });
   const html = renderToStaticMarkup(React.createElement(Saved, { id: "application", kind: "application", membershipId: null, members: [] }));
   assert.match(html, /Review saved/); assert.match(html, /href="\/members\/member"/); assert.doesNotMatch(html, /name="status"/);
+});
+
+test("membership fields expose native requirements and associated server errors", () => {
+ const Form = load("members/public-membership-form", "PublicMembershipForm", { message: "Review your answers", errors: { standard_first_name: "Required", custom_choice: "Required" } });
+ const html = renderToStaticMarkup(React.createElement(Form, { formId: "form", standardFields: [{ key: "first_name", required: true }], customSections: [{ id: "section", title: "Preferences", fields: [{ id: "choice", label: "Division", type: "select", options: ["Tie-down"], required: true }] }], releaseText: "Sample release", requireSignature: true }));
+ assert.match(html, /role="alert"/);
+ assert.match(html, /First name: Required/);
+ assert.match(html, /aria-describedby="standard_first_name-error"/);
+ assert.match(html, /aria-describedby="custom_choice-error"/);
+ assert.match(html.match(/<input[^>]*name="acceptedRelease"[^>]*>/)?.[0] ?? "", /required/);
+ assert.match(html.match(/<input[^>]*name="signatureName"[^>]*>/)?.[0] ?? "", /required/);
+ assert.match(html, /Your answers are still on this page/);
+});
+
+
+test("membership transport failure advises checking status before a duplicate submission", async () => {
+ let action;
+ const Form = load("members/public-membership-form", "PublicMembershipForm", {}, { failSubmit: true, onAction: value => { action = value; } });
+ renderToStaticMarkup(React.createElement(Form, { formId: "form", standardFields: [], customSections: [], releaseText: null, requireSignature: false }));
+ const result = await action({}, new FormData());
+ assert.match(result.message, /Check your application status before trying again/);
+ assert.notEqual(result.success, true);
 });

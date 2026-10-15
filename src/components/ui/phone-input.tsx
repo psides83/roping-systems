@@ -17,7 +17,13 @@ export function PhoneInput({
   className,
   disabled,
   required,
+  id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: {
+  id?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
   name?: string;
   defaultValue?: string;
   className?: string;
@@ -27,6 +33,9 @@ export function PhoneInput({
   const [value, setValue] = useState(() => formatPhoneInput(defaultValue));
   return (
     <input
+      id={id}
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
       name={name}
       type="tel"
       inputMode="tel"

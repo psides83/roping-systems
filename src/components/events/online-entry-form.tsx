@@ -1,5 +1,6 @@
 "use client";
 
+import { PublicFormFeedback, PublicFormConfirmation } from "@/components/ui/public-form-feedback";
 import { PersistentForm } from "@/components/ui/persistent-form";
 import { useActionState, useState, useRef, useTransition } from "react";
 import { CheckCircle2, LoaderCircle, Minus, Plus } from "lucide-react";
@@ -22,7 +23,7 @@ import { EntryEligibilityFeedback } from "@/components/events/entry-eligibility-
 import { OnlineRoperSearch } from "./online-roper-search";
 
 const inputClass =
-  "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 outline-none focus:border-[var(--brand-accent)]";
+  "mt-2 h-11 w-full rounded-md border border-[#ccd4d0] bg-white px-3 text-base outline-none focus:border-[var(--brand-accent)]";
 
 interface EntryDivision {
   qualification?: QualificationNotice;
@@ -69,7 +70,10 @@ export function OnlineEntryForm({
   const [state, formAction, pending] = useActionState<
     OnlineEntryFormState,
     FormData
-  >(action, {});
+  >(async (previous, data) => {
+    try { return await action(previous, data); }
+    catch { return { message: "We could not confirm your submission. Check My entry requests before trying again, or contact the event office." }; }
+  }, {});
   const [selected, setSelected] = useState<Record<string, boolean>>(() => Object.fromEntries(existingRequest?.items.map((item) => [item.id, true]) ?? []));
   const [quantities, setQuantities] = useState<Record<string, number>>(() => Object.fromEntries(existingRequest?.items.map((item) => [item.id, item.quantity]) ?? []));
   const [selectedOptions, setSelectedOptions] = useState<Record<string, boolean>>(() => Object.fromEntries(existingRequest?.items.flatMap((item) => item.optionIds.map((id) => [`${item.id}:${id}`, true])) ?? []));
@@ -91,12 +95,13 @@ export function OnlineEntryForm({
 
   if (state.success) {
     return (
-      <div className="rounded-md border border-emerald-200 bg-emerald-50 p-6 text-emerald-900">
+      <PublicFormConfirmation className="rounded-md border border-emerald-200 bg-emerald-50 p-6 text-emerald-900">
         <CheckCircle2 size={24} />
         <h2 className="mt-3 text-lg font-bold">{existingRequest ? "Entry request updated" : "Entry request received"}</h2>
         <p className="mt-2 text-sm leading-6">{state.message}</p>
-        <Link href="/roper/requests" className="mt-4 inline-block text-sm font-semibold underline">My entry requests</Link>
-      </div>
+        <p className="mt-3 text-sm leading-6">The event office still needs to review your request. Submission does not confirm your entry or payment.</p>
+        <Link href="/roper/requests" className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold underline">My entry requests</Link>
+      </PublicFormConfirmation>
     );
   }
 
@@ -106,6 +111,8 @@ export function OnlineEntryForm({
       if (name === "firstName" || name === "lastName") setSelectedRecord(null);
       if (name === "email" || name === "memberNumber") { setAllowances([]); setAllowanceMessage(""); setQuantities({}); setEligibility([]); setEligibilityMessage(""); setFeeContext(null); }
     }}>
+      <PublicFormFeedback submission={state} message={state.message} errors={Object.entries(state.errors ?? {}).map(([name, messages]) => ({ name, message: messages[0], label: ({ firstName: "First name", lastName: "Last name", email: "Email", phone: "Phone", birthDate: "Birth date", competitionGender: "Competition gender", memberNumber: "Member number", divisionIds: "Ropings", note: "Note for the event office" } as Record<string, string>)[name] ?? "Entry details" }))} />
+      {state.message && <Link href="/roper/requests" className="inline-flex min-h-11 items-center text-sm font-semibold underline">Check My entry requests</Link>}
       <section>
         <h2 className="text-lg font-bold">Contestant information</h2>
         <p className="mt-1 text-sm text-[#66716b]">{existingRequest ? "Contestant details stay with the original request. Contact the producer if they need correcting." : "Use an email address where the producer can contact you."}</p>
@@ -162,9 +169,11 @@ export function OnlineEntryForm({
             error={state.errors?.birthDate?.[0]}
           />
           <label className="block text-sm font-semibold">
-            Competition gender
+            Competition gender <span className="text-rose-700">*</span>
             <select
               name="competitionGender"
+              aria-invalid={Boolean(state.errors?.competitionGender)}
+              aria-describedby={state.errors?.competitionGender ? "competitionGender-error" : undefined}
               defaultValue={existingRequest?.competitionGender ?? ""}
               className={inputClass}
               required
@@ -176,7 +185,7 @@ export function OnlineEntryForm({
               <option value="male">Male</option>
             </select>
             {state.errors?.competitionGender ? (
-              <span className="mt-1.5 block text-xs font-medium text-rose-700">
+              <span id="competitionGender-error" className="mt-1.5 block text-xs font-medium text-rose-700">
                 {state.errors.competitionGender[0]}
               </span>
             ) : null}
@@ -192,7 +201,7 @@ export function OnlineEntryForm({
           />
         </fieldset>
         <div className="mt-4" aria-busy={checkingEligibility}>
-          <button type="button" disabled={checkingEligibility || checkingAllowance || pending} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold" onClick={() => startEligibilityCheck(async () => {
+          <button type="button" disabled={checkingEligibility || checkingAllowance || pending} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold" onClick={() => startEligibilityCheck(async () => {
             if (!formRef.current) return;
             const details = new FormData(formRef.current);
             if (existingRequest) { details.set("email", existingRequest.email); details.set("memberNumber", existingRequest.memberNumber ?? ""); }
@@ -214,12 +223,14 @@ export function OnlineEntryForm({
             if (!formRef.current) return;
             const details = new FormData(formRef.current);
             if (existingRequest) { details.set("email", existingRequest.email); details.set("memberNumber", existingRequest.memberNumber ?? ""); }
+            try {
             const result = await loadOnlineFinalsAllowance(producerSlug, eventSlug, details);
             setAllowances(result.allowances ?? []);
             setSelected((current) => Object.fromEntries(Object.entries(current).map(([id, selected]) => [id, result.allowances?.some((item) => item.event_roping_id === id && item.remaining_entries === 0) ? false : selected])));
             setAllowanceMessage(result.error ?? (result.allowances?.length ? "Finals entry allowances updated." : "No bonus entry allowance found for these membership details."));
             setQuantities({});
-          })} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold">{checkingAllowance && <LoaderCircle size={15} className="animate-spin" />}Check bonus entries</button>
+            } catch { setAllowanceMessage("Unable to check bonus entries. Please try again."); }
+          })} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#ccd4d0] px-3 text-sm font-semibold">{checkingAllowance && <LoaderCircle size={15} className="animate-spin" />}Check bonus entries</button>
           {allowanceMessage && <p role="status" className="mt-2 text-xs text-[#66716b]">{allowanceMessage}</p>}
         </div>}
         <label className="absolute left-[-10000px]" aria-hidden="true">
@@ -230,6 +241,7 @@ export function OnlineEntryForm({
 
       <fieldset disabled={pending} className="min-w-0">
         <legend className="text-lg font-bold">Ropings</legend>
+        {!divisions.length && <p className="mt-3 rounded-md border bg-white p-4 text-sm text-[#66716b]">No ropings are available for online entry. Contact the event office for entry options.</p>}
         <p className="mt-1 text-sm text-[#66716b]">
           Select each division and classification you want to enter, then choose
           the number of entries.
@@ -243,9 +255,11 @@ export function OnlineEntryForm({
             const maximum = eligibilityCheck ? eligibilityCheck.remaining_entries ?? 20 : allowance ? allowance.remaining_entries ?? 20 : Math.max(division.maximumEntries ?? 20, existingRequest?.items.find((item) => item.id === division.id)?.quantity ?? 0);
             return (
               <div key={division.id} className="p-4 sm:p-5">
-                <div className="flex items-start gap-3">
+                <div className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[1rem_minmax(0,1fr)_auto]">
                   <input
                     id={`division-${division.id}`}
+                    aria-invalid={Boolean(state.errors?.divisionIds)}
+                    aria-describedby={state.errors?.divisionIds ? "divisionIds-error" : undefined}
                     name="divisionIds"
                     value={division.id}
                     type="checkbox"
@@ -338,7 +352,7 @@ export function OnlineEntryForm({
                       </span>
                     ) : null}
                   </div>
-                  <div className="flex h-9 shrink-0 items-center rounded-md border border-[#ccd4d0] bg-white">
+                  <div className="col-start-2 flex min-h-11 w-fit shrink-0 items-center rounded-md border border-[#ccd4d0] bg-white sm:col-start-3 sm:row-start-1">
                     <button
                       type="button"
                       aria-label={`Remove one ${division.name} entry`}
@@ -349,7 +363,7 @@ export function OnlineEntryForm({
                           [division.id]: Math.max(1, quantity - 1),
                         }))
                       }
-                      className="grid h-9 w-9 place-items-center disabled:opacity-30"
+                      className="grid size-11 place-items-center disabled:opacity-30"
                     >
                       <Minus size={15} />
                     </button>
@@ -371,7 +385,7 @@ export function OnlineEntryForm({
                           [division.id]: Math.min(maximum, quantity + 1),
                         }))
                       }
-                      className="grid h-9 w-9 place-items-center disabled:opacity-30"
+                      className="grid size-11 place-items-center disabled:opacity-30"
                     >
                       <Plus size={15} />
                     </button>
@@ -382,7 +396,7 @@ export function OnlineEntryForm({
           })}
         </div>
         {state.errors?.divisionIds ? (
-          <p className="mt-2 text-xs font-semibold text-rose-700">
+          <p id="divisionIds-error" className="mt-2 text-xs font-semibold text-rose-700">
             {state.errors.divisionIds[0]}
           </p>
         ) : null}
@@ -410,27 +424,22 @@ export function OnlineEntryForm({
         Note for the event office
         <textarea
           name="note"
+          aria-invalid={Boolean(state.errors?.note)}
+          aria-describedby={state.errors?.note ? "note-error" : undefined}
           defaultValue={existingRequest?.note ?? ""}
           rows={4}
           maxLength={500}
-          className="mt-2 w-full rounded-md border border-[#ccd4d0] bg-white p-3 outline-none focus:border-[var(--brand-accent)]"
+          className="mt-2 w-full rounded-md border border-[#ccd4d0] bg-white p-3 text-base outline-none focus:border-[var(--brand-accent)]"
           placeholder="Optional details or questions"
         />
         {state.errors?.note ? (
-          <span className="mt-1 block text-xs text-rose-700">
+          <span id="note-error" className="mt-1 block text-xs text-rose-700">
             {state.errors.note[0]}
           </span>
         ) : null}
       </label>
 
-      {state.message ? (
-        <p
-          className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"
-          aria-live="polite"
-        >
-          {state.message}
-        </p>
-      ) : null}
+      <p role="status" className="sr-only">{pending ? "Saving entry request. Please wait." : ""}</p>
       <div className="border-t border-[#dfe4e1] pt-5">
         <button
           disabled={pending || !Object.values(selected).some(Boolean)}
@@ -439,6 +448,7 @@ export function OnlineEntryForm({
           {pending ? <LoaderCircle size={17} className="animate-spin" /> : null}
           {pending ? "Saving request..." : existingRequest ? "Save changes" : "Submit entry request"}
         </button>
+        {!Object.values(selected).some(Boolean) && <p className="mt-3 text-sm text-[#66716b]">Select at least one roping above to submit your request.</p>}
         <p className="mt-3 text-xs leading-5 text-[#758078]">
           Submitting does not guarantee entry. The event office will review
           eligibility and collect payment in person.
@@ -465,12 +475,15 @@ function Field({
 }) {
   return (
     <label className="block text-sm font-semibold">
-      {label}
+      {label}{required && <span className="ml-1 text-rose-700">*</span>}
       {type === "tel" ? (
-        <PhoneInput name={name} defaultValue={defaultValue} required={required} className={inputClass} />
+        <PhoneInput aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined} name={name} defaultValue={defaultValue} required={required} className={inputClass} />
       ) : (
         <input
           name={name}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${name}-error` : undefined}
+          autoComplete={({ firstName: "given-name", lastName: "family-name", email: "email", birthDate: "bday" } as Record<string, string>)[name]}
           type={type}
           required={required}
           defaultValue={defaultValue}
@@ -478,7 +491,7 @@ function Field({
         />
       )}
       {error ? (
-        <span className="mt-1 block text-xs text-rose-700">{error}</span>
+        <span id={`${name}-error`} className="mt-1 block text-xs text-rose-700">{error}</span>
       ) : null}
     </label>
   );
