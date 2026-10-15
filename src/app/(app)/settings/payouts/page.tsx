@@ -1,5 +1,5 @@
 import { PersistentForm } from "@/components/ui/persistent-form";
-import { Banknote, CircleDollarSign } from "lucide-react";
+import { Banknote, ChevronDown, CircleDollarSign } from "lucide-react";
 import { assignDivisionPayout } from "./actions";
 import {
   PayoutScheduleDialog,
@@ -146,8 +146,8 @@ export default async function PayoutSettingsPage() {
         actions={<div className="flex flex-wrap gap-2"><PayoutSpreadsheetImport enabled={enabled} /><PayoutScheduleDialog enabled={enabled} /></div>}
       />
       <RopingSetupTabs active="payouts" />
-      <section className="rounded-md border border-[#dfe4e1] bg-white">
-        <header className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4">
+      <details className="group/defaults overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-5 py-4 hover:bg-[#f7f8f7] focus-visible:outline-2 focus-visible:outline-offset-[-2px] [&::-webkit-details-marker]:hidden">
           <Banknote size={19} className="text-[var(--brand-accent-strong)]" />
           <div>
             <h2 className="font-bold">Roping template defaults</h2>
@@ -156,8 +156,9 @@ export default async function PayoutSettingsPage() {
               template
             </p>
           </div>
-        </header>
-        <div className="divide-y divide-[#edf0ee]">
+          <ChevronDown size={18} className="ml-auto shrink-0 transition-transform group-open/defaults:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <div className="divide-y divide-[#edf0ee] border-t border-[#e7ebe8]">
           {data.divisions.map((division) => (
             <PersistentForm
               action={assignDivisionPayout}
@@ -205,7 +206,7 @@ export default async function PayoutSettingsPage() {
             </p>
           ) : null}
         </div>
-      </section>
+      </details>
       <section className="space-y-4">
         {data.schedules.map((schedule) => (
           <CollapsibleCard

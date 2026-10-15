@@ -1,5 +1,5 @@
 import { PersistentForm } from "@/components/ui/persistent-form";
-import { Clock3 } from "lucide-react";
+import { ChevronDown, Clock3 } from "lucide-react";
 import { updateDivisionTiming } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { RopingSetupTabs } from "@/components/settings/roping-setup-tabs";
@@ -54,8 +54,8 @@ export default async function TimingSettingsPage() {
       />
       <RopingSetupTabs active="timing" />
       <PenaltyRules rules={penalties} divisions={penaltyDivisions} classifications={penaltyClasses} canEdit={canEdit} />
-      <section className="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
-        <header className="flex items-center gap-3 border-b border-[#e7ebe8] px-5 py-4">
+      <details className="group/defaults overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-5 py-4 hover:bg-[#f7f8f7] focus-visible:outline-2 focus-visible:outline-offset-[-2px] [&::-webkit-details-marker]:hidden">
           <span className="grid h-9 w-9 place-items-center rounded-md bg-[#eef1ef]">
             <Clock3 size={18} />
           </span>
@@ -65,8 +65,9 @@ export default async function TimingSettingsPage() {
               Copied into new events so historical timing rules stay unchanged
             </p>
           </div>
-        </header>
-        <div className="divide-y divide-[#edf0ee]">
+          <ChevronDown size={18} className="ml-auto shrink-0 transition-transform group-open/defaults:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <div className="divide-y divide-[#edf0ee] border-t border-[#e7ebe8]">
           {divisions.map((division) => (
             <PersistentForm
               action={updateDivisionTiming}
@@ -121,7 +122,7 @@ export default async function TimingSettingsPage() {
             </p>
           ) : null}
         </div>
-      </section>
+      </details>
       <div className="rounded-md border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-900">
         Every individual timer reading is retained in the changelog. The
         resolved official time is what appears in results and receives
