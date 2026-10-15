@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProducerFeatureGate } from "@/components/settings/producer-features-context";
 import { MemberList } from "@/components/members/member-list";
 import { Settings2 } from "lucide-react";
+import { ContextHelp } from "@/components/help/context-help";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { members as demoMembers } from "@/data/demo";
@@ -140,7 +141,7 @@ async function getMemberPageData(): Promise<{
 
 export default async function MembersPage({ searchParams }: PageProps<"/members">) {
   const query = await searchParams;
-  const initialStatus = query.status === "pending" ? "pending" : "";
+  const initialStatus = typeof query.status === "string" && ["active", "pending", "expired", "inactive"].includes(query.status) ? query.status : "";
   const configured = isSupabaseConfigured();
   const { members, divisions, canEdit } = await getMemberPageData();
   const producer = await getActiveProducer();
@@ -171,45 +172,47 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
           /></div>
         }
       />
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-          <p className="text-xs font-semibold text-[#758078]">{requireMemberships ? "Active members" : "Roper records"}</p>
+      <ContextHelp title={requireMemberships ? "Membership status, classifications, and account access" : "Roper records and account access"} guide="first-setup"><p>{requireMemberships ? "Membership status tracks approval and standing with your producer. Classifications describe the divisions and classes a roper competes in. Review the full record for eligibility, holds, and any exceptions before competition." : "A roper record stores contact details, classifications, and competition history. Review the full record for eligibility and any competition holds."}</p><p>Account connections link a roper record to an online login. Creating a record does not by itself create a login or grant producer staff access.</p></ContextHelp>
+      <div className={`grid gap-3 ${requireMemberships ? "sm:grid-cols-3" : ""}`}>
+
+        <Link href={requireMemberships ? "/members?status=active" : "/members"} className="rounded-md border border-[#dfe4e1] bg-white p-4 hover:bg-[#f7f8f7]">
+          <p className="text-sm font-semibold text-[#66716b]">{requireMemberships ? "Active members" : "Roper records"}</p>
           <p className="mt-1 text-2xl font-bold">
-            {configured ? (requireMemberships ? activeCount : members.length) : 248}
+            {requireMemberships ? activeCount : members.length}
           </p>
-        </div>
-        {requireMemberships && <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-          <p className="text-xs font-semibold text-[#758078]">
+        </Link>
+        {requireMemberships && <Link href="/members?status=pending" className="rounded-md border border-[#dfe4e1] bg-white p-4 hover:bg-[#f7f8f7]">
+          <p className="text-sm font-semibold text-[#66716b]">
             Pending approval
           </p>
           <p className="mt-1 text-2xl font-bold">
-            {configured ? pendingCount : 7}
+            {pendingCount}
           </p>
-        </div>}
-        {requireMemberships && <div className="rounded-md border border-[#dfe4e1] bg-white p-4">
-          <p className="text-xs font-semibold text-[#758078]">Expired</p>
+        </Link>}
+        {requireMemberships && <Link href="/members?status=expired" className="rounded-md border border-[#dfe4e1] bg-white p-4 hover:bg-[#f7f8f7]">
+          <p className="text-sm font-semibold text-[#66716b]">Expired</p>
           <p className="mt-1 text-2xl font-bold">
-            {configured ? expiredCount : 19}
+            {expiredCount}
           </p>
-        </div>}
+        </Link>}
       </div>
       <MemberList key={initialStatus} initialStatus={initialStatus} members={members} requireMemberships={requireMemberships} head={
-            <thead className="bg-[#f7f8f7] text-[11px] font-bold uppercase text-[#758078]">
+            <thead className="hidden bg-[#f7f8f7] text-xs font-bold uppercase text-[#66716b] lg:table-header-group">
               <tr>
-                <th className="px-5 py-3">{requireMemberships ? "Member" : "Roper"}</th>
-                <th className="px-5 py-3">{requireMemberships ? "Member #" : "Roper #"}</th>
-                <th className="px-5 py-3">Contact</th>
-                <th className="px-5 py-3">Classifications</th>
-                {requireMemberships && <th className="px-5 py-3">Status</th>}
-                <th className="px-5 py-3">Joined</th>
-                <th className="w-12 px-4 py-3">
+                <th scope="col" className="px-5 py-3">{requireMemberships ? "Member" : "Roper"}</th>
+                <th scope="col" className="px-5 py-3">{requireMemberships ? "Member #" : "Roper #"}</th>
+                <th scope="col" className="px-5 py-3">Contact</th>
+                <th scope="col" className="px-5 py-3">Classifications</th>
+                {requireMemberships && <th scope="col" className="px-5 py-3">Status</th>}
+                <th scope="col" className="px-5 py-3">Joined</th>
+                <th scope="col" className="w-12 px-4 py-3">
                   <span className="sr-only">Manage</span>
                 </th>
               </tr>
             </thead>
       } rows={members.map((member) => (
-                <tr key={member.id} className="hover:bg-[#fafbfa]">
-                  <td className="px-5 py-4">
+                <tr key={member.id} className="grid grid-cols-2 gap-3 p-4 hover:bg-[#fafbfa] lg:table-row lg:p-0">
+                  <td className="col-span-2 min-w-0 lg:table-cell lg:px-5 lg:py-4">
                     <div className="flex items-center gap-3">
                       <span className="grid h-9 w-9 place-items-center rounded-full bg-[#eef1ef] text-xs font-bold text-[#435149]">
                         {member.name
@@ -219,22 +222,25 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                       </span>
                       <Link
                         href={`/members/${member.id}`}
-                        className="text-sm font-semibold hover:text-[var(--brand-accent-strong)]"
+                        className="inline-flex min-h-11 items-center text-sm font-semibold hover:text-[var(--brand-accent-strong)]"
                       >
                         {member.name}
                       </Link>
                     </div>
                   </td>
-                  <td className="px-5 py-4 font-mono text-xs text-[#58645d]">
+                  <td className="min-w-0 font-mono text-sm text-[#58645d] lg:table-cell lg:px-5 lg:py-4">
+                    <span className="mb-1 block font-sans text-xs font-semibold text-[#66716b] lg:hidden">{requireMemberships ? "Member number" : "Roper number"}</span>
                     {member.memberNumber}
                   </td>
-                  <td className="px-5 py-4">
-                    <p className="text-sm">{member.phone}</p>
-                    <p className="mt-1 text-xs text-[#7b857f]">
-                      {member.email}
+                  <td className="col-span-2 min-w-0 lg:table-cell lg:px-5 lg:py-4">
+                    <p className="mb-1 text-xs font-semibold text-[#66716b] lg:hidden">Contact</p>
+                    <p className="text-sm">{member.phone || "No phone recorded"}</p>
+                    <p className="mt-1 break-words text-sm text-[#66716b]">
+                      {member.email || "No email recorded"}
                     </p>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="col-span-2 min-w-0 lg:table-cell lg:px-5 lg:py-4">
+                    <p className="mb-1 text-xs font-semibold text-[#66716b] lg:hidden">Classifications</p>
                     <div className="flex flex-wrap gap-1.5">
                       {member.classifications?.length ? (
                         member.classifications.map((classification) => (
@@ -253,19 +259,21 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                       )}
                     </div>
                   </td>
-                  {requireMemberships && <td className="px-5 py-4">
+                  {requireMemberships && <td className="min-w-0 lg:table-cell lg:px-5 lg:py-4">
+                    <p className="mb-1 text-xs font-semibold text-[#66716b] lg:hidden">Membership status</p>
                     <StatusPill status={member.status} />
                   </td>}
-                  <td className="px-5 py-4 text-sm text-[#66716b]">
+                  <td className="min-w-0 text-sm text-[#66716b] lg:table-cell lg:px-5 lg:py-4">
+                    <p className="mb-1 text-xs font-semibold lg:hidden">Joined</p>
                     {member.joinedAt}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="min-w-0 lg:table-cell lg:px-4 lg:py-4">
                     <Link
                       href={`/members/${member.id}`}
                       aria-label={`Manage ${member.name}`}
-                      className="grid h-8 w-8 place-items-center rounded-md hover:bg-[#eef1ef]"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[#d7ddda] px-3 text-sm font-semibold hover:bg-[#eef1ef] lg:w-11 lg:px-0"
                     >
-                      <Settings2 size={17} />
+                      <Settings2 size={17} /><span className="lg:hidden">Open record</span>
                     </Link>
                   </td>
                 </tr>
