@@ -99,7 +99,7 @@ async function getDivisionData(): Promise<{
     supabase
       .from("roping_templates")
       .select(
-        "id, name, description, updated_at, division_id, available_division_ids, main_round_count, cattle_draw_enabled, attendance_count_mode, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
+        "id, name, description, content_updated_at, division_id, available_division_ids, main_round_count, cattle_draw_enabled, attendance_count_mode, max_entries_per_roper, minimum_positions_between_entries, allow_non_members, timer_count, timer_resolution, competition_format, handicap_rules, second_round_ordering, later_round_ordering, payout_schedule_id, short_round_enabled, short_round_tie_policy, short_round_brackets, is_active, divisions(name), roping_template_fees(id, title, amount_cents, scope, kind, fund_tracking, destination_fund_id, payout_schedule_id, is_required, included_in_entry_price, contributes_to_payout, sort_order)",
       )
       .eq("producer_id", producer.id)
       .order("sort_order")
@@ -161,7 +161,7 @@ async function getDivisionData(): Promise<{
     })),
     divisions: data.map((division) => ({
       id: division.id,
-      updatedAt: division.updated_at,
+      updatedAt: division.content_updated_at ?? undefined,
       name: division.name,
       description: division.description ?? "",
       maximumEntriesPerPerson: division.max_entries_per_roper,
@@ -295,13 +295,13 @@ export default async function DivisionSettingsPage() {
                 <p className="mt-1 text-sm text-[#66716b]">
                   {division.description || "No description"}
                 </p>
-                {division.updatedAt && (
-                  <p className="mt-2 text-xs text-[#758078]">
+                {division.updatedAt ? (
+                  <p className="mt-2 text-sm text-[#66716b]">
                     As of <time dateTime={division.updatedAt}>{new Intl.DateTimeFormat("en-US", {
                       month: "long", day: "numeric", year: "numeric", timeZone: timezone,
                     }).format(new Date(division.updatedAt))}</time>
                   </p>
-                )}
+                ) : <p className="mt-2 text-sm text-[#66716b]">Update date unavailable</p>}
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#66716b]">
                   <span>
                     {division.numberOfRuns}{" "}

@@ -151,11 +151,11 @@ function EventTemplateDialog({
         )}
       </button>
       {open ? (
-        <Dialog
+        <Dialog wide
           title={
             isEditing ? `Edit ${template?.name}` : "Create roping template"
           }
-          description="Define reusable format, entry, timing, fee, and payout defaults for the selected divisions."
+          description="Set reusable defaults in four sections: basics, entries, timing and order, and payouts."
           onClose={() => setOpen(false)}
           busy={pending}
         >
@@ -178,6 +178,8 @@ function EventTemplateDialog({
             {template ? (
               <input type="hidden" name="divisionId" value={template.id} />
             ) : null}
+            <p className="rounded-md bg-[#f4f6f5] p-3 text-sm leading-6 text-[#526059]">Applies to new ropings. Existing scheduled ropings keep their copied settings until you review and apply a template update from the event.</p>
+            <fieldset className="space-y-4 rounded-md border border-[#dfe4e1] p-4"><legend className="px-1 text-base font-bold">1. Basics</legend>
             <label className="block text-sm font-semibold">
               Template name
               <input
@@ -280,15 +282,19 @@ function EventTemplateDialog({
                 placeholder="Eligibility or event setup notes"
               />
             </label>
+            <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+                <input
+                  name="isActive"
+                  type="checkbox"
+                  defaultChecked={template?.isActive ?? true}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Active for new events
+              </label>
+            </fieldset>
+            <fieldset className="space-y-4 rounded-md border border-[#dfe4e1] p-4"><legend className="px-1 text-base font-bold">2. Entries & rounds</legend>
             <ContextHelp title="Rounds, repeat entries, and attendance" guide="templates"><p>These settings work independently. A two-round roping with a maximum of two entries gives each accepted entry two main runs.</p><p>Count attendance once per roping, or once for each entry, according to your organization&apos;s rules.</p></ContextHelp>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-semibold">
-                Member roping count
-                <select name="attendanceCountMode" defaultValue={template?.attendanceCountMode ?? "once_per_roping"} className={inputClass}>
-                  <option value="once_per_roping">Once per roping</option>
-                  <option value="per_entry">Each entry</option>
-                </select>
-              </label>
               <label className="block text-sm font-semibold">
                 Main rounds
                 <NumberStepper label="Main rounds"
@@ -313,39 +319,25 @@ function EventTemplateDialog({
                 <span className="mt-2 block text-sm font-normal leading-6 text-[#66716b]">Applies to each contestant in this scheduled roping. Leave blank for no regular limit.</span>
               </label>
               <label className="block text-sm font-semibold">
-                Minimum runs between entries
-                <NumberStepper label="Minimum runs between entries"
-                  name="minimumRunsBetweenEntries"
-                  defaultValue={template?.minimumRunsBetweenEntries ?? 0}
-                  min="0"
-                  max="100"
-                  className={inputClass}
-                  required
-                />
-              </label>
-              <label className="block text-sm font-semibold">
-                Payout schedule
-                <select
-                  name="payoutScheduleId"
-                  key={competitionFormat}
-                  defaultValue={
-                    compatiblePayoutSchedules.some(
-                      (schedule) => schedule.id === template?.payoutScheduleId,
-                    )
-                      ? (template?.payoutScheduleId ?? "")
-                      : ""
-                  }
-                  className={inputClass}
-                  required={competitionFormat === "four_d"}
-                >
-                  <option value="">No default schedule</option>
-                  {compatiblePayoutSchedules.map((schedule) => (
-                    <option key={schedule.id} value={schedule.id}>
-                      {schedule.name}
-                    </option>
-                  ))}
+                Member roping count
+                <select name="attendanceCountMode" defaultValue={template?.attendanceCountMode ?? "once_per_roping"} className={inputClass}>
+                  <option value="once_per_roping">Once per roping</option>
+                  <option value="per_entry">Each entry</option>
                 </select>
               </label>
+            </div>
+            <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+                <input
+                  name="allowGuests"
+                  type="checkbox"
+                  defaultChecked={template?.allowGuests}
+                  className="h-4 w-4 accent-[var(--brand-accent)]"
+                />{" "}
+                Allow non-members to enter
+              </label>
+            </fieldset>
+            <fieldset className="space-y-4 rounded-md border border-[#dfe4e1] p-4"><legend className="px-1 text-base font-bold">3. Timing & order</legend>
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
                 Number of timers
                 <NumberStepper label="Number of timers"
@@ -369,7 +361,19 @@ function EventTemplateDialog({
                   <option value="longest">Longest timer</option>
                 </select>
               </label>
+              <label className="block text-sm font-semibold">
+                Minimum runs between entries
+                <NumberStepper label="Minimum runs between entries"
+                  name="minimumRunsBetweenEntries"
+                  defaultValue={template?.minimumRunsBetweenEntries ?? 0}
+                  min="0"
+                  max="100"
+                  className={inputClass}
+                  required
+                />
+              </label>
             </div>
+            <p className="text-sm leading-6 text-[#66716b]">Minimum runs between entries controls spacing for repeat contestants when building the draw. Review any spacing warnings before competition.</p>
             <div>
               <p className="text-sm font-semibold">Round ordering defaults</p>
               <p className="mt-1 text-xs leading-5 text-[#66716b]">
@@ -423,8 +427,7 @@ function EventTemplateDialog({
               <input type="hidden" name="shortRoundBrackets" value={JSON.stringify(template?.shortRoundBrackets ?? [])} />
               <input type="hidden" name="shortRoundTiePolicy" value={template?.shortRoundTiePolicy ?? "advance_all"} />
             </>}
-            <div className="grid gap-2 sm:grid-cols-2">
-              {(featureEnabled(features, "cattle_draw") || template?.cattleDrawEnabled) && <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
+            {(featureEnabled(features, "cattle_draw") || template?.cattleDrawEnabled) && <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
                 <input
                   name="cattleDrawEnabled"
                   type="checkbox"
@@ -433,25 +436,33 @@ function EventTemplateDialog({
                 />{" "}
                 Draw and track cattle
               </label>}
-              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                <input
-                  name="allowGuests"
-                  type="checkbox"
-                  defaultChecked={template?.allowGuests}
-                  className="h-4 w-4 accent-[var(--brand-accent)]"
-                />{" "}
-                Allow non-members to enter
+            </fieldset>
+            <fieldset className="space-y-4 rounded-md border border-[#dfe4e1] p-4"><legend className="px-1 text-base font-bold">4. Payouts</legend>
+              <label className="block text-sm font-semibold">
+                Payout schedule
+                <select
+                  name="payoutScheduleId"
+                  key={competitionFormat}
+                  defaultValue={
+                    compatiblePayoutSchedules.some(
+                      (schedule) => schedule.id === template?.payoutScheduleId,
+                    )
+                      ? (template?.payoutScheduleId ?? "")
+                      : ""
+                  }
+                  className={inputClass}
+                  required={competitionFormat === "four_d"}
+                >
+                  <option value="">No default schedule</option>
+                  {compatiblePayoutSchedules.map((schedule) => (
+                    <option key={schedule.id} value={schedule.id}>
+                      {schedule.name}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <label className="flex items-center gap-3 rounded-md border border-[#e1e6e3] p-3 text-sm font-semibold">
-                <input
-                  name="isActive"
-                  type="checkbox"
-                  defaultChecked={template?.isActive ?? true}
-                  className="h-4 w-4 accent-[var(--brand-accent)]"
-                />{" "}
-                Active for new events
-              </label>
-            </div>
+            <p className="text-sm leading-6 text-[#66716b]">Choose the default payout schedule for new ropings. Add or edit entry fees and optional pools on the template card after saving.</p>
+            </fieldset>
             <p className="text-sm leading-6 text-[#66716b]">Save changes to update this template. Existing scheduled ropings keep their settings until you review and apply the update.</p>
             <FormMessage state={state} />
             {!configured ? (
@@ -466,7 +477,7 @@ function EventTemplateDialog({
                     recordType="template"
                     recordName={template.name}
                     warning="This removes the reusable template and its template fees. Ropings already created from it keep their copied settings and results."
-                    disabled={!configured}
+                    disabled={!configured || pending}
                     onDelete={() => deleteDivision(template.id)}
                     onDeleted={() => setOpen(false)}
                   />
@@ -476,13 +487,14 @@ function EventTemplateDialog({
                 type="button"
                 data-dialog-close
                 onClick={() => setOpen(false)}
-                className="h-10 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold"
+                disabled={pending}
+                className="h-11 rounded-md border border-[#ccd4d0] px-4 text-sm font-semibold disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 disabled={pending || !configured || !divisions.length}
-                className="flex h-10 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
+                className="flex min-h-11 items-center gap-2 rounded-md brand-accent-fill px-4 text-sm font-bold text-white disabled:opacity-50"
               >
                 {pending ? (
                   <LoaderCircle size={16} className="animate-spin" />
