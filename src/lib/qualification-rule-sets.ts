@@ -42,3 +42,17 @@ export function qualificationRequirementsText(rule: Pick<QualificationRuleSet, "
   const conditions = [rule.minimum_ropings > 0 ? `${rule.minimum_ropings} ropings attended` : null, rule.top_places !== null ? `Top ${rule.top_places} in standings` : null].filter(Boolean);
   return conditions.length ? conditions.join(rule.requirement_match === "any" ? " OR " : " AND ") : "No attendance or rank requirement";
 }
+
+export function publicQualificationBullets(rule: Pick<QualificationRuleSet, "top_places" | "minimum_ropings" | "earned_position_policy" | "bonus_entries_enabled">): string[] {
+  const bullets: string[] = [];
+  if (rule.top_places !== null) bullets.push(`Top ${rule.top_places} in the season standings`);
+  if (rule.minimum_ropings > 0) bullets.push(`Must have attended ${rule.minimum_ropings} ${rule.minimum_ropings === 1 ? "roping" : "ropings"}`);
+  if (!bullets.length) bullets.push("No standings or attendance requirement");
+  if (rule.earned_position_policy === "rank_and_attendance") bullets.push("Bonus positions earned at select ropings bypass the standings and attendance requirements.");
+  else if (rule.earned_position_policy === "rank") bullets.push(rule.minimum_ropings > 0
+    ? "Bonus positions earned at select ropings can bypass the standings requirement when the attendance requirement is met."
+    : "Bonus positions earned at select ropings bypass the standings requirement.");
+  else bullets.push("Bonus positions earned at select ropings do not bypass the qualification requirements.");
+  if (rule.bonus_entries_enabled) bullets.push("Bonus positions assigned to a roping are added to its normal entry allowance.");
+  return bullets;
+}

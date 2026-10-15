@@ -10,8 +10,8 @@ import { loadSeasonStandings, type SeasonStandingsSource } from "@/lib/events/se
 import { StandingsFilters } from "@/components/events/standings-filters";
 import { seasonCalendarDate } from "@/lib/seasons";
 import { loadFinalsQualifications } from "@/lib/events/finals-qualification-data";
-import { qualificationCutoffText, qualificationRequirementsText, type QualificationRuleSet } from "@/lib/qualification-rule-sets";
-import { publicEventDate } from "@/lib/events/public-event-navigation";
+import { PublishedFinalsRules } from "@/components/events/published-finals-rules";
+import { type QualificationRuleSet } from "@/lib/qualification-rule-sets";
 
 export default async function StandingsPage({ params, searchParams }: PageProps<"/public/[producerSlug]/standings">) {
   const { producerSlug } = await params;
@@ -69,15 +69,8 @@ export default async function StandingsPage({ params, searchParams }: PageProps<
       <h1 className="text-2xl font-bold">Season standings</h1>
       {season ? <StandingsFilters key={`${season.id}:${selectedClass?.id}:${search}`} seasons={seasons} classes={source.classes}
         seasonId={season.id} classId={selectedClass?.id ?? ""} search={search} /> : null}
-      {!!applicableRules.length && <section aria-label="Published finals qualification rules" className="mt-5 space-y-3 rounded-md border border-[#dfe4e1] bg-white p-4"><h2 className="font-bold">Finals qualification rules</h2>{applicableRules.map(rule => <article key={rule.id} className="border-t border-[#e7ebe8] pt-3 text-sm"><h3 className="font-semibold">{rule.name}</h3><p className="mt-1 text-[#526059]">{qualificationRequirementsText(rule)}</p><p className="mt-1 text-[#526059]">{qualificationCutoffText(rule)}</p><p className="mt-1 text-[#526059]">{rule.earned_position_policy === "rank_and_attendance" ? "Assigned earned positions bypass rank and attendance." : rule.earned_position_policy === "rank" ? "Assigned earned positions bypass rank; attendance is still required." : "Earned positions do not bypass regular requirements."}{rule.bonus_entries_enabled ? " Assigned earned positions add bonus entries." : " Normal entry allowance applies."}</p></article>)}{applicableRules.length > 1 && <p className="text-sm text-[#526059]">More than one finals rule set applies to this class. Check the rule set assigned to your event; a single qualification label would not describe every finals.</p>}</section>}
+      {season && <PublishedFinalsRules rules={applicableRules} seasonEndsOn={season.endsOn} />}
       <section className="mt-5">
-        {requirement ? <div className="mb-4 flex flex-wrap gap-3 text-xs text-[#66716b]">
-          {requirement.top_places ? <span>Top {requirement.top_places} · ties included</span> : null}
-          <span>{requirement.minimum_ropings} ropings required</span>
-          <span>Standings through {publicEventDate(requirement.cutoff_on ?? season!.endsOn)}</span>
-          <span>Attendance through {publicEventDate(requirement.attendance_cutoff_on ?? season!.endsOn)}</span>
-          {requirement.earned_position_policy !== "none" && <span>{requirement.earned_position_policy === "rank" ? "Assigned bonus positions bypass rank; attendance required" : "Assigned bonus positions bypass rank and attendance"}</span>}
-        </div> : null}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold">{selectedClass ? `${selectedClass.name} ${selectedClass.divisionName}` : "Standings"}</h2>
           <span className="text-xs text-[#66716b]">Official results · {rows.length} ropers</span>
